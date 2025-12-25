@@ -222,13 +222,6 @@ export function FilterPopover({ initialChips, onApply, onClear, counts }: Filter
               <div className="space-y-2">
                 {memberOptions.map((m) => (
                   <label key={m.id} className="flex items-center gap-2 rounded-lg border p-2 hover:bg-accent cursor-pointer">
-                    <Avatar className="h-6 w-6">
-                      {m.avatar ? (
-                        <AvatarImage src={m.avatar} />
-                      ) : (
-                        <AvatarFallback>{m.label.slice(0, 2).toUpperCase()}</AvatarFallback>
-                      )}
-                    </Avatar>
                     <Checkbox
                       checked={temp.members.has(m.label)}
                       onCheckedChange={() => setTemp((t) => ({ ...t, members: toggleSet(t.members, m.label) }))}
