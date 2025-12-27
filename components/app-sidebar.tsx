@@ -29,27 +29,21 @@ import {
   CaretRight,
   CaretUpDown,
 } from "@phosphor-icons/react/dist/ssr"
+import { activeProjects, footerItems, navItems } from "@/lib/data/sidebar"
 
-const navItems = [
-  { icon: Tray, label: "Inbox", badge: 24 },
-  { icon: CheckSquare, label: "My task" },
-  { icon: Folder, label: "Projects", active: true },
-  { icon: Users, label: "Clients" },
-  { icon: ChartBar, label: "Performance" },
-]
+const navItemIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  inbox: Tray,
+  "my-tasks": CheckSquare,
+  projects: Folder,
+  clients: Users,
+  performance: ChartBar,
+}
 
-const activeProjects = [
-  { name: "AI Learning Platform", color: "#EF4444", progress: 25 },
-  { name: "Fintech Mobile App", color: "#F97316", progress: 80 },
-  { name: "E-commerce Admin", color: "#22C55E", progress: 65 },
-  { name: "Healthcare Booking App", color: "#94A3B8", progress: 10 },
-]
-
-const footerItems = [
-  { icon: Gear, label: "Settings" },
-  { icon: Layout, label: "Templates" },
-  { icon: Question, label: "Help" },
-]
+const footerItemIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  settings: Gear,
+  templates: Layout,
+  help: Question,
+}
 
 export function AppSidebar() {
   return (
@@ -90,11 +84,18 @@ export function AppSidebar() {
             <SidebarMenu>
               {navItems.map((item) => (
                 <SidebarMenuItem key={item.label}>
+                  {(() => {
+                    const Icon = navItemIcons[item.id]
+                    return null
+                  })()}
                   <SidebarMenuButton
-                    isActive={item.active}
+                    isActive={item.isActive}
                     className="h-9 rounded-lg px-3 font-normal text-muted-foreground"
                   >
-                    <item.icon className="h-[18px] w-[18px]" />
+                    {(() => {
+                      const Icon = navItemIcons[item.id]
+                      return Icon ? <Icon className="h-[18px] w-[18px]" /> : null
+                    })()}
                     <span>{item.label}</span>
                   </SidebarMenuButton>
                   {item.badge && (
@@ -135,7 +136,10 @@ export function AppSidebar() {
           {footerItems.map((item) => (
             <SidebarMenuItem key={item.label}>
               <SidebarMenuButton className="h-9 rounded-lg px-3 text-muted-foreground">
-                <item.icon className="h-[18px] w-[18px]" />
+                {(() => {
+                  const Icon = footerItemIcons[item.id]
+                  return Icon ? <Icon className="h-[18px] w-[18px]" /> : null
+                })()}
                 <span>{item.label}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
