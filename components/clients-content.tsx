@@ -1,0 +1,475 @@
+"use client"
+
+import { SidebarTrigger } from "@/components/ui/sidebar"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { CaretRight, CaretUpDown, ArrowDown, ArrowUp, DotsThreeVertical, Plus, MagnifyingGlass } from "@phosphor-icons/react/dist/ssr"
+import { toast } from "sonner"
+import Link from "next/link"
+import { useMemo, useState } from "react"
+import { clients, getProjectCountForClient, type ClientStatus } from "@/lib/data/clients"
+import { ClientWizard } from "@/components/clients/ClientWizard"
+
+function statusLabel(status: ClientStatus): string {
+  if (status === "prospect") return "Prospect"
+  if (status === "active") return "Active"
+  if (status === "on_hold") return "On hold"
+  return "Archived"
+}
+
+export function ClientsContent() {
+  const [query, setQuery] = useState("")
+  const [isWizardOpen, setIsWizardOpen] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<"all" | ClientStatus>("all")
+  const [sortKey, setSortKey] = useState<"name" | "projects">("name")
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [pageSize, setPageSize] = useState(7)
+  const [page, setPage] = useState(1)
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+
+    let list = clients.slice()
+
+    // Status filter from tabs
+    if (statusFilter !== "all") {
+      list = list.filter((c) => c.status === statusFilter)
+    }
+
+    // Text search
+    if (q) {
+      list = list.filter((c) => {
+        return (
+          c.name.toLowerCase().includes(q) ||
+          (c.primaryContactName && c.primaryContactName.toLowerCase().includes(q)) ||
+          (c.primaryContactEmail && c.primaryContactEmail.toLowerCase().includes(q))
+        )
+      })
+    }
+
+    // Sorting
+    const sorted = list.slice().sort((a, b) => {
+      if (sortKey === "name") {
+        const av = a.name.toLowerCase()
+        const bv = b.name.toLowerCase()
+        if (av === bv) return 0
+        const cmp = av < bv ? -1 : 1
+        return sortDirection === "asc" ? cmp : -cmp
+      }
+
+      // sort by projects count
+      const ac = getProjectCountForClient(a.name)
+      const bc = getProjectCountForClient(b.name)
+      if (ac === bc) return 0
+      const cmp = ac < bc ? -1 : 1
+      return sortDirection === "asc" ? cmp : -cmp
+    })
+
+    return sorted
+  }, [query, statusFilter, sortKey, sortDirection])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
+  const currentPage = Math.min(page, totalPages)
+  const pageStart = (currentPage - 1) * pageSize
+  const visibleClients = filtered.slice(pageStart, pageStart + pageSize)
+
+  const toggleSort = (key: "name" | "projects") => {
+    setSortKey((currentKey) => {
+      if (currentKey !== key) {
+        setSortDirection("asc")
+        return key
+      }
+      setSortDirection((dir) => (dir === "asc" ? "desc" : "asc"))
+      return currentKey
+    })
+  }
+
+  const allVisibleIds = visibleClients.map((c) => c.id)
+  const isAllSelected = allVisibleIds.length > 0 && allVisibleIds.every((id) => selectedIds.has(id))
+  const isIndeterminate = selectedIds.size > 0 && !isAllSelected
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => {
+      if (isAllSelected) {
+        return new Set()
+      }
+      const next = new Set(prev)
+      allVisibleIds.forEach((id) => next.add(id))
+      return next
+    })
+  }
+
+  const toggleSelectOne = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const clearSelection = () => setSelectedIds(new Set())
+
+  const handleArchiveSelected = () => {
+    if (!selectedIds.size) return
+    toast.success(`Archived ${selectedIds.size} client${selectedIds.size > 1 ? "s" : ""} (mock)`)
+    clearSelection()
+  }
+
+  const goToPage = (next: number) => {
+    const clamped = Math.min(Math.max(1, next), totalPages)
+    setPage(clamped)
+  }
+
+  const pageNumbers = (() => {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1)
+    }
+    const pages: number[] = []
+    const start = Math.max(1, currentPage - 1)
+    const end = Math.min(totalPages, currentPage + 1)
+    if (start > 1) pages.push(1)
+    if (start > 2) pages.push(-1) // ellipsis
+    for (let p = start; p <= end; p++) pages.push(p)
+    if (end < totalPages - 1) pages.push(-1)
+    if (end < totalPages) pages.push(totalPages)
+    return pages
+  })()
+
+  return (
+    <div className="flex flex-1 flex-col bg-background mx-2 my-2 border border-border rounded-lg min-w-0">
+      <header className="flex flex-col border-b border-border/40">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div className="flex items-center gap-3">
+            <SidebarTrigger className="h-8 w-8 rounded-lg hover:bg-accent text-muted-foreground" />
+            <p className="text-base font-medium text-foreground">Clients</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setIsWizardOpen(true)}>
+              <Plus className="h-4 w-4" weight="bold" />
+              New client
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between px-4 pb-3 pt-3 gap-3 flex-wrap">
+          <div className="flex items-center gap-1 text-xs bg-muted rounded-lg px-2 py-1">
+            {[
+              { id: "all" as const, label: "All" },
+              { id: "active" as const, label: "Active" },
+              { id: "prospect" as const, label: "Prospect" },
+              { id: "on_hold" as const, label: "On hold" },
+              { id: "archived" as const, label: "Archived" },
+            ].map((tab) => {
+              const isActive = statusFilter === tab.id
+              return (
+                <Button
+                  key={tab.id}
+                  variant={isActive ? "ghost" : "ghost"}
+                  size="sm"
+                  className={`h-7 px-2 rounded-full text-xs ${isActive ? "bg-background" : ""}`}
+                  onClick={() => setStatusFilter(tab.id === "all" ? "all" : (tab.id as ClientStatus))}
+                >
+                  {tab.label}
+                </Button>
+              )
+            })}
+          </div>
+
+          <div className="flex items-center gap-3 flex-1 justify-end">
+            {selectedIds.size > 0 && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>{selectedIds.size} selected</span>
+                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={handleArchiveSelected}>
+                  Archive
+                </Button>
+                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={clearSelection}>
+                  Clear
+                </Button>
+              </div>
+            )}
+            <div className="flex-1 max-w-xs relative">
+              <MagnifyingGlass className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search clients or contacts"
+                className="h-9 rounded-lg bg-muted/50 text-sm placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary/20 border-border border shadow-none pl-9"
+              />
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="flex-1 overflow-auto px-4 pb-2 pt-5">
+        <div className="w-full">
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center border border-dashed border-border/60 rounded-lg bg-muted/30">
+              <p className="text-sm font-medium text-foreground">No clients found</p>
+              <p className="mt-1 text-xs text-muted-foreground">Try adjusting your search or add a new client.</p>
+              <Button className="mt-4 h-8 px-3 text-xs rounded-lg" onClick={() => setIsWizardOpen(true)}>
+                <Plus className="mr-1 h-3 w-3" weight="bold" />
+                New client
+              </Button>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-border bg-card/80 overflow-hidden">
+              <Table>
+                <TableHeader className="bg-muted">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="w-[32px] text-xs font-medium text-muted-foreground">
+                      <Checkbox
+                        aria-label="Select all clients"
+                        checked={isAllSelected ? true : isIndeterminate ? "indeterminate" : false}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </TableHead>
+                    <TableHead className="w-[26%] text-xs font-medium text-muted-foreground">
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 hover:text-foreground"
+                        onClick={() => toggleSort("name")}
+                      >
+                        <span>Client</span>
+                        {sortKey === "name" ? (
+                          sortDirection === "asc" ? (
+                            <ArrowUp className="h-3 w-3" />
+                          ) : (
+                            <ArrowDown className="h-3 w-3" />
+                          )
+                        ) : (
+                          <CaretUpDown className="h-3 w-3" />
+                        )}
+                      </button>
+                    </TableHead>
+                    <TableHead className="w-[20%] text-xs font-medium text-muted-foreground">Primary contact</TableHead>
+                    <TableHead className="w-[12%] text-xs font-medium text-muted-foreground">Status</TableHead>
+                    <TableHead className="w-[10%] text-xs font-medium text-muted-foreground text-right">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 hover:text-foreground"
+                        onClick={() => toggleSort("projects")}
+                      >
+                        <span>Projects</span>
+                        {sortKey === "projects" ? (
+                          sortDirection === "asc" ? (
+                            <ArrowUp className="h-3 w-3" />
+                          ) : (
+                            <ArrowDown className="h-3 w-3" />
+                          )
+                        ) : (
+                          <CaretUpDown className="h-3 w-3" />
+                        )}
+                      </button>
+                    </TableHead>
+                    <TableHead className="min-w-[112px] text-xs font-medium text-muted-foreground whitespace-nowrap">
+                      Last activity
+                    </TableHead>
+                    <TableHead className="min-w-[128px] text-xs font-medium text-muted-foreground whitespace-nowrap">
+                      Owner
+                    </TableHead>
+                    <TableHead className="w-[40px]" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {visibleClients.map((client) => {
+                    const projectCount = getProjectCountForClient(client.name)
+                    const checked = selectedIds.has(client.id)
+                    return (
+                      <TableRow key={client.id} className="hover:bg-muted/80">
+                        <TableCell className="align-middle">
+                          <Checkbox
+                            aria-label={`Select ${client.name}`}
+                            checked={checked}
+                            onCheckedChange={() => toggleSelectOne(client.id)}
+                          />
+                        </TableCell>
+                        <TableCell className="align-middle text-sm font-medium text-foreground">
+                          <Link href={`/clients/${client.id}`} className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarFallback className="text-xs font-medium">
+                                {client.name
+                                  .split(" ")
+                                  .map((part) => part.charAt(0))
+                                  .join("")
+                                  .slice(0, 2)
+                                  .toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex flex-col min-w-0">
+                              <span className="truncate">{client.name}</span>
+                              <span className="mt-0.5 text-[11px] text-muted-foreground truncate">
+                                {client.industry && client.location
+                                  ? `${client.industry} • ${client.location}`
+                                  : client.industry || client.location || ""}
+                              </span>
+                            </div>
+                          </Link>
+                        </TableCell>
+                        <TableCell className="align-middle text-sm">
+                          {client.primaryContactName ? (
+                            <div className="flex flex-col">
+                              <span className="truncate text-sm text-foreground">{client.primaryContactName}</span>
+                              {client.primaryContactEmail && (
+                                <span className="truncate text-[11px] text-muted-foreground">{client.primaryContactEmail}</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="align-middle">
+                          <Badge variant="outline" className="rounded-full px-2 py-0.5 text-[11px] font-medium capitalize">
+                            {statusLabel(client.status)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="align-middle text-right text-sm text-muted-foreground">
+                          {projectCount}
+                        </TableCell>
+                        <TableCell className="align-middle text-sm text-muted-foreground whitespace-nowrap">
+                          {client.lastActivityLabel ?? "—"}
+                        </TableCell>
+                        <TableCell className="align-middle text-sm text-muted-foreground whitespace-nowrap">
+                          {client.owner ?? "—"}
+                        </TableCell>
+                        <TableCell className="align-middle text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
+                              >
+                                <DotsThreeVertical className="h-4 w-4" weight="regular"  />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40">
+                              <DropdownMenuItem asChild>
+                                <Link href={`/clients/${client.id}`}>View details</Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  toast.info("Edit client opens modal (mock)")
+                                }}
+                              >
+                                Edit client
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => {
+                                  toast.success(`Archived ${client.name} (mock)`)
+                                }}
+                              >
+                                Archive
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+
+              <div className="flex items-center justify-between border-t border-border bg-background px-4 py-2 text-xs text-muted-foreground">
+                <div>
+                  Page {currentPage} of {totalPages}
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="h-7 w-7"
+                      onClick={() => goToPage(1)}
+                      disabled={currentPage === 1}
+                    >
+                      «
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="h-7 w-7"
+                      onClick={() => goToPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      ‹
+                    </Button>
+                    {pageNumbers.map((p, idx) =>
+                      p === -1 ? (
+                        <span key={`ellipsis-${idx}`} className="px-1">
+                          ...
+                        </span>
+                      ) : (
+                        <Button
+                          key={p}
+                          variant={p === currentPage ? "outline" : "ghost"}
+                          size="sm"
+                          className="h-7 min-w-7 px-2 text-xs"
+                          onClick={() => goToPage(p)}
+                        >
+                          {p}
+                        </Button>
+                      ),
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="h-7 w-7"
+                      onClick={() => goToPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                    >
+                      ›
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="h-7 w-7"
+                      onClick={() => goToPage(totalPages)}
+                      disabled={currentPage === totalPages}
+                    >
+                      »
+                    </Button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span>Rows per page</span>
+                    <select
+                      className="h-7 rounded-md border border-border bg-background px-2 text-xs"
+                      value={pageSize}
+                      onChange={(e) => {
+                        const next = Number(e.target.value) || 7
+                        setPageSize(next)
+                        setPage(1)
+                      }}
+                    >
+                      <option value={7}>7</option>
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      {isWizardOpen && (
+        <ClientWizard mode="create" onClose={() => setIsWizardOpen(false)} />
+      )}
+    </div>
+  )
+}
