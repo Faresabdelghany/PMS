@@ -60,24 +60,37 @@
 - [x] **1.4.2** Create `app/(auth)/layout.tsx` - Auth layout (centered, no sidebar)
 
 - [x] **1.4.3** Create `app/(auth)/login/page.tsx`
-  - Email/password form
+  - Email/password form with Zod validation
   - Google OAuth button
   - Link to signup
   - Link to forgot password
-  - Error display
+  - Inline error messages on blur
+  - Submit button disabled until form is valid
 
 - [x] **1.4.4** Create `app/(auth)/signup/page.tsx`
-  - Email/password/name form
+  - Email/password/name form with Zod validation
   - Google OAuth button
   - Link to login
   - Success state with email confirmation message
+  - Inline error messages on blur
+  - Submit button disabled until form is valid
 
 - [x] **1.4.5** Create `app/auth/callback/route.ts` - OAuth callback handler
   - Exchanges code for session
   - Checks if user has organization
   - Redirects to onboarding if no org
 
-- [x] **1.4.7** Create `middleware.ts` - Route protection
+- [x] **1.4.6** Create `app/(auth)/forgot-password/page.tsx`
+  - Email input form
+  - Calls resetPassword server action
+  - Success state with "Check your email" message
+  - Back to sign in link
+
+- [x] **1.4.7** Create `components/ui/form.tsx` - shadcn/ui Form component
+  - React Hook Form integration
+  - FormField, FormItem, FormLabel, FormControl, FormMessage components
+
+- [x] **1.4.8** Create `middleware.ts` - Route protection
   - Protects all routes except auth pages and public pages
   - Redirects unauthenticated users to `/login`
   - Redirects authenticated users from auth pages to `/`
@@ -263,13 +276,28 @@
 
 ### 5.3 Testing & Deployment
 
-- [ ] **5.3.1** Test all auth flows
+- [x] **5.3.1** Test all auth flows (Playwright MCP)
+  - Email/password signup with validation ✅
+  - Email/password login with error handling ✅
+  - Google OAuth redirect flow ✅
+  - Forgot password page and flow ✅
+  - Form validation (required, email format, password length) ✅
 - [ ] **5.3.2** Test organization flows
 - [ ] **5.3.3** Test data isolation (RLS)
 - [ ] **5.3.4** Test real-time
-- [ ] **5.3.5** Configure Vercel environment variables
-- [ ] **5.3.6** Deploy to Vercel
-- [ ] **5.3.7** Configure OAuth redirect URLs
+- [x] **5.3.5** Configure Vercel environment variables
+  - NEXT_PUBLIC_SUPABASE_URL ✅
+  - NEXT_PUBLIC_SUPABASE_ANON_KEY ✅
+  - SUPABASE_SERVICE_ROLE_KEY ✅
+  - NEXT_PUBLIC_SITE_URL ✅
+- [x] **5.3.6** Deploy to Vercel
+  - Main branch linked for auto-deployment ✅
+  - Production URL: https://pms-nine-gold.vercel.app
+- [x] **5.3.7** Configure OAuth redirect URLs
+  - Google Cloud Console: Added Supabase callback URL ✅
+  - Google Cloud Console: Added Vercel production callback URL ✅
+  - Supabase: Site URL updated to production URL ✅
+  - Supabase: Google provider enabled with OAuth credentials ✅
 - [ ] **5.3.8** Final smoke test
 
 ---
@@ -285,13 +313,19 @@ lib/
 │   └── types.ts           # Database types
 ├── actions/
 │   ├── auth.ts            # Auth server actions
-│   └── organizations.ts   # Organization server actions
+│   ├── organizations.ts   # Organization server actions
+│   └── types.ts           # Shared ActionResult type
+
+components/
+└── ui/
+    └── form.tsx           # shadcn/ui Form component (React Hook Form)
 
 app/
 ├── (auth)/
 │   ├── layout.tsx         # Auth layout
-│   ├── login/page.tsx     # Login page
-│   └── signup/page.tsx    # Signup page
+│   ├── login/page.tsx     # Login page (with Zod validation)
+│   ├── signup/page.tsx    # Signup page (with Zod validation)
+│   └── forgot-password/page.tsx  # Password reset page
 ├── auth/
 │   └── callback/route.ts  # OAuth callback
 ├── onboarding/
@@ -317,10 +351,15 @@ supabase/
 |-------|------------|--------|
 | 1 | Auth works | COMPLETED |
 | 1 | Org created | COMPLETED |
+| 1 | Forgot password | COMPLETED |
+| 1 | Form validation | COMPLETED |
 | 2 | Projects CRUD | COMPLETED (Server Actions) |
 | 2 | Clients CRUD | COMPLETED (Server Actions) |
 | 3 | Tasks work | COMPLETED (Server Actions) |
 | 4 | Files upload | Pending |
 | 4 | AI works | Pending |
 | 5 | Real-time | Pending |
-| 5 | Deployed | Pending |
+| 5 | Vercel configured | COMPLETED |
+| 5 | OAuth configured | COMPLETED |
+| 5 | Auth flows tested | COMPLETED |
+| 5 | Deployed | COMPLETED (Auto-deploy on main)
