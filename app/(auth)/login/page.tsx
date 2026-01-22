@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { signIn, signInWithGoogle } from "@/lib/actions/auth"
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 
-export default function LoginPage() {
+function LoginForm() {
   const searchParams = useSearchParams()
   const error = searchParams.get("error")
   const [isLoading, setIsLoading] = useState(false)
@@ -129,5 +129,20 @@ export default function LoginPage() {
         </p>
       </CardFooter>
     </Card>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <Card>
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold">Sign in</CardTitle>
+          <CardDescription>Loading...</CardDescription>
+        </CardHeader>
+      </Card>
+    }>
+      <LoginForm />
+    </Suspense>
   )
 }

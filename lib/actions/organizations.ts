@@ -136,26 +136,13 @@ export async function getOrganization(id: string): Promise<ActionResult<Organiza
 // Update organization
 export async function updateOrganization(
   id: string,
-  formData: FormData
+  data: OrganizationUpdate
 ): Promise<ActionResult<Organization>> {
   const supabase = await createClient()
 
-  const name = formData.get("name") as string
-  const logoUrl = formData.get("logoUrl") as string | null
-
-  const updates: OrganizationUpdate = {}
-
-  if (name) {
-    updates.name = name.trim()
-  }
-
-  if (logoUrl !== null) {
-    updates.logo_url = logoUrl || null
-  }
-
-  const { data, error } = await supabase
+  const { data: org, error } = await supabase
     .from("organizations")
-    .update(updates)
+    .update(data)
     .eq("id", id)
     .select()
     .single()
@@ -165,7 +152,7 @@ export async function updateOrganization(
   }
 
   revalidatePath("/", "layout")
-  return { data }
+  return { data: org }
 }
 
 // Delete organization
@@ -224,7 +211,7 @@ export async function updateMemberRole(
 }
 
 // Remove member from organization
-export async function removeMember(orgId: string, userId: string): Promise<ActionResult> {
+export async function removeOrganizationMember(orgId: string, userId: string): Promise<ActionResult> {
   const supabase = await createClient()
 
   const { error } = await supabase
@@ -240,3 +227,6 @@ export async function removeMember(orgId: string, userId: string): Promise<Actio
   revalidatePath("/", "layout")
   return {}
 }
+
+// Alias for backwards compatibility
+export const removeMember = removeOrganizationMember
