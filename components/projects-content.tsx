@@ -11,6 +11,7 @@ import { DEFAULT_VIEW_OPTIONS, type FilterChip, type ViewOptions } from "@/lib/v
 import { chipsToParams, paramsToChips } from "@/lib/url/filters"
 import type { ProjectWithRelations } from "@/lib/actions/projects"
 import type { Client } from "@/lib/supabase/types"
+import { useProjectsRealtime } from "@/hooks/use-realtime"
 
 // Helper to compute filter counts from view projects
 type ViewProject = ReturnType<typeof toViewProject>
@@ -66,7 +67,31 @@ export function ProjectsContent({ initialProjects, clients, organizationId }: Pr
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  const [projects] = useState(initialProjects)
+  const [projects, setProjects] = useState(initialProjects)
+
+  // Subscribe to real-time project changes
+  useProjectsRealtime(organizationId, {
+    onInsert: (newProject) => {
+      setProjects((prev) => {
+        if (prev.some((p) => p.id === newProject.id)) return prev
+        // Add minimal project data - will be typed as ProjectWithRelations
+        return [newProject as ProjectWithRelations, ...prev]
+      })
+    },
+    onUpdate: (updatedProject) => {
+      setProjects((prev) =>
+        prev.map((project) =>
+          project.id === updatedProject.id
+            ? { ...project, ...updatedProject }
+            : project
+        )
+      )
+    },
+    onDelete: (deletedProject) => {
+      setProjects((prev) => prev.filter((project) => project.id !== deletedProject.id))
+    },
+  })
+
   const [viewOptions, setViewOptions] = useState<ViewOptions>(DEFAULT_VIEW_OPTIONS)
 
   const [filters, setFilters] = useState<FilterChip[]>([])
@@ -86,7 +111,8 @@ export function ProjectsContent({ initialProjects, clients, organizationId }: Pr
 
   const handleProjectCreated = () => {
     setIsWizardOpen(false)
-    router.refresh()
+    // Real-time will add the project to the list
+    // No need for router.refresh()
   }
 
   const removeFilter = (key: string, value: string) => {
