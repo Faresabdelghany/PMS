@@ -9,7 +9,7 @@ import type { FileType } from "@/lib/supabase/types"
 /**
  * Convert Supabase FileType to UI QuickLink type
  */
-function toQuickLinkType(fileType: FileType): QuickLink["type"] {
+export function toQuickLinkType(fileType: FileType): QuickLink["type"] {
   switch (fileType) {
     case "pdf":
       return "pdf"
@@ -31,7 +31,7 @@ function toQuickLinkType(fileType: FileType): QuickLink["type"] {
 /**
  * Convert bytes to megabytes
  */
-function bytesToMB(bytes: number): number {
+export function bytesToMB(bytes: number): number {
   return +(bytes / (1024 * 1024)).toFixed(2)
 }
 
