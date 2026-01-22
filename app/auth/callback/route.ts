@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { createPersonalOrganization } from "@/lib/actions/auth"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
@@ -32,9 +33,15 @@ export async function GET(request: NextRequest) {
           .limit(1)
           .single()
 
-        // If user has no organization, redirect to onboarding
+        // If user has no organization, auto-create a personal workspace
         if (!membership) {
-          return NextResponse.redirect(`${origin}/onboarding`)
+          const fullName = user.user_metadata?.full_name || user.email?.split("@")[0] || "My"
+          const orgResult = await createPersonalOrganization(user.id, fullName)
+          if (orgResult.error) {
+            console.error("Failed to create personal organization:", orgResult.error)
+            // Fallback to onboarding if auto-creation fails
+            return NextResponse.redirect(`${origin}/onboarding`)
+          }
         }
       }
 

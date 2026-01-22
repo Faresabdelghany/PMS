@@ -598,6 +598,178 @@ export interface Database {
           }
         ]
       }
+      project_scope: {
+        Row: {
+          id: string
+          project_id: string
+          item: string
+          is_in_scope: boolean
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          item: string
+          is_in_scope?: boolean
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          item?: string
+          is_in_scope?: boolean
+          sort_order?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_scope_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      project_outcomes: {
+        Row: {
+          id: string
+          project_id: string
+          item: string
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          item: string
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          item?: string
+          sort_order?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_outcomes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      project_features: {
+        Row: {
+          id: string
+          project_id: string
+          item: string
+          priority: number
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          item: string
+          priority?: number
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          item?: string
+          priority?: number
+          sort_order?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_features_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      project_deliverables: {
+        Row: {
+          id: string
+          project_id: string
+          title: string
+          due_date: string | null
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          title: string
+          due_date?: string | null
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          title?: string
+          due_date?: string | null
+          sort_order?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_deliverables_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      project_metrics: {
+        Row: {
+          id: string
+          project_id: string
+          name: string
+          target: string | null
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          name: string
+          target?: string | null
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          name?: string
+          target?: string | null
+          sort_order?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_metrics_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never

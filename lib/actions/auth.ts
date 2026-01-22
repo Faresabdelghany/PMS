@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
 import { headers } from "next/headers"
@@ -8,6 +9,67 @@ import { headers } from "next/headers"
 export type AuthResult = {
   error?: string
   success?: boolean
+}
+
+// Generate slug from name
+function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+}
+
+// Auto-create personal organization for new users
+export async function createPersonalOrganization(userId: string, fullName: string): Promise<{ error?: string }> {
+  const adminClient = createAdminClient()
+
+  const orgName = `${fullName}'s Workspace`
+  const baseSlug = generateSlug(orgName)
+  let slug = baseSlug
+  let counter = 1
+
+  // Check for slug uniqueness
+  while (true) {
+    const { data: existing } = await adminClient
+      .from("organizations")
+      .select("id")
+      .eq("slug", slug)
+      .single()
+
+    if (!existing) break
+    slug = `${baseSlug}-${counter++}`
+  }
+
+  // Create organization
+  const { data: org, error: orgError } = await adminClient
+    .from("organizations")
+    .insert({
+      name: orgName,
+      slug,
+    })
+    .select()
+    .single()
+
+  if (orgError) {
+    return { error: orgError.message }
+  }
+
+  // Add user as admin
+  const { error: memberError } = await adminClient
+    .from("organization_members")
+    .insert({
+      organization_id: org.id,
+      user_id: userId,
+      role: "admin",
+    })
+
+  if (memberError) {
+    // Rollback: delete the organization
+    await adminClient.from("organizations").delete().eq("id", org.id)
+    return { error: memberError.message }
+  }
+
+  return {}
 }
 
 // Sign up with email and password
@@ -37,10 +99,17 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
     return { error: error.message }
   }
 
-  // If user is created and session exists, redirect to onboarding
+  // If user is created and session exists, auto-create personal workspace
   if (data.user && data.session) {
+    // Create personal organization in the background
+    const orgResult = await createPersonalOrganization(data.user.id, fullName || "My")
+    if (orgResult.error) {
+      console.error("Failed to create personal organization:", orgResult.error)
+      // Don't fail signup, user can create org later via onboarding
+    }
+
     revalidatePath("/", "layout")
-    redirect("/onboarding")
+    redirect("/")
   }
 
   // Fallback: if no session (email confirmation is required in Supabase settings)
@@ -55,8 +124,14 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
       return { error: signInError.message }
     }
 
+    // Create personal organization
+    const orgResult = await createPersonalOrganization(data.user.id, fullName || "My")
+    if (orgResult.error) {
+      console.error("Failed to create personal organization:", orgResult.error)
+    }
+
     revalidatePath("/", "layout")
-    redirect("/onboarding")
+    redirect("/")
   }
 
   return { success: true }
