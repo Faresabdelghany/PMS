@@ -28,14 +28,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { ProjectWithRelations } from "@/lib/actions/projects"
 import type { TaskWithRelations } from "@/lib/actions/tasks"
+import type { ProjectFileWithUploader } from "@/lib/actions/files"
+import type { ProjectNoteWithAuthor } from "@/lib/actions/notes"
 import type { Client, Workstream } from "@/lib/supabase/types"
+import type { User as UIUser } from "@/lib/data/project-details"
+import { toUIProjectFiles } from "@/lib/utils/file-converters"
+import { toUIProjectNotes } from "@/lib/utils/note-converters"
 
 type ProjectDetailsPageProps = {
   project: ProjectWithRelations
   clients: Client[]
   tasks: TaskWithRelations[]
   workstreams: Workstream[]
+  files: ProjectFileWithUploader[]
+  notes: ProjectNoteWithAuthor[]
   organizationId: string
+  currentUser?: UIUser
 }
 
 // Convert real project to mock data format for backward compatibility
@@ -94,7 +102,10 @@ export function ProjectDetailsPage({
   clients,
   tasks,
   workstreams,
+  files,
+  notes,
   organizationId,
+  currentUser,
 }: ProjectDetailsPageProps) {
   const router = useRouter()
   const [showMeta, setShowMeta] = useState(true)
@@ -105,6 +116,10 @@ export function ProjectDetailsPage({
     () => toProjectDetailsData(project, tasks, workstreams),
     [project, tasks, workstreams]
   )
+
+  // Convert files and notes to UI format
+  const uiFiles = useMemo(() => toUIProjectFiles(files), [files])
+  const uiNotes = useMemo(() => toUIProjectNotes(notes), [notes])
 
   const copyLink = useCallback(async () => {
     if (!navigator.clipboard) {
@@ -207,11 +222,11 @@ export function ProjectDetailsPage({
                   </TabsContent>
 
                   <TabsContent value="notes">
-                    <NotesTab notes={projectDetails.notes || []} />
+                    <NotesTab notes={uiNotes} projectId={project.id} currentUser={currentUser} />
                   </TabsContent>
 
                   <TabsContent value="assets">
-                    <AssetsFilesTab files={projectDetails.files} />
+                    <AssetsFilesTab files={uiFiles} projectId={project.id} currentUser={currentUser} />
                   </TabsContent>
                 </Tabs>
               </div>

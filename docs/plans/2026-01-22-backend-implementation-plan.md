@@ -270,40 +270,72 @@
 
 ---
 
-## Phase 4: Files, Notes & AI
+## Phase 4: Files, Notes & AI - COMPLETED
 
-### 4.1 File Actions
+### 4.1 File Actions - COMPLETED
 
-- [ ] **4.1.1** Create `lib/actions/files.ts`
-  - `uploadFile(projectId, file, metadata)`
-  - `deleteFile(id)`
-  - `getProjectFiles(projectId)`
-  - `getFileUrl(storagePath)`
+- [x] **4.1.1** Create `lib/actions/files.ts`
+  - `uploadFile(projectId, formData, metadata)` - Uploads to Supabase Storage
+  - `createLinkAsset(projectId, data)` - Creates link-based assets
+  - `deleteFile(id)` - Deletes from Storage and DB
+  - `getProjectFiles(projectId)` - With uploader info
+  - `getFile(fileId)` - Single file with uploader
+  - `getFileUrl(storagePath, fileType, expiresIn)` - Signed URLs
+  - `downloadFile(storagePath, fileType)` - Returns blob
+  - `updateFile(fileId, data)` - Update metadata
+  - `getProjectFilesCount(projectId)` - File count
 
-- [ ] **4.1.2** Update file upload components
+- [x] **4.1.2** Update file upload components
+  - `AssetsFilesTab.tsx` - Connected to real data with delete support
+  - `AddFileModal.tsx` - Real file upload to Supabase Storage
+  - `FilesTable.tsx` - Dropdown with download/delete actions
+  - `lib/utils/file-converters.ts` - Type converters for UI compatibility
 
-### 4.2 Note Actions
+### 4.2 Note Actions - COMPLETED
 
-- [ ] **4.2.1** Create `lib/actions/notes.ts`
-  - `createNote(projectId, data)`
-  - `updateNote(id, data)`
-  - `deleteNote(id)`
-  - `getProjectNotes(projectId)`
+- [x] **4.2.1** Create `lib/actions/notes.ts`
+  - `createNote(projectId, data)` - With audio support
+  - `updateNote(id, data)` - Full field update
+  - `deleteNote(id)` - With audio cleanup
+  - `getNote(noteId)` - Single note with author
+  - `getProjectNotes(projectId, filters)` - With type/status/search filters
+  - `getProjectNotesCount(projectId, type)` - Note count
+  - `getNotesByType(projectId, noteType)` - Filter by type
+  - `completeAudioNote(noteId, transcription)` - Audio transcription
+  - `duplicateNote(noteId)` - Copy note
+  - `getRecentNotes(limit)` - User's recent notes
 
-- [ ] **4.2.2** Update note components
+- [x] **4.2.2** Update note components
+  - `NotesTab.tsx` - Connected to real data with create/delete
+  - `lib/utils/note-converters.ts` - Type converters for UI compatibility
 
-### 4.3 AI Integration
+### 4.3 AI Integration - COMPLETED
 
-- [ ] **4.3.1** Create `lib/actions/user-settings.ts`
-  - `saveAISettings(userId, provider, apiKey)`
-  - `getAISettings(userId)`
+- [x] **4.3.1** Create `lib/actions/user-settings.ts`
+  - `getAISettings()` - Get user's AI configuration
+  - `saveAISettings(data)` - Save provider and model
+  - `saveAIApiKey(apiKey)` - Save obfuscated API key
+  - `getDecryptedApiKey()` - Get key for API calls
+  - `deleteAIApiKey()` - Remove API key
+  - `hasAIConfigured()` - Check if AI is set up
+  - `getMaskedApiKey()` - For UI display
 
-- [ ] **4.3.2** Create `lib/actions/ai.ts`
-  - `generateText(prompt, context)`
-  - `generateProjectDescription(projectContext)`
-  - `generateTasks(projectContext)`
+- [x] **4.3.2** Create `lib/actions/ai.ts`
+  - `generateText(prompt, systemPrompt, options)` - Generic generation
+  - `generateProjectDescription(context)` - Project descriptions
+  - `generateTasks(context, count)` - Task suggestions
+  - `generateWorkstreams(context, count)` - Workstream suggestions
+  - `summarizeNotes(notes)` - Note summaries
+  - `enhanceTranscription(rawTranscription, context)` - Voice note cleanup
+  - `testAIConnection()` - Verify configuration
+  - Supports: OpenAI, Anthropic, Google Gemini
 
-- [ ] **4.3.3** Create `app/(dashboard)/settings/ai/page.tsx`
+- [x] **4.3.3** Create `app/(dashboard)/settings/ai/page.tsx`
+  - Provider selection (OpenAI, Anthropic, Google)
+  - Model selection per provider
+  - API key management (save, delete, masked display)
+  - Connection testing
+  - Feature overview
 
 ---
 
@@ -417,8 +449,10 @@ supabase/
 | 2 | Components wired | COMPLETED |
 | 3 | Tasks work | COMPLETED (Server Actions) |
 | 3 | Task components | COMPLETED (E2E Tested) |
-| 4 | Files upload | Pending |
-| 4 | AI works | Pending |
+| 4 | Files upload | COMPLETED (Storage + DB) |
+| 4 | Notes CRUD | COMPLETED (Server Actions) |
+| 4 | AI works | COMPLETED (OpenAI/Anthropic/Google) |
+| 4 | AI Settings Page | COMPLETED |
 | 5 | Real-time | Pending |
 | 5 | Vercel configured | COMPLETED |
 | 5 | OAuth configured | COMPLETED |

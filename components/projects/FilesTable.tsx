@@ -4,20 +4,29 @@ import { useState } from "react"
 import { DotsThree, MagnifyingGlass, Plus } from "@phosphor-icons/react/dist/ssr"
 import { format } from "date-fns"
 import Image from "next/image"
+import { Download, ExternalLink, Trash2 } from "lucide-react"
 
 import type { ProjectFile } from "@/lib/data/project-details"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { getFileIcon } from "@/components/projects/FileLinkRow"
 
 type FilesTableProps = {
     files: ProjectFile[]
     onAddFile?: () => void
+    onDeleteFile?: (fileId: string) => void
 }
 
-export function FilesTable({ files, onAddFile }: FilesTableProps) {
+export function FilesTable({ files, onAddFile, onDeleteFile }: FilesTableProps) {
     const [searchQuery, setSearchQuery] = useState("")
     const [selectedFiles, setSelectedFiles] = useState<string[]>([])
 
@@ -121,13 +130,53 @@ export function FilesTable({ files, onAddFile }: FilesTableProps) {
                                             e.stopPropagation()
                                         }}
                                     >
-                                        <Button
-                                            variant="ghost"
-                                            size="icon-sm"
-                                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                        >
-                                            <DotsThree className="h-4 w-4" weight="bold" />
-                                        </Button>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                                >
+                                                    <DotsThree className="h-4 w-4" weight="bold" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                {file.url && (
+                                                    <DropdownMenuItem asChild>
+                                                        <a
+                                                            href={file.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="flex items-center gap-2"
+                                                        >
+                                                            {file.isLinkAsset ? (
+                                                                <>
+                                                                    <ExternalLink className="h-4 w-4" />
+                                                                    Open link
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <Download className="h-4 w-4" />
+                                                                    Download
+                                                                </>
+                                                            )}
+                                                        </a>
+                                                    </DropdownMenuItem>
+                                                )}
+                                                {onDeleteFile && (
+                                                    <>
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem
+                                                            className="text-destructive focus:text-destructive"
+                                                            onClick={() => onDeleteFile(file.id)}
+                                                        >
+                                                            <Trash2 className="h-4 w-4 mr-2" />
+                                                            Delete
+                                                        </DropdownMenuItem>
+                                                    </>
+                                                )}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </TableCell>
                                 </TableRow>
                             )
