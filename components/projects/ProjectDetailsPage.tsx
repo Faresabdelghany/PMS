@@ -6,8 +6,9 @@ import { LinkSimple, SquareHalf } from "@phosphor-icons/react/dist/ssr"
 import { toast } from "sonner"
 import { AnimatePresence, motion } from "motion/react"
 
-import type { ProjectDetails } from "@/lib/data/project-details"
+import type { ProjectDetails, ProjectTask } from "@/lib/data/project-details"
 import { getProjectDetailsById } from "@/lib/data/project-details"
+import { toWorkstreamGroups, toProjectTask } from "@/lib/utils/task-converters"
 import { Breadcrumbs } from "@/components/projects/Breadcrumbs"
 import { ProjectHeader } from "@/components/projects/ProjectHeader"
 import { ScopeColumns } from "@/components/projects/ScopeColumns"
@@ -38,11 +39,11 @@ type ProjectDetailsPageProps = {
 }
 
 // Convert real project to mock data format for backward compatibility
-function toProjectDetails(
+function toProjectDetailsData(
   project: ProjectWithRelations,
   tasks: TaskWithRelations[],
   workstreams: Workstream[]
-): ProjectDetails {
+): { projectDetails: ProjectDetails; projectTasks: ProjectTask[] } {
   // Get mock data as fallback for fields not in DB yet
   const mockProject = getProjectDetailsById(project.id)
 
@@ -65,27 +66,18 @@ function toProjectDetails(
     durationLabel: undefined,
   }
 
-  // Convert real workstreams/tasks when available
+  // Convert real workstreams/tasks when available using helper
   const workstreamGroups = workstreams.length
-    ? workstreams.map(w => ({
-        id: w.id,
-        name: w.name,
-        tasks: tasks
-          .filter(t => t.workstream_id === w.id)
-          .map(t => ({
-            id: t.id,
-            name: t.name,
-            status: (t.status === "todo" ? "todo" : t.status === "done" ? "done" : "in-progress") as "todo" | "in-progress" | "done",
-            assignee: t.assignee ? {
-              id: t.assignee.id,
-              name: t.assignee.full_name || t.assignee.email,
-              avatarUrl: t.assignee.avatar_url || undefined,
-            } : undefined,
-          })),
-      }))
+    ? toWorkstreamGroups(workstreams, tasks)
     : mockProject.workstreams
 
-  return {
+  // Convert tasks to ProjectTask format for the Tasks tab
+  const projectTasks: ProjectTask[] = tasks.map((t) => {
+    const ws = workstreams.find((w) => w.id === t.workstream_id)
+    return toProjectTask(t, project.name, ws?.name)
+  })
+
+  const projectDetails: ProjectDetails = {
     ...mockProject,
     id: project.id,
     name: project.name,
@@ -93,6 +85,8 @@ function toProjectDetails(
     workstreams: workstreamGroups,
     source: source as ProjectDetails["source"],
   }
+
+  return { projectDetails, projectTasks }
 }
 
 export function ProjectDetailsPage({
@@ -107,8 +101,8 @@ export function ProjectDetailsPage({
   const [isWizardOpen, setIsWizardOpen] = useState(false)
 
   // Convert to mock data format for backward compatibility
-  const projectDetails = useMemo(
-    () => toProjectDetails(project, tasks, workstreams),
+  const { projectDetails, projectTasks } = useMemo(
+    () => toProjectDetailsData(project, tasks, workstreams),
     [project, tasks, workstreams]
   )
 
@@ -205,11 +199,11 @@ export function ProjectDetailsPage({
                   </TabsContent>
 
                   <TabsContent value="workstream">
-                    <WorkstreamTab workstreams={projectDetails.workstreams} />
+                    <WorkstreamTab workstreams={projectDetails.workstreams} projectId={project.id} />
                   </TabsContent>
 
                   <TabsContent value="tasks">
-                    <ProjectTasksTab project={projectDetails} />
+                    <ProjectTasksTab tasks={projectTasks} projectId={project.id} />
                   </TabsContent>
 
                   <TabsContent value="notes">

@@ -199,7 +199,7 @@
 
 ---
 
-## Phase 3: Tasks & Workstreams - COMPLETED (Server Actions Only)
+## Phase 3: Tasks & Workstreams - COMPLETED
 
 ### 3.1 Workstream Actions - COMPLETED
 
@@ -221,13 +221,38 @@
   - `reorderTasks(workstreamId, taskIds[])`
   - `moveTaskToWorkstream(taskId, newWorkstreamId, newIndex)`
 
-### 3.3 Wire Up Components
+### 3.3 Wire Up Components - COMPLETED
 
-- [ ] **3.3.1** Update `components/projects/WorkstreamTab.tsx`
-- [ ] **3.3.2** Update `components/projects/ProjectTasksTab.tsx`
-- [ ] **3.3.3** Update `components/tasks/MyTasksPage.tsx`
-- [ ] **3.3.4** Update `components/tasks/TaskQuickCreateModal.tsx`
-- [ ] **3.3.5** Update `components/tasks/TaskWeekBoardView.tsx`
+- [x] **3.3.1** Update `components/projects/WorkstreamTab.tsx`
+  - Connected to real Supabase data with optimistic updates
+  - Task status toggle with server action
+  - Drag-and-drop reordering within/between workstreams
+  - Server-side persistence for all changes
+- [x] **3.3.2** Update `components/projects/ProjectTasksTab.tsx`
+  - Connected to real Supabase data with optimistic updates
+  - Task status toggle with server action
+  - Drag-and-drop reordering with server persistence
+  - Filter functionality preserved
+- [x] **3.3.3** Update `components/tasks/MyTasksPage.tsx`
+  - Converted to server-fetched data via `app/tasks/page.tsx`
+  - Task CRUD operations with server actions
+  - Groups tasks by project with proper type conversion
+  - Task date move, tag change with optimistic updates
+- [x] **3.3.4** Update `components/tasks/TaskQuickCreateModal.tsx`
+  - Connected to `createTask` and `updateTask` server actions
+  - Dynamic project/workstream selection from real data
+  - Task editing mode with full field support
+- [x] **3.3.5** `TaskWeekBoardView.tsx` - No changes needed
+  - Works with props passed from parent components
+  - Parents now provide real data
+
+### 3.4 Supporting Files Created
+
+- [x] **3.4.1** `lib/utils/task-converters.ts`
+  - `toWorkstreamTask()` - Convert Supabase task to UI WorkstreamTask
+  - `toProjectTask()` - Convert Supabase task to UI ProjectTask
+  - `toWorkstreamGroups()` - Convert workstreams+tasks to UI groups
+  - `computeDueInfo()` - Calculate due labels and tones
 
 ---
 

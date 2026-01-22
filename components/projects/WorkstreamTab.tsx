@@ -1,6 +1,7 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { CaretDown, DotsSixVertical, Plus } from "@phosphor-icons/react/dist/ssr"
 import {
   DndContext,
@@ -21,8 +22,10 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import { toast } from "sonner"
 
 import type { WorkstreamGroup, WorkstreamTask } from "@/lib/data/project-details"
+import { updateTaskStatus, reorderTasks, moveTaskToWorkstream } from "@/lib/actions/tasks"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -33,9 +36,12 @@ import { TaskRowBase } from "@/components/tasks/TaskRowBase"
 
 type WorkstreamTabProps = {
   workstreams: WorkstreamGroup[] | undefined
+  projectId?: string
 }
 
-export function WorkstreamTab({ workstreams }: WorkstreamTabProps) {
+export function WorkstreamTab({ workstreams, projectId }: WorkstreamTabProps) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
   const [state, setState] = useState<WorkstreamGroup[]>(() => workstreams ?? [])
   const [openValues, setOpenValues] = useState<string[]>(() =>
     workstreams && workstreams.length ? [workstreams[0].id] : [],
@@ -60,26 +66,59 @@ export function WorkstreamTab({ workstreams }: WorkstreamTabProps) {
     return null
   }
 
+  const findGroupByTaskId = (taskId: string): string | null => {
+    for (const group of state) {
+      if (group.tasks.some((task) => task.id === taskId)) {
+        return group.id
+      }
+    }
+    return null
+  }
+
   const activeTask = findTaskById(activeTaskId)
 
-  const toggleTask = (groupId: string, taskId: string) => {
+  const toggleTask = async (groupId: string, taskId: string) => {
+    const task = findTaskById(taskId)
+    if (!task) return
+
+    const newStatus = task.status === "done" ? "todo" : "done"
+
+    // Optimistic update
     setState((prev) =>
       prev.map((group) =>
         group.id === groupId
           ? {
               ...group,
-              tasks: group.tasks.map((task) =>
-                task.id === taskId
-                  ? {
-                      ...task,
-                      status: task.status === "done" ? "todo" : "done",
-                    }
-                  : task,
+              tasks: group.tasks.map((t) =>
+                t.id === taskId ? { ...t, status: newStatus } : t
               ),
             }
-          : group,
-      ),
+          : group
+      )
     )
+
+    // Server update
+    startTransition(async () => {
+      const result = await updateTaskStatus(taskId, newStatus)
+      if (result.error) {
+        toast.error("Failed to update task status")
+        // Revert optimistic update
+        setState((prev) =>
+          prev.map((group) =>
+            group.id === groupId
+              ? {
+                  ...group,
+                  tasks: group.tasks.map((t) =>
+                    t.id === taskId ? { ...t, status: task.status } : t
+                  ),
+                }
+              : group
+          )
+        )
+      } else {
+        router.refresh()
+      }
+    })
   }
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -92,14 +131,13 @@ export function WorkstreamTab({ workstreams }: WorkstreamTabProps) {
   const handleDragOver = (event: DragOverEvent) => {
     const overId = event.over?.id
     if (typeof overId === "string" && !overId.startsWith("group:")) {
-      // only track task ids for per-row drop indicator
       setOverTaskId(overId)
     } else {
       setOverTaskId(null)
     }
   }
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
     setActiveTaskId(null)
     setOverTaskId(null)
@@ -110,49 +148,49 @@ export function WorkstreamTab({ workstreams }: WorkstreamTabProps) {
     const activeId = String(active.id)
     const overId = String(over.id)
 
-    setState((prev) => {
-      let sourceGroupIndex = -1
-      let sourceTaskIndex = -1
-      let targetGroupIndex = -1
-      let targetTaskIndex = -1
+    let sourceGroupIndex = -1
+    let sourceTaskIndex = -1
+    let targetGroupIndex = -1
+    let targetTaskIndex = -1
 
-      prev.forEach((group, groupIndex) => {
-        const aIndex = group.tasks.findIndex((task) => task.id === activeId)
-        if (aIndex !== -1) {
-          sourceGroupIndex = groupIndex
-          sourceTaskIndex = aIndex
-        }
-
-        const oIndex = group.tasks.findIndex((task) => task.id === overId)
-        if (oIndex !== -1) {
-          targetGroupIndex = groupIndex
-          targetTaskIndex = oIndex
-        }
-      })
-
-      // If we didn't land on a task but on a group container, allow dropping into empty lists
-      if (targetGroupIndex === -1 && overId.startsWith("group:")) {
-        const groupId = overId.slice("group:".length)
-        targetGroupIndex = prev.findIndex((group) => group.id === groupId)
-        if (targetGroupIndex !== -1) {
-          targetTaskIndex = prev[targetGroupIndex].tasks.length
-        }
+    state.forEach((group, groupIndex) => {
+      const aIndex = group.tasks.findIndex((task) => task.id === activeId)
+      if (aIndex !== -1) {
+        sourceGroupIndex = groupIndex
+        sourceTaskIndex = aIndex
       }
 
-      if (sourceGroupIndex === -1 || targetGroupIndex === -1) return prev
+      const oIndex = group.tasks.findIndex((task) => task.id === overId)
+      if (oIndex !== -1) {
+        targetGroupIndex = groupIndex
+        targetTaskIndex = oIndex
+      }
+    })
 
+    // Handle dropping on empty group container
+    if (targetGroupIndex === -1 && overId.startsWith("group:")) {
+      const groupId = overId.slice("group:".length)
+      targetGroupIndex = state.findIndex((group) => group.id === groupId)
+      if (targetGroupIndex !== -1) {
+        targetTaskIndex = state[targetGroupIndex].tasks.length
+      }
+    }
+
+    if (sourceGroupIndex === -1 || targetGroupIndex === -1) return
+
+    const sourceGroup = state[sourceGroupIndex]
+    const targetGroup = state[targetGroupIndex]
+
+    // Optimistic update
+    setState((prev) => {
       const next = [...prev]
-      const sourceGroup = next[sourceGroupIndex]
-      const targetGroup = next[targetGroupIndex]
 
-      // Reorder within the same workstream
       if (sourceGroupIndex === targetGroupIndex) {
         const reordered = arrayMove(sourceGroup.tasks, sourceTaskIndex, targetTaskIndex)
         next[sourceGroupIndex] = { ...sourceGroup, tasks: reordered }
         return next
       }
 
-      // Move across workstreams
       const sourceTasks = [...sourceGroup.tasks]
       const [moved] = sourceTasks.splice(sourceTaskIndex, 1)
       if (!moved) return prev
@@ -165,6 +203,31 @@ export function WorkstreamTab({ workstreams }: WorkstreamTabProps) {
 
       return next
     })
+
+    // Server update
+    if (!projectId) return
+
+    startTransition(async () => {
+      if (sourceGroupIndex === targetGroupIndex) {
+        // Reorder within same workstream
+        const newTaskOrder = arrayMove(
+          sourceGroup.tasks.map((t) => t.id),
+          sourceTaskIndex,
+          targetTaskIndex
+        )
+        const result = await reorderTasks(sourceGroup.id, projectId, newTaskOrder)
+        if (result.error) {
+          toast.error("Failed to reorder tasks")
+        }
+      } else {
+        // Move to different workstream
+        const result = await moveTaskToWorkstream(activeId, targetGroup.id, targetTaskIndex)
+        if (result.error) {
+          toast.error("Failed to move task")
+        }
+      }
+      router.refresh() // Always refresh to get server state
+    })
   }
 
   const handleDragCancel = () => {
@@ -176,7 +239,7 @@ export function WorkstreamTab({ workstreams }: WorkstreamTabProps) {
     return (
       <section>
         <h2 className="text-sm font-semibold tracking-normal text-foreground uppercase">
-          WORKSTEAM BREAKDOWN
+          WORKSTREAM BREAKDOWN
         </h2>
         <div className="mt-4 rounded-lg border border-dashed border-border/70 p-6 text-sm text-muted-foreground">
           No workstreams defined yet.
@@ -189,7 +252,7 @@ export function WorkstreamTab({ workstreams }: WorkstreamTabProps) {
     <section className="rounded-2xl border border-border bg-muted shadow-[var(--shadow-workstream)] p-3 space-y-3">
       <div className="flex items-center justify-between gap-3 px-2">
         <h2 className="text-sm font-semibold tracking-normal text-foreground uppercase">
-          WORKSTEAM BREAKDOWN
+          WORKSTREAM BREAKDOWN
         </h2>
         <div className="flex items-center gap-1 opacity-60">
           <Button
@@ -249,7 +312,6 @@ export function WorkstreamTab({ workstreams }: WorkstreamTabProps) {
                           role="button"
                           aria-label="Add task"
                           onClick={(event) => {
-                            // Prevent toggling the accordion when clicking the add icon.
                             event.stopPropagation()
                           }}
                         >

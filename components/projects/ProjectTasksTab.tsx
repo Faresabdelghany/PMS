@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { DotsThreeVertical, Plus } from "@phosphor-icons/react/dist/ssr"
 import {
   DndContext,
@@ -14,11 +15,12 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import { toast } from "sonner"
 
-import type { ProjectDetails, ProjectTask } from "@/lib/data/project-details"
-import { getProjectTasks } from "@/lib/data/project-details"
+import type { ProjectTask } from "@/lib/data/project-details"
 import type { FilterCounts } from "@/lib/data/projects"
 import type { FilterChip as FilterChipType } from "@/lib/view-options"
+import { updateTaskStatus, reorderTasks } from "@/lib/actions/tasks"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -28,16 +30,15 @@ import { TaskRowBase } from "@/components/tasks/TaskRowBase"
 import { cn } from "@/lib/utils"
 
 type ProjectTasksTabProps = {
-  project: ProjectDetails
+  tasks: ProjectTask[]
+  projectId: string
 }
 
-export function ProjectTasksTab({ project }: ProjectTasksTabProps) {
-  const [tasks, setTasks] = useState<ProjectTask[]>(() => getProjectTasks(project))
+export function ProjectTasksTab({ tasks: initialTasks, projectId }: ProjectTasksTabProps) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [tasks, setTasks] = useState<ProjectTask[]>(initialTasks)
   const [filters, setFilters] = useState<FilterChipType[]>([])
-
-  useEffect(() => {
-    setTasks(getProjectTasks(project))
-  }, [project])
 
   const counts = useMemo<FilterCounts>(() => computeTaskFilterCounts(tasks), [tasks])
 
@@ -46,29 +47,65 @@ export function ProjectTasksTab({ project }: ProjectTasksTabProps) {
     [tasks, filters],
   )
 
-  const toggleTask = (taskId: string) => {
+  const toggleTask = async (taskId: string) => {
+    const task = tasks.find((t) => t.id === taskId)
+    if (!task) return
+
+    const newStatus = task.status === "done" ? "todo" : "done"
+
+    // Optimistic update
     setTasks((prev) =>
-      prev.map((task) =>
-        task.id === taskId
-          ? {
-              ...task,
-              status: task.status === "done" ? "todo" : "done",
-            }
-          : task,
-      ),
+      prev.map((t) =>
+        t.id === taskId ? { ...t, status: newStatus } : t
+      )
     )
+
+    // Server update
+    startTransition(async () => {
+      const result = await updateTaskStatus(taskId, newStatus)
+      if (result.error) {
+        toast.error("Failed to update task status")
+        // Revert optimistic update
+        setTasks((prev) =>
+          prev.map((t) =>
+            t.id === taskId ? { ...t, status: task.status } : t
+          )
+        )
+      } else {
+        router.refresh()
+      }
+    })
   }
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
 
-    if (over && active.id !== over.id) {
-      setTasks((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id)
-        const newIndex = items.findIndex((item) => item.id === over.id)
-        return arrayMove(items, oldIndex, newIndex)
-      })
-    }
+    if (!over || active.id === over.id) return
+
+    const oldIndex = tasks.findIndex((item) => item.id === active.id)
+    const newIndex = tasks.findIndex((item) => item.id === over.id)
+
+    if (oldIndex === -1 || newIndex === -1) return
+
+    const reorderedTasks = arrayMove(tasks, oldIndex, newIndex)
+
+    // Optimistic update
+    setTasks(reorderedTasks)
+
+    // Server update
+    startTransition(async () => {
+      // Group tasks by workstream for proper reordering
+      const workstreamId = tasks[oldIndex]?.workstreamId || null
+      const taskIds = reorderedTasks
+        .filter((t) => t.workstreamId === workstreamId)
+        .map((t) => t.id)
+
+      const result = await reorderTasks(workstreamId, projectId, taskIds)
+      if (result.error) {
+        toast.error("Failed to reorder tasks")
+      }
+      router.refresh() // Always refresh to get server state
+    })
   }
 
   if (!tasks.length) {
@@ -192,9 +229,10 @@ function computeTaskFilterCounts(tasks: ProjectTask[]): FilterCounts {
     members: {
       "no-member": 0,
       current: 0,
-      jason: 0,
     },
   }
+
+  const memberCounts: Record<string, number> = {}
 
   for (const task of tasks) {
     if (!task.assignee) {
@@ -203,10 +241,13 @@ function computeTaskFilterCounts(tasks: ProjectTask[]): FilterCounts {
       counts.members!.current = (counts.members!.current || 0) + 1
 
       const name = task.assignee.name.toLowerCase()
-      if (name.includes("jason duong")) {
-        counts.members!.jason = (counts.members!.jason || 0) + 1
-      }
+      memberCounts[name] = (memberCounts[name] || 0) + 1
     }
+  }
+
+  // Add individual member counts
+  for (const [name, count] of Object.entries(memberCounts)) {
+    counts.members![name] = count
   }
 
   return counts
