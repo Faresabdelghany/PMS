@@ -1,8 +1,9 @@
 "use client"
 
-import { useMemo, useState, useTransition } from "react"
+import { useMemo, useState, useTransition, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { CaretDown, DotsSixVertical, Plus } from "@phosphor-icons/react/dist/ssr"
+import { useTasksRealtime, useWorkstreamsRealtime } from "@/hooks/use-realtime"
 import {
   DndContext,
   type DragEndEvent,
@@ -34,6 +35,29 @@ import { ProgressCircle } from "@/components/progress-circle"
 import { cn } from "@/lib/utils"
 import { TaskRowBase } from "@/components/tasks/TaskRowBase"
 
+// Helper functions for real-time task updates
+function formatDueLabel(dueDate: string): string {
+  const date = new Date(dueDate)
+  const now = new Date()
+  const diffDays = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+  if (diffDays < 0) return `${Math.abs(diffDays)}d overdue`
+  if (diffDays === 0) return "Today"
+  if (diffDays === 1) return "Tomorrow"
+  if (diffDays <= 7) return `${diffDays}d`
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+}
+
+function getDueTone(dueDate: string): "danger" | "warning" | undefined {
+  const date = new Date(dueDate)
+  const now = new Date()
+  const diffDays = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+  if (diffDays < 0) return "danger"
+  if (diffDays <= 2) return "warning"
+  return undefined
+}
+
 type WorkstreamTabProps = {
   workstreams: WorkstreamGroup[] | undefined
   projectId?: string
@@ -48,6 +72,96 @@ export function WorkstreamTab({ workstreams, projectId }: WorkstreamTabProps) {
   )
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
   const [overTaskId, setOverTaskId] = useState<string | null>(null)
+
+  // Sync state when workstreams prop changes
+  useEffect(() => {
+    if (workstreams) {
+      setState(workstreams)
+    }
+  }, [workstreams])
+
+  // Subscribe to real-time task changes - update state directly
+  useTasksRealtime(projectId, {
+    onInsert: (newTask) => {
+      setState((prev) => {
+        const workstreamId = newTask.workstream_id
+        if (!workstreamId) return prev
+
+        return prev.map((group) => {
+          if (group.id !== workstreamId) return group
+          if (group.tasks.some((t) => t.id === newTask.id)) return group
+
+          const uiTask: WorkstreamTask = {
+            id: newTask.id,
+            name: newTask.name,
+            status: newTask.status,
+            dueLabel: newTask.end_date ? formatDueLabel(newTask.end_date) : undefined,
+            dueTone: newTask.end_date ? getDueTone(newTask.end_date) : undefined,
+            assignee: undefined,
+          }
+
+          return {
+            ...group,
+            tasks: [...group.tasks, uiTask],
+          }
+        })
+      })
+    },
+    onUpdate: (updatedTask) => {
+      setState((prev) =>
+        prev.map((group) => ({
+          ...group,
+          tasks: group.tasks.map((task) =>
+            task.id === updatedTask.id
+              ? {
+                  ...task,
+                  name: updatedTask.name,
+                  status: updatedTask.status,
+                  dueLabel: updatedTask.end_date ? formatDueLabel(updatedTask.end_date) : undefined,
+                  dueTone: updatedTask.end_date ? getDueTone(updatedTask.end_date) : undefined,
+                }
+              : task
+          ),
+        }))
+      )
+    },
+    onDelete: (deletedTask) => {
+      setState((prev) =>
+        prev.map((group) => ({
+          ...group,
+          tasks: group.tasks.filter((task) => task.id !== deletedTask.id),
+        }))
+      )
+    },
+  })
+
+  // Subscribe to real-time workstream changes
+  useWorkstreamsRealtime(projectId, {
+    onInsert: (newWorkstream) => {
+      setState((prev) => {
+        if (prev.some((g) => g.id === newWorkstream.id)) return prev
+
+        const newGroup: WorkstreamGroup = {
+          id: newWorkstream.id,
+          name: newWorkstream.name,
+          tasks: [],
+        }
+        return [...prev, newGroup]
+      })
+    },
+    onUpdate: (updatedWorkstream) => {
+      setState((prev) =>
+        prev.map((group) =>
+          group.id === updatedWorkstream.id
+            ? { ...group, name: updatedWorkstream.name }
+            : group
+        )
+      )
+    },
+    onDelete: (deletedWorkstream) => {
+      setState((prev) => prev.filter((group) => group.id !== deletedWorkstream.id))
+    },
+  })
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -115,9 +229,8 @@ export function WorkstreamTab({ workstreams, projectId }: WorkstreamTabProps) {
               : group
           )
         )
-      } else {
-        router.refresh()
       }
+      // Realtime subscription handles the update confirmation
     })
   }
 
@@ -226,7 +339,7 @@ export function WorkstreamTab({ workstreams, projectId }: WorkstreamTabProps) {
           toast.error("Failed to move task")
         }
       }
-      router.refresh() // Always refresh to get server state
+      // Optimistic update already applied, realtime will confirm server state
     })
   }
 
