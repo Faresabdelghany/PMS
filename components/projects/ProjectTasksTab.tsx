@@ -1,7 +1,6 @@
 "use client"
 
 import { useMemo, useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
 import { DotsThreeVertical, Plus } from "@phosphor-icons/react/dist/ssr"
 import {
   DndContext,
@@ -17,6 +16,7 @@ import {
 import { CSS } from "@dnd-kit/utilities"
 import { toast } from "sonner"
 
+import { useTasksRealtime } from "@/hooks/use-realtime"
 import type { ProjectTask } from "@/lib/data/project-details"
 import type { FilterCounts } from "@/lib/data/projects"
 import type { FilterChip as FilterChipType } from "@/lib/view-options"
@@ -35,10 +35,50 @@ type ProjectTasksTabProps = {
 }
 
 export function ProjectTasksTab({ tasks: initialTasks, projectId }: ProjectTasksTabProps) {
-  const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [tasks, setTasks] = useState<ProjectTask[]>(initialTasks)
   const [filters, setFilters] = useState<FilterChipType[]>([])
+
+  // Subscribe to real-time task changes
+  useTasksRealtime(projectId, {
+    onInsert: (newTask) => {
+      if (newTask.project_id !== projectId) return
+
+      setTasks((prev) => {
+        if (prev.some((t) => t.id === newTask.id)) return prev
+
+        const uiTask: ProjectTask = {
+          id: newTask.id,
+          name: newTask.name,
+          status: newTask.status,
+          projectId: newTask.project_id,
+          projectName: "", // Would need separate lookup
+          workstreamId: newTask.workstream_id || "",
+          workstreamName: "", // Would need separate lookup
+          dueLabel: newTask.end_date ? formatDueLabel(newTask.end_date) : undefined,
+          assignee: undefined, // Would need profile lookup
+        }
+        return [uiTask, ...prev]
+      })
+    },
+    onUpdate: (updatedTask) => {
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.id === updatedTask.id
+            ? {
+                ...task,
+                name: updatedTask.name,
+                status: updatedTask.status,
+                dueLabel: updatedTask.end_date ? formatDueLabel(updatedTask.end_date) : undefined,
+              }
+            : task
+        )
+      )
+    },
+    onDelete: (deletedTask) => {
+      setTasks((prev) => prev.filter((task) => task.id !== deletedTask.id))
+    },
+  })
 
   const counts = useMemo<FilterCounts>(() => computeTaskFilterCounts(tasks), [tasks])
 
@@ -71,9 +111,8 @@ export function ProjectTasksTab({ tasks: initialTasks, projectId }: ProjectTasks
             t.id === taskId ? { ...t, status: task.status } : t
           )
         )
-      } else {
-        router.refresh()
       }
+      // Realtime handles the update - no router.refresh() needed
     })
   }
 
@@ -104,7 +143,7 @@ export function ProjectTasksTab({ tasks: initialTasks, projectId }: ProjectTasks
       if (result.error) {
         toast.error("Failed to reorder tasks")
       }
-      router.refresh() // Always refresh to get server state
+      // Optimistic update already applied - no router.refresh() needed
     })
   }
 
@@ -262,6 +301,18 @@ function getStatusColor(status: ProjectTask["status"]): string {
     default:
       return "text-muted-foreground"
   }
+}
+
+function formatDueLabel(dueDate: string): string {
+  const date = new Date(dueDate)
+  const now = new Date()
+  const diffDays = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+  if (diffDays < 0) return `${Math.abs(diffDays)}d overdue`
+  if (diffDays === 0) return "Today"
+  if (diffDays === 1) return "Tomorrow"
+  if (diffDays <= 7) return `${diffDays}d`
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 
 type TaskRowDnDProps = {
