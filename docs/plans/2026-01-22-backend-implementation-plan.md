@@ -290,8 +290,13 @@
   - Google OAuth redirect flow ✅
   - Forgot password page and flow ✅
   - Form validation (required, email format, password length) ✅
-- [ ] **5.3.2** Test organization flows
-- [ ] **5.3.3** Test data isolation (RLS)
+- [x] **5.3.2** Test organization flows
+  - Organization creation via onboarding ✅
+  - Fixed RLS policy for organization_members INSERT ✅
+  - Migration: `fix_organization_members_insert_policy`
+- [x] **5.3.3** Test data isolation (RLS)
+  - Projects visible only to organization members ✅
+  - Clients visible only to organization members ✅
 - [ ] **5.3.4** Test real-time
 - [x] **5.3.5** Configure Vercel environment variables
   - NEXT_PUBLIC_SUPABASE_URL ✅
@@ -306,7 +311,14 @@
   - Google Cloud Console: Added Vercel production callback URL ✅
   - Supabase: Site URL updated to production URL ✅
   - Supabase: Google provider enabled with OAuth credentials ✅
-- [ ] **5.3.8** Final smoke test
+- [x] **5.3.8** Final smoke test
+  - Google OAuth login ✅
+  - Organization creation (via manual setup) ✅
+  - Project creation via wizard ✅
+  - Project details page ✅
+  - Client creation ✅
+  - Client details page ✅
+  - Vercel domain alias: pms-nine-gold.vercel.app ✅
 
 ---
 
@@ -372,4 +384,5 @@ supabase/
 | 5 | Vercel configured | COMPLETED |
 | 5 | OAuth configured | COMPLETED |
 | 5 | Auth flows tested | COMPLETED |
-| 5 | Deployed | COMPLETED (Auto-deploy on main)
+| 5 | Deployed | COMPLETED (Auto-deploy on main) |
+| 5 | E2E Smoke Test | COMPLETED |
