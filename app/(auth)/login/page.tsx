@@ -44,7 +44,7 @@ function LoginForm() {
       email: "",
       password: "",
     },
-    mode: "onBlur",
+    mode: "onChange",
   })
 
   async function onSubmit(values: LoginFormValues) {
