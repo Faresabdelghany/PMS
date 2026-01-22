@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect, useTransition } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -19,7 +19,9 @@ import {
 } from "../../ui/command";
 import { Check, X, CornersOut, Star, CalendarBlank, UserCircle, Spinner, List, Paperclip, Microphone, Rows, ChartBar, Tag } from "@phosphor-icons/react/dist/ssr";
 import { ProjectDescriptionEditor } from "../ProjectDescriptionEditor";
-import { clients, type Client } from "@/lib/data/clients";
+import { createProject } from "@/lib/actions/projects";
+import { toast } from "sonner";
+import type { Client, ProjectStatus, ProjectPriority } from "@/lib/supabase/types";
 
 // --- Mock Data ---
 
@@ -29,20 +31,19 @@ const USERS = [
   { id: "3", name: "Alex Murphy", avatar: "" },
 ];
 
-const STATUSES = [
+const STATUSES: { id: ProjectStatus; label: string; dotClass: string }[] = [
   { id: "backlog", label: "Backlog", dotClass: "bg-orange-600" },
-  { id: "todo", label: "Todo", dotClass: "bg-neutral-300" },
-  { id: "in-progress", label: "In Progress", dotClass: "bg-yellow-400" },
-  { id: "done", label: "Done", dotClass: "bg-green-600" },
-  { id: "canceled", label: "Canceled", dotClass: "bg-neutral-400" },
+  { id: "planned", label: "Planned", dotClass: "bg-neutral-300" },
+  { id: "active", label: "Active", dotClass: "bg-yellow-400" },
+  { id: "completed", label: "Completed", dotClass: "bg-green-600" },
+  { id: "cancelled", label: "Cancelled", dotClass: "bg-neutral-400" },
 ];
 
-const PRIORITIES = [
-  { id: "no-priority", label: "No Priority", icon: "BarChart" },
-  { id: "urgent", label: "Urgent", icon: "AlertCircle" },
-  { id: "high", label: "High", icon: "ArrowUp" },
-  { id: "medium", label: "Medium", icon: "ArrowRight" },
+const PRIORITIES: { id: ProjectPriority; label: string; icon: string }[] = [
   { id: "low", label: "Low", icon: "ArrowDown" },
+  { id: "medium", label: "Medium", icon: "ArrowRight" },
+  { id: "high", label: "High", icon: "ArrowUp" },
+  { id: "urgent", label: "Urgent", icon: "AlertCircle" },
 ];
 
 const SPRINT_TYPES = [
@@ -178,13 +179,18 @@ interface StepQuickCreateProps {
   onClose: () => void;
   onCreate: () => void;
   onExpandChange?: (isExpanded: boolean) => void;
+  organizationId: string;
+  clients: Client[];
 }
 
 export function StepQuickCreate({
   onClose,
   onCreate,
   onExpandChange,
+  organizationId,
+  clients,
 }: StepQuickCreateProps) {
+  const [isPending, startTransition] = useTransition();
   const [title, setTitle] = useState("");
   // Description is now managed by Tiptap editor
 
@@ -196,7 +202,7 @@ export function StepQuickCreate({
   const [lead, setLead] = useState<(typeof USERS)[0] | null>(
     null,
   );
-  const [status, setStatus] = useState(STATUSES[1]); // Todo default
+  const [status, setStatus] = useState(STATUSES[1]); // Planned default
   const [sprintType, setSprintType] = useState<
     (typeof SPRINT_TYPES)[0] | null
   >(null);
@@ -225,9 +231,37 @@ export function StepQuickCreate({
     return () => clearTimeout(timer);
   }, []);
 
+  const handleCreate = () => {
+    if (!title.trim()) {
+      toast.error("Project title is required");
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await createProject(organizationId, {
+        name: title.trim(),
+        status: status.id,
+        priority: priority?.id || "medium",
+        client_id: client?.id || null,
+        start_date: startDate?.toISOString() || null,
+        end_date: targetDate?.toISOString() || null,
+        type_label: sprintType?.label || null,
+        tags: selectedTag ? [selectedTag.label] : [],
+      });
+
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success("Project created successfully");
+      onCreate();
+    });
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-      onCreate();
+      handleCreate();
     }
   };
 
@@ -270,9 +304,9 @@ export function StepQuickCreate({
             renderItem={(item, isSelected) => (
               <div className="flex items-center gap-2 w-full">
                 <span className="flex-1">{item.name}</span>
-                {item.primaryContactName && (
+                {item.primary_contact_name && (
                   <span className="text-xs text-muted-foreground">
-                    {item.primaryContactName}
+                    {item.primary_contact_name}
                   </span>
                 )}
                 {isSelected && <Check className="size-4" />}
@@ -576,11 +610,12 @@ export function StepQuickCreate({
           </div>
 
           <button
-            onClick={onCreate}
-            className="bg-primary hover:bg-primary/90 flex gap-3 h-10 items-center justify-center px-4 py-2 rounded-lg transition-colors cursor-pointer"
+            onClick={handleCreate}
+            disabled={isPending}
+            className="bg-primary hover:bg-primary/90 flex gap-3 h-10 items-center justify-center px-4 py-2 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span className="font-medium text-primary-foreground text-sm leading-5">
-              Create Project
+              {isPending ? "Creating..." : "Create Project"}
             </span>
           </button>
         </div>

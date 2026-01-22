@@ -1,6 +1,7 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { LinkSimple, SquareHalf } from "@phosphor-icons/react/dist/ssr"
 import { toast } from "sonner"
 import { AnimatePresence, motion } from "motion/react"
@@ -24,36 +25,92 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
+import type { ProjectWithRelations } from "@/lib/actions/projects"
+import type { TaskWithRelations } from "@/lib/actions/tasks"
+import type { Client, Workstream } from "@/lib/supabase/types"
 
 type ProjectDetailsPageProps = {
-  projectId: string
+  project: ProjectWithRelations
+  clients: Client[]
+  tasks: TaskWithRelations[]
+  workstreams: Workstream[]
+  organizationId: string
 }
 
-type LoadState =
-  | { status: "loading" }
-  | { status: "ready"; project: ProjectDetails }
+// Convert real project to mock data format for backward compatibility
+function toProjectDetails(
+  project: ProjectWithRelations,
+  tasks: TaskWithRelations[],
+  workstreams: Workstream[]
+): ProjectDetails {
+  // Get mock data as fallback for fields not in DB yet
+  const mockProject = getProjectDetailsById(project.id)
 
-export function ProjectDetailsPage({ projectId }: ProjectDetailsPageProps) {
-  const [state, setState] = useState<LoadState>({ status: "loading" })
+  // Build source data from real project
+  const source = {
+    ...(mockProject.source || {}),
+    id: project.id,
+    name: project.name,
+    status: project.status,
+    priority: project.priority,
+    progress: project.progress,
+    client: project.client?.name,
+    typeLabel: project.type_label || undefined,
+    startDate: project.start_date ? new Date(project.start_date) : new Date(),
+    endDate: project.end_date ? new Date(project.end_date) : new Date(),
+    tags: project.tags || [],
+    members: project.members?.map(m => m.profile?.full_name || m.profile?.email || "Unknown") || [],
+    taskCount: tasks.length,
+    tasks: [],
+    durationLabel: undefined,
+  }
+
+  // Convert real workstreams/tasks when available
+  const workstreamGroups = workstreams.length
+    ? workstreams.map(w => ({
+        id: w.id,
+        name: w.name,
+        tasks: tasks
+          .filter(t => t.workstream_id === w.id)
+          .map(t => ({
+            id: t.id,
+            name: t.name,
+            status: (t.status === "todo" ? "todo" : t.status === "done" ? "done" : "in-progress") as "todo" | "in-progress" | "done",
+            assignee: t.assignee ? {
+              id: t.assignee.id,
+              name: t.assignee.full_name || t.assignee.email,
+              avatarUrl: t.assignee.avatar_url || undefined,
+            } : undefined,
+          })),
+      }))
+    : mockProject.workstreams
+
+  return {
+    ...mockProject,
+    id: project.id,
+    name: project.name,
+    description: project.description || mockProject.description,
+    workstreams: workstreamGroups,
+    source: source as ProjectDetails["source"],
+  }
+}
+
+export function ProjectDetailsPage({
+  project,
+  clients,
+  tasks,
+  workstreams,
+  organizationId,
+}: ProjectDetailsPageProps) {
+  const router = useRouter()
   const [showMeta, setShowMeta] = useState(true)
   const [isWizardOpen, setIsWizardOpen] = useState(false)
 
-  useEffect(() => {
-    let cancelled = false
-    setState({ status: "loading" })
-
-    const delay = 600 + Math.floor(Math.random() * 301)
-    const t = setTimeout(() => {
-      if (cancelled) return
-      const project = getProjectDetailsById(projectId)
-      setState({ status: "ready", project })
-    }, delay)
-
-    return () => {
-      cancelled = true
-      clearTimeout(t)
-    }
-  }, [projectId])
+  // Convert to mock data format for backward compatibility
+  const projectDetails = useMemo(
+    () => toProjectDetails(project, tasks, workstreams),
+    [project, tasks, workstreams]
+  )
 
   const copyLink = useCallback(async () => {
     if (!navigator.clipboard) {
@@ -72,9 +129,9 @@ export function ProjectDetailsPage({ projectId }: ProjectDetailsPageProps) {
   const breadcrumbs = useMemo(
     () => [
       { label: "Projects", href: "/" },
-      { label: state.status === "ready" ? state.project.name : "Project Details" },
+      { label: project.name },
     ],
-    [state.status, state.status === "ready" ? state.project.name : null]
+    [project.name]
   )
 
   const openWizard = useCallback(() => {
@@ -83,13 +140,8 @@ export function ProjectDetailsPage({ projectId }: ProjectDetailsPageProps) {
 
   const closeWizard = useCallback(() => {
     setIsWizardOpen(false)
-  }, [])
-
-  if (state.status === "loading") {
-    return <ProjectDetailsSkeleton />
-  }
-
-  const project = state.project
+    router.refresh()
+  }, [router])
 
   return (
     <div className="flex flex-1 flex-col min-w-0 m-2 border border-border rounded-lg">
@@ -131,7 +183,7 @@ export function ProjectDetailsPage({ projectId }: ProjectDetailsPageProps) {
               }
             >
               <div className="space-y-6 pt-4">
-                <ProjectHeader project={project} onEditProject={openWizard} />
+                <ProjectHeader project={projectDetails} onEditProject={openWizard} />
 
                 <Tabs defaultValue="overview">
                   <TabsList className="w-full gap-6">
@@ -144,28 +196,28 @@ export function ProjectDetailsPage({ projectId }: ProjectDetailsPageProps) {
 
                   <TabsContent value="overview">
                     <div className="space-y-10">
-                      <p className="text-sm leading-6 text-muted-foreground">{project.description}</p>
-                      <ScopeColumns scope={project.scope} />
-                      <OutcomesList outcomes={project.outcomes} />
-                      <KeyFeaturesColumns features={project.keyFeatures} />
-                      <TimelineGantt tasks={project.timelineTasks} />
+                      <p className="text-sm leading-6 text-muted-foreground">{projectDetails.description}</p>
+                      <ScopeColumns scope={projectDetails.scope} />
+                      <OutcomesList outcomes={projectDetails.outcomes} />
+                      <KeyFeaturesColumns features={projectDetails.keyFeatures} />
+                      <TimelineGantt tasks={projectDetails.timelineTasks} />
                     </div>
                   </TabsContent>
 
                   <TabsContent value="workstream">
-                    <WorkstreamTab workstreams={project.workstreams} />
+                    <WorkstreamTab workstreams={projectDetails.workstreams} />
                   </TabsContent>
 
                   <TabsContent value="tasks">
-                    <ProjectTasksTab project={project} />
+                    <ProjectTasksTab project={projectDetails} />
                   </TabsContent>
 
                   <TabsContent value="notes">
-                    <NotesTab notes={project.notes || []} />
+                    <NotesTab notes={projectDetails.notes || []} />
                   </TabsContent>
 
                   <TabsContent value="assets">
-                    <AssetsFilesTab files={project.files} />
+                    <AssetsFilesTab files={projectDetails.files} />
                   </TabsContent>
                 </Tabs>
               </div>
@@ -180,7 +232,7 @@ export function ProjectDetailsPage({ projectId }: ProjectDetailsPageProps) {
                     transition={{ type: "spring", stiffness: 260, damping: 26 }}
                     className="lg:border-l lg:border-border lg:pl-6"
                   >
-                    <RightMetaPanel project={project} />
+                    <RightMetaPanel project={projectDetails} />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -191,7 +243,12 @@ export function ProjectDetailsPage({ projectId }: ProjectDetailsPageProps) {
         <Separator className="mt-auto" />
 
         {isWizardOpen && (
-          <ProjectWizard onClose={closeWizard} onCreate={closeWizard} />
+          <ProjectWizard
+            onClose={closeWizard}
+            onCreate={closeWizard}
+            organizationId={organizationId}
+            clients={clients}
+          />
         )}
       </div>
     </div>

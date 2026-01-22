@@ -17,9 +17,11 @@ import {
 import { CaretRight, CaretUpDown, ArrowDown, ArrowUp, DotsThreeVertical, Plus, MagnifyingGlass } from "@phosphor-icons/react/dist/ssr"
 import { toast } from "sonner"
 import Link from "next/link"
-import { useMemo, useState } from "react"
-import { clients, getProjectCountForClient, type ClientStatus } from "@/lib/data/clients"
+import { useMemo, useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { ClientWizard } from "@/components/clients/ClientWizard"
+import { updateClient, deleteClient, type ClientWithProjectCount } from "@/lib/actions/clients"
+import type { ClientStatus } from "@/lib/supabase/types"
 
 function statusLabel(status: ClientStatus): string {
   if (status === "prospect") return "Prospect"
@@ -28,9 +30,35 @@ function statusLabel(status: ClientStatus): string {
   return "Archived"
 }
 
-export function ClientsContent() {
+function formatRelativeTime(dateString: string): string {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+
+  if (diffMins < 1) return "Just now"
+  if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? "s" : ""} ago`
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`
+  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? "s" : ""} ago`
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)} month${Math.floor(diffDays / 30) > 1 ? "s" : ""} ago`
+  return `${Math.floor(diffDays / 365)} year${Math.floor(diffDays / 365) > 1 ? "s" : ""} ago`
+}
+
+type ClientsContentProps = {
+  initialClients: ClientWithProjectCount[]
+  organizationId: string
+}
+
+export function ClientsContent({ initialClients, organizationId }: ClientsContentProps) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [clients, setClients] = useState<ClientWithProjectCount[]>(initialClients)
   const [query, setQuery] = useState("")
   const [isWizardOpen, setIsWizardOpen] = useState(false)
+  const [editingClient, setEditingClient] = useState<ClientWithProjectCount | null>(null)
   const [statusFilter, setStatusFilter] = useState<"all" | ClientStatus>("all")
   const [sortKey, setSortKey] = useState<"name" | "projects">("name")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
@@ -53,8 +81,8 @@ export function ClientsContent() {
       list = list.filter((c) => {
         return (
           c.name.toLowerCase().includes(q) ||
-          (c.primaryContactName && c.primaryContactName.toLowerCase().includes(q)) ||
-          (c.primaryContactEmail && c.primaryContactEmail.toLowerCase().includes(q))
+          (c.primary_contact_name && c.primary_contact_name.toLowerCase().includes(q)) ||
+          (c.primary_contact_email && c.primary_contact_email.toLowerCase().includes(q))
         )
       })
     }
@@ -70,15 +98,15 @@ export function ClientsContent() {
       }
 
       // sort by projects count
-      const ac = getProjectCountForClient(a.name)
-      const bc = getProjectCountForClient(b.name)
+      const ac = a.project_count
+      const bc = b.project_count
       if (ac === bc) return 0
       const cmp = ac < bc ? -1 : 1
       return sortDirection === "asc" ? cmp : -cmp
     })
 
     return sorted
-  }, [query, statusFilter, sortKey, sortDirection])
+  }, [clients, query, statusFilter, sortKey, sortDirection])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
   const currentPage = Math.min(page, totalPages)
@@ -122,10 +150,42 @@ export function ClientsContent() {
 
   const clearSelection = () => setSelectedIds(new Set())
 
-  const handleArchiveSelected = () => {
+  const handleArchiveSelected = async () => {
     if (!selectedIds.size) return
-    toast.success(`Archived ${selectedIds.size} client${selectedIds.size > 1 ? "s" : ""} (mock)`)
-    clearSelection()
+
+    startTransition(async () => {
+      const promises = Array.from(selectedIds).map(async (id) => {
+        const result = await updateClient(id, { status: "archived" })
+        return { id, success: !result.error }
+      })
+
+      const results = await Promise.all(promises)
+      const successCount = results.filter((r) => r.success).length
+
+      if (successCount > 0) {
+        toast.success(`Archived ${successCount} client${successCount > 1 ? "s" : ""}`)
+        router.refresh()
+      }
+      clearSelection()
+    })
+  }
+
+  const handleArchiveClient = async (clientId: string, clientName: string) => {
+    startTransition(async () => {
+      const result = await updateClient(clientId, { status: "archived" })
+      if (result.error) {
+        toast.error(result.error)
+      } else {
+        toast.success(`Archived ${clientName}`)
+        router.refresh()
+      }
+    })
+  }
+
+  const handleWizardSuccess = () => {
+    setIsWizardOpen(false)
+    setEditingClient(null)
+    router.refresh()
   }
 
   const goToPage = (next: number) => {
@@ -285,8 +345,8 @@ export function ClientsContent() {
                 </TableHeader>
                 <TableBody>
                   {visibleClients.map((client) => {
-                    const projectCount = getProjectCountForClient(client.name)
                     const checked = selectedIds.has(client.id)
+                    const ownerName = client.owner?.full_name || client.owner?.email || null
                     return (
                       <TableRow key={client.id} className="hover:bg-muted/80">
                         <TableCell className="align-middle">
@@ -319,11 +379,11 @@ export function ClientsContent() {
                           </Link>
                         </TableCell>
                         <TableCell className="align-middle text-sm">
-                          {client.primaryContactName ? (
+                          {client.primary_contact_name ? (
                             <div className="flex flex-col">
-                              <span className="truncate text-sm text-foreground">{client.primaryContactName}</span>
-                              {client.primaryContactEmail && (
-                                <span className="truncate text-[11px] text-muted-foreground">{client.primaryContactEmail}</span>
+                              <span className="truncate text-sm text-foreground">{client.primary_contact_name}</span>
+                              {client.primary_contact_email && (
+                                <span className="truncate text-[11px] text-muted-foreground">{client.primary_contact_email}</span>
                               )}
                             </div>
                           ) : (
@@ -336,13 +396,13 @@ export function ClientsContent() {
                           </Badge>
                         </TableCell>
                         <TableCell className="align-middle text-right text-sm text-muted-foreground">
-                          {projectCount}
+                          {client.project_count}
                         </TableCell>
                         <TableCell className="align-middle text-sm text-muted-foreground whitespace-nowrap">
-                          {client.lastActivityLabel ?? "—"}
+                          {formatRelativeTime(client.updated_at)}
                         </TableCell>
                         <TableCell className="align-middle text-sm text-muted-foreground whitespace-nowrap">
-                          {client.owner ?? "—"}
+                          {ownerName ?? "—"}
                         </TableCell>
                         <TableCell className="align-middle text-right">
                           <DropdownMenu>
@@ -360,18 +420,15 @@ export function ClientsContent() {
                                 <Link href={`/clients/${client.id}`}>View details</Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onClick={() => {
-                                  toast.info("Edit client opens modal (mock)")
-                                }}
+                                onClick={() => setEditingClient(client)}
                               >
                                 Edit client
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="text-destructive"
-                                onClick={() => {
-                                  toast.success(`Archived ${client.name} (mock)`)
-                                }}
+                                onClick={() => handleArchiveClient(client.id, client.name)}
+                                disabled={isPending}
                               >
                                 Archive
                               </DropdownMenuItem>
@@ -467,8 +524,17 @@ export function ClientsContent() {
           )}
         </div>
       </div>
-      {isWizardOpen && (
-        <ClientWizard mode="create" onClose={() => setIsWizardOpen(false)} />
+      {(isWizardOpen || editingClient) && (
+        <ClientWizard
+          mode={editingClient ? "edit" : "create"}
+          initialClient={editingClient ?? undefined}
+          organizationId={organizationId}
+          onClose={() => {
+            setIsWizardOpen(false)
+            setEditingClient(null)
+          }}
+          onSuccess={handleWizardSuccess}
+        />
       )}
     </div>
   )

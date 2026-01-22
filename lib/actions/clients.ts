@@ -168,6 +168,81 @@ export async function deleteClient(id: string): Promise<ActionResult> {
   return {}
 }
 
+// Get clients with project counts (for list view)
+export type ClientWithProjectCount = Client & {
+  project_count: number
+  owner?: {
+    id: string
+    full_name: string | null
+    email: string
+    avatar_url: string | null
+  } | null
+}
+
+export async function getClientsWithProjectCounts(
+  orgId: string,
+  filters?: ClientFilters
+): Promise<ActionResult<ClientWithProjectCount[]>> {
+  const supabase = await createClient()
+
+  // First get clients
+  let query = supabase
+    .from("clients")
+    .select("*, owner:profiles(id, full_name, email, avatar_url)")
+    .eq("organization_id", orgId)
+
+  if (filters?.status) {
+    query = query.eq("status", filters.status)
+  }
+
+  if (filters?.ownerId) {
+    query = query.eq("owner_id", filters.ownerId)
+  }
+
+  if (filters?.search) {
+    query = query.or(
+      `name.ilike.%${filters.search}%,primary_contact_name.ilike.%${filters.search}%,primary_contact_email.ilike.%${filters.search}%`
+    )
+  }
+
+  const { data: clients, error: clientsError } = await query.order("name")
+
+  if (clientsError) {
+    return { error: clientsError.message }
+  }
+
+  if (!clients || clients.length === 0) {
+    return { data: [] }
+  }
+
+  // Get project counts for all clients in one query
+  const clientIds = clients.map((c) => c.id)
+  const { data: projectCounts, error: countsError } = await supabase
+    .from("projects")
+    .select("client_id")
+    .in("client_id", clientIds)
+
+  if (countsError) {
+    return { error: countsError.message }
+  }
+
+  // Count projects per client
+  const countMap = new Map<string, number>()
+  projectCounts?.forEach((p) => {
+    if (p.client_id) {
+      countMap.set(p.client_id, (countMap.get(p.client_id) || 0) + 1)
+    }
+  })
+
+  // Merge counts into clients
+  const clientsWithCounts: ClientWithProjectCount[] = clients.map((client) => ({
+    ...client,
+    project_count: countMap.get(client.id) || 0,
+  }))
+
+  return { data: clientsWithCounts }
+}
+
 // Get client stats for organization
 export async function getClientStats(orgId: string): Promise<
   ActionResult<{

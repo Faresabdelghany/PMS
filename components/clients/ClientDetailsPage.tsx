@@ -1,16 +1,17 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getClientById, getProjectCountForClient, clients, type Client, type ClientStatus } from "@/lib/data/clients"
-import { projects } from "@/lib/data/projects"
 import { ClientWizard } from "@/components/clients/ClientWizard"
 import Link from "next/link"
+import type { Client, ClientStatus } from "@/lib/supabase/types"
+import type { ProjectWithRelations } from "@/lib/actions/projects"
 
 function statusLabel(status: ClientStatus): string {
   if (status === "prospect") return "Prospect"
@@ -19,32 +20,32 @@ function statusLabel(status: ClientStatus): string {
   return "Archived"
 }
 
-type ClientDetailsPageProps = {
-  clientId: string
+type ClientWithProjectCount = Client & {
+  project_count: number
+  owner?: {
+    id: string
+    full_name: string | null
+    email: string
+    avatar_url: string | null
+  } | null
 }
 
-type LoadState = { status: "loading" } | { status: "ready"; client: Client }
+type ClientDetailsPageProps = {
+  client: ClientWithProjectCount
+  relatedProjects: ProjectWithRelations[]
+  organizationId: string
+}
 
-export function ClientDetailsPage({ clientId }: ClientDetailsPageProps) {
-  const [state, setState] = useState<LoadState>({ status: "loading" })
+export function ClientDetailsPage({ client, relatedProjects, organizationId }: ClientDetailsPageProps) {
+  const router = useRouter()
   const [isWizardOpen, setIsWizardOpen] = useState(false)
 
-  useEffect(() => {
-    setState({ status: "loading" })
-    const t = setTimeout(() => {
-      const client = getClientById(clientId) ?? clients[0]
-      setState({ status: "ready", client })
-    }, 400)
-    return () => clearTimeout(t)
-  }, [clientId])
+  const ownerName = client.owner?.full_name || client.owner?.email || null
 
-  if (state.status === "loading") {
-    return <ClientDetailsSkeleton />
+  const handleWizardSuccess = () => {
+    setIsWizardOpen(false)
+    router.refresh()
   }
-
-  const client = state.client
-  const relatedProjects = projects.filter((p) => p.client === client.name)
-  const projectCount = getProjectCountForClient(client.name)
 
   return (
     <div className="flex flex-1 flex-col min-w-0 m-2 border border-border rounded-lg">
@@ -59,7 +60,7 @@ export function ClientDetailsPage({ clientId }: ClientDetailsPageProps) {
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground">
-              Client · {projectCount} projects
+              Client · {client.project_count} project{client.project_count !== 1 ? "s" : ""}
             </p>
           </div>
         </div>
@@ -68,9 +69,11 @@ export function ClientDetailsPage({ clientId }: ClientDetailsPageProps) {
           <Button variant="ghost" size="sm" onClick={() => setIsWizardOpen(true)}>
             Edit client
           </Button>
-          <Button size="sm">
-            New project
-          </Button>
+          <Link href={`/projects/new?clientId=${client.id}`}>
+            <Button size="sm">
+              New project
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -89,11 +92,11 @@ export function ClientDetailsPage({ clientId }: ClientDetailsPageProps) {
                     <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                       <div className="rounded-lg border border-border bg-card/80 p-4 space-y-2">
                         <p className="text-xs font-medium text-muted-foreground">Primary contact</p>
-                        {client.primaryContactName ? (
+                        {client.primary_contact_name ? (
                           <div className="space-y-0.5">
-                            <p className="text-sm font-medium text-foreground">{client.primaryContactName}</p>
-                            {client.primaryContactEmail && (
-                              <p className="text-xs text-muted-foreground">{client.primaryContactEmail}</p>
+                            <p className="text-sm font-medium text-foreground">{client.primary_contact_name}</p>
+                            {client.primary_contact_email && (
+                              <p className="text-xs text-muted-foreground">{client.primary_contact_email}</p>
                             )}
                           </div>
                         ) : (
@@ -119,7 +122,7 @@ export function ClientDetailsPage({ clientId }: ClientDetailsPageProps) {
 
                       <div className="rounded-lg border border-border bg-card/80 p-4 space-y-2">
                         <p className="text-xs font-medium text-muted-foreground">Owner</p>
-                        <p className="text-sm text-foreground">{client.owner ?? "Unassigned"}</p>
+                        <p className="text-sm text-foreground">{ownerName ?? "Unassigned"}</p>
                       </div>
                     </div>
 
@@ -137,9 +140,11 @@ export function ClientDetailsPage({ clientId }: ClientDetailsPageProps) {
                         <div className="flex flex-col items-center justify-center py-12 text-center border border-dashed border-border/60 rounded-lg bg-muted/30">
                           <p className="text-sm font-medium text-foreground">No projects for this client yet</p>
                           <p className="mt-1 text-xs text-muted-foreground">Create the first project and link it to this client.</p>
-                          <Button className="mt-4 h-8 px-3 text-xs rounded-lg">
-                            New project
-                          </Button>
+                          <Link href={`/projects/new?clientId=${client.id}`}>
+                            <Button className="mt-4 h-8 px-3 text-xs rounded-lg">
+                              New project
+                            </Button>
+                          </Link>
                         </div>
                       ) : (
                         <div className="rounded-lg border border-border bg-card/80 overflow-hidden">
@@ -172,7 +177,7 @@ export function ClientDetailsPage({ clientId }: ClientDetailsPageProps) {
                   <div className="rounded-lg border border-border bg-card/80 p-4 space-y-2">
                     <p className="text-xs font-medium text-muted-foreground">Summary</p>
                     <p className="text-sm text-foreground">
-                      {client.name} currently has {projectCount} linked project{projectCount === 1 ? "" : "s"}.
+                      {client.name} currently has {client.project_count} linked project{client.project_count !== 1 ? "s" : ""}.
                     </p>
                   </div>
                 </div>
@@ -187,7 +192,9 @@ export function ClientDetailsPage({ clientId }: ClientDetailsPageProps) {
         <ClientWizard
           mode="edit"
           initialClient={client}
+          organizationId={organizationId}
           onClose={() => setIsWizardOpen(false)}
+          onSuccess={handleWizardSuccess}
         />
       )}
     </div>

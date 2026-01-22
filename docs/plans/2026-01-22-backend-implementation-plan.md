@@ -152,14 +152,18 @@
   - `getClient(id)`
   - `getClients(orgId, filters)`
 
-- [ ] **2.2.2** Update `components/clients-content.tsx`
+- [x] **2.2.2** Update `components/clients-content.tsx`
   - Replace mock data with `getClients()` call
+  - Server-side data fetching in page.tsx
+  - Uses `getClientsWithProjectCounts()` for project count display
 
-- [ ] **2.2.3** Update `components/clients/ClientDetailsPage.tsx`
-  - Fetch client with `getClient()`
+- [x] **2.2.3** Update `components/clients/ClientDetailsPage.tsx`
+  - Fetch client with `getClient()` and related projects
+  - Server-side data fetching in page.tsx
 
-- [ ] **2.2.4** Update `components/clients/ClientWizard.tsx`
-  - Call `createClient()` or `updateClient()` on submit
+- [x] **2.2.4** Update `components/clients/ClientWizard.tsx`
+  - Call `createClientAction()` or `updateClient()` on submit
+  - Real-time UI updates with router.refresh()
 
 ### 2.3 Project Management - COMPLETED
 
@@ -180,14 +184,18 @@
   - `getProjectFeatures(projectId)`
   - `updateProjectFeatures(projectId, features[])`
 
-- [ ] **2.3.3** Update `components/projects-content.tsx`
+- [x] **2.3.3** Update `components/projects-content.tsx`
   - Replace mock `projects` import with `getProjects()` call
+  - Server-side data fetching in page.tsx
+  - Converted view to use real Supabase data
 
-- [ ] **2.3.4** Update `components/project-wizard/ProjectWizard.tsx`
+- [x] **2.3.4** Update `components/project-wizard/ProjectWizard.tsx`
   - Call `createProject()` on submit
+  - StepQuickCreate calls real createProject server action
 
-- [ ] **2.3.5** Update `components/projects/ProjectDetailsPage.tsx`
-  - Fetch with `getProject()`
+- [x] **2.3.5** Update `components/projects/ProjectDetailsPage.tsx`
+  - Fetch with `getProject()` and related data
+  - Hybrid approach: real data for basic fields, mock data for features not in DB yet
 
 ---
 
@@ -353,9 +361,11 @@ supabase/
 | 1 | Org created | COMPLETED |
 | 1 | Forgot password | COMPLETED |
 | 1 | Form validation | COMPLETED |
-| 2 | Projects CRUD | COMPLETED (Server Actions) |
-| 2 | Clients CRUD | COMPLETED (Server Actions) |
+| 2 | Projects CRUD | COMPLETED (Full Integration) |
+| 2 | Clients CRUD | COMPLETED (Full Integration) |
+| 2 | Components wired | COMPLETED |
 | 3 | Tasks work | COMPLETED (Server Actions) |
+| 3 | Task components | Pending |
 | 4 | Files upload | Pending |
 | 4 | AI works | Pending |
 | 5 | Real-time | Pending |
