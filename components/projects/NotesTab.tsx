@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useNotesRealtime } from "@/hooks/use-realtime"
 import { Plus } from "@phosphor-icons/react/dist/ssr"
 import { toast } from "sonner"
 
@@ -27,8 +27,6 @@ const defaultUser: User = {
 }
 
 export function NotesTab({ notes, projectId, currentUser = defaultUser }: NotesTabProps) {
-    const router = useRouter()
-    const [isPending, startTransition] = useTransition()
     const [localNotes, setLocalNotes] = useState<ProjectNote[]>(notes)
     const recentNotes = localNotes.slice(0, 8)
 
@@ -38,8 +36,45 @@ export function NotesTab({ notes, projectId, currentUser = defaultUser }: NotesT
     const [selectedNote, setSelectedNote] = useState<ProjectNote | null>(null)
 
     // Sync local notes with props
-    useState(() => {
+    useEffect(() => {
         setLocalNotes(notes)
+    }, [notes])
+
+    // Subscribe to real-time note changes
+    useNotesRealtime(projectId, {
+        onInsert: (newNote) => {
+            setLocalNotes((prev) => {
+                if (prev.some((n) => n.id === newNote.id)) return prev
+
+                const uiNote: ProjectNote = {
+                    id: newNote.id,
+                    title: newNote.title,
+                    content: newNote.content || undefined,
+                    noteType: newNote.note_type,
+                    status: newNote.status,
+                    addedDate: new Date(newNote.created_at),
+                    addedBy: currentUser,
+                }
+                return [uiNote, ...prev]
+            })
+        },
+        onUpdate: (updatedNote) => {
+            setLocalNotes((prev) =>
+                prev.map((note) =>
+                    note.id === updatedNote.id
+                        ? {
+                              ...note,
+                              title: updatedNote.title,
+                              content: updatedNote.content || undefined,
+                              status: updatedNote.status,
+                          }
+                        : note
+                )
+            )
+        },
+        onDelete: (deletedNote) => {
+            setLocalNotes((prev) => prev.filter((note) => note.id !== deletedNote.id))
+        },
     })
 
     const handleAddNote = () => {
@@ -72,9 +107,6 @@ export function NotesTab({ notes, projectId, currentUser = defaultUser }: NotesT
             setLocalNotes((prev) => [newNote, ...prev])
             toast.success("Note created successfully")
             setIsCreateModalOpen(false)
-            startTransition(() => {
-                router.refresh()
-            })
         }
     }
 
@@ -104,9 +136,6 @@ export function NotesTab({ notes, projectId, currentUser = defaultUser }: NotesT
         }
 
         toast.success(`Audio note created from "${fileName}"`)
-        startTransition(() => {
-            router.refresh()
-        })
     }
 
     const handleNoteClick = (note: ProjectNote) => {
@@ -138,9 +167,6 @@ export function NotesTab({ notes, projectId, currentUser = defaultUser }: NotesT
         }
 
         toast.success("Note deleted successfully")
-        startTransition(() => {
-            router.refresh()
-        })
     }
 
     return (
