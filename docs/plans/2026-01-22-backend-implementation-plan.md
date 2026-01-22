@@ -102,37 +102,37 @@
 
 ---
 
-## Phase 2: Core Data Layer
+## Phase 2: Core Data Layer - COMPLETED
 
-### 2.1 Organization Management
+### 2.1 Organization Management - COMPLETED
 
-- [ ] **2.1.1** Create `lib/actions/teams.ts`
+- [x] **2.1.1** Create `lib/actions/teams.ts`
   - `createTeam(orgId, name, description)`
   - `updateTeam(id, data)`
   - `deleteTeam(id)`
   - `getTeams(orgId)`
 
-- [ ] **2.1.2** Create `lib/actions/invitations.ts`
+- [x] **2.1.2** Create `lib/actions/invitations.ts`
   - `inviteMember(orgId, email, role)`
   - `acceptInvitation(token)`
   - `cancelInvitation(id)`
   - `getPendingInvitations(orgId)`
 
-- [ ] **2.1.3** Create `app/invite/[token]/page.tsx` - Invitation acceptance page
+- [x] **2.1.3** Create `app/invite/[token]/page.tsx` - Invitation acceptance page
 
-- [ ] **2.1.4** Create `app/(dashboard)/settings/organization/page.tsx`
+- [x] **2.1.4** Create `app/(dashboard)/settings/organization/page.tsx`
   - Org name, logo, slug
   - Members list with roles
   - Invite new member form
   - Danger zone: delete org
 
-- [ ] **2.1.5** Create `hooks/use-organization.ts` - Organization context hook
+- [x] **2.1.5** Create `hooks/use-organization.ts` - Organization context hook
 
-- [ ] **2.1.6** Create `components/providers/organization-provider.tsx`
+- [x] **2.1.6** Create `components/providers/organization-provider.tsx`
 
-### 2.2 Client Management
+### 2.2 Client Management - COMPLETED
 
-- [ ] **2.2.1** Create `lib/actions/clients.ts`
+- [x] **2.2.1** Create `lib/actions/clients.ts`
   - `createClient(data)`
   - `updateClient(id, data)`
   - `deleteClient(id)`
@@ -148,9 +148,9 @@
 - [ ] **2.2.4** Update `components/clients/ClientWizard.tsx`
   - Call `createClient()` or `updateClient()` on submit
 
-### 2.3 Project Management
+### 2.3 Project Management - COMPLETED
 
-- [ ] **2.3.1** Create `lib/actions/projects.ts`
+- [x] **2.3.1** Create `lib/actions/projects.ts`
   - `createProject(data)`
   - `updateProject(id, data)`
   - `deleteProject(id)`
@@ -159,7 +159,7 @@
   - `addProjectMember(projectId, userId, role)`
   - `removeProjectMember(projectId, userId)`
 
-- [ ] **2.3.2** Create `lib/actions/project-details.ts`
+- [x] **2.3.2** Create `lib/actions/project-details.ts`
   - `getProjectScope(projectId)`
   - `updateProjectScope(projectId, inScope[], outOfScope[])`
   - `getProjectOutcomes(projectId)`
@@ -178,25 +178,25 @@
 
 ---
 
-## Phase 3: Tasks & Workstreams
+## Phase 3: Tasks & Workstreams - COMPLETED (Server Actions Only)
 
-### 3.1 Workstream Actions
+### 3.1 Workstream Actions - COMPLETED
 
-- [ ] **3.1.1** Create `lib/actions/workstreams.ts`
+- [x] **3.1.1** Create `lib/actions/workstreams.ts`
   - `createWorkstream(projectId, name)`
   - `updateWorkstream(id, data)`
   - `deleteWorkstream(id)`
   - `getWorkstreams(projectId)`
   - `reorderWorkstreams(projectId, workstreamIds[])`
 
-### 3.2 Task Actions
+### 3.2 Task Actions - COMPLETED
 
-- [ ] **3.2.1** Create `lib/actions/tasks.ts`
+- [x] **3.2.1** Create `lib/actions/tasks.ts`
   - `createTask(projectId, data)`
   - `updateTask(id, data)`
   - `deleteTask(id)`
   - `getTasks(projectId, filters)`
-  - `getTasksByWorkstream(workstreamId)`
+  - `getTasksByWorkstream(workstreamId)` (via getTasks with workstreamId filter)
   - `reorderTasks(workstreamId, taskIds[])`
   - `moveTaskToWorkstream(taskId, newWorkstreamId, newIndex)`
 
@@ -317,9 +317,9 @@ supabase/
 |-------|------------|--------|
 | 1 | Auth works | COMPLETED |
 | 1 | Org created | COMPLETED |
-| 2 | Projects CRUD | Pending |
-| 2 | Clients CRUD | Pending |
-| 3 | Tasks work | Pending |
+| 2 | Projects CRUD | COMPLETED (Server Actions) |
+| 2 | Clients CRUD | COMPLETED (Server Actions) |
+| 3 | Tasks work | COMPLETED (Server Actions) |
 | 4 | Files upload | Pending |
 | 4 | AI works | Pending |
 | 5 | Real-time | Pending |
