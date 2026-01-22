@@ -337,6 +337,32 @@
   - Connection testing
   - Feature overview
 
+- [x] **4.3.4** Create `lib/constants/ai.ts`
+  - AI_MODELS constant with provider-specific model options
+  - AIProvider type definition
+  - Separated from server actions (Next.js "use server" constraint)
+
+### 4.4 E2E Testing - COMPLETED ✅
+
+- [x] **4.4.1** File Upload Testing
+  - File upload to Supabase Storage ✅
+  - Fixed storage bucket MIME types (added text/plain, csv, etc.) ✅
+  - Fixed RLS policy (user must be project member) ✅
+  - File deletion with storage cleanup ✅
+  - Success/error toast messages ✅
+- [x] **4.4.2** Notes Testing
+  - Note creation with title ✅
+  - Notes display in table with status ✅
+  - Note deletion via dropdown menu ✅
+  - Success toast "Note deleted successfully" ✅
+- [x] **4.4.3** AI Settings Testing
+  - Provider selection (OpenAI, Anthropic, Google) ✅
+  - Dynamic model selection per provider ✅
+  - API key save with masked display ✅
+  - Test connection with proper error handling ✅
+  - API key deletion with confirmation dialog ✅
+  - Fixed "use server" export issue ✅
+
 ---
 
 ## Phase 5: Real-time & Polish
@@ -453,6 +479,7 @@ supabase/
 | 4 | Notes CRUD | COMPLETED (Server Actions) |
 | 4 | AI works | COMPLETED (OpenAI/Anthropic/Google) |
 | 4 | AI Settings Page | COMPLETED |
+| 4 | E2E Testing | COMPLETED (Files, Notes, AI Settings) |
 | 5 | Real-time | Pending |
 | 5 | Vercel configured | COMPLETED |
 | 5 | OAuth configured | COMPLETED |
