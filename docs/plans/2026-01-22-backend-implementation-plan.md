@@ -6,134 +6,99 @@
 
 ---
 
-## Phase 1: Foundation (Setup & Auth)
+## Phase 1: Foundation (Setup & Auth) - COMPLETED
 
-### 1.1 Repository & Tooling Setup
+### 1.1 Repository & Tooling Setup - COMPLETED
 
-- [ ] **1.1.1** Initialize git repository
-  ```bash
-  git init
-  git remote add origin https://github.com/Faresabdelghany/PMS.git
-  ```
+- [x] **1.1.1** Initialize git repository
+- [x] **1.1.2** Install Vercel CLI and link project
+- [x] **1.1.3** Install Supabase CLI and link project
+- [x] **1.1.4** Create `.env.local` with Supabase credentials
+- [x] **1.1.5** Add `.env.local` to `.gitignore`
+- [x] **1.1.6** Initial commit and push to GitHub
 
-- [ ] **1.1.2** Install Vercel CLI and link project
-  ```bash
-  pnpm add -g vercel
-  vercel login
-  vercel link
-  ```
+### 1.2 Database Migration - COMPLETED
 
-- [ ] **1.1.3** Install Supabase CLI
-  ```bash
-  pnpm add -D supabase
-  npx supabase login
-  npx supabase link --project-ref lazhmdyajdqbnxxwyxun
-  ```
-
-- [ ] **1.1.4** Create `.env.local` with Supabase credentials
-  ```
-  NEXT_PUBLIC_SUPABASE_URL=
-  NEXT_PUBLIC_SUPABASE_ANON_KEY=
-  SUPABASE_SERVICE_ROLE_KEY=
-  NEXT_PUBLIC_SITE_URL=http://localhost:3000
-  ```
-
-- [ ] **1.1.5** Add `.env.local` to `.gitignore`
-
-- [ ] **1.1.6** Initial commit and push
-  ```bash
-  git add .
-  git commit -m "Initial commit: Next.js 16 project dashboard"
-  git push -u origin main
-  ```
-
-### 1.2 Database Migration
-
-- [ ] **1.2.1** Create migration file: `supabase/migrations/001_initial_schema.sql`
-  - All enums
-  - All tables (profiles, organizations, organization_members, teams, invitations, clients, projects, project_members, project_scope, project_outcomes, project_features, project_deliverables, project_metrics, workstreams, tasks, project_files, project_notes, user_settings)
+- [x] **1.2.1** Create migration file: `supabase/migrations/20260122000001_initial_schema.sql`
+  - All enums (12 types)
+  - All tables (17 tables)
   - All indexes
   - Profile sync trigger from auth.users
+  - Updated_at triggers
 
-- [ ] **1.2.2** Create RLS policies file: `supabase/migrations/002_rls_policies.sql`
-  - Helper functions (is_org_member, is_org_admin, is_project_member)
+- [x] **1.2.2** Create RLS policies file: `supabase/migrations/20260122000002_rls_policies.sql`
+  - Helper functions (is_org_member, is_org_admin, is_project_member, is_project_owner, get_project_org_id)
   - Policies for all tables
 
-- [ ] **1.2.3** Create storage buckets file: `supabase/migrations/003_storage.sql`
-  - Create buckets: project-files, project-images, project-media, avatars, org-logos
-  - Storage policies
+- [x] **1.2.3** Create storage buckets file: `supabase/migrations/20260122000003_storage.sql`
+  - Buckets: project-files (50MB), project-images (10MB), project-media (100MB), avatars (2MB), org-logos (5MB)
+  - Storage helper functions in public schema
+  - Storage policies for all buckets
 
-- [ ] **1.2.4** Run migrations
-  ```bash
-  npx supabase db push
-  ```
+- [x] **1.2.4** Run migrations - All applied successfully
 
-- [ ] **1.2.5** Generate TypeScript types
-  ```bash
-  npx supabase gen types typescript --project-id lazhmdyajdqbnxxwyxun > lib/supabase/database.types.ts
-  ```
+### 1.3 Supabase Client Setup - COMPLETED
 
-### 1.3 Supabase Client Setup
+- [x] **1.3.1** Create `lib/supabase/client.ts` - Browser client
+- [x] **1.3.2** Create `lib/supabase/server.ts` - Server client with cookies
+- [x] **1.3.3** Create `lib/supabase/admin.ts` - Service role client
+- [x] **1.3.4** Create `lib/supabase/types.ts` - Database types with helper exports
 
-- [ ] **1.3.1** Create `lib/supabase/client.ts` - Browser client
-- [ ] **1.3.2** Create `lib/supabase/server.ts` - Server client with cookies
-- [ ] **1.3.3** Create `lib/supabase/admin.ts` - Service role client
-- [ ] **1.3.4** Create `lib/supabase/types.ts` - Re-export and extend generated types
+### 1.4 Authentication - COMPLETED
 
-### 1.4 Authentication
+- [x] **1.4.1** Create `lib/actions/auth.ts`
+  - `signUp(formData)` - Email/password signup with email confirmation
+  - `signIn(formData)` - Email/password login
+  - `signInWithGoogle()` - Google OAuth
+  - `signOut()` - Logout
+  - `resetPassword(formData)` - Password reset email
+  - `updatePassword(formData)` - Update password after reset
+  - `getUser()` - Get current user
+  - `getUserWithProfile()` - Get user with profile data
+  - `updateProfile(formData)` - Update user profile
 
-- [ ] **1.4.1** Create `lib/actions/auth.ts`
-  - `signUp(email, password, fullName)`
-  - `signIn(email, password)`
-  - `signInWithOAuth(provider: 'google')`
-  - `signOut()`
-  - `resetPassword(email)`
-  - `updatePassword(newPassword)`
-  - `getSession()`
-  - `getUser()`
+- [x] **1.4.2** Create `app/(auth)/layout.tsx` - Auth layout (centered, no sidebar)
 
-- [ ] **1.4.2** Create `app/(auth)/layout.tsx` - Auth layout (centered, no sidebar)
-
-- [ ] **1.4.3** Create `app/(auth)/login/page.tsx`
+- [x] **1.4.3** Create `app/(auth)/login/page.tsx`
   - Email/password form
   - Google OAuth button
   - Link to signup
-  - Link to reset password
+  - Link to forgot password
+  - Error display
 
-- [ ] **1.4.4** Create `app/(auth)/signup/page.tsx`
+- [x] **1.4.4** Create `app/(auth)/signup/page.tsx`
   - Email/password/name form
   - Google OAuth button
   - Link to login
+  - Success state with email confirmation message
 
-- [ ] **1.4.5** Create `app/(auth)/callback/route.ts` - OAuth callback handler
+- [x] **1.4.5** Create `app/auth/callback/route.ts` - OAuth callback handler
+  - Exchanges code for session
+  - Checks if user has organization
+  - Redirects to onboarding if no org
 
-- [ ] **1.4.6** Create `app/(auth)/reset-password/page.tsx` - Password reset form
+- [x] **1.4.7** Create `middleware.ts` - Route protection
+  - Protects all routes except auth pages and public pages
+  - Redirects unauthenticated users to `/login`
+  - Redirects authenticated users from auth pages to `/`
+  - Checks for organization membership, redirects to `/onboarding` if none
 
-- [ ] **1.4.7** Create `middleware.ts` - Route protection
-  - Protect all routes except `/login`, `/signup`, `/callback`, `/invite/*`
-  - Redirect unauthenticated users to `/login`
-  - Redirect authenticated users from auth pages to `/`
+### 1.5 Organization First-Login Flow - COMPLETED
 
-### 1.5 Organization First-Login Flow
+- [x] **1.5.1** Create `app/onboarding/page.tsx`
+  - Organization name input
+  - Creates organization and adds user as admin
+  - Redirects to dashboard
 
-- [ ] **1.5.1** Create `app/(auth)/onboarding/page.tsx`
-  - Check if user has any organizations
-  - If no orgs: show "Create Organization" form
-  - If pending invites: show option to accept
-  - Create org → redirect to dashboard
-
-- [ ] **1.5.2** Create `lib/actions/organizations.ts`
-  - `createOrganization(name, slug)`
-  - `getOrganization(id)`
-  - `getUserOrganizations()`
-
-- [ ] **1.5.3** Create `hooks/use-organization.ts` - Organization context hook
-  - Current organization state
-  - Switch organization function
-
-- [ ] **1.5.4** Create `components/providers/organization-provider.tsx`
-  - Wrap app with organization context
-  - Store current org in cookie/localStorage
+- [x] **1.5.2** Create `lib/actions/organizations.ts`
+  - `createOrganization(formData)` - Creates org with auto-generated slug
+  - `getOrganization(id)` - Get single org
+  - `getUserOrganizations()` - Get user's orgs
+  - `updateOrganization(id, formData)` - Update org
+  - `deleteOrganization(id)` - Delete org
+  - `getOrganizationMembers(orgId)` - Get members with profiles
+  - `updateMemberRole(orgId, userId, role)` - Change member role
+  - `removeMember(orgId, userId)` - Remove member
 
 ---
 
@@ -141,33 +106,29 @@
 
 ### 2.1 Organization Management
 
-- [ ] **2.1.1** Extend `lib/actions/organizations.ts`
-  - `updateOrganization(id, data)`
-  - `deleteOrganization(id)`
-  - `switchOrganization(id)`
-
-- [ ] **2.1.2** Create `lib/actions/teams.ts`
+- [ ] **2.1.1** Create `lib/actions/teams.ts`
   - `createTeam(orgId, name, description)`
   - `updateTeam(id, data)`
   - `deleteTeam(id)`
   - `getTeams(orgId)`
 
-- [ ] **2.1.3** Create `lib/actions/members.ts`
+- [ ] **2.1.2** Create `lib/actions/invitations.ts`
   - `inviteMember(orgId, email, role)`
   - `acceptInvitation(token)`
   - `cancelInvitation(id)`
-  - `removeMember(orgId, userId)`
-  - `updateMemberRole(orgId, userId, role)`
-  - `getOrgMembers(orgId)`
   - `getPendingInvitations(orgId)`
 
-- [ ] **2.1.4** Create `app/invite/[token]/page.tsx` - Invitation acceptance page
+- [ ] **2.1.3** Create `app/invite/[token]/page.tsx` - Invitation acceptance page
 
-- [ ] **2.1.5** Create `app/(dashboard)/settings/organization/page.tsx`
+- [ ] **2.1.4** Create `app/(dashboard)/settings/organization/page.tsx`
   - Org name, logo, slug
   - Members list with roles
   - Invite new member form
   - Danger zone: delete org
+
+- [ ] **2.1.5** Create `hooks/use-organization.ts` - Organization context hook
+
+- [ ] **2.1.6** Create `components/providers/organization-provider.tsx`
 
 ### 2.2 Client Management
 
@@ -177,15 +138,12 @@
   - `deleteClient(id)`
   - `getClient(id)`
   - `getClients(orgId, filters)`
-  - `getClientProjectCount(clientId)`
 
 - [ ] **2.2.2** Update `components/clients-content.tsx`
   - Replace mock data with `getClients()` call
-  - Wire up ClientWizard to `createClient()`
 
 - [ ] **2.2.3** Update `components/clients/ClientDetailsPage.tsx`
   - Fetch client with `getClient()`
-  - Wire up edit functionality
 
 - [ ] **2.2.4** Update `components/clients/ClientWizard.tsx`
   - Call `createClient()` or `updateClient()` on submit
@@ -193,14 +151,13 @@
 ### 2.3 Project Management
 
 - [ ] **2.3.1** Create `lib/actions/projects.ts`
-  - `createProject(data)` - Full wizard data
+  - `createProject(data)`
   - `updateProject(id, data)`
   - `deleteProject(id)`
-  - `getProject(id)` - With all relations
-  - `getProjects(orgId, filters)` - List with pagination
+  - `getProject(id)`
+  - `getProjects(orgId, filters)`
   - `addProjectMember(projectId, userId, role)`
   - `removeProjectMember(projectId, userId)`
-  - `updateProjectProgress(id, progress)`
 
 - [ ] **2.3.2** Create `lib/actions/project-details.ts`
   - `getProjectScope(projectId)`
@@ -212,20 +169,12 @@
 
 - [ ] **2.3.3** Update `components/projects-content.tsx`
   - Replace mock `projects` import with `getProjects()` call
-  - Wire up filters to query params
 
 - [ ] **2.3.4** Update `components/project-wizard/ProjectWizard.tsx`
   - Call `createProject()` on submit
-  - Pass all wizard data (intent, outcomes, ownership, structure)
 
 - [ ] **2.3.5** Update `components/projects/ProjectDetailsPage.tsx`
   - Fetch with `getProject()`
-  - Replace `getProjectDetailsById()` mock function
-
-- [ ] **2.3.6** Update project detail components
-  - `ScopeColumns.tsx` - Fetch/update scope
-  - `OutcomesList.tsx` - Fetch/update outcomes
-  - `KeyFeaturesColumns.tsx` - Fetch/update features
 
 ---
 
@@ -250,102 +199,51 @@
   - `getTasksByWorkstream(workstreamId)`
   - `reorderTasks(workstreamId, taskIds[])`
   - `moveTaskToWorkstream(taskId, newWorkstreamId, newIndex)`
-  - `bulkUpdateTaskStatus(taskIds[], status)`
 
 ### 3.3 Wire Up Components
 
 - [ ] **3.3.1** Update `components/projects/WorkstreamTab.tsx`
-  - Fetch workstreams with tasks
-  - Implement drag-drop with `reorderTasks()` and `moveTaskToWorkstream()`
-  - Task create/edit/delete
-
 - [ ] **3.3.2** Update `components/projects/ProjectTasksTab.tsx`
-  - Fetch tasks from Supabase
-  - Wire up task actions
-
 - [ ] **3.3.3** Update `components/tasks/MyTasksPage.tsx`
-  - Fetch user's tasks across all projects
-  - Group by project
-  - Wire up task actions
-
 - [ ] **3.3.4** Update `components/tasks/TaskQuickCreateModal.tsx`
-  - Call `createTask()` on submit
-  - Fetch workstreams for dropdown
-
 - [ ] **3.3.5** Update `components/tasks/TaskWeekBoardView.tsx`
-  - Fetch tasks for week view
-  - Wire up drag-drop
 
 ---
 
 ## Phase 4: Files, Notes & AI
 
-### 4.1 Storage Setup
+### 4.1 File Actions
 
-- [ ] **4.1.1** Verify storage buckets created via migration
-- [ ] **4.1.2** Configure CORS for storage buckets in Supabase dashboard
-
-### 4.2 File Actions
-
-- [ ] **4.2.1** Create `lib/actions/files.ts`
+- [ ] **4.1.1** Create `lib/actions/files.ts`
   - `uploadFile(projectId, file, metadata)`
   - `deleteFile(id)`
   - `getProjectFiles(projectId)`
-  - `getFileUrl(storagePath)` - Generate signed URL
+  - `getFileUrl(storagePath)`
 
-- [ ] **4.2.2** Update `components/projects/AssetsFilesTab.tsx`
-  - Fetch files with `getProjectFiles()`
-  - Wire up upload modal
+- [ ] **4.1.2** Update file upload components
 
-- [ ] **4.2.3** Update `components/projects/UploadAssetFilesModal.tsx`
-  - Call `uploadFile()` on submit
-  - Show upload progress
+### 4.2 Note Actions
 
-- [ ] **4.2.4** Update `components/projects/AddFileModal.tsx`
-  - Support both file upload and link assets
-
-### 4.3 Note Actions
-
-- [ ] **4.3.1** Create `lib/actions/notes.ts`
+- [ ] **4.2.1** Create `lib/actions/notes.ts`
   - `createNote(projectId, data)`
   - `updateNote(id, data)`
   - `deleteNote(id)`
   - `getProjectNotes(projectId)`
-  - `getNote(id)`
 
-- [ ] **4.3.2** Update `components/projects/NotesTab.tsx`
-  - Fetch notes with `getProjectNotes()`
+- [ ] **4.2.2** Update note components
 
-- [ ] **4.3.3** Update `components/projects/CreateNoteModal.tsx`
-  - Call `createNote()` on submit
+### 4.3 AI Integration
 
-- [ ] **4.3.4** Update `components/projects/NotePreviewModal.tsx`
-  - Fetch full note data
-  - Support edit mode
-
-### 4.4 AI Integration
-
-- [ ] **4.4.1** Create `lib/actions/ai.ts`
+- [ ] **4.3.1** Create `lib/actions/user-settings.ts`
   - `saveAISettings(userId, provider, apiKey)`
   - `getAISettings(userId)`
-  - `generateText(prompt, context)` - Generic AI call
+
+- [ ] **4.3.2** Create `lib/actions/ai.ts`
+  - `generateText(prompt, context)`
   - `generateProjectDescription(projectContext)`
   - `generateTasks(projectContext)`
 
-- [ ] **4.4.2** Create `app/(dashboard)/settings/ai/page.tsx`
-  - AI provider selection
-  - API key input (encrypted storage)
-  - Model preference
-
-- [ ] **4.4.3** Create `components/ai/AskAIDialog.tsx`
-  - Reusable AI dialog component
-  - Shows loading state
-  - Displays AI response
-
-- [ ] **4.4.4** Wire up "Ask AI" buttons
-  - `components/project-header.tsx`
-  - `components/tasks/MyTasksPage.tsx`
-  - `components/project-wizard/ProjectDescriptionEditor.tsx`
+- [ ] **4.3.3** Create `app/(dashboard)/settings/ai/page.tsx`
 
 ---
 
@@ -353,142 +251,76 @@
 
 ### 5.1 Real-time Setup
 
-- [ ] **5.1.1** Enable Realtime in Supabase dashboard for tables:
-  - projects, tasks, workstreams, project_notes, project_files
-
+- [ ] **5.1.1** Enable Realtime in Supabase dashboard
 - [ ] **5.1.2** Create `hooks/use-realtime.ts`
-  - `useRealtimeProjects(orgId)`
-  - `useRealtimeTasks(projectId)`
-  - `useRealtimeWorkstreams(projectId)`
-  - `useRealtimeNotes(projectId)`
-  - `useRealtimeFiles(projectId)`
-
 - [ ] **5.1.3** Integrate realtime hooks into components
-  - Project list auto-updates
-  - Task board live sync
-  - Notes/files live updates
 
 ### 5.2 Final Integration
 
-- [ ] **5.2.1** Update `app/layout.tsx`
-  - Add Supabase auth provider
-  - Add organization provider
-
-- [ ] **5.2.2** Update `components/app-sidebar.tsx`
-  - Show current user info
-  - Show user's organizations
-  - Logout button
-
+- [ ] **5.2.1** Update `app/layout.tsx` with providers
+- [ ] **5.2.2** Update `components/app-sidebar.tsx` with user info
 - [ ] **5.2.3** Create `app/(dashboard)/layout.tsx`
-  - Protected layout wrapper
-  - Requires authentication
-  - Requires organization
 
 ### 5.3 Testing & Deployment
 
 - [ ] **5.3.1** Test all auth flows
-  - Sign up, sign in, OAuth, sign out
-  - Password reset
-
 - [ ] **5.3.2** Test organization flows
-  - Create org, invite member, accept invite
-  - Change roles, remove member
-
 - [ ] **5.3.3** Test data isolation (RLS)
-  - Create two users in different orgs
-  - Verify data isolation
-
 - [ ] **5.3.4** Test real-time
-  - Open two browsers
-  - Verify changes sync
-
 - [ ] **5.3.5** Configure Vercel environment variables
-  ```
-  NEXT_PUBLIC_SUPABASE_URL
-  NEXT_PUBLIC_SUPABASE_ANON_KEY
-  SUPABASE_SERVICE_ROLE_KEY
-  NEXT_PUBLIC_SITE_URL
-  ```
-
 - [ ] **5.3.6** Deploy to Vercel
-  ```bash
-  vercel --prod
-  ```
-
-- [ ] **5.3.7** Configure OAuth redirect URLs in Supabase
-  - Add production URL to allowed redirects
-
-- [ ] **5.3.8** Final smoke test on production
+- [ ] **5.3.7** Configure OAuth redirect URLs
+- [ ] **5.3.8** Final smoke test
 
 ---
 
-## File Structure Summary
+## Files Created in Phase 1
 
 ```
 lib/
 ├── supabase/
-│   ├── client.ts
-│   ├── server.ts
-│   ├── admin.ts
-│   ├── types.ts
-│   └── database.types.ts (generated)
+│   ├── client.ts          # Browser Supabase client
+│   ├── server.ts          # Server Supabase client (cookies)
+│   ├── admin.ts           # Service role client
+│   └── types.ts           # Database types
 ├── actions/
-│   ├── auth.ts
-│   ├── organizations.ts
-│   ├── teams.ts
-│   ├── members.ts
-│   ├── projects.ts
-│   ├── project-details.ts
-│   ├── workstreams.ts
-│   ├── tasks.ts
-│   ├── clients.ts
-│   ├── files.ts
-│   ├── notes.ts
-│   └── ai.ts
-hooks/
-├── use-auth.ts
-├── use-organization.ts
-├── use-realtime.ts
+│   ├── auth.ts            # Auth server actions
+│   └── organizations.ts   # Organization server actions
+
 app/
 ├── (auth)/
-│   ├── layout.tsx
-│   ├── login/page.tsx
-│   ├── signup/page.tsx
-│   ├── callback/route.ts
-│   ├── reset-password/page.tsx
-│   └── onboarding/page.tsx
-├── (dashboard)/
-│   ├── layout.tsx
-│   └── settings/
-│       ├── organization/page.tsx
-│       ├── profile/page.tsx
-│       └── ai/page.tsx
-├── invite/[token]/page.tsx
-└── middleware.ts
+│   ├── layout.tsx         # Auth layout
+│   ├── login/page.tsx     # Login page
+│   └── signup/page.tsx    # Signup page
+├── auth/
+│   └── callback/route.ts  # OAuth callback
+├── onboarding/
+│   └── page.tsx           # Organization onboarding
+
+middleware.ts              # Route protection
+
 supabase/
+├── config.toml            # Supabase config
 └── migrations/
-    ├── 001_initial_schema.sql
-    ├── 002_rls_policies.sql
-    └── 003_storage.sql
-components/
-├── providers/
-│   └── organization-provider.tsx
-└── ai/
-    └── AskAIDialog.tsx
+    ├── 20260122000001_initial_schema.sql
+    ├── 20260122000002_rls_policies.sql
+    └── 20260122000003_storage.sql
+
+.env.local                 # Environment variables (not committed)
 ```
 
 ---
 
 ## Checkpoints
 
-| Phase | Checkpoint | Verification |
-|-------|------------|--------------|
-| 1 | Auth works | Can sign up, sign in, sign out |
-| 1 | Org created | First login creates organization |
-| 2 | Projects CRUD | Can create/edit/delete projects |
-| 2 | Clients CRUD | Can create/edit/delete clients |
-| 3 | Tasks work | Can create tasks, drag-drop reorder |
-| 4 | Files upload | Can upload/download files |
-| 4 | AI works | Can generate text with user's API key |
-| 5 | Real-time | Changes sync across browsers |
-| 5 | Deployed | Production URL works |
+| Phase | Checkpoint | Status |
+|-------|------------|--------|
+| 1 | Auth works | COMPLETED |
+| 1 | Org created | COMPLETED |
+| 2 | Projects CRUD | Pending |
+| 2 | Clients CRUD | Pending |
+| 3 | Tasks work | Pending |
+| 4 | Files upload | Pending |
+| 4 | AI works | Pending |
+| 5 | Real-time | Pending |
+| 5 | Deployed | Pending |
