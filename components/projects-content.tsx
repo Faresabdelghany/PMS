@@ -74,15 +74,35 @@ export function ProjectsContent({ initialProjects, clients, organizationId }: Pr
     onInsert: (newProject) => {
       setProjects((prev) => {
         if (prev.some((p) => p.id === newProject.id)) return prev
-        // Add minimal project data - will be typed as ProjectWithRelations
-        return [newProject as ProjectWithRelations, ...prev]
+        // Create a proper ProjectWithRelations object with empty relations
+        // Relations will be populated on next page load
+        const projectWithRelations: ProjectWithRelations = {
+          ...newProject,
+          client: null,
+          team: null,
+          members: [],
+        }
+        return [projectWithRelations, ...prev]
       })
     },
     onUpdate: (updatedProject) => {
       setProjects((prev) =>
         prev.map((project) =>
           project.id === updatedProject.id
-            ? { ...project, ...updatedProject }
+            ? {
+                // Preserve existing relations (client, team, members)
+                ...project,
+                // Only update scalar fields from the realtime payload
+                name: updatedProject.name,
+                description: updatedProject.description,
+                status: updatedProject.status,
+                priority: updatedProject.priority,
+                progress: updatedProject.progress,
+                start_date: updatedProject.start_date,
+                end_date: updatedProject.end_date,
+                tags: updatedProject.tags,
+                type_label: updatedProject.type_label,
+              }
             : project
         )
       )
