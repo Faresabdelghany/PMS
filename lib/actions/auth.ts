@@ -22,14 +22,11 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
     return { error: "Email and password are required" }
   }
 
-  const headersList = await headers()
-  const origin = headersList.get("origin") || process.env.NEXT_PUBLIC_SITE_URL
-
-  const { error } = await supabase.auth.signUp({
+  // Sign up with email confirmation disabled (auto-confirm)
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: `${origin}/auth/callback`,
       data: {
         full_name: fullName,
       },
@@ -38,6 +35,28 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
 
   if (error) {
     return { error: error.message }
+  }
+
+  // If user is created and session exists, redirect to onboarding
+  if (data.user && data.session) {
+    revalidatePath("/", "layout")
+    redirect("/onboarding")
+  }
+
+  // Fallback: if no session (email confirmation is required in Supabase settings)
+  // Try to sign in the user directly
+  if (data.user && !data.session) {
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (signInError) {
+      return { error: signInError.message }
+    }
+
+    revalidatePath("/", "layout")
+    redirect("/onboarding")
   }
 
   return { success: true }

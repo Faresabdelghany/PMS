@@ -17,10 +17,21 @@ export type OrganizationContextType = {
 
 export const OrganizationContext = createContext<OrganizationContextType | null>(null)
 
-export function useOrganization() {
+/**
+ * Hook to access organization context
+ * Returns null values if not within OrganizationProvider (for backward compatibility)
+ */
+export function useOrganization(): OrganizationContextType {
   const context = useContext(OrganizationContext)
+  // Return default values if not within provider (backward compatibility)
   if (!context) {
-    throw new Error("useOrganization must be used within an OrganizationProvider")
+    return {
+      organization: null,
+      organizations: [],
+      isLoading: false,
+      switchOrganization: () => {},
+      refreshOrganizations: async () => {},
+    }
   }
   return context
 }

@@ -58,6 +58,14 @@ npx supabase gen types typescript       # Generate TypeScript types
 **Server Actions:**
 - `lib/actions/auth.ts` - Authentication (signIn, signUp, signOut, OAuth)
 - `lib/actions/organizations.ts` - Organization CRUD and member management
+- `lib/actions/projects.ts` - Project CRUD and member management
+- `lib/actions/clients.ts` - Client CRUD
+- `lib/actions/tasks.ts` - Task CRUD, reordering, status updates
+- `lib/actions/workstreams.ts` - Workstream CRUD and reordering
+- `lib/actions/files.ts` - File upload/download to Supabase Storage
+- `lib/actions/notes.ts` - Notes CRUD with audio support
+- `lib/actions/ai.ts` - AI generation (OpenAI, Anthropic, Google)
+- `lib/actions/user-settings.ts` - AI settings and API key management
 
 **Database Schema:**
 - 17 tables with full RLS policies
@@ -107,7 +115,11 @@ export default async function Page({ params }: PageProps) {
 - `workstreams` - Task grouping within projects
 - `project_files`, `project_notes` - Project assets
 
-**Mock Data (legacy):** Still in `lib/data/` - being migrated to Supabase queries.
+**Real-time Hooks:** `hooks/use-realtime.ts` provides instant updates via Supabase Realtime:
+- `useTasksRealtime`, `useWorkstreamsRealtime`, `useProjectsRealtime`, `useClientsRealtime`
+- `useFilesRealtime`, `useNotesRealtime`, `useOrganizationMembersRealtime`
+
+**Legacy Mock Data:** `lib/data/` contains mock data files for reference (all components now use Supabase).
 
 ## Environment Variables
 
@@ -132,17 +144,22 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 - Charts: Recharts
 - Icons: Lucide, Phosphor Icons
 
-## Implementation Status
+## Deployment
 
-See `docs/plans/2026-01-22-backend-implementation-plan.md` for detailed progress.
+**Production URL:** https://pms-nine-gold.vercel.app
 
-**Completed:**
-- Phase 1: Foundation (Auth, Database, Supabase setup)
+- Hosted on Vercel with auto-deploy from `main` branch
+- Supabase project: `lazhmdyajdqbnxxwyxun`
+- Google OAuth configured for production
 
-**In Progress:**
-- Phase 2: Core Data Layer (Organizations, Clients, Projects)
+## Features
 
-**Pending:**
-- Phase 3: Tasks & Workstreams
-- Phase 4: Files, Notes & AI
-- Phase 5: Real-time & Deployment
+- **Authentication:** Email/password + Google OAuth with organization onboarding
+- **Multi-tenant:** Organization-based data isolation via RLS
+- **Projects:** Full CRUD with wizard, scope, outcomes, features
+- **Tasks:** Kanban boards, drag-drop reordering, workstream grouping
+- **Clients:** Client management with project associations
+- **Files:** Upload to Supabase Storage (up to 100MB)
+- **Notes:** Rich text notes with audio support
+- **AI:** User-provided API keys for OpenAI, Anthropic, Google Gemini
+- **Real-time:** Instant updates via Supabase Realtime (~50ms latency)

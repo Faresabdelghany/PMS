@@ -39,7 +39,6 @@ type SignupFormValues = z.infer<typeof signupSchema>
 export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -48,7 +47,7 @@ export default function SignupPage() {
       email: "",
       password: "",
     },
-    mode: "onBlur",
+    mode: "onChange",
   })
 
   async function onSubmit(values: SignupFormValues) {
@@ -65,35 +64,13 @@ export default function SignupPage() {
     if (result?.error) {
       setFormError(result.error)
       setIsLoading(false)
-    } else if (result?.success) {
-      setSuccess(true)
-      setIsLoading(false)
     }
+    // If successful, the server action will redirect automatically
   }
 
   async function handleGoogleSignIn() {
     setIsLoading(true)
     await signInWithGoogle()
-  }
-
-  const isFormValid = form.formState.isValid
-
-  if (success) {
-    return (
-      <Card>
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Check your email</CardTitle>
-          <CardDescription>
-            We&apos;ve sent you a confirmation link. Please check your email to verify your account.
-          </CardDescription>
-        </CardHeader>
-        <CardFooter className="flex justify-center">
-          <Link href="/login">
-            <Button variant="outline">Back to sign in</Button>
-          </Link>
-        </CardFooter>
-      </Card>
-    )
   }
 
   return (
@@ -172,7 +149,7 @@ export default function SignupPage() {
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading || !isFormValid}
+              disabled={isLoading}
             >
               {isLoading ? "Creating account..." : "Create account"}
             </Button>
