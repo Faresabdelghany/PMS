@@ -1,143 +1,122 @@
-<h1 align="center">Project Dashboard · Next.js + shadcn/ui</h1>
+# Project Management System (PMS)
 
-<p align="center">
-  A modern project & task management dashboard, built as a real-world UI template for founders, product designers, and full‑stack developers.
-</p>
-
-<p align="center">
-  <a href="https://v0-project-workspace.vercel.app"><strong>Live demo</strong></a>
-  ·
-  <a href="#getting-started"><strong>Run locally</strong></a>
-  ·
-  <a href="#architecture"><strong>Explore the architecture</strong></a>
-</p>
-
----
-
-## Overview
-
-This repository is a small but opinionated **project management dashboard UI** built with:
-
-- **Next.js App Router**
-- **TypeScript**
-- **Tailwind CSS**
-- **shadcn/ui + custom sidebar primitives**
-
-It is designed as a **living portfolio piece**:
-
-- You can browse the actual code, not just design mockups.
-- You can clone, run, and extend the dashboard like a real product.
-- It demonstrates how to combine design and engineering decisions in a clean, extensible way.
-
-If you are a founder, indie hacker, or engineer evaluating collaboration, this repo is meant to show how I think about **systems, structure, and UI details**.
-
-## Live Demo
-
-The dashboard is deployed on Vercel:
-
-- **Production**: https://v0-project-workspace.vercel.app
-
-> Note: This is a UI‑first demo. It uses mocked data and does not include authentication or a backend API.
-
-## Features
-
-- **Project overview layout**
-  - Sidebar navigation with active states and badges.
-  - Active projects list with progress visualization.
-
-- **Responsive sidebar system**
-  - Built on top of a custom `SidebarProvider` with context.
-  - Keyboard shortcut to toggle sidebar.
-  - Mobile behavior and state persisted via cookies.
-
-- **Design‑system‑oriented components**
-  - Base primitives from shadcn/ui.
-  - Composed `AppSidebar` component using data from `lib/data`.
-  - Utility helpers in `lib/utils` for consistent styling.
-
-- **Mock data that resembles real workloads**
-  - Projects with statuses, priorities, tags, and time ranges.
-  - Sidebar navigation and “Active projects” summaries.
-
-## Architecture
-
-High‑level structure:
-
-- `app/`
-  - `layout.tsx` – Root layout, metadata, fonts, and global styles.
-  - `page.tsx` – Main dashboard page wiring the `SidebarProvider`, `AppSidebar`, and page content.
-
-- `components/`
-  - `app-sidebar.tsx` – Application sidebar composed from shared sidebar primitives and data.
-  - `projects-content.tsx` – Main dashboard content (project list, filters, and timeline). 
-  - `progress-circle.tsx` – Small reusable visualization for project progress.
-  - `ui/` – Design-system‑like primitives (buttons, sidebar primitives, input, tooltip, etc.).
-
-- `lib/`
-  - `utils.ts` – Utility helpers (e.g., class name helpers).
-  - `data/projects.ts` – Seed data for projects and helpers to compute filter counts.
-  - `data/sidebar.ts` – Seed data for sidebar navigation, active projects summary, and footer items.
-
-This separation keeps:
-
-- **UI primitives** (in `components/ui`) reusable across the app.
-- **Feature components** (like `AppSidebar`) focused on composition instead of raw config.
-- **Data** (in `lib/data`) decoupled from the UI, so you can easily swap mock data for real APIs later.
+A modern project and task management SaaS application built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, and Supabase.
 
 ## Tech Stack
 
-- **Framework**: Next.js (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **UI Library**: shadcn/ui, Radix UI primitives
+- **Framework**: Next.js 16 (App Router, React Server Components)
+- **Language**: TypeScript (strict mode)
+- **Styling**: Tailwind CSS 4.1 + PostCSS
+- **Backend**: Supabase (PostgreSQL, Auth, Realtime, Storage)
+- **UI Components**: shadcn/ui + Radix UI primitives
+- **Forms**: React Hook Form + Zod validation
+- **Rich Text**: Tiptap editor
+- **Drag & Drop**: @dnd-kit
+- **Charts**: Recharts
 - **Icons**: Lucide, Phosphor Icons
-- **Analytics**: Vercel Analytics
+
+## Features
+
+- **Multi-tenant Architecture**: Organization-based data isolation with role-based access control
+- **Authentication**: Email/password and OAuth (Google, GitHub) via Supabase Auth
+- **Project Management**: Full CRUD with status tracking, priorities, and progress visualization
+- **Task Management**: Kanban-style task boards with drag-and-drop reordering
+- **Team Collaboration**: Organization members, teams, and project-level roles
+- **Client Management**: Track clients with projects and contact information
+- **Workstreams**: Organize tasks within projects into logical groups
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+
-- pnpm (recommended) or npm/yarn
+- Node.js 20+
+- pnpm (recommended)
 
-### Install dependencies
+### Environment Variables
 
-\`\`\`bash
+Create a `.env.local` file with:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+
+### Installation
+
+```bash
 pnpm install
-\`\`\`
+```
 
-### Run the development server
+### Development
 
-\`\`\`bash
+```bash
 pnpm dev
-\`\`\`
+```
 
 The app will be available at `http://localhost:3000`.
 
-### Build for production
+### Production Build
 
-\`\`\`bash
+```bash
 pnpm build
 pnpm start
-\`\`\`
+```
 
-## Reuse & Customization
+## Project Structure
 
-This project is intentionally small so you can:
+```
+app/                    # Next.js App Router pages
+  (auth)/              # Authentication pages (login, signup)
+  (dashboard)/         # Protected dashboard routes
+  auth/callback/       # OAuth callback handler
+  onboarding/          # Organization onboarding
 
-- **Use it as a starting point** for your own SaaS dashboard or internal tooling.
-- **Replace the mock data** in `lib/data` with real data from your API.
-- **Extend the design system** by adding more components under `components/ui`.
-- **Refine the information architecture** (routes under `app/`) to match your own product.
+components/            # React components
+  ui/                  # shadcn/ui design system primitives
+  projects/            # Project-related components
+  tasks/               # Task-related components
+  clients/             # Client-related components
+  project-wizard/      # Multi-step project creation
 
-If you end up using this as a starting point, a link back or a star on the repo is always appreciated.
+lib/                   # Utilities and data
+  supabase/            # Supabase clients and types
+  actions/             # Server Actions for data mutations
 
-## About
+hooks/                 # Custom React hooks
 
-This project was built as an **open-source, living portfolio** to demonstrate how I approach:
+supabase/             # Database migrations
+```
 
-- Structuring small front‑end apps.
-- Balancing visual design and implementation detail.
-- Building reusable UI primitives that are still easy to adapt.
+## Database Schema
 
-If you are a founder, PM, or engineer and want to talk about collaborating, feel free to reach out.
+The application uses a PostgreSQL database with Row Level Security (RLS) policies:
+
+- `profiles` - User profiles (synced from auth.users)
+- `organizations` - Multi-tenant organizations
+- `organization_members` - Org membership with roles
+- `teams` - Teams within organizations
+- `clients` - Client management
+- `projects` - Project management
+- `project_members` - Project membership with roles
+- `tasks` - Task management
+- `workstreams` - Task grouping within projects
+- `invitations` - Organization invitations
+
+## Development Commands
+
+```bash
+pnpm dev              # Start development server
+pnpm build            # Production build
+pnpm start            # Run production server
+pnpm lint             # Run ESLint
+```
+
+### Supabase Commands
+
+```bash
+npx supabase db push                    # Push migrations to remote
+npx supabase db reset --linked          # Reset remote database
+npx supabase gen types typescript       # Generate TypeScript types
+```

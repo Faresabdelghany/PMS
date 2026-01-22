@@ -2,11 +2,9 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import type { ActionResult } from "./types"
 
-export type ActionResult<T = void> = {
-  error?: string
-  data?: T
-}
+export type { ActionResult }
 
 // ============================================
 // PROJECT SCOPE

@@ -3,11 +3,9 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import type { Task, TaskInsert, TaskUpdate, TaskStatus, TaskPriority } from "@/lib/supabase/types"
+import type { ActionResult } from "./types"
 
-export type ActionResult<T = void> = {
-  error?: string
-  data?: T
-}
+export type { ActionResult }
 
 export type TaskFilters = {
   status?: TaskStatus

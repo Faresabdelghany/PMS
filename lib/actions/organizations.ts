@@ -4,11 +4,9 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
 import type { Organization, OrganizationInsert, OrganizationUpdate, OrgMemberRole } from "@/lib/supabase/types"
+import type { ActionResult } from "./types"
 
-export type ActionResult<T = void> = {
-  error?: string
-  data?: T
-}
+export type { ActionResult }
 
 // Generate slug from name
 function generateSlug(name: string): string {

@@ -11,11 +11,9 @@ import type {
   ProjectMember,
   ProjectMemberRole,
 } from "@/lib/supabase/types"
+import type { ActionResult } from "./types"
 
-export type ActionResult<T = void> = {
-  error?: string
-  data?: T
-}
+export type { ActionResult }
 
 export type ProjectFilters = {
   status?: ProjectStatus

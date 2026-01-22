@@ -3,11 +3,9 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import type { Invitation, OrgMemberRole } from "@/lib/supabase/types"
+import type { ActionResult } from "./types"
 
-export type ActionResult<T = void> = {
-  error?: string
-  data?: T
-}
+export type { ActionResult }
 
 // Invite member to organization
 export async function inviteMember(
@@ -27,11 +25,21 @@ export async function inviteMember(
   }
 
   // Check if email is already a member
-  const { data: existingMember } = await supabase
+  const { data: members } = await supabase
     .from("organization_members")
     .select("id, profile:profiles(email)")
     .eq("organization_id", orgId)
-    .single()
+
+  const isAlreadyMember = members?.some(
+    (member) => {
+      const profile = member.profile as { email: string } | null
+      return profile?.email?.toLowerCase() === email.toLowerCase()
+    }
+  )
+
+  if (isAlreadyMember) {
+    return { error: "This email is already a member of the organization" }
+  }
 
   // Check for existing pending invitation
   const { data: existingInvite } = await supabase

@@ -3,11 +3,9 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import type { Workstream, WorkstreamInsert, WorkstreamUpdate } from "@/lib/supabase/types"
+import type { ActionResult } from "./types"
 
-export type ActionResult<T = void> = {
-  error?: string
-  data?: T
-}
+export type { ActionResult }
 
 // Create workstream
 export async function createWorkstream(
