@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
+import { useRealtime } from "@/hooks/use-realtime"
 import { format } from "date-fns"
 import { ChartBar, DotsSixVertical, FolderSimple, Plus, Sparkle } from "@phosphor-icons/react/dist/ssr"
 import {
@@ -117,6 +118,38 @@ export function MyTasksPage({
   const [createContext, setCreateContext] = useState<CreateTaskContext | undefined>(undefined)
   const [editingTask, setEditingTask] = useState<ProjectTask | undefined>(undefined)
 
+  // Subscribe to real-time task changes for user's tasks
+  useRealtime({
+    table: "tasks",
+    event: "*",
+    enabled: true,
+    onUpdate: (updatedTask) => {
+      setGroups((prev) =>
+        prev.map((group) => ({
+          ...group,
+          tasks: group.tasks.map((task) =>
+            task.id === updatedTask.id
+              ? {
+                  ...task,
+                  name: updatedTask.name,
+                  status: updatedTask.status,
+                  tag: updatedTask.tag || undefined,
+                }
+              : task
+          ),
+        }))
+      )
+    },
+    onDelete: (deletedTask) => {
+      setGroups((prev) =>
+        prev.map((group) => ({
+          ...group,
+          tasks: group.tasks.filter((task) => task.id !== deletedTask.id),
+        }))
+      )
+    },
+  })
+
   const counts = useMemo<FilterCounts>(() => {
     const allTasks = groups.flatMap((g) => g.tasks)
     return computeTaskFilterCounts(allTasks)
@@ -150,8 +183,17 @@ export function MyTasksPage({
   }
 
   const handleTaskCreated = (task: ProjectTask) => {
-    // Refresh from server to get the real task data
-    router.refresh()
+    // Add to local state directly
+    setGroups((prev) => {
+      const groupIndex = prev.findIndex((g) => g.project.id === task.projectId)
+      if (groupIndex === -1) return prev
+
+      return prev.map((group, idx) =>
+        idx === groupIndex
+          ? { ...group, tasks: [task, ...group.tasks] }
+          : group
+      )
+    })
   }
 
   const toggleTask = async (taskId: string) => {
@@ -194,8 +236,6 @@ export function MyTasksPage({
             ),
           }))
         )
-      } else {
-        router.refresh()
       }
     })
   }
@@ -216,6 +256,7 @@ export function MyTasksPage({
       const result = await updateTask(taskId, { tag: tagLabel || null })
       if (result.error) {
         toast.error("Failed to update task tag")
+        // Revert optimistic update on error
         router.refresh()
       }
     })
@@ -239,14 +280,22 @@ export function MyTasksPage({
       })
       if (result.error) {
         toast.error("Failed to update task date")
+        // Revert optimistic update on error
         router.refresh()
       }
     })
   }
 
   const handleTaskUpdated = (updated: ProjectTask) => {
-    // Refresh from server to get the real task data
-    router.refresh()
+    // Update local state directly
+    setGroups((prev) =>
+      prev.map((group) => ({
+        ...group,
+        tasks: group.tasks.map((task) =>
+          task.id === updated.id ? updated : task
+        ),
+      }))
+    )
   }
 
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -297,6 +346,7 @@ export function MyTasksPage({
       const result = await reorderTasks(workstreamId, activeGroup.project.id, taskIds)
       if (result.error) {
         toast.error("Failed to reorder tasks")
+        // Revert optimistic update on error
         router.refresh()
       }
     })
