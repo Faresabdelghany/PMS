@@ -42,41 +42,45 @@ export function ProjectDetailsPage({ projectId, supabaseProject }: ProjectDetail
 
   useEffect(() => {
     let cancelled = false
-    setState({ status: "loading" })
 
+    // Get mock project details structure
+    let project = getProjectDetailsById(projectId)
+
+    // Override with Supabase data if available
+    if (supabaseProject) {
+      project = {
+        ...project,
+        id: supabaseProject.id,
+        name: supabaseProject.name,
+        description: supabaseProject.description || project.description,
+        meta: {
+          ...project.meta,
+          priorityLabel: supabaseProject.priority.charAt(0).toUpperCase() + supabaseProject.priority.slice(1),
+        },
+        backlog: {
+          ...project.backlog,
+          statusLabel: supabaseProject.status === "active" ? "Active"
+            : supabaseProject.status === "planned" ? "Planned"
+            : supabaseProject.status === "completed" ? "Completed"
+            : supabaseProject.status === "cancelled" ? "Cancelled"
+            : "Backlog",
+          priorityLabel: supabaseProject.priority.charAt(0).toUpperCase() + supabaseProject.priority.slice(1),
+        },
+        time: {
+          ...project.time,
+          progressPercent: supabaseProject.progress || 0,
+        },
+      }
+      // When we have Supabase data, set state immediately (no artificial delay)
+      setState({ status: "ready", project })
+      return
+    }
+
+    // Only use delay for mock data fallback
+    setState({ status: "loading" })
     const delay = 600 + Math.floor(Math.random() * 301)
     const t = setTimeout(() => {
       if (cancelled) return
-      // Get mock project details structure
-      let project = getProjectDetailsById(projectId)
-
-      // Override with Supabase data if available
-      if (supabaseProject) {
-        project = {
-          ...project,
-          id: supabaseProject.id,
-          name: supabaseProject.name,
-          description: supabaseProject.description || project.description,
-          meta: {
-            ...project.meta,
-            priorityLabel: supabaseProject.priority.charAt(0).toUpperCase() + supabaseProject.priority.slice(1),
-          },
-          backlog: {
-            ...project.backlog,
-            statusLabel: supabaseProject.status === "active" ? "Active"
-              : supabaseProject.status === "planned" ? "Planned"
-              : supabaseProject.status === "completed" ? "Completed"
-              : supabaseProject.status === "cancelled" ? "Cancelled"
-              : "Backlog",
-            priorityLabel: supabaseProject.priority.charAt(0).toUpperCase() + supabaseProject.priority.slice(1),
-          },
-          time: {
-            ...project.time,
-            progressPercent: supabaseProject.progress || 0,
-          },
-        }
-      }
-
       setState({ status: "ready", project })
     }, delay)
 

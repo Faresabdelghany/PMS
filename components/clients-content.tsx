@@ -23,6 +23,19 @@ import { ClientWizard } from "@/components/clients/ClientWizard"
 import { ClientDetailsDrawer } from "@/components/clients/ClientDetailsDrawer"
 import type { ClientWithProjectCount } from "@/lib/actions/clients"
 
+interface MappedClient {
+  id: string
+  name: string
+  status: ClientStatus
+  industry?: string
+  location?: string
+  primaryContactName?: string
+  primaryContactEmail?: string
+  lastActivityLabel?: string
+  owner?: string
+  projectCount: number
+}
+
 function statusLabel(status: ClientStatus): string {
   if (status === "prospect") return "Prospect"
   if (status === "active") return "Active"
@@ -47,10 +60,10 @@ export function ClientsContent({ initialClients = [], organizationId }: ClientsC
   const [activeClientId, setActiveClientId] = useState<string | null>(null)
 
   // Use Supabase clients if available, otherwise fall back to mock data
-  const clients = useMemo(() => {
+  const clients: MappedClient[] = useMemo(() => {
     if (organizationId && initialClients.length > 0) {
       // Map Supabase clients to the format expected by the component
-      return initialClients.map(c => ({
+      return initialClients.map((c): MappedClient => ({
         id: c.id,
         name: c.name,
         status: c.status,
@@ -59,11 +72,14 @@ export function ClientsContent({ initialClients = [], organizationId }: ClientsC
         primaryContactName: c.primary_contact_name || undefined,
         primaryContactEmail: c.primary_contact_email || undefined,
         lastActivityLabel: c.updated_at ? new Date(c.updated_at).toLocaleDateString() : undefined,
-        owner: (c as any).owner?.full_name || undefined,
+        owner: c.owner?.full_name || undefined,
         projectCount: c.project_count,
       }))
     }
-    return mockClients
+    return mockClients.map((c): MappedClient => ({
+      ...c,
+      projectCount: getProjectCountForClient(c.name),
+    }))
   }, [organizationId, initialClients])
 
   const filtered = useMemo(() => {
@@ -98,8 +114,8 @@ export function ClientsContent({ initialClients = [], organizationId }: ClientsC
       }
 
       // sort by projects count
-      const ac = (a as any).projectCount ?? getProjectCountForClient(a.name)
-      const bc = (b as any).projectCount ?? getProjectCountForClient(b.name)
+      const ac = a.projectCount
+      const bc = b.projectCount
       if (ac === bc) return 0
       const cmp = ac < bc ? -1 : 1
       return sortDirection === "asc" ? cmp : -cmp
@@ -313,7 +329,6 @@ export function ClientsContent({ initialClients = [], organizationId }: ClientsC
                 </TableHeader>
                 <TableBody>
                   {visibleClients.map((client) => {
-                    const projectCount = (client as any).projectCount ?? getProjectCountForClient(client.name)
                     const checked = selectedIds.has(client.id)
                     return (
                       <TableRow key={client.id} className="hover:bg-muted/80">
@@ -367,7 +382,7 @@ export function ClientsContent({ initialClients = [], organizationId }: ClientsC
                           </Badge>
                         </TableCell>
                         <TableCell className="align-middle text-right text-sm text-muted-foreground">
-                          {projectCount}
+                          {client.projectCount}
                         </TableCell>
                         <TableCell className="align-middle text-sm text-muted-foreground whitespace-nowrap">
                           {client.lastActivityLabel ?? "—"}

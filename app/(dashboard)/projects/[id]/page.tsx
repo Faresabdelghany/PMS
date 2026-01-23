@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation"
 import { ProjectDetailsPage } from "@/components/projects/ProjectDetailsPage"
 import { getProject } from "@/lib/actions/projects"
 
@@ -10,7 +11,10 @@ export default async function Page({ params }: PageProps) {
 
   // Fetch project from Supabase
   const result = await getProject(id)
-  const project = result.data
 
-  return <ProjectDetailsPage projectId={id} supabaseProject={project} />
+  if (result.error || !result.data) {
+    notFound()
+  }
+
+  return <ProjectDetailsPage projectId={id} supabaseProject={result.data} />
 }
