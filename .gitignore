@@ -27,6 +27,13 @@ yarn-error.log*
 next-env.d.ts
 
 
-# windsurf fules
+# windsurf rules
 .windsurf/
 *.code-workspace
+
+# playwright
+/e2e/test-results/
+/e2e/.auth/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
