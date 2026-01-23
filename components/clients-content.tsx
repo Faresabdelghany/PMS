@@ -18,9 +18,10 @@ import { CaretRight, CaretUpDown, ArrowDown, ArrowUp, DotsThreeVertical, Plus, M
 import { toast } from "sonner"
 import Link from "next/link"
 import { useMemo, useState } from "react"
-import { clients, getProjectCountForClient, type ClientStatus } from "@/lib/data/clients"
+import { clients as mockClients, getProjectCountForClient, type ClientStatus } from "@/lib/data/clients"
 import { ClientWizard } from "@/components/clients/ClientWizard"
 import { ClientDetailsDrawer } from "@/components/clients/ClientDetailsDrawer"
+import type { ClientWithProjectCount } from "@/lib/actions/clients"
 
 function statusLabel(status: ClientStatus): string {
   if (status === "prospect") return "Prospect"
@@ -29,7 +30,12 @@ function statusLabel(status: ClientStatus): string {
   return "Archived"
 }
 
-export function ClientsContent() {
+interface ClientsContentProps {
+  initialClients?: ClientWithProjectCount[]
+  organizationId?: string
+}
+
+export function ClientsContent({ initialClients = [], organizationId }: ClientsContentProps) {
   const [query, setQuery] = useState("")
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState<"all" | ClientStatus>("all")
@@ -39,6 +45,26 @@ export function ClientsContent() {
   const [pageSize, setPageSize] = useState(7)
   const [page, setPage] = useState(1)
   const [activeClientId, setActiveClientId] = useState<string | null>(null)
+
+  // Use Supabase clients if available, otherwise fall back to mock data
+  const clients = useMemo(() => {
+    if (organizationId && initialClients.length > 0) {
+      // Map Supabase clients to the format expected by the component
+      return initialClients.map(c => ({
+        id: c.id,
+        name: c.name,
+        status: c.status,
+        industry: c.industry || undefined,
+        location: c.location || undefined,
+        primaryContactName: c.primary_contact_name || undefined,
+        primaryContactEmail: c.primary_contact_email || undefined,
+        lastActivityLabel: c.updated_at ? new Date(c.updated_at).toLocaleDateString() : undefined,
+        owner: (c as any).owner?.full_name || undefined,
+        projectCount: c.project_count,
+      }))
+    }
+    return mockClients
+  }, [organizationId, initialClients])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -72,8 +98,8 @@ export function ClientsContent() {
       }
 
       // sort by projects count
-      const ac = getProjectCountForClient(a.name)
-      const bc = getProjectCountForClient(b.name)
+      const ac = (a as any).projectCount ?? getProjectCountForClient(a.name)
+      const bc = (b as any).projectCount ?? getProjectCountForClient(b.name)
       if (ac === bc) return 0
       const cmp = ac < bc ? -1 : 1
       return sortDirection === "asc" ? cmp : -cmp
@@ -287,7 +313,7 @@ export function ClientsContent() {
                 </TableHeader>
                 <TableBody>
                   {visibleClients.map((client) => {
-                    const projectCount = getProjectCountForClient(client.name)
+                    const projectCount = (client as any).projectCount ?? getProjectCountForClient(client.name)
                     const checked = selectedIds.has(client.id)
                     return (
                       <TableRow key={client.id} className="hover:bg-muted/80">
