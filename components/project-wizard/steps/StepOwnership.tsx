@@ -147,25 +147,14 @@ export function StepOwnership({ data, updateData, currentUserId, organizationMem
     const currentList =
       target === "contributors" ? contributorOwnerships : stakeholderOwnerships;
 
-    let account = accounts.find(
+    const account = accounts.find(
       (a) =>
         a.email.toLowerCase() === value.toLowerCase() ||
         a.name.toLowerCase() === value.toLowerCase()
     );
 
-    if (!account) {
-      const isEmail = value.includes("@");
-      const name = isEmail ? value.split("@")[0].replace(/[._]/g, " ") : value;
-      account = {
-        id: `temp-${Date.now()}`,
-        name,
-        email: isEmail ? value : "",
-        initials: getInitials(name),
-      };
-      setAccounts((prev) => [...prev, account!]);
-    }
-
-    if (!account || currentList.some((entry) => entry.accountId === account!.id)) {
+    // Only allow adding existing organization members
+    if (!account || currentList.some((entry) => entry.accountId === account.id)) {
       setQuery("");
       return;
     }

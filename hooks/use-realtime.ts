@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useCallback, useRef } from "react"
+import { useEffect, useCallback, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from "@supabase/supabase-js"
@@ -25,11 +25,37 @@ export type UseRealtimeOptions<T extends TableName> = {
   onDelete?: (oldRecord: TableRow<T>) => void
   onChange?: RealtimeCallback<T>
   enabled?: boolean
+  /** Pause subscription when tab is hidden (default: true) */
+  pauseWhenHidden?: boolean
+}
+
+/**
+ * Hook to track document visibility state
+ * Used to pause realtime subscriptions when tab is hidden
+ */
+function useDocumentVisibility(): boolean {
+  const [isVisible, setIsVisible] = useState(() =>
+    typeof document !== "undefined" ? document.visibilityState === "visible" : true
+  )
+
+  useEffect(() => {
+    if (typeof document === "undefined") return
+
+    const handleVisibilityChange = () => {
+      setIsVisible(document.visibilityState === "visible")
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange)
+  }, [])
+
+  return isVisible
 }
 
 /**
  * Hook for subscribing to Supabase Realtime changes on a table
  * Uses refs to store callbacks to prevent subscription recreation on callback changes
+ * Supports pausing when tab is hidden to reduce subscription proliferation
  */
 export function useRealtime<T extends TableName>({
   table,
@@ -41,8 +67,13 @@ export function useRealtime<T extends TableName>({
   onDelete,
   onChange,
   enabled = true,
+  pauseWhenHidden = true,
 }: UseRealtimeOptions<T>) {
   const channelRef = useRef<RealtimeChannel | null>(null)
+  const isVisible = useDocumentVisibility()
+
+  // Effective enabled state considers both explicit enabled and visibility
+  const isEffectivelyEnabled = enabled && (pauseWhenHidden ? isVisible : true)
 
   // Store callbacks in refs to avoid recreating subscription when callbacks change
   const onInsertRef = useRef(onInsert)
@@ -59,7 +90,18 @@ export function useRealtime<T extends TableName>({
   })
 
   useEffect(() => {
-    if (!enabled) return
+    if (!isEffectivelyEnabled) {
+      // Clean up existing channel when disabled or hidden
+      // Clear ref first to prevent double cleanup on rapid visibility changes
+      const channel = channelRef.current
+      if (channel) {
+        channelRef.current = null
+        const supabase = createClient()
+        channel.unsubscribe()
+        supabase.removeChannel(channel)
+      }
+      return
+    }
 
     const supabase = createClient()
 
@@ -106,9 +148,12 @@ export function useRealtime<T extends TableName>({
     channelRef.current = channel
 
     return () => {
+      // Proper cleanup: unsubscribe first, then remove channel
+      channel.unsubscribe()
       supabase.removeChannel(channel)
+      channelRef.current = null
     }
-  }, [table, schema, event, filter, enabled]) // Removed callback dependencies
+  }, [table, schema, event, filter, isEffectivelyEnabled]) // Removed callback dependencies
 
   return channelRef.current
 }
