@@ -34,6 +34,12 @@ pnpm test:e2e:codegen      # Generate tests via recording
 
 Tests are in `e2e/` with Page Object Model pattern (`e2e/pages/`). Auth setup runs first via `e2e/auth.setup.ts`.
 
+**E2E Test Environment:**
+```bash
+TEST_USER_EMAIL=<test-user-email>      # Existing Supabase user for auth tests
+TEST_USER_PASSWORD=<test-user-password>
+```
+
 ### Supabase Commands
 
 ```bash
@@ -62,6 +68,10 @@ npx supabase gen types typescript       # Generate TypeScript types
   - `utils.ts` - Utility helpers including `cn()` for class merging
 - **`hooks/`** - Custom React hooks
 - **`supabase/`** - Database migrations
+- **`e2e/`** - Playwright E2E tests
+  - `pages/` - Page Object Model classes
+  - `auth.setup.ts` - Authentication setup for tests
+  - `fixtures.ts` - Test fixtures with authenticated context
 
 ### Backend (Supabase)
 
@@ -139,15 +149,20 @@ export default async function Page({ params }: PageProps) {
 **Real-time Hooks:** `hooks/use-realtime.ts` provides instant updates via Supabase Realtime:
 - `useTasksRealtime`, `useWorkstreamsRealtime`, `useProjectsRealtime`, `useClientsRealtime`
 - `useFilesRealtime`, `useNotesRealtime`, `useOrganizationMembersRealtime`
+- Hooks automatically pause subscriptions when browser tab is hidden to reduce connection overhead
 
 **Supabase Integration Status:**
-- **Sidebar:** Displays real active projects and user profile from Supabase
-- **Projects list:** Fetches from Supabase with real-time updates
-- **Project details:** Fetches project name, status, priority, progress from Supabase (other details use mock structure)
-- **Clients list:** Fetches from Supabase with project counts
+- **Sidebar:** Real active projects and user profile from Supabase
+- **Projects list:** Fetches from Supabase with real-time updates (empty state shown when no projects)
+- **Project creation wizard:** Uses real clients and organization members from Supabase
+- **Project details:** Fetches project name, status, priority, progress from Supabase (scope, outcomes, features still use mock structure)
+- **Clients list:** Fetches from Supabase with project counts (empty state shown when no clients)
 - **Client details:** Fetches from Supabase at `/clients/[id]`
 
-**Legacy Mock Data:** `lib/data/` contains mock data files used as fallback structure for project details (scope, outcomes, features, timeline).
+**Legacy Mock Data:** `lib/data/` contains mock data files:
+- Type definitions used throughout the app (Project, ProjectTask, ProjectDetails, etc.)
+- Mock data used as fallback only when no organizationId (edge case)
+- Project details pages still use mock structure for scope, outcomes, features, timeline
 
 ## Environment Variables
 
