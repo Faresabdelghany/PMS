@@ -1,0 +1,330 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "Project Dashboard Design Concept",
+  "version": "1.0.0",
+  "lastUpdated": "2026-01-23",
+  "description": "High-level design concept document for the Project Dashboard application. This document captures the design philosophy, principles, and guidelines that define the visual identity and user experience of the application.",
+
+  "designPhilosophy": {
+    "summary": "A modern, clean SaaS application design that prioritizes clarity, functionality, and professional aesthetics. The design balances minimalism with warmth through subtle shadows, generous spacing, and a restrained color palette.",
+    "coreValues": [
+      "Clarity over decoration - every element serves a purpose",
+      "Consistency through systematic design tokens",
+      "Accessibility as a foundation, not an afterthought",
+      "Responsive and adaptive to all screen sizes",
+      "Professional yet approachable aesthetic"
+    ]
+  },
+
+  "designPrinciples": {
+    "hierarchy": {
+      "description": "Visual hierarchy is established through size, weight, and color contrast rather than excessive decoration",
+      "guidelines": [
+        "Use typography scale for information hierarchy (text-xs through text-2xl)",
+        "Semibold (600) for headings, medium (500) for interactive elements, regular (400) for body text",
+        "Muted foreground colors for secondary information",
+        "Primary color sparingly for key actions and active states"
+      ]
+    },
+    "whitespace": {
+      "description": "Generous whitespace creates breathing room and improves scanability",
+      "guidelines": [
+        "Card padding of 24px (p-6) creates comfortable content areas",
+        "Consistent gaps between elements (8px, 12px, 16px)",
+        "Section spacing of 20-24px for visual grouping",
+        "Header areas with 16px padding for balanced proportions"
+      ]
+    },
+    "feedback": {
+      "description": "Every interaction provides clear visual feedback",
+      "guidelines": [
+        "Focus states with 3px ring and reduced opacity ring color",
+        "Hover states with subtle background changes (accent color)",
+        "Active/selected states with primary color indicators",
+        "Disabled states at 50% opacity with no pointer events",
+        "Transitions at 200ms for smooth state changes"
+      ]
+    },
+    "consistency": {
+      "description": "Systematic use of design tokens ensures visual cohesion",
+      "guidelines": [
+        "All colors defined as CSS custom properties",
+        "Border radius scale based on 12px base (--radius: 0.75rem)",
+        "Consistent icon sizing (h-3 w-3, h-4 w-4, h-5 w-5)",
+        "Standardized component heights (h-8, h-9, h-10)"
+      ]
+    }
+  },
+
+  "visualStyle": {
+    "overall": "Clean, minimal SaaS aesthetic with subtle depth through shadows and borders",
+    "characteristics": [
+      "Flat design with subtle shadow layers for depth",
+      "Rounded corners throughout (8px-16px range)",
+      "Thin 1px borders in muted gray tones",
+      "High contrast text for readability",
+      "Neutral gray palette with blue accent color"
+    ],
+    "mood": "Professional, trustworthy, modern, efficient",
+    "influences": "Linear, Notion, Vercel dashboard aesthetic"
+  },
+
+  "colorPhilosophy": {
+    "approach": "OKLCH color space for perceptually uniform colors with semantic naming",
+    "palette": {
+      "primary": {
+        "description": "Deep blue used for primary actions, active states, and focus indicators",
+        "lightMode": "oklch(0.43 0.215 254.5) - Rich saturated blue",
+        "darkMode": "oklch(0.56 0.19 254.5) - Lighter blue for dark backgrounds",
+        "usage": "Buttons, links, active tabs, focus rings, progress indicators"
+      },
+      "neutrals": {
+        "description": "Grayscale palette for backgrounds, borders, and text",
+        "range": "From pure white (oklch(1 0 0)) to near-black (oklch(0.145 0 0))",
+        "usage": "Background layers, borders, muted text, cards"
+      },
+      "semantic": {
+        "destructive": "Red-orange for errors and destructive actions (oklch(0.577 0.245 27.325))",
+        "success": "Teal for completion states (teal-600 on checkboxes)",
+        "warning": "Used sparingly through contextual styling"
+      },
+      "dataVisualization": {
+        "description": "Five-color chart palette for data visualization",
+        "colors": [
+          "Blue (primary) - oklch(0.43 0.215 254.5)",
+          "Cyan/Teal - oklch(0.6 0.118 184.704)",
+          "Purple/Blue - oklch(0.398 0.07 227.392)",
+          "Yellow/Gold - oklch(0.828 0.189 84.429)",
+          "Orange - oklch(0.769 0.188 70.08)"
+        ]
+      }
+    },
+    "darkMode": {
+      "approach": "Invert lightness values while maintaining hue relationships",
+      "background": "Near-black (oklch(0.145 0 0)) instead of white",
+      "borders": "Darker gray (oklch(0.269 0 0)) for subtle definition",
+      "adjustments": "Increased saturation on accent colors for visibility"
+    }
+  },
+
+  "typographyPhilosophy": {
+    "fontFamily": {
+      "primary": "Geist - Modern geometric sans-serif optimized for interfaces",
+      "monospace": "Geist Mono - For code and technical content"
+    },
+    "scale": {
+      "approach": "Semantic sizing with Tailwind's default scale",
+      "sizes": {
+        "xs": "12px - Labels, badges, metadata",
+        "sm": "14px - Body text, buttons, inputs",
+        "base": "16px - Primary body text (mobile-first)",
+        "lg": "18px - Emphasized body, dialog titles",
+        "2xl": "24px - Card titles, section headings"
+      }
+    },
+    "weights": {
+      "regular": "400 - Body text, descriptions",
+      "medium": "500 - Buttons, interactive text, navigation",
+      "semibold": "600 - Headings, titles, emphasis"
+    },
+    "rendering": "antialiased class on body for smooth text rendering"
+  },
+
+  "spacingPhilosophy": {
+    "baseUnit": "4px (Tailwind's default spacing unit)",
+    "scale": {
+      "tight": "4px (space-1) - Inline elements, icon gaps",
+      "small": "8px (space-2) - Between related elements",
+      "medium": "12px (space-3) - Form element gaps",
+      "default": "16px (space-4) - Section gaps, dialog gaps",
+      "large": "24px (space-6) - Card padding, major sections"
+    },
+    "componentHeights": {
+      "small": "32px (h-8) - Compact buttons, small inputs",
+      "default": "36px (h-9) - Standard buttons, inputs",
+      "large": "40px (h-10) - Large buttons, prominent inputs"
+    },
+    "layoutWidths": {
+      "sidebar": "256px (16rem) desktop, 288px (18rem) mobile",
+      "sidebarCollapsed": "48px (3rem) icon-only mode",
+      "dialog": "max-w-lg (512px) standard, calc(100%-2rem) mobile"
+    }
+  },
+
+  "borderRadiusPhilosophy": {
+    "baseRadius": "12px (0.75rem) - The foundational radius value",
+    "scale": {
+      "sm": "8px - Badges, small elements, nested components",
+      "md": "10px - Buttons, inputs, menu items",
+      "lg": "12px - Cards, dialogs, major containers",
+      "xl": "16px - Featured cards, prominent elements",
+      "full": "9999px - Pills, avatars, circular elements"
+    },
+    "guidelines": [
+      "Cards and major containers use lg (12px)",
+      "Buttons and inputs use xl (rounded-xl) or md",
+      "Badges use full (rounded-full) for pill shape",
+      "Nested elements use smaller radius than parent"
+    ]
+  },
+
+  "shadowPhilosophy": {
+    "approach": "Minimal shadows for subtle depth, avoiding heavy drop shadows",
+    "levels": {
+      "none": "Flat elements, most UI components",
+      "xs": "shadow-xs - Subtle lift for inputs, outline buttons",
+      "md": "shadow-md - Dropdown menus, popovers",
+      "lg": "shadow-lg - Dialogs, modals, elevated cards"
+    },
+    "special": {
+      "workstream": "Custom inset shadow for workstream containers",
+      "value": "0 0 4px 3px oklch(1 0 0 / 0.69) inset, 0 88px 58.5px 0 oklch(0 0 0 / 0.03)"
+    }
+  },
+
+  "animationPhilosophy": {
+    "principles": [
+      "Subtle and purposeful - animations enhance, never distract",
+      "Fast and responsive - 200ms standard duration",
+      "Consistent easing - ease-out for entrances, ease-in for exits"
+    ],
+    "commonPatterns": {
+      "stateChanges": "transition-colors, transition-all at 200ms",
+      "entrances": "animate-in with fade-in-0 and zoom-in-95",
+      "exits": "animate-out with fade-out-0 and zoom-out-95",
+      "loading": "animate-pulse for skeleton states"
+    }
+  },
+
+  "layoutPhilosophy": {
+    "structure": "Sidebar-plus-content layout for desktop, drawer navigation for mobile",
+    "navigation": {
+      "pattern": "Fixed sidebar with collapsible functionality",
+      "sections": "Header (workspace), Content (navigation, projects), Footer (settings, user)"
+    },
+    "content": {
+      "pattern": "Full-width content area with internal max-width constraints",
+      "tabs": "Horizontal tab navigation with bottom border indicator",
+      "cards": "Grid layouts for dashboards, lists for detail views"
+    },
+    "responsiveness": {
+      "breakpoint": "768px (md) - primary mobile/desktop transition",
+      "mobile": "Drawer-based navigation, stacked layouts",
+      "desktop": "Side-by-side layouts, persistent sidebar"
+    }
+  },
+
+  "iconography": {
+    "libraries": [
+      "Phosphor Icons (primary) - Consistent line weight and style",
+      "Lucide Icons (secondary) - Used in shadcn/ui components"
+    ],
+    "sizes": {
+      "xs": "12px (h-3 w-3) - Inline with text-xs",
+      "sm": "14px (h-3.5 w-3.5) - Small buttons, badges",
+      "default": "16px (h-4 w-4) - Standard UI elements",
+      "md": "18px (h-[18px] w-[18px]) - Navigation items",
+      "lg": "20px (h-5 w-5) - Featured icons"
+    },
+    "style": "Consistent line weight, typically 1.5px stroke"
+  },
+
+  "componentGuidelines": {
+    "buttons": {
+      "philosophy": "Clear hierarchy with distinct visual treatments per variant",
+      "variants": [
+        "default (primary): Solid blue background, white text - primary actions",
+        "destructive: Red background - dangerous/irreversible actions",
+        "outline: Border only with subtle background - secondary actions",
+        "secondary: Muted gray background - tertiary actions",
+        "ghost: Transparent until hovered - inline/contextual actions",
+        "link: Text only with underline on hover - navigation"
+      ]
+    },
+    "forms": {
+      "philosophy": "Clean, accessible inputs with clear state indicators",
+      "patterns": [
+        "Consistent height (h-9) across form elements",
+        "Clear focus states with ring indicator",
+        "Validation states through aria-invalid styling",
+        "Labels positioned above inputs for clarity"
+      ]
+    },
+    "cards": {
+      "philosophy": "Content containers with consistent padding and subtle borders",
+      "patterns": [
+        "24px padding for content areas",
+        "1px border in muted color",
+        "White/card background color",
+        "Rounded corners (12px)"
+      ]
+    },
+    "navigation": {
+      "philosophy": "Clear wayfinding with visible active states",
+      "patterns": [
+        "Bottom border indicator for active tabs",
+        "Background highlight for active menu items",
+        "Consistent item height (h-9) in navigation menus",
+        "Icon + text pattern for navigation items"
+      ]
+    },
+    "dataDisplay": {
+      "philosophy": "Clear, scannable data presentation",
+      "patterns": [
+        "Tables with subtle row borders and hover states",
+        "Badges for status and category indicators",
+        "Progress indicators for completion states",
+        "Consistent date and number formatting"
+      ]
+    }
+  },
+
+  "accessibilityGuidelines": {
+    "focus": {
+      "visible": "3px ring with semi-transparent ring color",
+      "outline": "Never hidden on focusable elements",
+      "keyboard": "Full keyboard navigation support"
+    },
+    "color": {
+      "contrast": "WCAG AA compliant text contrast ratios",
+      "notOnlyColor": "Status indicated by icons and text, not just color"
+    },
+    "interaction": {
+      "targets": "Minimum 32px touch targets on mobile",
+      "feedback": "Clear visual feedback for all interactions"
+    }
+  },
+
+  "themeSupport": {
+    "modes": ["light", "dark"],
+    "implementation": "CSS custom properties swapped via .dark class",
+    "provider": "next-themes for seamless theme switching",
+    "persistence": "System preference respected, user choice persisted"
+  },
+
+  "instructionsForAI": {
+    "summary": "When building new components or pages in this application, follow these guidelines to maintain visual consistency:",
+    "keyRules": [
+      "Always use CSS custom properties (var(--color-name)) for colors, never hardcode hex/rgb values",
+      "Use the established spacing scale (space-1 through space-6) for consistent rhythm",
+      "Apply the border radius scale appropriately - larger containers get larger radius",
+      "Include proper focus states using the standard ring pattern",
+      "Maintain consistent component heights (h-8, h-9, h-10) for alignment",
+      "Use Geist font family with appropriate weights for typography hierarchy",
+      "Provide hover and active states for all interactive elements",
+      "Support both light and dark modes through CSS variables",
+      "Use Phosphor Icons as the primary icon library with consistent sizing",
+      "Keep animations subtle (200ms) and purposeful",
+      "Prioritize clarity and functionality over decoration",
+      "Test at 768px breakpoint for responsive behavior"
+    ],
+    "avoidances": [
+      "Avoid heavy drop shadows - use subtle shadows sparingly",
+      "Avoid decorative gradients - maintain flat aesthetic",
+      "Avoid inconsistent border radii - follow the scale",
+      "Avoid custom colors outside the defined palette",
+      "Avoid fixed widths that break responsiveness",
+      "Avoid animations over 300ms duration"
+    ]
+  }
+}

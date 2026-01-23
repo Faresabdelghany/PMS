@@ -1,0 +1,938 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "Project Dashboard Design System",
+  "version": "1.0.0",
+  "lastUpdated": "2026-01-23",
+  "description": "Comprehensive design system specification for the Project Dashboard application. This document defines all design tokens, component specifications, and patterns for consistent UI implementation.",
+
+  "foundations": {
+    "colors": {
+      "description": "Color tokens using OKLCH color space for perceptual uniformity",
+      "semantic": {
+        "background": {
+          "light": "oklch(0.995 0 0)",
+          "dark": "oklch(0.145 0 0)",
+          "usage": "Page background, main content area"
+        },
+        "foreground": {
+          "light": "oklch(0.145 0 0)",
+          "dark": "oklch(0.985 0 0)",
+          "usage": "Primary text color"
+        },
+        "card": {
+          "light": "oklch(1 0 0)",
+          "dark": "oklch(0.145 0 0)",
+          "usage": "Card backgrounds, elevated surfaces"
+        },
+        "cardForeground": {
+          "light": "oklch(0.145 0 0)",
+          "dark": "oklch(0.985 0 0)",
+          "usage": "Text on card surfaces"
+        },
+        "popover": {
+          "light": "oklch(1 0 0)",
+          "dark": "oklch(0.145 0 0)",
+          "usage": "Dropdown menus, tooltips, popovers"
+        },
+        "popoverForeground": {
+          "light": "oklch(0.145 0 0)",
+          "dark": "oklch(0.985 0 0)",
+          "usage": "Text in popovers"
+        },
+        "primary": {
+          "light": "oklch(0.43 0.215 254.5)",
+          "dark": "oklch(0.56 0.19 254.5)",
+          "usage": "Primary buttons, links, active states, focus rings"
+        },
+        "primaryForeground": {
+          "light": "oklch(0.985 0 0)",
+          "dark": "oklch(0.205 0 0)",
+          "usage": "Text on primary color backgrounds"
+        },
+        "secondary": {
+          "light": "oklch(0.97 0 0)",
+          "dark": "oklch(0.269 0 0)",
+          "usage": "Secondary buttons, muted backgrounds"
+        },
+        "secondaryForeground": {
+          "light": "oklch(0.205 0 0)",
+          "dark": "oklch(0.985 0 0)",
+          "usage": "Text on secondary backgrounds"
+        },
+        "muted": {
+          "light": "oklch(0.97 0 0)",
+          "dark": "oklch(0.269 0 0)",
+          "usage": "Muted backgrounds, disabled states"
+        },
+        "mutedForeground": {
+          "light": "oklch(0.45 0 0)",
+          "dark": "oklch(0.708 0 0)",
+          "usage": "Secondary text, placeholders, metadata"
+        },
+        "accent": {
+          "light": "oklch(0.96 0 0)",
+          "dark": "oklch(0.269 0 0)",
+          "usage": "Hover states, selected backgrounds"
+        },
+        "accentForeground": {
+          "light": "oklch(0.205 0 0)",
+          "dark": "oklch(0.985 0 0)",
+          "usage": "Text on accent backgrounds"
+        },
+        "destructive": {
+          "light": "oklch(0.577 0.245 27.325)",
+          "dark": "oklch(0.396 0.141 25.723)",
+          "usage": "Error states, destructive actions"
+        },
+        "destructiveForeground": {
+          "light": "oklch(0.577 0.245 27.325)",
+          "dark": "oklch(0.637 0.237 25.331)",
+          "usage": "Text for destructive elements"
+        },
+        "border": {
+          "light": "oklch(0.91 0 0)",
+          "dark": "oklch(0.269 0 0)",
+          "usage": "Borders, dividers, separators"
+        },
+        "input": {
+          "light": "oklch(0.91 0 0)",
+          "dark": "oklch(0.269 0 0)",
+          "usage": "Input borders, form element boundaries"
+        },
+        "ring": {
+          "light": "oklch(0.43 0.215 254.5)",
+          "dark": "oklch(0.439 0 0)",
+          "usage": "Focus ring color"
+        }
+      },
+      "chart": {
+        "description": "Data visualization color palette",
+        "light": {
+          "chart1": "oklch(0.43 0.215 254.5)",
+          "chart2": "oklch(0.6 0.118 184.704)",
+          "chart3": "oklch(0.398 0.07 227.392)",
+          "chart4": "oklch(0.828 0.189 84.429)",
+          "chart5": "oklch(0.769 0.188 70.08)"
+        },
+        "dark": {
+          "chart1": "oklch(0.56 0.19 254.5)",
+          "chart2": "oklch(0.696 0.17 162.48)",
+          "chart3": "oklch(0.769 0.188 70.08)",
+          "chart4": "oklch(0.627 0.265 303.9)",
+          "chart5": "oklch(0.645 0.246 16.439)"
+        }
+      },
+      "sidebar": {
+        "description": "Sidebar-specific color tokens",
+        "light": {
+          "background": "oklch(0.99 0 0)",
+          "foreground": "oklch(0.145 0 0)",
+          "primary": "oklch(0.43 0.215 254.5)",
+          "primaryForeground": "oklch(0.985 0 0)",
+          "accent": "oklch(94.309% 0.00011 271.152)",
+          "accentForeground": "oklch(0.205 0 0)",
+          "border": "oklch(0.93 0 0)",
+          "ring": "oklch(0.43 0.215 254.5)"
+        },
+        "dark": {
+          "background": "oklch(0.205 0 0)",
+          "foreground": "oklch(0.985 0 0)",
+          "primary": "oklch(0.56 0.19 254.5)",
+          "primaryForeground": "oklch(0.985 0 0)",
+          "accent": "oklch(0.269 0 0)",
+          "accentForeground": "oklch(0.985 0 0)",
+          "border": "oklch(0.269 0 0)",
+          "ring": "oklch(0.439 0 0)"
+        }
+      },
+      "contextual": {
+        "description": "Contextual colors for specific UI patterns",
+        "status": {
+          "active": "bg-blue-100 text-blue-700",
+          "assigned": "bg-orange-100 text-orange-800",
+          "success": "teal-600",
+          "warning": "orange",
+          "danger": "destructive"
+        }
+      }
+    },
+
+    "typography": {
+      "fontFamilies": {
+        "sans": {
+          "name": "Geist",
+          "fallback": "'Geist Fallback', system-ui, sans-serif",
+          "source": "Google Fonts",
+          "usage": "Primary font for all UI text"
+        },
+        "mono": {
+          "name": "Geist Mono",
+          "fallback": "'Geist Mono Fallback', monospace",
+          "source": "Google Fonts",
+          "usage": "Code, technical content, keyboard shortcuts"
+        }
+      },
+      "sizes": {
+        "xs": {
+          "value": "0.75rem",
+          "pixels": "12px",
+          "lineHeight": "1rem",
+          "usage": "Labels, badges, metadata, sidebar group labels, keyboard shortcuts"
+        },
+        "sm": {
+          "value": "0.875rem",
+          "pixels": "14px",
+          "lineHeight": "1.25rem",
+          "usage": "Body text, buttons, inputs, card descriptions, tabs"
+        },
+        "base": {
+          "value": "1rem",
+          "pixels": "16px",
+          "lineHeight": "1.5rem",
+          "usage": "Primary body text (mobile inputs)"
+        },
+        "lg": {
+          "value": "1.125rem",
+          "pixels": "18px",
+          "lineHeight": "1.75rem",
+          "usage": "Dialog titles, emphasized content"
+        },
+        "xl": {
+          "value": "1.25rem",
+          "pixels": "20px",
+          "lineHeight": "1.75rem",
+          "usage": "Section headings"
+        },
+        "2xl": {
+          "value": "1.5rem",
+          "pixels": "24px",
+          "lineHeight": "2rem",
+          "usage": "Card titles, page headings"
+        }
+      },
+      "weights": {
+        "regular": {
+          "value": 400,
+          "usage": "Body text, descriptions, input text"
+        },
+        "medium": {
+          "value": 500,
+          "usage": "Buttons, navigation items, interactive text, badges"
+        },
+        "semibold": {
+          "value": 600,
+          "usage": "Headings, titles, card titles, dialog titles"
+        }
+      },
+      "tracking": {
+        "tight": {
+          "value": "-0.025em",
+          "usage": "Card titles, headings with tracking-tight"
+        },
+        "normal": {
+          "value": "0",
+          "usage": "Default tracking for body text"
+        }
+      },
+      "lineHeight": {
+        "none": {
+          "value": 1,
+          "usage": "Titles, headings (leading-none)"
+        },
+        "tight": {
+          "value": 1.25,
+          "usage": "Compact text areas (leading-tight)"
+        },
+        "normal": {
+          "value": 1.5,
+          "usage": "Body text default"
+        }
+      }
+    },
+
+    "spacing": {
+      "scale": {
+        "0": { "value": "0", "pixels": "0px" },
+        "0.5": { "value": "0.125rem", "pixels": "2px" },
+        "1": { "value": "0.25rem", "pixels": "4px" },
+        "1.5": { "value": "0.375rem", "pixels": "6px" },
+        "2": { "value": "0.5rem", "pixels": "8px" },
+        "2.5": { "value": "0.625rem", "pixels": "10px" },
+        "3": { "value": "0.75rem", "pixels": "12px" },
+        "4": { "value": "1rem", "pixels": "16px" },
+        "5": { "value": "1.25rem", "pixels": "20px" },
+        "6": { "value": "1.5rem", "pixels": "24px" },
+        "8": { "value": "2rem", "pixels": "32px" }
+      },
+      "semantic": {
+        "cardPadding": { "token": "6", "value": "24px", "usage": "Card header, content, footer" },
+        "cardHeaderGap": { "token": "1.5", "value": "6px", "usage": "Space-y in CardHeader" },
+        "dialogGap": { "token": "4", "value": "16px", "usage": "Gap between dialog elements" },
+        "dialogPadding": { "token": "6", "value": "24px", "usage": "Dialog content padding" },
+        "sidebarPadding": { "token": "2", "value": "8px", "usage": "Sidebar groups and sections" },
+        "sidebarHeaderPadding": { "token": "4", "value": "16px", "usage": "Sidebar header" },
+        "formGap": { "token": "2", "value": "8px", "usage": "Between form elements" },
+        "inlineGap": { "token": "1", "value": "4px", "usage": "Between inline elements, icon gaps" },
+        "sectionGap": { "token": "5", "value": "20px", "usage": "Between major sections" },
+        "tabsContentMargin": { "token": "6", "value": "24px", "usage": "TabsContent margin-top" }
+      }
+    },
+
+    "borderRadius": {
+      "base": {
+        "value": "0.75rem",
+        "pixels": "12px",
+        "cssVar": "--radius"
+      },
+      "scale": {
+        "xs": {
+          "value": "calc(var(--radius) - 8px)",
+          "pixels": "4px",
+          "usage": "Very small elements"
+        },
+        "sm": {
+          "value": "calc(var(--radius) - 4px)",
+          "pixels": "8px",
+          "tailwind": "rounded-md",
+          "usage": "Badges (non-pill), small buttons, nested elements"
+        },
+        "md": {
+          "value": "calc(var(--radius) - 2px)",
+          "pixels": "10px",
+          "usage": "Buttons, inputs, menu items"
+        },
+        "lg": {
+          "value": "var(--radius)",
+          "pixels": "12px",
+          "tailwind": "rounded-lg",
+          "usage": "Cards, dialogs, major containers"
+        },
+        "xl": {
+          "value": "calc(var(--radius) + 4px)",
+          "pixels": "16px",
+          "tailwind": "rounded-xl",
+          "usage": "Buttons (default variant), task cards"
+        },
+        "2xl": {
+          "value": "calc(var(--radius) + 12px)",
+          "pixels": "24px",
+          "tailwind": "rounded-2xl",
+          "usage": "Feature cards, prominent containers"
+        },
+        "full": {
+          "value": "9999px",
+          "tailwind": "rounded-full",
+          "usage": "Pills, badges, avatars, circular elements"
+        }
+      }
+    },
+
+    "shadows": {
+      "none": {
+        "value": "none",
+        "usage": "Flat elements, most components"
+      },
+      "xs": {
+        "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        "tailwind": "shadow-xs",
+        "usage": "Subtle lift for inputs, outline buttons"
+      },
+      "sm": {
+        "value": "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
+        "tailwind": "shadow-sm",
+        "usage": "Slightly elevated elements"
+      },
+      "md": {
+        "value": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+        "tailwind": "shadow-md",
+        "usage": "Dropdown menus, popovers"
+      },
+      "lg": {
+        "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+        "tailwind": "shadow-lg",
+        "usage": "Dialogs, modals"
+      },
+      "workstream": {
+        "light": "0 0 4px 3px oklch(1 0 0 / 0.69) inset, 0 88px 58.5px 0 oklch(0 0 0 / 0.03)",
+        "dark": "0 0 4px 3px oklch(1 0 0 / 0.1) inset, 0 88px 58.5px 0 oklch(0 0 0 / 0.03)",
+        "cssVar": "--shadow-workstream",
+        "usage": "Workstream containers special effect"
+      }
+    },
+
+    "transitions": {
+      "duration": {
+        "default": "200ms",
+        "fast": "150ms",
+        "slow": "300ms"
+      },
+      "easing": {
+        "default": "ease-out",
+        "linear": "linear"
+      },
+      "properties": {
+        "colors": "transition-colors",
+        "all": "transition-all",
+        "transform": "transition-transform",
+        "opacity": "transition-opacity",
+        "specific": "transition-[color,box-shadow]"
+      }
+    },
+
+    "breakpoints": {
+      "sm": "640px",
+      "md": "768px",
+      "lg": "1024px",
+      "xl": "1280px",
+      "2xl": "1536px"
+    },
+
+    "zIndex": {
+      "base": 0,
+      "dropdown": 50,
+      "sticky": 40,
+      "fixed": 50,
+      "modalBackdrop": 50,
+      "modal": 50,
+      "popover": 50,
+      "tooltip": 50
+    }
+  },
+
+  "components": {
+    "button": {
+      "description": "Interactive button component with multiple variants and sizes",
+      "baseStyles": "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none",
+      "focusStyles": "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+      "invalidStyles": "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+      "variants": {
+        "default": {
+          "styles": "bg-primary text-primary-foreground hover:bg-primary/90",
+          "usage": "Primary actions, submit buttons, main CTAs"
+        },
+        "destructive": {
+          "styles": "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+          "usage": "Delete actions, dangerous operations"
+        },
+        "outline": {
+          "styles": "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
+          "usage": "Secondary actions, cancel buttons"
+        },
+        "secondary": {
+          "styles": "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          "usage": "Tertiary actions, less prominent buttons"
+        },
+        "ghost": {
+          "styles": "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
+          "usage": "Inline actions, toolbar buttons, icon buttons"
+        },
+        "link": {
+          "styles": "text-primary underline-offset-4 hover:underline",
+          "usage": "Text links within content"
+        }
+      },
+      "sizes": {
+        "default": {
+          "styles": "h-9 px-4 py-2 has-[>svg]:px-3",
+          "height": "36px"
+        },
+        "sm": {
+          "styles": "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
+          "height": "32px"
+        },
+        "lg": {
+          "styles": "h-10 rounded-md px-6 has-[>svg]:px-4",
+          "height": "40px"
+        },
+        "icon": {
+          "styles": "size-9",
+          "dimensions": "36px x 36px"
+        },
+        "icon-sm": {
+          "styles": "size-8",
+          "dimensions": "32px x 32px"
+        },
+        "icon-lg": {
+          "styles": "size-10",
+          "dimensions": "40px x 40px"
+        }
+      },
+      "dataAttributes": ["data-slot=\"button\"", "data-variant", "data-size"]
+    },
+
+    "input": {
+      "description": "Text input field for forms",
+      "baseStyles": "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+      "focusStyles": "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+      "invalidStyles": "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+      "dimensions": {
+        "height": "36px (h-9)",
+        "horizontalPadding": "12px (px-3)",
+        "verticalPadding": "4px (py-1)"
+      },
+      "dataAttributes": ["data-slot=\"input\""]
+    },
+
+    "card": {
+      "description": "Container component for grouped content",
+      "elements": {
+        "card": {
+          "styles": "rounded-lg border bg-card text-card-foreground",
+          "borderRadius": "12px"
+        },
+        "cardHeader": {
+          "styles": "flex flex-col space-y-1.5 p-6",
+          "padding": "24px"
+        },
+        "cardTitle": {
+          "styles": "text-2xl font-semibold leading-none tracking-tight",
+          "element": "h3"
+        },
+        "cardDescription": {
+          "styles": "text-sm text-muted-foreground",
+          "element": "p"
+        },
+        "cardContent": {
+          "styles": "p-6 pt-0",
+          "padding": "24px (no top)"
+        },
+        "cardFooter": {
+          "styles": "flex items-center p-6 pt-0",
+          "padding": "24px (no top)"
+        }
+      }
+    },
+
+    "badge": {
+      "description": "Small label for status, category, or metadata",
+      "baseStyles": "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      "variants": {
+        "default": {
+          "styles": "border-transparent bg-primary text-primary-foreground",
+          "usage": "Primary badges, active status"
+        },
+        "secondary": {
+          "styles": "border-transparent bg-secondary text-secondary-foreground",
+          "usage": "Neutral badges, categories"
+        },
+        "outline": {
+          "styles": "text-foreground",
+          "usage": "Subtle badges, bordered style"
+        },
+        "muted": {
+          "styles": "border-transparent bg-muted text-muted-foreground",
+          "usage": "Very subtle, background badges"
+        }
+      },
+      "dimensions": {
+        "horizontalPadding": "10px (px-2.5)",
+        "verticalPadding": "2px (py-0.5)",
+        "borderRadius": "full (pill shape)"
+      },
+      "dataAttributes": ["data-slot=\"badge\""]
+    },
+
+    "dialog": {
+      "description": "Modal dialog for focused interactions",
+      "elements": {
+        "overlay": {
+          "styles": "fixed inset-0 z-50 bg-black/40 backdrop-blur-sm",
+          "animation": "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+        },
+        "content": {
+          "styles": "bg-background fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 outline-none sm:max-w-lg",
+          "animation": "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+        },
+        "header": {
+          "styles": "flex flex-col gap-2 text-center sm:text-left"
+        },
+        "footer": {
+          "styles": "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"
+        },
+        "title": {
+          "styles": "text-lg leading-none font-semibold"
+        },
+        "description": {
+          "styles": "text-muted-foreground text-sm"
+        },
+        "close": {
+          "styles": "ring-offset-background focus:ring-ring absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none"
+        }
+      }
+    },
+
+    "tabs": {
+      "description": "Tabbed navigation for content sections",
+      "elements": {
+        "list": {
+          "styles": "flex w-full overflow-x-auto md:overflow-visible border-b border-border text-sm font-medium text-muted-foreground"
+        },
+        "trigger": {
+          "styles": "relative -mb-px inline-flex flex-shrink-0 cursor-pointer items-center justify-center whitespace-nowrap px-3 py-2 text-sm transition-colors border-b-2 border-transparent text-muted-foreground/80 hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground"
+        },
+        "content": {
+          "styles": "mt-6"
+        }
+      },
+      "activeIndicator": "2px bottom border in primary color"
+    },
+
+    "table": {
+      "description": "Data table for displaying structured information",
+      "elements": {
+        "wrapper": {
+          "styles": "relative w-full overflow-auto"
+        },
+        "table": {
+          "styles": "w-full caption-bottom text-sm"
+        },
+        "header": {
+          "styles": "[&_tr]:border-b"
+        },
+        "body": {
+          "styles": "[&_tr:last-child]:border-0"
+        },
+        "footer": {
+          "styles": "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0"
+        },
+        "row": {
+          "styles": "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
+        },
+        "head": {
+          "styles": "h-12 px-4 text-left align-middle font-medium text-muted-foreground"
+        },
+        "cell": {
+          "styles": "py-2 px-4 align-middle"
+        },
+        "caption": {
+          "styles": "mt-4 text-sm text-muted-foreground"
+        }
+      }
+    },
+
+    "select": {
+      "description": "Dropdown selection component",
+      "elements": {
+        "trigger": {
+          "styles": "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1"
+        },
+        "content": {
+          "styles": "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md",
+          "animation": "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+        },
+        "item": {
+          "styles": "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+        },
+        "label": {
+          "styles": "py-1.5 pl-8 pr-2 text-sm font-semibold"
+        },
+        "separator": {
+          "styles": "-mx-1 my-1 h-px bg-muted"
+        }
+      }
+    },
+
+    "avatar": {
+      "description": "User profile image or initials display",
+      "sizes": {
+        "xs": "size-5 (20px)",
+        "sm": "size-6 (24px)",
+        "default": "size-8 (32px)",
+        "lg": "size-10 (40px)"
+      },
+      "styles": {
+        "container": "relative flex shrink-0 overflow-hidden rounded-full",
+        "image": "aspect-square h-full w-full",
+        "fallback": "flex h-full w-full items-center justify-center rounded-full bg-muted"
+      }
+    },
+
+    "checkbox": {
+      "description": "Selectable checkbox control",
+      "styles": {
+        "base": "peer h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+        "checked": "data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+      },
+      "customVariant": {
+        "taskCard": "rounded-full border-border bg-background data-[state=checked]:border-teal-600 data-[state=checked]:bg-teal-600"
+      }
+    },
+
+    "separator": {
+      "description": "Visual divider between content sections",
+      "styles": {
+        "horizontal": "shrink-0 bg-border h-[1px] w-full",
+        "vertical": "shrink-0 bg-border h-full w-[1px]"
+      }
+    },
+
+    "skeleton": {
+      "description": "Loading placeholder",
+      "styles": "bg-accent animate-pulse rounded-md"
+    },
+
+    "tooltip": {
+      "description": "Contextual information popup on hover",
+      "styles": {
+        "content": "z-50 overflow-hidden rounded-md border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95"
+      }
+    },
+
+    "progress": {
+      "description": "Progress bar indicator",
+      "styles": {
+        "root": "relative h-2 w-full overflow-hidden rounded-full bg-secondary",
+        "indicator": "h-full w-full flex-1 bg-primary transition-all"
+      }
+    },
+
+    "progressCircle": {
+      "description": "Circular progress indicator",
+      "props": {
+        "progress": "0-100 percentage",
+        "color": "CSS color value",
+        "size": "diameter in pixels (default: 18)",
+        "strokeWidth": "ring thickness (default: 2)"
+      },
+      "structure": "SVG with background ring (border color) and progress ring (custom color)"
+    },
+
+    "sidebar": {
+      "description": "Main application navigation sidebar",
+      "dimensions": {
+        "desktopWidth": "256px (16rem)",
+        "mobileWidth": "288px (18rem)",
+        "iconOnlyWidth": "48px (3rem)"
+      },
+      "elements": {
+        "header": "p-4 workspace branding area",
+        "content": "px-0 gap-0 navigation groups",
+        "footer": "border-t border-border/40 p-2 settings and user",
+        "group": "p-2 grouped navigation section",
+        "groupLabel": "px-3 text-xs font-medium text-muted-foreground",
+        "menuButton": "h-9 rounded-lg px-3 font-normal text-muted-foreground"
+      },
+      "states": {
+        "expanded": "data-state=\"expanded\"",
+        "collapsed": "data-state=\"collapsed\""
+      },
+      "keyboardShortcut": "Cmd/Ctrl + B"
+    },
+
+    "taskCard": {
+      "description": "Task display card for kanban and list views",
+      "styles": "border border-border bg-card hover:shadow-lg/5 transition-shadow cursor-pointer rounded-2xl p-4 flex flex-col gap-3",
+      "variants": {
+        "default": "standard task display",
+        "completed": "opacity-70 with line-through text",
+        "empty": "border-dashed min-h-40 centered 'No tasks' message"
+      },
+      "elements": {
+        "header": "Badge + Avatar row",
+        "content": "Checkbox + Title with truncation",
+        "footer": "Metadata chips (project, date, tag)"
+      },
+      "chipStyles": "bg-background border border-border rounded-md px-2 py-1 text-xs text-muted-foreground"
+    },
+
+    "priorityBadge": {
+      "description": "Priority level indicator",
+      "levels": ["urgent", "high", "medium", "low"],
+      "appearances": {
+        "badge": "border px-2 py-0.5 rounded-full",
+        "inline": "inline-flex items-center gap-1.5"
+      },
+      "icons": {
+        "urgent": "WarningOctagon (filled)",
+        "others": "Custom bars glyph with varying heights"
+      }
+    }
+  },
+
+  "patterns": {
+    "focusStates": {
+      "standard": "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+      "offset": "focus:ring-2 focus:ring-ring focus:ring-offset-2",
+      "description": "Consistent 3px ring with semi-transparent color on focus-visible"
+    },
+
+    "disabledStates": {
+      "standard": "disabled:pointer-events-none disabled:opacity-50",
+      "cursor": "disabled:cursor-not-allowed"
+    },
+
+    "hoverStates": {
+      "background": "hover:bg-accent hover:text-accent-foreground",
+      "opacity": "hover:bg-primary/90",
+      "subtle": "hover:bg-muted/50"
+    },
+
+    "formValidation": {
+      "invalid": "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+      "description": "Red ring and border when aria-invalid is true"
+    },
+
+    "animations": {
+      "enter": {
+        "fade": "animate-in fade-in-0",
+        "zoom": "zoom-in-95",
+        "slide": "slide-in-from-top-2"
+      },
+      "exit": {
+        "fade": "animate-out fade-out-0",
+        "zoom": "zoom-out-95"
+      },
+      "loading": "animate-pulse",
+      "duration": "duration-200"
+    },
+
+    "dataAttributes": {
+      "slot": "data-slot for component identification",
+      "state": "data-state for open/closed/active states",
+      "variant": "data-variant for component variants",
+      "mobile": "data-mobile for responsive states"
+    },
+
+    "responsivePatterns": {
+      "text": "text-base md:text-sm (larger on mobile)",
+      "overflow": "overflow-x-auto md:overflow-visible",
+      "layout": "flex-col sm:flex-row",
+      "visibility": "hidden sm:flex"
+    },
+
+    "iconPatterns": {
+      "sizing": "[&_svg:not([class*='size-'])]:size-4",
+      "pointerEvents": "[&_svg]:pointer-events-none",
+      "shrink": "[&_svg]:shrink-0"
+    }
+  },
+
+  "icons": {
+    "library": {
+      "primary": "Phosphor Icons (@phosphor-icons/react)",
+      "secondary": "Lucide Icons (lucide-react)"
+    },
+    "sizes": {
+      "xs": { "class": "h-3 w-3", "pixels": "12px" },
+      "sm": { "class": "h-3.5 w-3.5", "pixels": "14px" },
+      "default": { "class": "h-4 w-4", "pixels": "16px" },
+      "md": { "class": "h-[18px] w-[18px]", "pixels": "18px" },
+      "lg": { "class": "h-5 w-5", "pixels": "20px" }
+    },
+    "commonIcons": {
+      "navigation": ["Tray", "CheckSquare", "Folder", "Users", "ChartBar", "Gear", "Layout", "Question"],
+      "actions": ["Plus", "PencilSimpleLine", "Trash", "CaretDown", "CaretRight", "CaretUpDown", "XIcon"],
+      "content": ["MagnifyingGlass", "CalendarBlank", "FolderSimple", "Tag", "Star", "User", "Globe", "Timer"],
+      "ui": ["Check", "ChevronDown", "ChevronUp", "PanelLeftIcon", "SignOut"]
+    }
+  },
+
+  "layout": {
+    "appStructure": {
+      "description": "Sidebar-plus-content layout",
+      "sidebar": {
+        "position": "left",
+        "behavior": "fixed on desktop, drawer on mobile",
+        "collapsible": true
+      },
+      "content": {
+        "padding": "responsive based on context"
+      }
+    },
+
+    "pagePatterns": {
+      "header": {
+        "structure": "Title + actions row",
+        "spacing": "space-y-5 after header section"
+      },
+      "tabs": {
+        "structure": "TabsList with TabsTriggers, TabsContent below",
+        "contentMargin": "mt-6"
+      },
+      "forms": {
+        "structure": "Vertical stack with gap-4",
+        "labels": "Above inputs",
+        "actions": "flex justify-end gap-2"
+      }
+    },
+
+    "gridPatterns": {
+      "cards": "grid gap-4 md:grid-cols-2 lg:grid-cols-3",
+      "form": "grid gap-4 sm:grid-cols-2"
+    }
+  },
+
+  "utilities": {
+    "cn": {
+      "description": "Class merging utility combining clsx and tailwind-merge",
+      "location": "@/lib/utils",
+      "usage": "cn('base-classes', conditionalClasses, className)"
+    },
+
+    "cva": {
+      "description": "Class Variance Authority for component variants",
+      "package": "class-variance-authority",
+      "pattern": "Define base styles and variants object, export buttonVariants pattern"
+    }
+  },
+
+  "darkMode": {
+    "implementation": {
+      "provider": "next-themes",
+      "method": "Class-based (.dark class on html element)",
+      "customVariant": "@custom-variant dark (&:is(.dark *));"
+    },
+    "colorSwapping": {
+      "description": "CSS custom properties change values between :root and .dark selectors",
+      "example": "--background: oklch(0.995 0 0) becomes oklch(0.145 0 0)"
+    }
+  },
+
+  "accessibility": {
+    "focus": {
+      "visible": "focus-visible selector for keyboard focus only",
+      "ringWidth": "3px",
+      "ringOpacity": "50%"
+    },
+    "ariaAttributes": {
+      "invalid": "aria-invalid for form validation states",
+      "label": "aria-label for icon buttons",
+      "hidden": "aria-hidden for decorative elements"
+    },
+    "srOnly": {
+      "class": "sr-only",
+      "usage": "Screen-reader-only text for context"
+    },
+    "keyboard": {
+      "tabIndex": "0 for custom interactive elements",
+      "keyHandlers": "Enter and Space for button-like elements"
+    }
+  },
+
+  "instructionsForImplementation": {
+    "newComponents": [
+      "Always use CSS custom properties for colors (var(--color-name))",
+      "Apply the standard focus pattern: focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+      "Include disabled states: disabled:pointer-events-none disabled:opacity-50",
+      "Use data-slot attribute for component identification",
+      "Support forwardRef for DOM element access",
+      "Use cn() utility for class merging",
+      "Follow the established height scale (h-8, h-9, h-10)",
+      "Apply appropriate border radius from the scale"
+    ],
+    "newPages": [
+      "Use consistent page header patterns (title + actions)",
+      "Apply standard section spacing (space-y-5)",
+      "Use TabsList/TabsContent for multi-section pages",
+      "Ensure mobile responsiveness at md breakpoint",
+      "Include loading states with Skeleton components"
+    ],
+    "styling": [
+      "Never hardcode color values - use CSS variables",
+      "Use Tailwind classes, avoid inline styles",
+      "Follow the established spacing scale",
+      "Maintain consistent component heights for alignment",
+      "Test both light and dark modes"
+    ]
+  }
+}
