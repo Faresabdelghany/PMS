@@ -31,8 +31,10 @@ import {
   Question,
   CaretRight,
   CaretUpDown,
+  SignOut,
 } from "@phosphor-icons/react/dist/ssr"
 import { footerItems, navItems, type NavItemId, type SidebarFooterItemId } from "@/lib/data/sidebar"
+import { signOut } from "@/lib/actions/auth"
 import { useUser } from "@/hooks/use-user"
 import { useOrganization } from "@/hooks/use-organization"
 import { useProjectsRealtime } from "@/hooks/use-realtime"
@@ -266,6 +268,15 @@ export function AppSidebar({ activeProjects: initialProjects = [] }: AppSidebarP
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              className="h-9 rounded-lg px-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              onClick={() => signOut()}
+            >
+              <SignOut className="h-[18px] w-[18px]" />
+              <span>Sign Out</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
         </SidebarMenu>
 
         <Link
