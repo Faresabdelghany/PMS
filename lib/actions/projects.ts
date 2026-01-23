@@ -306,6 +306,81 @@ export async function getProject(id: string): Promise<ActionResult<ProjectWithRe
   return { data: data as ProjectWithRelations }
 }
 
+// Extended type for full project details with all related data
+export type ProjectFullDetails = ProjectWithRelations & {
+  scope: { id: string; item: string; is_in_scope: boolean; sort_order: number }[]
+  outcomes: { id: string; item: string; sort_order: number }[]
+  features: { id: string; item: string; priority: number; sort_order: number }[]
+  deliverables: { id: string; title: string; due_date: string | null; sort_order: number }[]
+  metrics: { id: string; name: string; target: string | null; sort_order: number }[]
+}
+
+// Get single project with ALL relations including scope, outcomes, features, deliverables, metrics
+export async function getProjectWithDetails(id: string): Promise<ActionResult<ProjectFullDetails>> {
+  const supabase = await createClient()
+
+  // Fetch base project with basic relations
+  const { data: project, error: projectError } = await supabase
+    .from("projects")
+    .select(`
+      *,
+      client:clients(id, name),
+      team:teams(id, name),
+      members:project_members(
+        id,
+        role,
+        user_id,
+        profile:profiles(id, full_name, email, avatar_url)
+      )
+    `)
+    .eq("id", id)
+    .single()
+
+  if (projectError) {
+    return { error: projectError.message }
+  }
+
+  // Fetch all related data in parallel
+  const [scopeResult, outcomesResult, featuresResult, deliverablesResult, metricsResult] = await Promise.all([
+    supabase
+      .from("project_scope")
+      .select("id, item, is_in_scope, sort_order")
+      .eq("project_id", id)
+      .order("sort_order"),
+    supabase
+      .from("project_outcomes")
+      .select("id, item, sort_order")
+      .eq("project_id", id)
+      .order("sort_order"),
+    supabase
+      .from("project_features")
+      .select("id, item, priority, sort_order")
+      .eq("project_id", id)
+      .order("sort_order"),
+    supabase
+      .from("project_deliverables")
+      .select("id, title, due_date, sort_order")
+      .eq("project_id", id)
+      .order("sort_order"),
+    supabase
+      .from("project_metrics")
+      .select("id, name, target, sort_order")
+      .eq("project_id", id)
+      .order("sort_order"),
+  ])
+
+  return {
+    data: {
+      ...project,
+      scope: scopeResult.data || [],
+      outcomes: outcomesResult.data || [],
+      features: featuresResult.data || [],
+      deliverables: deliverablesResult.data || [],
+      metrics: metricsResult.data || [],
+    } as ProjectFullDetails,
+  }
+}
+
 // Update project
 export async function updateProject(
   id: string,

@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from "motion/react"
 
 import type { ProjectDetails } from "@/lib/data/project-details"
 import { getProjectDetailsById } from "@/lib/data/project-details"
-import type { ProjectWithRelations } from "@/lib/actions/projects"
+import type { ProjectFullDetails } from "@/lib/actions/projects"
 import { Breadcrumbs } from "@/components/projects/Breadcrumbs"
 import { ProjectHeader } from "@/components/projects/ProjectHeader"
 import { ScopeColumns } from "@/components/projects/ScopeColumns"
@@ -28,7 +28,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 type ProjectDetailsPageProps = {
   projectId: string
-  supabaseProject?: ProjectWithRelations | null
+  supabaseProject?: ProjectFullDetails | null
 }
 
 type LoadState =
@@ -43,11 +43,34 @@ export function ProjectDetailsPage({ projectId, supabaseProject }: ProjectDetail
   useEffect(() => {
     let cancelled = false
 
-    // Get mock project details structure
+    // Get mock project details structure as fallback
     let project = getProjectDetailsById(projectId)
 
     // Override with Supabase data if available
     if (supabaseProject) {
+      // Map Supabase scope to UI format
+      const inScope = supabaseProject.scope
+        .filter((s) => s.is_in_scope)
+        .map((s) => s.item)
+      const outOfScope = supabaseProject.scope
+        .filter((s) => !s.is_in_scope)
+        .map((s) => s.item)
+
+      // Map Supabase outcomes to UI format
+      const outcomes = supabaseProject.outcomes.map((o) => o.item)
+
+      // Map Supabase features to UI format (grouped by priority)
+      const p0Features = supabaseProject.features
+        .filter((f) => f.priority === 0)
+        .map((f) => f.item)
+      const p1Features = supabaseProject.features
+        .filter((f) => f.priority === 1)
+        .map((f) => f.item)
+      const p2Features = supabaseProject.features
+        .filter((f) => f.priority === 2)
+        .map((f) => f.item)
+
+      // Build the project object with Supabase data
       project = {
         ...project,
         id: supabaseProject.id,
@@ -69,6 +92,17 @@ export function ProjectDetailsPage({ projectId, supabaseProject }: ProjectDetail
         time: {
           ...project.time,
           progressPercent: supabaseProject.progress || 0,
+        },
+        // Use Supabase data for scope, outcomes, features if available
+        scope: {
+          inScope: inScope.length > 0 ? inScope : project.scope.inScope,
+          outOfScope: outOfScope.length > 0 ? outOfScope : project.scope.outOfScope,
+        },
+        outcomes: outcomes.length > 0 ? outcomes : project.outcomes,
+        keyFeatures: {
+          p0: p0Features.length > 0 ? p0Features : project.keyFeatures.p0,
+          p1: p1Features.length > 0 ? p1Features : project.keyFeatures.p1,
+          p2: p2Features.length > 0 ? p2Features : project.keyFeatures.p2,
         },
       }
       // When we have Supabase data, set state immediately (no artificial delay)
