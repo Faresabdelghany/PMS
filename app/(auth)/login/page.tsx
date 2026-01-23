@@ -9,6 +9,7 @@ import { z } from "zod"
 import { signIn, signInWithGoogle } from "@/lib/actions/auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Form,
@@ -97,6 +98,7 @@ function LoginForm() {
                     <Input
                       type="email"
                       placeholder="name@example.com"
+                      autoComplete="email"
                       disabled={isLoading}
                       {...field}
                     />
@@ -120,8 +122,8 @@ function LoginForm() {
                     </Link>
                   </div>
                   <FormControl>
-                    <Input
-                      type="password"
+                    <PasswordInput
+                      autoComplete="current-password"
                       disabled={isLoading}
                       {...field}
                     />

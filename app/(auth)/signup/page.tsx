@@ -8,6 +8,7 @@ import { z } from "zod"
 import { signUp, signInWithGoogle } from "@/lib/actions/auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Form,
@@ -100,6 +101,7 @@ export default function SignupPage() {
                     <Input
                       type="text"
                       placeholder="John Doe"
+                      autoComplete="name"
                       disabled={isLoading}
                       {...field}
                     />
@@ -118,6 +120,7 @@ export default function SignupPage() {
                     <Input
                       type="email"
                       placeholder="name@example.com"
+                      autoComplete="email"
                       disabled={isLoading}
                       {...field}
                     />
@@ -133,8 +136,8 @@ export default function SignupPage() {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
+                    <PasswordInput
+                      autoComplete="new-password"
                       disabled={isLoading}
                       {...field}
                     />
