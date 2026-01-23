@@ -8,12 +8,46 @@ import type {
   ProjectUpdate,
   ProjectStatus,
   ProjectPriority,
+  ProjectIntent,
+  SuccessType,
+  DeadlineType,
+  WorkStructure,
   ProjectMember,
   ProjectMemberRole,
 } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
 export type { ActionResult }
+
+// Extended type for guided wizard project creation
+export type GuidedProjectInput = {
+  // Base project fields
+  name: string
+  description?: string | null
+  status?: ProjectStatus
+  priority?: ProjectPriority
+  start_date?: string | null
+  end_date?: string | null
+  client_id?: string | null
+  type_label?: string | null
+  tags?: string[]
+
+  // Guided wizard fields (stored in projects table)
+  intent?: ProjectIntent | null
+  success_type?: SuccessType | null
+  deadline_type?: DeadlineType | null
+  deadline_date?: string | null
+  work_structure?: WorkStructure | null
+
+  // Related data (stored in separate tables)
+  deliverables?: { title: string; due_date?: string | null }[]
+  metrics?: { name: string; target?: string | null }[]
+
+  // Project members
+  owner_id?: string
+  contributor_ids?: string[]
+  stakeholder_ids?: string[]
+}
 
 export type ProjectFilters = {
   status?: ProjectStatus
@@ -31,10 +65,10 @@ export type ProjectWithRelations = Project & {
   })[]
 }
 
-// Create project
+// Create project (supports both quick create and guided wizard)
 export async function createProject(
   orgId: string,
-  data: Omit<ProjectInsert, "organization_id">
+  data: GuidedProjectInput
 ): Promise<ActionResult<Project>> {
   const supabase = await createClient()
 
@@ -47,11 +81,43 @@ export async function createProject(
     return { error: "Not authenticated" }
   }
 
-  // Create project
+  // Input validation
+  if (!data.name || data.name.trim().length === 0) {
+    return { error: "Project name is required" }
+  }
+
+  // Extract related data from input
+  const { deliverables, metrics, owner_id, contributor_ids, stakeholder_ids, ...projectData } = data
+
+  // Filter out empty deliverables and metrics
+  const validDeliverables = deliverables?.filter((d) => d.title?.trim()) ?? []
+  const validMetrics = metrics?.filter((m) => m.name?.trim()) ?? []
+
+  // Determine owner ID (specified or current user)
+  const ownerId = owner_id || user.id
+
+  // Validate that contributor/stakeholder IDs belong to the organization (if provided)
+  const allMemberIds = [...(contributor_ids || []), ...(stakeholder_ids || [])].filter(
+    (id) => id !== ownerId
+  )
+  let validMemberIds = new Set<string>()
+
+  if (allMemberIds.length > 0) {
+    const { data: orgMembers } = await supabase
+      .from("organization_members")
+      .select("user_id")
+      .eq("organization_id", orgId)
+      .in("user_id", allMemberIds)
+
+    validMemberIds = new Set(orgMembers?.map((m) => m.user_id) || [])
+  }
+
+  // 1. Create project with all fields (base + guided wizard fields)
   const { data: project, error } = await supabase
     .from("projects")
     .insert({
-      ...data,
+      ...projectData,
+      name: data.name.trim(),
       organization_id: orgId,
     })
     .select()
@@ -61,12 +127,102 @@ export async function createProject(
     return { error: error.message }
   }
 
-  // Add creator as project owner
-  await supabase.from("project_members").insert({
-    project_id: project.id,
-    user_id: user.id,
-    role: "owner",
-  })
+  // 2. Insert related data with error handling and cleanup
+  try {
+    // CRITICAL: Add project owner FIRST (required for RLS policies on deliverables/metrics)
+    const { error: ownerError } = await supabase.from("project_members").insert({
+      project_id: project.id,
+      user_id: ownerId,
+      role: "owner",
+    })
+
+    if (ownerError) {
+      throw new Error(`Failed to add project owner: ${ownerError.message}`)
+    }
+
+    // 3. Insert deliverables (user is now a project member, RLS will pass)
+    if (validDeliverables.length > 0) {
+      const { error: deliverablesError } = await supabase
+        .from("project_deliverables")
+        .insert(
+          validDeliverables.map((d, index) => ({
+            project_id: project.id,
+            title: d.title.trim(),
+            due_date: d.due_date || null,
+            sort_order: index,
+          }))
+        )
+
+      if (deliverablesError) {
+        throw new Error(`Failed to insert deliverables: ${deliverablesError.message}`)
+      }
+    }
+
+    // 4. Insert metrics
+    if (validMetrics.length > 0) {
+      const { error: metricsError } = await supabase
+        .from("project_metrics")
+        .insert(
+          validMetrics.map((m, index) => ({
+            project_id: project.id,
+            name: m.name.trim(),
+            target: m.target?.trim() || null,
+            sort_order: index,
+          }))
+        )
+
+      if (metricsError) {
+        throw new Error(`Failed to insert metrics: ${metricsError.message}`)
+      }
+    }
+
+    // 5. Add contributors as 'member' role (only valid org members, excluding owner)
+    const validContributors = (contributor_ids || []).filter(
+      (id) => id !== ownerId && validMemberIds.has(id)
+    )
+    if (validContributors.length > 0) {
+      const { error: contributorsError } = await supabase
+        .from("project_members")
+        .insert(
+          validContributors.map((userId) => ({
+            project_id: project.id,
+            user_id: userId,
+            role: "member" as ProjectMemberRole,
+          }))
+        )
+
+      if (contributorsError) {
+        throw new Error(`Failed to add contributors: ${contributorsError.message}`)
+      }
+    }
+
+    // 6. Add stakeholders as 'viewer' role (only valid org members, excluding owner and contributors)
+    const contributorSet = new Set(validContributors)
+    const validStakeholders = (stakeholder_ids || []).filter(
+      (id) => id !== ownerId && !contributorSet.has(id) && validMemberIds.has(id)
+    )
+    if (validStakeholders.length > 0) {
+      const { error: stakeholdersError } = await supabase
+        .from("project_members")
+        .insert(
+          validStakeholders.map((userId) => ({
+            project_id: project.id,
+            user_id: userId,
+            role: "viewer" as ProjectMemberRole,
+          }))
+        )
+
+      if (stakeholdersError) {
+        throw new Error(`Failed to add stakeholders: ${stakeholdersError.message}`)
+      }
+    }
+  } catch (relatedError) {
+    // Cleanup: delete project if any related insert fails
+    await supabase.from("projects").delete().eq("id", project.id)
+    return {
+      error: relatedError instanceof Error ? relatedError.message : "Failed to create project with related data",
+    }
+  }
 
   revalidatePath("/projects")
   return { data: project }

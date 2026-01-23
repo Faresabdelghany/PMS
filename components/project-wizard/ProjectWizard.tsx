@@ -232,7 +232,7 @@ export function ProjectWizard({ onClose, onCreate, organizationId }: ProjectWiza
                                     <StepStructure data={data} updateData={updateData} />
                                 )}
                                 {step === 5 && (
-                                    <StepReview data={data} onEditStep={handleEditStepFromReview} />
+                                    <StepReview data={data} updateData={updateData} onEditStep={handleEditStepFromReview} />
                                 )}
                             </motion.div>
                         </AnimatePresence>
@@ -252,13 +252,57 @@ export function ProjectWizard({ onClose, onCreate, organizationId }: ProjectWiza
                                 <>
                                     <Button variant="outline">Save as template</Button>
                                     <Button
-                                      onClick={() => {
-                                        onCreate?.();
-                                        toast.success("Project created successfully");
-                                        onClose();
+                                      disabled={isCreating}
+                                      onClick={async () => {
+                                        if (!organizationId) {
+                                          toast.error("Organization not found. Please log in again.");
+                                          return;
+                                        }
+
+                                        setIsCreating(true);
+                                        try {
+                                          // Build project data from guided wizard state
+                                          const projectName = data.name || data.deliverables[0]?.title || "Untitled Project";
+                                          const result = await createProject(organizationId, {
+                                            name: projectName,
+                                            description: data.description || null,
+                                            status: "planned",
+                                            priority: "medium",
+                                            intent: data.intent || null,
+                                            success_type: data.successType === 'undefined' ? null : data.successType,
+                                            deadline_type: data.deadlineType,
+                                            deadline_date: data.deadlineDate || null,
+                                            work_structure: data.structure || null,
+                                            client_id: data.clientId || null,
+                                            deliverables: data.deliverables.map((d) => ({
+                                              title: d.title,
+                                              due_date: d.dueDate || null,
+                                            })),
+                                            metrics: data.metrics?.map((m) => ({
+                                              name: m.name,
+                                              target: m.target || null,
+                                            })) || [],
+                                            owner_id: data.ownerId,
+                                            contributor_ids: data.contributorIds,
+                                            stakeholder_ids: data.stakeholderIds,
+                                          });
+
+                                          if (result.error) {
+                                            toast.error(result.error);
+                                            return;
+                                          }
+
+                                          onCreate?.();
+                                          toast.success("Project created successfully");
+                                          onClose();
+                                        } catch (error) {
+                                          toast.error("Failed to create project");
+                                        } finally {
+                                          setIsCreating(false);
+                                        }
                                       }}
                                     >
-                                      Create project
+                                      {isCreating ? "Creating..." : "Create project"}
                                     </Button>
                                 </>
                             ) : (

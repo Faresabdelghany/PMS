@@ -2,16 +2,22 @@ import { ProjectData } from "../types";
 import { Card } from "../../ui/card";
 import { Separator } from "../../ui/separator";
 import { Button } from "../../ui/button";
+import { Input } from "../../ui/input";
+import { Label } from "../../ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar";
 import { getAvatarUrl } from "@/lib/assets/avatars";
-import { Rocket, Flask, Briefcase, User, Users, Layout, Target, CheckCircle, Question, PencilSimpleLine } from "@phosphor-icons/react/dist/ssr";
+import { Rocket, Flask, Briefcase, User, Users, Layout, Target, CheckCircle, Question, PencilSimpleLine, FolderSimple } from "@phosphor-icons/react/dist/ssr";
 
 interface StepReviewProps {
   data: ProjectData;
+  updateData?: (updates: Partial<ProjectData>) => void;
   onEditStep?: (step: number) => void;
 }
 
-export function StepReview({ data, onEditStep }: StepReviewProps) {
+export function StepReview({ data, updateData, onEditStep }: StepReviewProps) {
+    // Default project name from first deliverable if not set
+    const defaultName = data.deliverables[0]?.title || "Untitled Project";
+    const projectName = data.name || defaultName;
     const getIntentIcon = () => {
         switch (data.intent) {
             case 'delivery': return <Rocket className="h-5 w-5" />;
@@ -80,6 +86,23 @@ export function StepReview({ data, onEditStep }: StepReviewProps) {
   return (
     <div className="flex flex-col space-y-4 bg-muted p-4 rounded-2xl">
       <p className="text-sm text-muted-foreground">Everything look good? You're ready to go.</p>
+
+      {/* Project Name */}
+      <div className="space-y-2">
+        <Label htmlFor="project-name" className="text-sm font-medium">Project name</Label>
+        <div className="flex items-center gap-3 rounded-3xl bg-background p-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border text-muted-foreground">
+            <FolderSimple className="h-5 w-5" />
+          </div>
+          <Input
+            id="project-name"
+            value={projectName}
+            onChange={(e) => updateData?.({ name: e.target.value })}
+            placeholder="Enter project name"
+            className="flex-1 border-0 bg-transparent text-sm font-semibold shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          />
+        </div>
+      </div>
 
       <div className="">
         <div className="space-y-0.5">

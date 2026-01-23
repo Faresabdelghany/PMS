@@ -30,6 +30,7 @@ export interface OwnershipEntry {
 
 export interface ProjectData {
   mode?: ProjectMode;
+  name?: string;
   intent?: ProjectIntent;
   successType: SuccessType;
   deliverables: ProjectDeliverable[];
@@ -38,7 +39,7 @@ export interface ProjectData {
   metricName?: string;
   metricTarget?: string;
   deadlineType: DeadlineType;
-  deadlineDate?: string; 
+  deadlineDate?: string;
   ownerId?: string;
   contributorIds: string[];
   stakeholderIds: string[];

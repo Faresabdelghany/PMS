@@ -9,6 +9,10 @@ export type Json =
 // Enum types
 export type ProjectStatus = "backlog" | "planned" | "active" | "cancelled" | "completed"
 export type ProjectPriority = "urgent" | "high" | "medium" | "low"
+export type ProjectIntent = "delivery" | "experiment" | "internal"
+export type SuccessType = "deliverable" | "metric" | "undefined"
+export type DeadlineType = "none" | "target" | "fixed"
+export type WorkStructure = "linear" | "milestones" | "multistream"
 export type TaskStatus = "todo" | "in-progress" | "done"
 export type TaskPriority = "no-priority" | "low" | "medium" | "high" | "urgent"
 export type ClientStatus = "prospect" | "active" | "on_hold" | "archived"
@@ -229,7 +233,16 @@ export interface Database {
           progress: number
           start_date: string | null
           end_date: string | null
+          intent: ProjectIntent | null
+          success_type: SuccessType | null
+          deadline_type: DeadlineType | null
+          deadline_date: string | null
+          work_structure: WorkStructure | null
           type_label: string | null
+          duration_label: string | null
+          location: string | null
+          group_label: string | null
+          label_badge: string | null
           tags: string[]
           created_at: string
           updated_at: string
@@ -246,7 +259,16 @@ export interface Database {
           progress?: number
           start_date?: string | null
           end_date?: string | null
+          intent?: ProjectIntent | null
+          success_type?: SuccessType | null
+          deadline_type?: DeadlineType | null
+          deadline_date?: string | null
+          work_structure?: WorkStructure | null
           type_label?: string | null
+          duration_label?: string | null
+          location?: string | null
+          group_label?: string | null
+          label_badge?: string | null
           tags?: string[]
           created_at?: string
           updated_at?: string
@@ -263,7 +285,16 @@ export interface Database {
           progress?: number
           start_date?: string | null
           end_date?: string | null
+          intent?: ProjectIntent | null
+          success_type?: SuccessType | null
+          deadline_type?: DeadlineType | null
+          deadline_date?: string | null
+          work_structure?: WorkStructure | null
           type_label?: string | null
+          duration_label?: string | null
+          location?: string | null
+          group_label?: string | null
+          label_badge?: string | null
           tags?: string[]
           created_at?: string
           updated_at?: string
@@ -877,3 +908,19 @@ export type TaskWithRelations = Task & {
   workstream?: Workstream | null
   project?: Project | null
 }
+
+// Project extended data types
+export type ProjectDeliverable = Database["public"]["Tables"]["project_deliverables"]["Row"]
+export type ProjectDeliverableInsert = Database["public"]["Tables"]["project_deliverables"]["Insert"]
+
+export type ProjectMetric = Database["public"]["Tables"]["project_metrics"]["Row"]
+export type ProjectMetricInsert = Database["public"]["Tables"]["project_metrics"]["Insert"]
+
+export type ProjectScope = Database["public"]["Tables"]["project_scope"]["Row"]
+export type ProjectScopeInsert = Database["public"]["Tables"]["project_scope"]["Insert"]
+
+export type ProjectOutcome = Database["public"]["Tables"]["project_outcomes"]["Row"]
+export type ProjectOutcomeInsert = Database["public"]["Tables"]["project_outcomes"]["Insert"]
+
+export type ProjectFeature = Database["public"]["Tables"]["project_features"]["Row"]
+export type ProjectFeatureInsert = Database["public"]["Tables"]["project_features"]["Insert"]
