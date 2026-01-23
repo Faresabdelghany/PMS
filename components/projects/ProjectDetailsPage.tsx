@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "motion/react"
 
 import type { ProjectDetails } from "@/lib/data/project-details"
 import { getProjectDetailsById } from "@/lib/data/project-details"
+import type { ProjectWithRelations } from "@/lib/actions/projects"
 import { Breadcrumbs } from "@/components/projects/Breadcrumbs"
 import { ProjectHeader } from "@/components/projects/ProjectHeader"
 import { ScopeColumns } from "@/components/projects/ScopeColumns"
@@ -27,13 +28,14 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 type ProjectDetailsPageProps = {
   projectId: string
+  supabaseProject?: ProjectWithRelations | null
 }
 
 type LoadState =
   | { status: "loading" }
   | { status: "ready"; project: ProjectDetails }
 
-export function ProjectDetailsPage({ projectId }: ProjectDetailsPageProps) {
+export function ProjectDetailsPage({ projectId, supabaseProject }: ProjectDetailsPageProps) {
   const [state, setState] = useState<LoadState>({ status: "loading" })
   const [showMeta, setShowMeta] = useState(true)
   const [isWizardOpen, setIsWizardOpen] = useState(false)
@@ -45,7 +47,36 @@ export function ProjectDetailsPage({ projectId }: ProjectDetailsPageProps) {
     const delay = 600 + Math.floor(Math.random() * 301)
     const t = setTimeout(() => {
       if (cancelled) return
-      const project = getProjectDetailsById(projectId)
+      // Get mock project details structure
+      let project = getProjectDetailsById(projectId)
+
+      // Override with Supabase data if available
+      if (supabaseProject) {
+        project = {
+          ...project,
+          id: supabaseProject.id,
+          name: supabaseProject.name,
+          description: supabaseProject.description || project.description,
+          meta: {
+            ...project.meta,
+            priorityLabel: supabaseProject.priority.charAt(0).toUpperCase() + supabaseProject.priority.slice(1),
+          },
+          backlog: {
+            ...project.backlog,
+            statusLabel: supabaseProject.status === "active" ? "Active"
+              : supabaseProject.status === "planned" ? "Planned"
+              : supabaseProject.status === "completed" ? "Completed"
+              : supabaseProject.status === "cancelled" ? "Cancelled"
+              : "Backlog",
+            priorityLabel: supabaseProject.priority.charAt(0).toUpperCase() + supabaseProject.priority.slice(1),
+          },
+          time: {
+            ...project.time,
+            progressPercent: supabaseProject.progress || 0,
+          },
+        }
+      }
+
       setState({ status: "ready", project })
     }, delay)
 
@@ -53,7 +84,7 @@ export function ProjectDetailsPage({ projectId }: ProjectDetailsPageProps) {
       cancelled = true
       clearTimeout(t)
     }
-  }, [projectId])
+  }, [projectId, supabaseProject])
 
   const copyLink = useCallback(async () => {
     if (!navigator.clipboard) {
