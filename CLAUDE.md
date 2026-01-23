@@ -19,6 +19,21 @@ pnpm start            # Run production server
 pnpm lint             # Run ESLint
 ```
 
+### E2E Testing (Playwright)
+
+```bash
+pnpm test:e2e              # Run all E2E tests (auto-starts dev server)
+pnpm test:e2e --headed     # Run tests with visible browser
+pnpm test:e2e --debug      # Debug mode with inspector
+pnpm test:e2e --ui         # Interactive UI mode
+pnpm test:e2e login.spec.ts              # Run a single test file
+pnpm test:e2e --project=chromium         # Run on specific browser
+pnpm test:e2e:report       # View HTML test report
+pnpm test:e2e:codegen      # Generate tests via recording
+```
+
+Tests are in `e2e/` with Page Object Model pattern (`e2e/pages/`). Auth setup runs first via `e2e/auth.setup.ts`.
+
 ### Supabase Commands
 
 ```bash
@@ -33,9 +48,9 @@ npx supabase gen types typescript       # Generate TypeScript types
 
 - **`app/`** - Next.js App Router pages and layouts
   - `(auth)/` - Authentication pages (login, signup)
+  - `(dashboard)/` - Main app routes with shared layout (projects, clients, tasks, settings)
   - `auth/callback/` - OAuth callback handler
   - `onboarding/` - Organization onboarding
-  - `projects/`, `tasks/`, `clients/` - Main app routes
 - **`components/`** - React components organized by feature
   - `ui/` - shadcn/ui design system primitives
   - `projects/`, `tasks/`, `clients/` - Feature components
@@ -101,6 +116,12 @@ export default async function Page({ params }: PageProps) {
 }
 ```
 
+**Dashboard Layout Pattern:** All main app pages are under `app/(dashboard)/` route group which:
+- Provides shared layout with sidebar, header, and providers
+- Wraps pages with `UserProvider` and `OrganizationProvider` for context
+- Fetches active projects for sidebar display
+- Server Components fetch Supabase data and pass to Client Components as props
+
 ### Data Layer
 
 **Supabase Tables:**
@@ -119,7 +140,14 @@ export default async function Page({ params }: PageProps) {
 - `useTasksRealtime`, `useWorkstreamsRealtime`, `useProjectsRealtime`, `useClientsRealtime`
 - `useFilesRealtime`, `useNotesRealtime`, `useOrganizationMembersRealtime`
 
-**Legacy Mock Data:** `lib/data/` contains mock data files for reference (all components now use Supabase).
+**Supabase Integration Status:**
+- **Sidebar:** Displays real active projects and user profile from Supabase
+- **Projects list:** Fetches from Supabase with real-time updates
+- **Project details:** Fetches project name, status, priority, progress from Supabase (other details use mock structure)
+- **Clients list:** Fetches from Supabase with project counts
+- **Client details:** Fetches from Supabase at `/clients/[id]`
+
+**Legacy Mock Data:** `lib/data/` contains mock data files used as fallback structure for project details (scope, outcomes, features, timeline).
 
 ## Environment Variables
 
@@ -143,6 +171,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 - Drag/drop: @dnd-kit
 - Charts: Recharts
 - Icons: Lucide, Phosphor Icons
+- E2E Testing: Playwright with Page Object Model
 
 ## Deployment
 
