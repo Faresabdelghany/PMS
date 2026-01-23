@@ -203,6 +203,7 @@ export function ProjectsContent({
           onClose={closeWizard}
           onCreate={handleProjectCreated}
           organizationId={organizationId}
+          clients={clients}
         />
       )}
     </div>

@@ -19,8 +19,9 @@ import {
 } from "../../ui/command";
 import { Check, X, CornersOut, Star, CalendarBlank, UserCircle, Spinner, List, Paperclip, Microphone, Rows, ChartBar, Tag } from "@phosphor-icons/react/dist/ssr";
 import { ProjectDescriptionEditor } from "../ProjectDescriptionEditor";
-import { clients, type Client } from "@/lib/data/clients";
 import type { ProjectStatus, ProjectPriority } from "@/lib/supabase/types";
+
+type Client = { id: string; name: string };
 
 export type QuickCreateProjectData = {
   name: string;
@@ -191,12 +192,14 @@ interface StepQuickCreateProps {
   onClose: () => void;
   onCreate: (data: QuickCreateProjectData) => void;
   onExpandChange?: (isExpanded: boolean) => void;
+  clients?: Client[];
 }
 
 export function StepQuickCreate({
   onClose,
   onCreate,
   onExpandChange,
+  clients = [],
 }: StepQuickCreateProps) {
   const [title, setTitle] = useState("");
   // Description is now managed by Tiptap editor

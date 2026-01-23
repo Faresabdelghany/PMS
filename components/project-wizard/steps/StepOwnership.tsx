@@ -8,7 +8,6 @@ import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { Separator } from "../../ui/separator";
-import { clients } from "@/lib/data/clients";
 import { getAvatarUrl } from "@/lib/assets/avatars";
 
 // Organization member type from Supabase
@@ -27,6 +26,7 @@ interface StepOwnershipProps {
   updateData: (updates: Partial<ProjectData>) => void;
   currentUserId?: string;
   organizationMembers?: OrganizationMember[];
+  clients?: { id: string; name: string }[];
 }
 
 interface Account {
@@ -59,7 +59,7 @@ function membersToAccounts(members: OrganizationMember[]): Account[] {
     }));
 }
 
-export function StepOwnership({ data, updateData, currentUserId, organizationMembers }: StepOwnershipProps) {
+export function StepOwnership({ data, updateData, currentUserId, organizationMembers, clients = [] }: StepOwnershipProps) {
   const [query, setQuery] = useState("");
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
 

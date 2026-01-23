@@ -25,9 +25,10 @@ interface ProjectWizardProps {
   onClose: () => void;
   onCreate?: () => void;
   organizationId?: string;
+  clients?: { id: string; name: string }[];
 }
 
-export function ProjectWizard({ onClose, onCreate, organizationId }: ProjectWizardProps) {
+export function ProjectWizard({ onClose, onCreate, organizationId, clients = [] }: ProjectWizardProps) {
   const { user } = useUser();
   const [isCreating, setIsCreating] = useState(false);
   const [step, setStep] = useState(0);
@@ -165,6 +166,7 @@ export function ProjectWizard({ onClose, onCreate, organizationId }: ProjectWiza
         ) : step === QUICK_CREATE_STEP ? (
             <StepQuickCreate
                 onClose={handleClose}
+                clients={clients}
                 onCreate={async (projectData: QuickCreateProjectData) => {
                   if (!organizationId) {
                     toast.error("Organization not found. Please log in again.");
@@ -260,6 +262,7 @@ export function ProjectWizard({ onClose, onCreate, organizationId }: ProjectWiza
                                       updateData={updateData}
                                       currentUserId={user?.id}
                                       organizationMembers={organizationMembers}
+                                      clients={clients}
                                     />
                                 )}
                                 {step === 4 && (
