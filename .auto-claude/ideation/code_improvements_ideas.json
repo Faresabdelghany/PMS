@@ -1,0 +1,116 @@
+{
+  "code_improvements": [
+    {
+      "id": "ci-001",
+      "type": "code_improvements",
+      "title": "Add pagination to projects list view",
+      "description": "Add pagination controls to the projects list similar to the clients list, including page size selector, page navigation, and row count display.",
+      "rationale": "The clients-content.tsx has a complete pagination implementation (page state, pageSize, totalPages calculation, page navigation UI with ellipsis) that is missing from projects-content.tsx. The pattern is well-established and can be directly replicated.",
+      "builds_upon": ["Clients pagination pattern in clients-content.tsx"],
+      "estimated_effort": "small",
+      "affected_files": [
+        "components/projects-content.tsx",
+        "components/project-cards-view.tsx"
+      ],
+      "existing_patterns": [
+        "page/pageSize useState in clients-content.tsx lines 66-67",
+        "totalPages calculation and currentPage clamping",
+        "pageNumbers array with ellipsis (-1) handling",
+        "Pagination footer with first/prev/next/last buttons",
+        "Rows per page select dropdown"
+      ],
+      "implementation_approach": "Copy pagination logic from clients-content.tsx: add page/pageSize state, calculate totalPages from filteredProjects.length, slice filteredProjects for visibleProjects. Add the same pagination footer JSX (lines 444-520) below the project views. Pass visibleProjects instead of filteredProjects to ProjectCardsView.",
+      "status": "draft",
+      "created_at": "2026-01-22T20:14:00.000Z"
+    },
+    {
+      "id": "ci-002",
+      "type": "code_improvements",
+      "title": "Add filter URL persistence to clients page",
+      "description": "Sync client filters (status, search query) to URL parameters so filters are preserved on page refresh and can be shared via URL.",
+      "rationale": "Projects-content.tsx has URL filter persistence using chipsToParams/paramsToChips from lib/url/filters.ts (lines 103-129), but clients-content.tsx only uses in-memory filter state. The URL sync pattern is well-tested in projects and significantly improves UX by allowing bookmarkable filtered views.",
+      "builds_upon": ["Projects URL filter sync pattern", "lib/url/filters.ts chipsToParams/paramsToChips utilities"],
+      "estimated_effort": "small",
+      "affected_files": [
+        "components/clients-content.tsx",
+        "lib/url/filters.ts"
+      ],
+      "existing_patterns": [
+        "useSearchParams() and usePathname() hooks",
+        "chipsToParams() for serializing to URL",
+        "paramsToChips() for deserializing from URL",
+        "isSyncingRef to prevent feedback loops",
+        "router.replace(url, { scroll: false }) for URL updates"
+      ],
+      "implementation_approach": "1) Add useSearchParams and usePathname imports. 2) Extend lib/url/filters.ts to handle client-specific filters (status, search). 3) Add isSyncingRef and prevParamsRef like projects-content. 4) Add useEffect to read URL params on mount. 5) Create replaceUrlFromFilters function that updates URL when statusFilter or query changes. 6) Call replaceUrlFromFilters in setStatusFilter and setQuery handlers.",
+      "status": "draft",
+      "created_at": "2026-01-22T20:14:00.000Z"
+    },
+    {
+      "id": "ci-003",
+      "type": "code_improvements",
+      "title": "Add getTeamStats server action",
+      "description": "Add a getTeamStats function to teams.ts that returns team statistics including total count and projects per team, following the established stats pattern.",
+      "rationale": "The stats function pattern exists for clients (getClientStats), projects (getProjectStats), and tasks (getTaskStats). Teams is the only major entity missing this useful analytics function. All three existing implementations follow the exact same structure and can be directly replicated.",
+      "builds_upon": ["getClientStats in lib/actions/clients.ts", "getProjectStats in lib/actions/projects.ts"],
+      "estimated_effort": "trivial",
+      "affected_files": [
+        "lib/actions/teams.ts"
+      ],
+      "existing_patterns": [
+        "ActionResult<{ total, byX }> return type pattern",
+        "Single select query to fetch relevant fields",
+        "JavaScript forEach to aggregate counts",
+        "Record<string, number> for count grouping"
+      ],
+      "implementation_approach": "Add getTeamStats(orgId: string) function: query teams with .select('id, name').eq('organization_id', orgId), then query projects grouped by team_id to count projects per team. Return { total: teams.length, projectsPerTeam: Record<string, number> }. Copy exact error handling structure from getClientStats.",
+      "status": "draft",
+      "created_at": "2026-01-22T20:14:00.000Z"
+    },
+    {
+      "id": "ci-004",
+      "type": "code_improvements",
+      "title": "Add bulk status update for projects",
+      "description": "Add bulkUpdateProjectStatus server action to enable multi-select status changes on the projects list, similar to bulkUpdateTaskStatus for tasks.",
+      "rationale": "Tasks already have bulkUpdateTaskStatus (lib/actions/tasks.ts lines 327-345) using Supabase's .in() method for efficient bulk operations. Projects should have the same capability. The clients-content.tsx multi-select UI (selectedIds state, checkboxes, bulk action buttons) provides the frontend pattern.",
+      "builds_upon": ["bulkUpdateTaskStatus in lib/actions/tasks.ts", "Multi-select UI in clients-content.tsx"],
+      "estimated_effort": "small",
+      "affected_files": [
+        "lib/actions/projects.ts",
+        "components/projects-content.tsx"
+      ],
+      "existing_patterns": [
+        "supabase.from().update().in('id', ids) bulk update pattern",
+        "revalidatePath after bulk operation",
+        "ActionResult return type",
+        "selectedIds Set<string> state",
+        "toggleSelectAll/toggleSelectOne handlers",
+        "Bulk action buttons in header when selection exists"
+      ],
+      "implementation_approach": "1) Add bulkUpdateProjectStatus(projectIds: string[], status: ProjectStatus) to projects.ts using .update({ status }).in('id', projectIds). 2) Add selectedIds state to projects-content.tsx. 3) Add checkbox column to project views. 4) Add bulk action buttons (Archive, Change Status dropdown) that call the new action.",
+      "status": "draft",
+      "created_at": "2026-01-22T20:14:00.000Z"
+    },
+    {
+      "id": "ci-005",
+      "type": "code_improvements",
+      "title": "Add loading skeleton for clients list page",
+      "description": "Create a loading.tsx skeleton file for the clients page route that displays while client data is being fetched, matching the existing project detail loading pattern.",
+      "rationale": "The project detail page has a comprehensive loading skeleton at app/projects/[id]/loading.tsx using Skeleton components. The clients list page (app/clients/page.tsx) does not have a loading.tsx file, causing content to appear abruptly after server-side data fetch.",
+      "builds_upon": ["app/projects/[id]/loading.tsx Skeleton pattern", "components/ui/skeleton.tsx Skeleton component"],
+      "estimated_effort": "trivial",
+      "affected_files": [
+        "app/clients/loading.tsx"
+      ],
+      "existing_patterns": [
+        "Skeleton component with className for sizing",
+        "Matching layout structure to actual page",
+        "Container div with same styling (mx-2 my-2 border rounded-lg)",
+        "Header skeleton + content area skeleton"
+      ],
+      "implementation_approach": "Create app/clients/loading.tsx that exports a default function. Return a div matching clients-content container styling. Add Skeletons for: header row (title, search bar, new client button), status tabs row, table header row, 5-7 table body rows with appropriate column widths matching TableHead widths.",
+      "status": "draft",
+      "created_at": "2026-01-22T20:14:00.000Z"
+    }
+  ]
+}

@@ -1,0 +1,134 @@
+{
+  "id": "ideation-20260123-002628",
+  "project_id": "/home/fares/Downloads/project-dashboard-main",
+  "config": {
+    "enabled_types": [
+      "ui_ux_improvements"
+    ],
+    "include_roadmap_context": true,
+    "include_kanban_context": true,
+    "max_ideas_per_type": 5
+  },
+  "ideas": [
+    {
+      "id": "uiux-001",
+      "type": "ui_ux_improvements",
+      "title": "Add password visibility toggle to auth forms",
+      "description": "Add a show/hide password toggle button inside the password input field on login, signup, and forgot-password pages to allow users to reveal their password temporarily.",
+      "rationale": "Password visibility toggles are a modern UX standard that reduce typing errors and improve accessibility. Currently, users cannot verify what they're typing in password fields, leading to potential login failures and frustration. This is especially critical on mobile where typing errors are common.",
+      "category": "usability",
+      "affected_components": [
+        "app/(auth)/login/page.tsx",
+        "app/(auth)/signup/page.tsx",
+        "app/(auth)/forgot-password/page.tsx",
+        "components/ui/input.tsx"
+      ],
+      "screenshots": [],
+      "current_state": "Password inputs use type='password' without any visibility toggle. The login page (line 122-126) and signup page (line 156-163) both render plain password inputs. Users must type their password blindly with no way to verify what they entered. The Input component is a simple wrapper around the native input element without any built-in icon slot.",
+      "proposed_change": "1. Create a new PasswordInput component that wraps Input with a toggle button using Eye/EyeSlash icons from @phosphor-icons/react. 2. Add relative positioning to the input wrapper with the toggle button positioned at right-3. 3. Toggle between type='password' and type='text' on click. 4. Add proper ARIA attributes (aria-pressed, aria-label='Show password'/'Hide password'). 5. Replace password Input with PasswordInput in login page (line 122) and signup page (line 158). 6. Ensure the toggle button doesn't submit the form (type='button').",
+      "user_benefit": "Users can verify their password before submitting, reducing failed login attempts and account lockouts. Particularly helpful on mobile where typing is error-prone.",
+      "status": "draft",
+      "created_at": "2026-01-22T20:14:00.000Z"
+    },
+    {
+      "id": "uiux-002",
+      "type": "ui_ux_improvements",
+      "title": "Add tooltips to icon-only buttons throughout the app",
+      "description": "Wrap icon-only buttons with Tooltip components to provide context about what each button does when hovering or focusing. The app has a Tooltip component but it's only used in 3 files (sidebar, AvatarGroup).",
+      "rationale": "Many icon buttons across the UI (DotsThreeVertical menus, SidebarTrigger, action buttons) lack tooltips, making them difficult to understand without clicking. Users encountering icon-only buttons need hover hints to understand functionality.",
+      "category": "accessibility",
+      "affected_components": [
+        "components/app-sidebar.tsx",
+        "components/clients-content.tsx",
+        "components/projects/ProjectTasksTab.tsx",
+        "components/tasks/TaskBoardCard.tsx",
+        "components/tasks/TaskRowBase.tsx",
+        "components/project-header.tsx"
+      ],
+      "screenshots": [],
+      "current_state": "Icon-only buttons like DotsThreeVertical (menu triggers in clients-content.tsx line 410, TaskRowBase), SidebarTrigger (clients-content.tsx line 216), Plus buttons, CaretUpDown workspace switch (app-sidebar.tsx line 91), and drag handles have aria-labels for screen readers but no visual tooltips for sighted users.",
+      "proposed_change": "1. Import Tooltip, TooltipTrigger, TooltipContent from components/ui/tooltip.tsx. 2. Wrap icon buttons consistently: a) DotsThreeVertical buttons -> 'More options', b) SidebarTrigger -> 'Toggle sidebar', c) Plus buttons -> 'Add new...', d) CaretUpDown -> 'Switch workspace', e) Drag handles -> 'Drag to reorder'. 3. Set sideOffset={4} for proper spacing. 4. Example for clients-content.tsx line 410: <Tooltip><TooltipTrigger asChild><Button>...</Button></TooltipTrigger><TooltipContent>More options</TooltipContent></Tooltip>",
+      "user_benefit": "Users can discover functionality without clicking buttons. Reduces cognitive load and improves discoverability for both new and experienced users.",
+      "status": "draft",
+      "created_at": "2026-01-22T20:14:00.000Z"
+    },
+    {
+      "id": "uiux-003",
+      "type": "ui_ux_improvements",
+      "title": "Enhance empty state designs with illustrations and actionable CTAs",
+      "description": "Improve empty state messages throughout the app with larger icons, more descriptive text, and clear call-to-action buttons to make them more engaging and helpful.",
+      "rationale": "Current empty states are plain text messages (e.g., 'No tasks', 'No clients found', 'No workstreams defined yet'). While functional, they miss an opportunity to guide users and make the empty state feel intentional. ProjectCardsView has a good empty state pattern that should be applied consistently.",
+      "category": "visual",
+      "affected_components": [
+        "components/tasks/TaskBoardCard.tsx",
+        "components/project-board-view.tsx",
+        "components/projects/ProjectTasksTab.tsx",
+        "components/projects/WorkstreamTab.tsx",
+        "components/projects/QuickLinksCard.tsx",
+        "components/projects/TimelineGantt.tsx"
+      ],
+      "screenshots": [],
+      "current_state": "Empty states vary in quality: TaskBoardCard empty variant (line 34-40) shows 'No tasks' in a dashed box. project-board-view.tsx (line 147) shows only 'No projects found'. ProjectTasksTab (line 113-115) shows 'No tasks defined yet' in a minimal dashed border. QuickLinksCard (line 32) shows 'No files' with a basic icon.",
+      "proposed_change": "1. Create a reusable EmptyState component with props for: icon (Phosphor icon), title, description, action (optional button). 2. Add larger icons (48px) with muted-foreground color in a subtle circular background. 3. Use more descriptive copy: Instead of 'No tasks' use 'No tasks yet - Create your first task to get started'. 4. Include primary action button when appropriate. 5. Match the pattern from project-cards-view.tsx empty state. 6. Apply consistently to all empty state locations.",
+      "user_benefit": "Users understand what they're looking at (empty is intentional, not an error), have clear guidance on what to do next, and experience a more polished, professional interface.",
+      "status": "draft",
+      "created_at": "2026-01-22T20:14:00.000Z"
+    },
+    {
+      "id": "uiux-004",
+      "type": "ui_ux_improvements",
+      "title": "Add loading skeleton states to Clients and Tasks pages",
+      "description": "Implement loading.tsx files with skeleton UI for the Clients page and Tasks page to provide visual feedback during data fetching, matching the pattern established in projects/[id]/loading.tsx.",
+      "rationale": "The projects/[id]/loading.tsx provides a comprehensive skeleton loading pattern, but /clients and /tasks pages lack dedicated loading states. This causes abrupt content appearance and potential confusion during navigation.",
+      "category": "performance",
+      "affected_components": [
+        "app/clients/loading.tsx",
+        "app/tasks/loading.tsx",
+        "components/ui/skeleton.tsx"
+      ],
+      "screenshots": [],
+      "current_state": "Only app/projects/[id]/loading.tsx exists with comprehensive skeleton UI (39 lines). The clients page renders ClientsContent which shows content immediately. The tasks page renders MyTasksPage with no loading state. MyTasksPage.tsx loads tasks synchronously from mock data with no loading indication.",
+      "proposed_change": "1. Create app/clients/loading.tsx mirroring the table structure from clients-content.tsx: header skeleton, filter pills skeleton, table rows (8) with avatar placeholder (h-8 w-8), text placeholders for each column. 2. Create app/tasks/loading.tsx with skeleton cards in a grid layout matching TaskWeekBoardView column structure. 3. Use the existing Skeleton component pattern: bg-accent animate-pulse rounded-md. 4. Include skeleton for page headers, filter areas, and pagination. 5. Ensure skeletons match approximate dimensions of real content to prevent layout shift.",
+      "user_benefit": "Users see immediate visual feedback that content is loading, reducing perceived wait time and preventing confusion about whether the page is broken or still loading.",
+      "status": "draft",
+      "created_at": "2026-01-22T20:14:00.000Z"
+    },
+    {
+      "id": "uiux-005",
+      "type": "ui_ux_improvements",
+      "title": "Add visible focus ring styling to custom interactive card elements",
+      "description": "Ensure ProjectCard, TaskBoardCard, and other custom interactive elements have consistent and visible focus indicators for keyboard navigation, following the Button component pattern.",
+      "rationale": "While Button and Input components have proper focus-visible styles, custom interactive elements use 'focus:outline-none' which removes the default focus indicator without providing a custom one. This hurts keyboard accessibility and violates WCAG 2.4.7.",
+      "category": "accessibility",
+      "affected_components": [
+        "components/project-card.tsx",
+        "components/tasks/TaskBoardCard.tsx",
+        "components/filter-popover.tsx",
+        "components/tasks/TaskRowBase.tsx"
+      ],
+      "screenshots": [],
+      "current_state": "ProjectCard (line 112) has 'focus:outline-none' without a replacement focus style. TaskBoardCard (line 52-55) has 'focus:outline-none' on the card div. Both have tabIndex={0} and role='button' indicating they're keyboard accessible, but pressing Tab gives no visual indication of focus. filter-popover.tsx category buttons (line 163) have hover states but no focus-visible styling.",
+      "proposed_change": "1. Replace 'focus:outline-none' with 'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2' following the button.tsx pattern. 2. For cards with borders, use 'focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20' for a subtler effect that works with the existing border. 3. Update ProjectCard className (line 112) and TaskBoardCard className (line 52). 4. Add focus-visible styles to filter-popover category buttons. 5. Test keyboard navigation flow through all interactive elements.",
+      "user_benefit": "Keyboard users can clearly see which element is currently focused, enabling effective navigation without a mouse. Essential for accessibility compliance (WCAG 2.4.7 Focus Visible).",
+      "status": "draft",
+      "created_at": "2026-01-22T20:14:00.000Z"
+    }
+  ],
+  "project_context": {
+    "existing_features": [],
+    "tech_stack": [],
+    "target_audience": null,
+    "planned_features": []
+  },
+  "summary": {
+    "total_ideas": 5,
+    "by_type": {
+      "ui_ux_improvements": 5
+    },
+    "by_status": {
+      "draft": 5
+    }
+  },
+  "generated_at": "2026-01-23T00:26:28.562635",
+  "updated_at": "2026-01-23T00:26:28.562677"
+}

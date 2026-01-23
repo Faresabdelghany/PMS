@@ -7,110 +7,14 @@ import { ProjectTimeline } from "@/components/project-timeline"
 import { ProjectCardsView } from "@/components/project-cards-view"
 import { ProjectBoardView } from "@/components/project-board-view"
 import { ProjectWizard } from "@/components/project-wizard/ProjectWizard"
+import { computeFilterCounts, projects } from "@/lib/data/projects"
 import { DEFAULT_VIEW_OPTIONS, type FilterChip, type ViewOptions } from "@/lib/view-options"
 import { chipsToParams, paramsToChips } from "@/lib/url/filters"
-import type { ProjectWithRelations } from "@/lib/actions/projects"
-import type { Client } from "@/lib/supabase/types"
-import { useProjectsRealtime } from "@/hooks/use-realtime"
 
-// Helper to compute filter counts from view projects
-type ViewProject = ReturnType<typeof toViewProject>
-
-function computeFilterCounts(projects: ViewProject[]) {
-  const status: Record<string, number> = {}
-  const priority: Record<string, number> = {}
-  const tags: Record<string, number> = {}
-  const members: Record<string, number> = {}
-
-  for (const p of projects) {
-    status[p.status] = (status[p.status] || 0) + 1
-    priority[p.priority] = (priority[p.priority] || 0) + 1
-    for (const tag of p.tags) {
-      tags[tag] = (tags[tag] || 0) + 1
-    }
-    for (const member of p.members) {
-      members[member] = (members[member] || 0) + 1
-    }
-  }
-
-  return { status, priority, tags, members }
-}
-
-// Helper to convert DB project to view-compatible format
-function toViewProject(p: ProjectWithRelations) {
-  return {
-    id: p.id,
-    name: p.name,
-    taskCount: 0, // Will be filled from tasks later
-    progress: p.progress,
-    startDate: p.start_date ? new Date(p.start_date) : new Date(),
-    endDate: p.end_date ? new Date(p.end_date) : new Date(),
-    status: p.status,
-    priority: p.priority,
-    tags: p.tags,
-    members: p.members?.map((m) => m.profile?.full_name || m.profile?.email || "Unknown") || [],
-    client: p.client?.name,
-    typeLabel: p.type_label || undefined,
-    durationLabel: undefined,
-    tasks: [], // Tasks would be loaded separately
-  }
-}
-
-type ProjectsContentProps = {
-  initialProjects: ProjectWithRelations[]
-  clients: Client[]
-  organizationId: string
-}
-
-export function ProjectsContent({ initialProjects, clients, organizationId }: ProjectsContentProps) {
+export function ProjectsContent() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-
-  const [projects, setProjects] = useState(initialProjects)
-
-  // Subscribe to real-time project changes
-  useProjectsRealtime(organizationId, {
-    onInsert: (newProject) => {
-      setProjects((prev) => {
-        if (prev.some((p) => p.id === newProject.id)) return prev
-        // Create a proper ProjectWithRelations object with empty relations
-        // Relations will be populated on next page load
-        const projectWithRelations: ProjectWithRelations = {
-          ...newProject,
-          client: null,
-          team: null,
-          members: [],
-        }
-        return [projectWithRelations, ...prev]
-      })
-    },
-    onUpdate: (updatedProject) => {
-      setProjects((prev) =>
-        prev.map((project) =>
-          project.id === updatedProject.id
-            ? {
-                // Preserve existing relations (client, team, members)
-                ...project,
-                // Only update scalar fields from the realtime payload
-                name: updatedProject.name,
-                description: updatedProject.description,
-                status: updatedProject.status,
-                priority: updatedProject.priority,
-                progress: updatedProject.progress,
-                start_date: updatedProject.start_date,
-                end_date: updatedProject.end_date,
-                tags: updatedProject.tags,
-                type_label: updatedProject.type_label,
-              }
-            : project
-        )
-      )
-    },
-    onDelete: (deletedProject) => {
-      setProjects((prev) => prev.filter((project) => project.id !== deletedProject.id))
-    },
-  })
 
   const [viewOptions, setViewOptions] = useState<ViewOptions>(DEFAULT_VIEW_OPTIONS)
 
@@ -131,8 +35,6 @@ export function ProjectsContent({ initialProjects, clients, organizationId }: Pr
 
   const handleProjectCreated = () => {
     setIsWizardOpen(false)
-    // Real-time will add the project to the list
-    // No need for router.refresh()
   }
 
   const removeFilter = (key: string, value: string) => {
@@ -173,11 +75,8 @@ export function ProjectsContent({ initialProjects, clients, organizationId }: Pr
     prevParamsRef.current = qs
     router.replace(url, { scroll: false })
   }
-  // Convert to view format
-  const viewProjects = useMemo(() => projects.map(toViewProject), [projects])
-
   const filteredProjects = useMemo(() => {
-    let list = viewProjects.slice()
+    let list = projects.slice()
 
     // Apply showClosedProjects toggle
     if (!viewOptions.showClosedProjects) {
@@ -212,7 +111,7 @@ export function ProjectsContent({ initialProjects, clients, organizationId }: Pr
     if (viewOptions.ordering === "alphabetical") sorted.sort((a, b) => a.name.localeCompare(b.name))
     if (viewOptions.ordering === "date") sorted.sort((a, b) => (a.endDate?.getTime() || 0) - (b.endDate?.getTime() || 0))
     return sorted
-  }, [filters, viewOptions, viewProjects])
+  }, [filters, viewOptions, projects])
 
   return (
     <div className="flex flex-1 flex-col bg-background mx-2 my-2 border border-border rounded-lg min-w-0">
@@ -229,12 +128,7 @@ export function ProjectsContent({ initialProjects, clients, organizationId }: Pr
       {viewOptions.viewType === "list" && <ProjectCardsView projects={filteredProjects} onCreateProject={openWizard} />}
       {viewOptions.viewType === "board" && <ProjectBoardView projects={filteredProjects} onAddProject={openWizard} />}
       {isWizardOpen && (
-        <ProjectWizard
-          onClose={closeWizard}
-          onCreate={handleProjectCreated}
-          organizationId={organizationId}
-          clients={clients}
-        />
+        <ProjectWizard onClose={closeWizard} onCreate={handleProjectCreated} />
       )}
     </div>
   )

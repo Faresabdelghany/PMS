@@ -1,0 +1,107 @@
+{
+  "project_root": "/home/fares/Downloads/project-dashboard-main",
+  "project_type": "single",
+  "services": {
+    "main": {
+      "name": "main",
+      "path": "/home/fares/Downloads/project-dashboard-main",
+      "language": "TypeScript",
+      "framework": "Next.js",
+      "type": "frontend",
+      "package_manager": "pnpm",
+      "default_port": 3000,
+      "styling": "Tailwind CSS",
+      "dev_command": "npm run dev",
+      "key_directories": {
+        "lib": {
+          "path": "lib",
+          "purpose": "Library code"
+        },
+        "app": {
+          "path": "app",
+          "purpose": "Application code"
+        },
+        "components": {
+          "path": "components",
+          "purpose": "UI components"
+        },
+        "hooks": {
+          "path": "hooks",
+          "purpose": "Custom hooks"
+        }
+      },
+      "dependencies": [
+        "@dnd-kit/core",
+        "@dnd-kit/sortable",
+        "@dnd-kit/utilities",
+        "@hookform/resolvers",
+        "@phosphor-icons/react",
+        "@radix-ui/react-accordion",
+        "@radix-ui/react-alert-dialog",
+        "@radix-ui/react-aspect-ratio",
+        "@radix-ui/react-avatar",
+        "@radix-ui/react-checkbox",
+        "@radix-ui/react-collapsible",
+        "@radix-ui/react-context-menu",
+        "@radix-ui/react-dialog",
+        "@radix-ui/react-dropdown-menu",
+        "@radix-ui/react-hover-card",
+        "@radix-ui/react-label",
+        "@radix-ui/react-menubar",
+        "@radix-ui/react-navigation-menu",
+        "@radix-ui/react-popover",
+        "@radix-ui/react-progress"
+      ],
+      "dev_dependencies": [
+        "@tailwindcss/postcss",
+        "@types/node",
+        "@types/react",
+        "@types/react-dom",
+        "postcss",
+        "supabase",
+        "tailwindcss",
+        "tw-animate-css",
+        "typescript"
+      ],
+      "environment": {
+        "variables": {
+          "NEXT_PUBLIC_SUPABASE_URL": {
+            "value": "https://lazhmdyajdqbnxxwyxun.supabase.co",
+            "source": ".env.local",
+            "type": "url",
+            "sensitive": false,
+            "required": false
+          },
+          "NEXT_PUBLIC_SUPABASE_ANON_KEY": {
+            "value": "<REDACTED>",
+            "source": ".env.local",
+            "type": "string",
+            "sensitive": true,
+            "required": false
+          },
+          "SUPABASE_SERVICE_ROLE_KEY": {
+            "value": "<REDACTED>",
+            "source": ".env.local",
+            "type": "string",
+            "sensitive": true,
+            "required": false
+          },
+          "NEXT_PUBLIC_SITE_URL": {
+            "value": "http://localhost:3000",
+            "source": ".env.local",
+            "type": "url",
+            "sensitive": false,
+            "required": false
+          }
+        },
+        "required_count": 0,
+        "optional_count": 0,
+        "detected_count": 4
+      }
+    }
+  },
+  "infrastructure": {},
+  "conventions": {
+    "typescript": true
+  }
+}

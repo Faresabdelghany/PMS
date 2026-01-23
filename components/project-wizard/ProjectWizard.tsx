@@ -15,18 +15,15 @@ import { StepReview } from "./steps/StepReview";
 import { StepQuickCreate } from "./steps/StepQuickCreate";
 import { CaretLeft, CaretRight, X } from "@phosphor-icons/react/dist/ssr";
 import { cn } from "@/lib/utils";
-import type { Client } from "@/lib/supabase/types";
 
 const QUICK_CREATE_STEP = 100;
 
 interface ProjectWizardProps {
   onClose: () => void;
   onCreate?: () => void;
-  organizationId: string;
-  clients: Client[];
 }
 
-export function ProjectWizard({ onClose, onCreate, organizationId, clients }: ProjectWizardProps) {
+export function ProjectWizard({ onClose, onCreate }: ProjectWizardProps) {
   const [step, setStep] = useState(0);
   const [maxStepReached, setMaxStepReached] = useState(0);
   const [isQuickCreateExpanded, setIsQuickCreateExpanded] = useState(false);
@@ -134,14 +131,14 @@ export function ProjectWizard({ onClose, onCreate, organizationId, clients }: Pr
                 onClose={handleClose}
              />
         ) : step === QUICK_CREATE_STEP ? (
-            <StepQuickCreate
-                onClose={handleClose}
+            <StepQuickCreate 
+                onClose={handleClose} 
                 onCreate={() => {
                   onCreate?.();
-                }}
+                  toast.success("Project created successfully");
+                  onClose();
+                }} 
                 onExpandChange={setIsQuickCreateExpanded}
-                organizationId={organizationId}
-                clients={clients}
             />
         ) : (
             <>

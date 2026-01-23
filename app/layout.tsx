@@ -28,8 +28,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`font-sans antialiased`} suppressHydrationWarning>
+    <html lang="en">
+      <body className={`font-sans antialiased`}>
         {children}
         <Analytics />
         <Toaster richColors closeButton />

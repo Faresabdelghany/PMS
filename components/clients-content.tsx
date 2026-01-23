@@ -17,11 +17,10 @@ import {
 import { CaretRight, CaretUpDown, ArrowDown, ArrowUp, DotsThreeVertical, Plus, MagnifyingGlass } from "@phosphor-icons/react/dist/ssr"
 import { toast } from "sonner"
 import Link from "next/link"
-import { useMemo, useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
+import { useMemo, useState } from "react"
+import { clients, getProjectCountForClient, type ClientStatus } from "@/lib/data/clients"
 import { ClientWizard } from "@/components/clients/ClientWizard"
-import { updateClient, deleteClient, type ClientWithProjectCount } from "@/lib/actions/clients"
-import type { ClientStatus } from "@/lib/supabase/types"
+import { ClientDetailsDrawer } from "@/components/clients/ClientDetailsDrawer"
 
 function statusLabel(status: ClientStatus): string {
   if (status === "prospect") return "Prospect"
@@ -30,41 +29,16 @@ function statusLabel(status: ClientStatus): string {
   return "Archived"
 }
 
-function formatRelativeTime(dateString: string): string {
-  const date = new Date(dateString)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
-
-  if (diffMins < 1) return "Just now"
-  if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? "s" : ""} ago`
-  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`
-  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? "s" : ""} ago`
-  if (diffDays < 365) return `${Math.floor(diffDays / 30)} month${Math.floor(diffDays / 30) > 1 ? "s" : ""} ago`
-  return `${Math.floor(diffDays / 365)} year${Math.floor(diffDays / 365) > 1 ? "s" : ""} ago`
-}
-
-type ClientsContentProps = {
-  initialClients: ClientWithProjectCount[]
-  organizationId: string
-}
-
-export function ClientsContent({ initialClients, organizationId }: ClientsContentProps) {
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
-  const [clients, setClients] = useState<ClientWithProjectCount[]>(initialClients)
+export function ClientsContent() {
   const [query, setQuery] = useState("")
   const [isWizardOpen, setIsWizardOpen] = useState(false)
-  const [editingClient, setEditingClient] = useState<ClientWithProjectCount | null>(null)
   const [statusFilter, setStatusFilter] = useState<"all" | ClientStatus>("all")
   const [sortKey, setSortKey] = useState<"name" | "projects">("name")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [pageSize, setPageSize] = useState(7)
   const [page, setPage] = useState(1)
+  const [activeClientId, setActiveClientId] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -81,8 +55,8 @@ export function ClientsContent({ initialClients, organizationId }: ClientsConten
       list = list.filter((c) => {
         return (
           c.name.toLowerCase().includes(q) ||
-          (c.primary_contact_name && c.primary_contact_name.toLowerCase().includes(q)) ||
-          (c.primary_contact_email && c.primary_contact_email.toLowerCase().includes(q))
+          (c.primaryContactName && c.primaryContactName.toLowerCase().includes(q)) ||
+          (c.primaryContactEmail && c.primaryContactEmail.toLowerCase().includes(q))
         )
       })
     }
@@ -98,15 +72,15 @@ export function ClientsContent({ initialClients, organizationId }: ClientsConten
       }
 
       // sort by projects count
-      const ac = a.project_count
-      const bc = b.project_count
+      const ac = getProjectCountForClient(a.name)
+      const bc = getProjectCountForClient(b.name)
       if (ac === bc) return 0
       const cmp = ac < bc ? -1 : 1
       return sortDirection === "asc" ? cmp : -cmp
     })
 
     return sorted
-  }, [clients, query, statusFilter, sortKey, sortDirection])
+  }, [query, statusFilter, sortKey, sortDirection])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
   const currentPage = Math.min(page, totalPages)
@@ -150,42 +124,10 @@ export function ClientsContent({ initialClients, organizationId }: ClientsConten
 
   const clearSelection = () => setSelectedIds(new Set())
 
-  const handleArchiveSelected = async () => {
+  const handleArchiveSelected = () => {
     if (!selectedIds.size) return
-
-    startTransition(async () => {
-      const promises = Array.from(selectedIds).map(async (id) => {
-        const result = await updateClient(id, { status: "archived" })
-        return { id, success: !result.error }
-      })
-
-      const results = await Promise.all(promises)
-      const successCount = results.filter((r) => r.success).length
-
-      if (successCount > 0) {
-        toast.success(`Archived ${successCount} client${successCount > 1 ? "s" : ""}`)
-        router.refresh()
-      }
-      clearSelection()
-    })
-  }
-
-  const handleArchiveClient = async (clientId: string, clientName: string) => {
-    startTransition(async () => {
-      const result = await updateClient(clientId, { status: "archived" })
-      if (result.error) {
-        toast.error(result.error)
-      } else {
-        toast.success(`Archived ${clientName}`)
-        router.refresh()
-      }
-    })
-  }
-
-  const handleWizardSuccess = () => {
-    setIsWizardOpen(false)
-    setEditingClient(null)
-    router.refresh()
+    toast.success(`Archived ${selectedIds.size} client${selectedIds.size > 1 ? "s" : ""} (mock)`)
+    clearSelection()
   }
 
   const goToPage = (next: number) => {
@@ -345,8 +287,8 @@ export function ClientsContent({ initialClients, organizationId }: ClientsConten
                 </TableHeader>
                 <TableBody>
                   {visibleClients.map((client) => {
+                    const projectCount = getProjectCountForClient(client.name)
                     const checked = selectedIds.has(client.id)
-                    const ownerName = client.owner?.full_name || client.owner?.email || null
                     return (
                       <TableRow key={client.id} className="hover:bg-muted/80">
                         <TableCell className="align-middle">
@@ -356,8 +298,11 @@ export function ClientsContent({ initialClients, organizationId }: ClientsConten
                             onCheckedChange={() => toggleSelectOne(client.id)}
                           />
                         </TableCell>
-                        <TableCell className="align-middle text-sm font-medium text-foreground">
-                          <Link href={`/clients/${client.id}`} className="flex items-center gap-3">
+                        <TableCell
+                          className="align-middle text-sm font-medium text-foreground cursor-pointer"
+                          onClick={() => setActiveClientId(client.id)}
+                        >
+                          <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8">
                               <AvatarFallback className="text-xs font-medium">
                                 {client.name
@@ -376,14 +321,14 @@ export function ClientsContent({ initialClients, organizationId }: ClientsConten
                                   : client.industry || client.location || ""}
                               </span>
                             </div>
-                          </Link>
+                          </div>
                         </TableCell>
                         <TableCell className="align-middle text-sm">
-                          {client.primary_contact_name ? (
+                          {client.primaryContactName ? (
                             <div className="flex flex-col">
-                              <span className="truncate text-sm text-foreground">{client.primary_contact_name}</span>
-                              {client.primary_contact_email && (
-                                <span className="truncate text-[11px] text-muted-foreground">{client.primary_contact_email}</span>
+                              <span className="truncate text-sm text-foreground">{client.primaryContactName}</span>
+                              {client.primaryContactEmail && (
+                                <span className="truncate text-[11px] text-muted-foreground">{client.primaryContactEmail}</span>
                               )}
                             </div>
                           ) : (
@@ -396,13 +341,13 @@ export function ClientsContent({ initialClients, organizationId }: ClientsConten
                           </Badge>
                         </TableCell>
                         <TableCell className="align-middle text-right text-sm text-muted-foreground">
-                          {client.project_count}
+                          {projectCount}
                         </TableCell>
                         <TableCell className="align-middle text-sm text-muted-foreground whitespace-nowrap">
-                          {formatRelativeTime(client.updated_at)}
+                          {client.lastActivityLabel ?? "—"}
                         </TableCell>
                         <TableCell className="align-middle text-sm text-muted-foreground whitespace-nowrap">
-                          {ownerName ?? "—"}
+                          {client.owner ?? "—"}
                         </TableCell>
                         <TableCell className="align-middle text-right">
                           <DropdownMenu>
@@ -416,19 +361,30 @@ export function ClientsContent({ initialClients, organizationId }: ClientsConten
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-40">
-                              <DropdownMenuItem asChild>
-                                <Link href={`/clients/${client.id}`}>View details</Link>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setActiveClientId(client.id)
+                                }}
+                              >
+                                Quick view
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onClick={() => setEditingClient(client)}
+                                onClick={() => {
+                                  toast.info("Edit client opens modal (mock)")
+                                }}
                               >
                                 Edit client
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
+                              <DropdownMenuItem asChild>
+                                <Link href={`/clients/${client.id}`}>View full page</Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="text-destructive"
-                                onClick={() => handleArchiveClient(client.id, client.name)}
-                                disabled={isPending}
+                                onClick={() => {
+                                  toast.success(`Archived ${client.name} (mock)`)
+                                }}
                               >
                                 Archive
                               </DropdownMenuItem>
@@ -441,21 +397,13 @@ export function ClientsContent({ initialClients, organizationId }: ClientsConten
                 </TableBody>
               </Table>
 
-              <div className="flex items-center justify-between border-t border-border bg-background px-4 py-2 text-xs text-muted-foreground">
-                <div>
-                  Page {currentPage} of {totalPages}
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="h-7 w-7"
-                      onClick={() => goToPage(1)}
-                      disabled={currentPage === 1}
-                    >
-                      «
-                    </Button>
+              <div className="border-t border-border bg-background px-4 py-2 text-xs text-muted-foreground">
+                {/* Mobile pagination (simplified) */}
+                <div className="flex items-center justify-between gap-2 md:hidden">
+                  <div>
+                    Page {currentPage} of {totalPages}
+                  </div>
+                  <div className="flex items-center gap-2">
                     <Button
                       variant="ghost"
                       size="icon-sm"
@@ -465,23 +413,9 @@ export function ClientsContent({ initialClients, organizationId }: ClientsConten
                     >
                       ‹
                     </Button>
-                    {pageNumbers.map((p, idx) =>
-                      p === -1 ? (
-                        <span key={`ellipsis-${idx}`} className="px-1">
-                          ...
-                        </span>
-                      ) : (
-                        <Button
-                          key={p}
-                          variant={p === currentPage ? "outline" : "ghost"}
-                          size="sm"
-                          className="h-7 min-w-7 px-2 text-xs"
-                          onClick={() => goToPage(p)}
-                        >
-                          {p}
-                        </Button>
-                      ),
-                    )}
+                    <span className="min-w-6 text-center">
+                      {currentPage}
+                    </span>
                     <Button
                       variant="ghost"
                       size="icon-sm"
@@ -491,32 +425,87 @@ export function ClientsContent({ initialClients, organizationId }: ClientsConten
                     >
                       ›
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="h-7 w-7"
-                      onClick={() => goToPage(totalPages)}
-                      disabled={currentPage === totalPages}
-                    >
-                      »
-                    </Button>
                   </div>
+                </div>
 
+                {/* Desktop / tablet pagination */}
+                <div className="hidden items-center justify-between md:flex">
+                  <div>
+                    Page {currentPage} of {totalPages}
+                  </div>
                   <div className="flex items-center gap-2">
-                    <span>Rows per page</span>
-                    <select
-                      className="h-7 rounded-md border border-border bg-background px-2 text-xs"
-                      value={pageSize}
-                      onChange={(e) => {
-                        const next = Number(e.target.value) || 7
-                        setPageSize(next)
-                        setPage(1)
-                      }}
-                    >
-                      <option value={7}>7</option>
-                      <option value={10}>10</option>
-                      <option value={25}>25</option>
-                    </select>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="h-7 w-7"
+                        onClick={() => goToPage(1)}
+                        disabled={currentPage === 1}
+                      >
+                        «
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="h-7 w-7"
+                        onClick={() => goToPage(currentPage - 1)}
+                        disabled={currentPage === 1}
+                      >
+                        ‹
+                      </Button>
+                      {pageNumbers.map((p, idx) =>
+                        p === -1 ? (
+                          <span key={`ellipsis-${idx}`} className="px-1">
+                            ...
+                          </span>
+                        ) : (
+                          <Button
+                            key={p}
+                            variant={p === currentPage ? "outline" : "ghost"}
+                            size="sm"
+                            className="h-7 min-w-7 px-2 text-xs"
+                            onClick={() => goToPage(p)}
+                          >
+                            {p}
+                          </Button>
+                        ),
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="h-7 w-7"
+                        onClick={() => goToPage(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                      >
+                        ›
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="h-7 w-7"
+                        onClick={() => goToPage(totalPages)}
+                        disabled={currentPage === totalPages}
+                      >
+                        »
+                      </Button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span>Rows per page</span>
+                      <select
+                        className="h-7 rounded-md border border-border bg-background px-2 text-xs"
+                        value={pageSize}
+                        onChange={(e) => {
+                          const next = Number(e.target.value) || 7
+                          setPageSize(next)
+                          setPage(1)
+                        }}
+                      >
+                        <option value={7}>7</option>
+                        <option value={10}>10</option>
+                        <option value={25}>25</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -524,18 +513,10 @@ export function ClientsContent({ initialClients, organizationId }: ClientsConten
           )}
         </div>
       </div>
-      {(isWizardOpen || editingClient) && (
-        <ClientWizard
-          mode={editingClient ? "edit" : "create"}
-          initialClient={editingClient ?? undefined}
-          organizationId={organizationId}
-          onClose={() => {
-            setIsWizardOpen(false)
-            setEditingClient(null)
-          }}
-          onSuccess={handleWizardSuccess}
-        />
+      {isWizardOpen && (
+        <ClientWizard mode="create" onClose={() => setIsWizardOpen(false)} />
       )}
+      <ClientDetailsDrawer clientId={activeClientId} onClose={() => setActiveClientId(null)} />
     </div>
   )
 }

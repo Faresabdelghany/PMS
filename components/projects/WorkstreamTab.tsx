@@ -1,9 +1,7 @@
 "use client"
 
-import { useMemo, useState, useTransition, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useMemo, useState } from "react"
 import { CaretDown, DotsSixVertical, Plus } from "@phosphor-icons/react/dist/ssr"
-import { useTasksRealtime, useWorkstreamsRealtime } from "@/hooks/use-realtime"
 import {
   DndContext,
   type DragEndEvent,
@@ -23,10 +21,8 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { toast } from "sonner"
 
 import type { WorkstreamGroup, WorkstreamTask } from "@/lib/data/project-details"
-import { updateTaskStatus, reorderTasks, moveTaskToWorkstream } from "@/lib/actions/tasks"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -35,133 +31,17 @@ import { ProgressCircle } from "@/components/progress-circle"
 import { cn } from "@/lib/utils"
 import { TaskRowBase } from "@/components/tasks/TaskRowBase"
 
-// Helper functions for real-time task updates
-function formatDueLabel(dueDate: string): string {
-  const date = new Date(dueDate)
-  const now = new Date()
-  const diffDays = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-
-  if (diffDays < 0) return `${Math.abs(diffDays)}d overdue`
-  if (diffDays === 0) return "Today"
-  if (diffDays === 1) return "Tomorrow"
-  if (diffDays <= 7) return `${diffDays}d`
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-}
-
-function getDueTone(dueDate: string): "danger" | "warning" | undefined {
-  const date = new Date(dueDate)
-  const now = new Date()
-  const diffDays = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-
-  if (diffDays < 0) return "danger"
-  if (diffDays <= 2) return "warning"
-  return undefined
-}
-
 type WorkstreamTabProps = {
   workstreams: WorkstreamGroup[] | undefined
-  projectId?: string
 }
 
-export function WorkstreamTab({ workstreams, projectId }: WorkstreamTabProps) {
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
+export function WorkstreamTab({ workstreams }: WorkstreamTabProps) {
   const [state, setState] = useState<WorkstreamGroup[]>(() => workstreams ?? [])
   const [openValues, setOpenValues] = useState<string[]>(() =>
     workstreams && workstreams.length ? [workstreams[0].id] : [],
   )
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
   const [overTaskId, setOverTaskId] = useState<string | null>(null)
-
-  // Sync state when workstreams prop changes
-  useEffect(() => {
-    if (workstreams) {
-      setState(workstreams)
-    }
-  }, [workstreams])
-
-  // Subscribe to real-time task changes - update state directly
-  useTasksRealtime(projectId, {
-    onInsert: (newTask) => {
-      setState((prev) => {
-        const workstreamId = newTask.workstream_id
-        if (!workstreamId) return prev
-
-        return prev.map((group) => {
-          if (group.id !== workstreamId) return group
-          if (group.tasks.some((t) => t.id === newTask.id)) return group
-
-          const uiTask: WorkstreamTask = {
-            id: newTask.id,
-            name: newTask.name,
-            status: newTask.status,
-            dueLabel: newTask.end_date ? formatDueLabel(newTask.end_date) : undefined,
-            dueTone: newTask.end_date ? getDueTone(newTask.end_date) : undefined,
-            assignee: undefined,
-          }
-
-          return {
-            ...group,
-            tasks: [...group.tasks, uiTask],
-          }
-        })
-      })
-    },
-    onUpdate: (updatedTask) => {
-      setState((prev) =>
-        prev.map((group) => ({
-          ...group,
-          tasks: group.tasks.map((task) =>
-            task.id === updatedTask.id
-              ? {
-                  ...task,
-                  name: updatedTask.name,
-                  status: updatedTask.status,
-                  dueLabel: updatedTask.end_date ? formatDueLabel(updatedTask.end_date) : undefined,
-                  dueTone: updatedTask.end_date ? getDueTone(updatedTask.end_date) : undefined,
-                }
-              : task
-          ),
-        }))
-      )
-    },
-    onDelete: (deletedTask) => {
-      setState((prev) =>
-        prev.map((group) => ({
-          ...group,
-          tasks: group.tasks.filter((task) => task.id !== deletedTask.id),
-        }))
-      )
-    },
-  })
-
-  // Subscribe to real-time workstream changes
-  useWorkstreamsRealtime(projectId, {
-    onInsert: (newWorkstream) => {
-      setState((prev) => {
-        if (prev.some((g) => g.id === newWorkstream.id)) return prev
-
-        const newGroup: WorkstreamGroup = {
-          id: newWorkstream.id,
-          name: newWorkstream.name,
-          tasks: [],
-        }
-        return [...prev, newGroup]
-      })
-    },
-    onUpdate: (updatedWorkstream) => {
-      setState((prev) =>
-        prev.map((group) =>
-          group.id === updatedWorkstream.id
-            ? { ...group, name: updatedWorkstream.name }
-            : group
-        )
-      )
-    },
-    onDelete: (deletedWorkstream) => {
-      setState((prev) => prev.filter((group) => group.id !== deletedWorkstream.id))
-    },
-  })
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -180,58 +60,26 @@ export function WorkstreamTab({ workstreams, projectId }: WorkstreamTabProps) {
     return null
   }
 
-  const findGroupByTaskId = (taskId: string): string | null => {
-    for (const group of state) {
-      if (group.tasks.some((task) => task.id === taskId)) {
-        return group.id
-      }
-    }
-    return null
-  }
-
   const activeTask = findTaskById(activeTaskId)
 
-  const toggleTask = async (groupId: string, taskId: string) => {
-    const task = findTaskById(taskId)
-    if (!task) return
-
-    const newStatus = task.status === "done" ? "todo" : "done"
-
-    // Optimistic update
+  const toggleTask = (groupId: string, taskId: string) => {
     setState((prev) =>
       prev.map((group) =>
         group.id === groupId
           ? {
               ...group,
-              tasks: group.tasks.map((t) =>
-                t.id === taskId ? { ...t, status: newStatus } : t
+              tasks: group.tasks.map((task) =>
+                task.id === taskId
+                  ? {
+                      ...task,
+                      status: task.status === "done" ? "todo" : "done",
+                    }
+                  : task,
               ),
             }
-          : group
-      )
+          : group,
+      ),
     )
-
-    // Server update
-    startTransition(async () => {
-      const result = await updateTaskStatus(taskId, newStatus)
-      if (result.error) {
-        toast.error("Failed to update task status")
-        // Revert optimistic update
-        setState((prev) =>
-          prev.map((group) =>
-            group.id === groupId
-              ? {
-                  ...group,
-                  tasks: group.tasks.map((t) =>
-                    t.id === taskId ? { ...t, status: task.status } : t
-                  ),
-                }
-              : group
-          )
-        )
-      }
-      // Realtime subscription handles the update confirmation
-    })
   }
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -244,13 +92,14 @@ export function WorkstreamTab({ workstreams, projectId }: WorkstreamTabProps) {
   const handleDragOver = (event: DragOverEvent) => {
     const overId = event.over?.id
     if (typeof overId === "string" && !overId.startsWith("group:")) {
+      // only track task ids for per-row drop indicator
       setOverTaskId(overId)
     } else {
       setOverTaskId(null)
     }
   }
 
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     setActiveTaskId(null)
     setOverTaskId(null)
@@ -261,49 +110,49 @@ export function WorkstreamTab({ workstreams, projectId }: WorkstreamTabProps) {
     const activeId = String(active.id)
     const overId = String(over.id)
 
-    let sourceGroupIndex = -1
-    let sourceTaskIndex = -1
-    let targetGroupIndex = -1
-    let targetTaskIndex = -1
-
-    state.forEach((group, groupIndex) => {
-      const aIndex = group.tasks.findIndex((task) => task.id === activeId)
-      if (aIndex !== -1) {
-        sourceGroupIndex = groupIndex
-        sourceTaskIndex = aIndex
-      }
-
-      const oIndex = group.tasks.findIndex((task) => task.id === overId)
-      if (oIndex !== -1) {
-        targetGroupIndex = groupIndex
-        targetTaskIndex = oIndex
-      }
-    })
-
-    // Handle dropping on empty group container
-    if (targetGroupIndex === -1 && overId.startsWith("group:")) {
-      const groupId = overId.slice("group:".length)
-      targetGroupIndex = state.findIndex((group) => group.id === groupId)
-      if (targetGroupIndex !== -1) {
-        targetTaskIndex = state[targetGroupIndex].tasks.length
-      }
-    }
-
-    if (sourceGroupIndex === -1 || targetGroupIndex === -1) return
-
-    const sourceGroup = state[sourceGroupIndex]
-    const targetGroup = state[targetGroupIndex]
-
-    // Optimistic update
     setState((prev) => {
-      const next = [...prev]
+      let sourceGroupIndex = -1
+      let sourceTaskIndex = -1
+      let targetGroupIndex = -1
+      let targetTaskIndex = -1
 
+      prev.forEach((group, groupIndex) => {
+        const aIndex = group.tasks.findIndex((task) => task.id === activeId)
+        if (aIndex !== -1) {
+          sourceGroupIndex = groupIndex
+          sourceTaskIndex = aIndex
+        }
+
+        const oIndex = group.tasks.findIndex((task) => task.id === overId)
+        if (oIndex !== -1) {
+          targetGroupIndex = groupIndex
+          targetTaskIndex = oIndex
+        }
+      })
+
+      // If we didn't land on a task but on a group container, allow dropping into empty lists
+      if (targetGroupIndex === -1 && overId.startsWith("group:")) {
+        const groupId = overId.slice("group:".length)
+        targetGroupIndex = prev.findIndex((group) => group.id === groupId)
+        if (targetGroupIndex !== -1) {
+          targetTaskIndex = prev[targetGroupIndex].tasks.length
+        }
+      }
+
+      if (sourceGroupIndex === -1 || targetGroupIndex === -1) return prev
+
+      const next = [...prev]
+      const sourceGroup = next[sourceGroupIndex]
+      const targetGroup = next[targetGroupIndex]
+
+      // Reorder within the same workstream
       if (sourceGroupIndex === targetGroupIndex) {
         const reordered = arrayMove(sourceGroup.tasks, sourceTaskIndex, targetTaskIndex)
         next[sourceGroupIndex] = { ...sourceGroup, tasks: reordered }
         return next
       }
 
+      // Move across workstreams
       const sourceTasks = [...sourceGroup.tasks]
       const [moved] = sourceTasks.splice(sourceTaskIndex, 1)
       if (!moved) return prev
@@ -316,31 +165,6 @@ export function WorkstreamTab({ workstreams, projectId }: WorkstreamTabProps) {
 
       return next
     })
-
-    // Server update
-    if (!projectId) return
-
-    startTransition(async () => {
-      if (sourceGroupIndex === targetGroupIndex) {
-        // Reorder within same workstream
-        const newTaskOrder = arrayMove(
-          sourceGroup.tasks.map((t) => t.id),
-          sourceTaskIndex,
-          targetTaskIndex
-        )
-        const result = await reorderTasks(sourceGroup.id, projectId, newTaskOrder)
-        if (result.error) {
-          toast.error("Failed to reorder tasks")
-        }
-      } else {
-        // Move to different workstream
-        const result = await moveTaskToWorkstream(activeId, targetGroup.id, targetTaskIndex)
-        if (result.error) {
-          toast.error("Failed to move task")
-        }
-      }
-      // Optimistic update already applied, realtime will confirm server state
-    })
   }
 
   const handleDragCancel = () => {
@@ -352,7 +176,7 @@ export function WorkstreamTab({ workstreams, projectId }: WorkstreamTabProps) {
     return (
       <section>
         <h2 className="text-sm font-semibold tracking-normal text-foreground uppercase">
-          WORKSTREAM BREAKDOWN
+          WORKSTEAM BREAKDOWN
         </h2>
         <div className="mt-4 rounded-lg border border-dashed border-border/70 p-6 text-sm text-muted-foreground">
           No workstreams defined yet.
@@ -365,7 +189,7 @@ export function WorkstreamTab({ workstreams, projectId }: WorkstreamTabProps) {
     <section className="rounded-2xl border border-border bg-muted shadow-[var(--shadow-workstream)] p-3 space-y-3">
       <div className="flex items-center justify-between gap-3 px-2">
         <h2 className="text-sm font-semibold tracking-normal text-foreground uppercase">
-          WORKSTREAM BREAKDOWN
+          WORKSTEAM BREAKDOWN
         </h2>
         <div className="flex items-center gap-1 opacity-60">
           <Button
@@ -425,6 +249,7 @@ export function WorkstreamTab({ workstreams, projectId }: WorkstreamTabProps) {
                           role="button"
                           aria-label="Add task"
                           onClick={(event) => {
+                            // Prevent toggling the accordion when clicking the add icon.
                             event.stopPropagation()
                           }}
                         >

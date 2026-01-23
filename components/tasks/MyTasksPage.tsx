@@ -1,8 +1,6 @@
 "use client"
 
-import { useMemo, useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { useRealtime } from "@/hooks/use-realtime"
+import { useMemo, useState } from "react"
 import { format } from "date-fns"
 import { ChartBar, DotsSixVertical, FolderSimple, Plus, Sparkle } from "@phosphor-icons/react/dist/ssr"
 import {
@@ -17,14 +15,9 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { toast } from "sonner"
 
-import type { Project, FilterCounts } from "@/lib/data/projects"
-import type { ProjectTask } from "@/lib/data/project-details"
-import type { TaskWithRelations } from "@/lib/actions/tasks"
-import type { ProjectWithRelations } from "@/lib/actions/projects"
-import { updateTaskStatus, reorderTasks, updateTask } from "@/lib/actions/tasks"
-import { toProjectTask } from "@/lib/utils/task-converters"
+import { projects, type Project, type FilterCounts } from "@/lib/data/projects"
+import { getProjectDetailsById, getProjectTasks, type ProjectTask } from "@/lib/data/project-details"
 import { DEFAULT_VIEW_OPTIONS, type FilterChip as FilterChipType, type ViewOptions } from "@/lib/view-options"
 import { TaskWeekBoardView } from "@/components/tasks/TaskWeekBoardView"
 import {
@@ -32,123 +25,37 @@ import {
   ProjectTaskListView,
   filterTasksByChips,
   computeTaskFilterCounts,
+  ProjectTasksSection,
 } from "@/components/tasks/task-helpers"
+import { TaskRowBase } from "@/components/tasks/TaskRowBase"
 import { Button } from "@/components/ui/button"
 import { SidebarTrigger } from "@/components/ui/sidebar"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { ProgressCircle } from "@/components/progress-circle"
 import { FilterPopover } from "@/components/filter-popover"
 import { ChipOverflow } from "@/components/chip-overflow"
 import { ViewOptionsPopover } from "@/components/view-options-popover"
+import { cn } from "@/lib/utils"
 import { TaskQuickCreateModal, type CreateTaskContext } from "@/components/tasks/TaskQuickCreateModal"
 
-type MyTasksPageProps = {
-  tasks: TaskWithRelations[]
-  projects: ProjectWithRelations[]
-  workstreamsByProject: Record<string, { id: string; name: string }[]>
-  organizationId: string
-}
-
-export function MyTasksPage({
-  tasks: initialTasks,
-  projects,
-  workstreamsByProject,
-  organizationId,
-}: MyTasksPageProps) {
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
-
-  // Convert Supabase tasks to UI format
-  const convertedTasks = useMemo(() => {
-    return initialTasks.map((task) => {
-      const project = projects.find((p) => p.id === task.project_id)
-      const workstream = task.workstream_id
-        ? workstreamsByProject[task.project_id]?.find((ws) => ws.id === task.workstream_id)
-        : undefined
-      return toProjectTask(task, project?.name, workstream?.name)
-    })
-  }, [initialTasks, projects, workstreamsByProject])
-
-  // Group tasks by project
+export function MyTasksPage() {
   const [groups, setGroups] = useState<ProjectTaskGroup[]>(() => {
-    const projectMap = new Map<string, ProjectTask[]>()
-
-    for (const task of convertedTasks) {
-      const existing = projectMap.get(task.projectId) || []
-      existing.push(task)
-      projectMap.set(task.projectId, existing)
-    }
-
-    const result: ProjectTaskGroup[] = []
-
-    for (const [projectId, projectTasks] of projectMap.entries()) {
-      const project = projects.find((p) => p.id === projectId)
-      if (!project) continue
-
-      const projectData: Project = {
-        id: project.id,
-        name: project.name,
-        status: project.status,
-        priority: project.priority,
-        progress: project.progress,
-        typeLabel: project.type_label || undefined,
-        durationLabel: undefined,
-        client: project.client?.name,
-        members: project.members?.map((m) =>
-          m.profile?.full_name || m.profile?.email || "Unknown"
-        ) || [],
-        taskCount: projectTasks.length,
-        startDate: project.start_date ? new Date(project.start_date) : new Date(),
-        endDate: project.end_date ? new Date(project.end_date) : new Date(),
-        tags: project.tags || [],
-        tasks: [],
-      }
-
-      result.push({
-        project: projectData,
-        tasks: projectTasks,
+    return projects
+      .map((project) => {
+        const details = getProjectDetailsById(project.id)
+        const tasks = getProjectTasks(details)
+        return { project, tasks }
       })
-    }
-
-    return result
+      .filter((group) => group.tasks.length > 0)
   })
 
-  const [filters, setFilters] = useState<FilterChipType[]>([])
+  const [filters, setFilters] = useState<FilterChipType[]>([{ key: "members", value: "jason" }])
   const [viewOptions, setViewOptions] = useState<ViewOptions>(DEFAULT_VIEW_OPTIONS)
 
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false)
   const [createContext, setCreateContext] = useState<CreateTaskContext | undefined>(undefined)
   const [editingTask, setEditingTask] = useState<ProjectTask | undefined>(undefined)
-
-  // Subscribe to real-time task changes for user's tasks
-  useRealtime({
-    table: "tasks",
-    event: "*",
-    enabled: true,
-    onUpdate: (updatedTask) => {
-      setGroups((prev) =>
-        prev.map((group) => ({
-          ...group,
-          tasks: group.tasks.map((task) =>
-            task.id === updatedTask.id
-              ? {
-                  ...task,
-                  name: updatedTask.name,
-                  status: updatedTask.status,
-                  tag: updatedTask.tag || undefined,
-                }
-              : task
-          ),
-        }))
-      )
-    },
-    onDelete: (deletedTask) => {
-      setGroups((prev) =>
-        prev.map((group) => ({
-          ...group,
-          tasks: group.tasks.filter((task) => task.id !== deletedTask.id),
-        }))
-      )
-    },
-  })
 
   const counts = useMemo<FilterCounts>(() => {
     const allTasks = groups.flatMap((g) => g.tasks)
@@ -183,122 +90,94 @@ export function MyTasksPage({
   }
 
   const handleTaskCreated = (task: ProjectTask) => {
-    // Add to local state directly
     setGroups((prev) => {
-      const groupIndex = prev.findIndex((g) => g.project.id === task.projectId)
-      if (groupIndex === -1) return prev
+      const projectExists = prev.some((g) => g.project.id === task.projectId)
+      const project = projects.find((p) => p.id === task.projectId)
 
-      return prev.map((group, idx) =>
-        idx === groupIndex
-          ? { ...group, tasks: [task, ...group.tasks] }
-          : group
-      )
-    })
-  }
-
-  const toggleTask = async (taskId: string) => {
-    // Find the task
-    let foundTask: ProjectTask | undefined
-    let foundGroupIndex = -1
-    groups.forEach((group, index) => {
-      const task = group.tasks.find((t) => t.id === taskId)
-      if (task) {
-        foundTask = task
-        foundGroupIndex = index
+      const ensureGroup = (current: ProjectTaskGroup[]): ProjectTaskGroup[] => {
+        if (projectExists || !project) return current
+        const details = getProjectDetailsById(project.id)
+        const existingTasks = getProjectTasks(details)
+        return [
+          { project, tasks: [...existingTasks, task] },
+          ...current,
+        ]
       }
-    })
 
-    if (!foundTask || foundGroupIndex === -1) return
-
-    const newStatus = foundTask.status === "done" ? "todo" : "done"
-
-    // Optimistic update
-    setGroups((prev) =>
-      prev.map((group) => ({
-        ...group,
-        tasks: group.tasks.map((task) =>
-          task.id === taskId ? { ...task, status: newStatus } : task
-        ),
-      }))
-    )
-
-    // Server update
-    startTransition(async () => {
-      const result = await updateTaskStatus(taskId, newStatus)
-      if (result.error) {
-        toast.error("Failed to update task status")
-        // Revert optimistic update
-        setGroups((prev) =>
-          prev.map((group) => ({
-            ...group,
-            tasks: group.tasks.map((task) =>
-              task.id === taskId ? { ...task, status: foundTask!.status } : task
-            ),
-          }))
-        )
-      }
-    })
-  }
-
-  const changeTaskTag = async (taskId: string, tagLabel?: string) => {
-    // Optimistic update
-    setGroups((prev) =>
-      prev.map((group) => ({
-        ...group,
-        tasks: group.tasks.map((task) =>
-          task.id === taskId ? { ...task, tag: tagLabel } : task
-        ),
-      }))
-    )
-
-    // Server update
-    startTransition(async () => {
-      const result = await updateTask(taskId, { tag: tagLabel || null })
-      if (result.error) {
-        toast.error("Failed to update task tag")
-        // Revert optimistic update on error
-        router.refresh()
-      }
-    })
-  }
-
-  const moveTaskDate = async (taskId: string, newDate: Date) => {
-    // Optimistic update
-    setGroups((prev) =>
-      prev.map((group) => ({
-        ...group,
-        tasks: group.tasks.map((task) =>
-          task.id === taskId ? { ...task, startDate: newDate } : task
-        ),
-      }))
-    )
-
-    // Server update
-    startTransition(async () => {
-      const result = await updateTask(taskId, {
-        start_date: newDate.toISOString(),
+      const next = prev.map((group) => {
+        if (group.project.id !== task.projectId) return group
+        return {
+          ...group,
+          tasks: [...group.tasks, task],
+        }
       })
-      if (result.error) {
-        toast.error("Failed to update task date")
-        // Revert optimistic update on error
-        router.refresh()
-      }
+
+      return ensureGroup(next)
     })
+  }
+
+  const toggleTask = (taskId: string) => {
+    setGroups((prev) =>
+      prev.map((group) => ({
+        ...group,
+        tasks: group.tasks.map((task) =>
+          task.id === taskId
+            ? {
+                ...task,
+                status: task.status === "done" ? "todo" : "done",
+              }
+            : task,
+        ),
+      })),
+    )
+  }
+
+  const changeTaskTag = (taskId: string, tagLabel?: string) => {
+    setGroups((prev) =>
+      prev.map((group) => ({
+        ...group,
+        tasks: group.tasks.map((task) =>
+          task.id === taskId
+            ? {
+                ...task,
+                tag: tagLabel,
+              }
+            : task,
+        ),
+      })),
+    )
+  }
+
+  const moveTaskDate = (taskId: string, newDate: Date) => {
+    setGroups((prev) =>
+      prev.map((group) => ({
+        ...group,
+        tasks: group.tasks.map((task) =>
+          task.id === taskId
+            ? {
+                ...task,
+                startDate: newDate,
+              }
+            : task,
+        ),
+      })),
+    )
   }
 
   const handleTaskUpdated = (updated: ProjectTask) => {
-    // Update local state directly
     setGroups((prev) =>
-      prev.map((group) => ({
-        ...group,
-        tasks: group.tasks.map((task) =>
-          task.id === updated.id ? updated : task
-        ),
-      }))
+      prev.map((group) =>
+        group.project.id === updated.projectId
+          ? {
+              ...group,
+              tasks: group.tasks.map((task) => (task.id === updated.id ? updated : task)),
+            }
+          : group,
+      ),
     )
   }
 
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
 
     if (!over || active.id === over.id) return
@@ -329,27 +208,11 @@ export function MyTasksPage({
 
     const reorderedTasks = arrayMove(activeGroup.tasks, activeIndex, overIndex)
 
-    // Optimistic update
     setGroups((prev) =>
       prev.map((group, index) =>
         index === activeGroupIndex ? { ...group, tasks: reorderedTasks } : group
       )
     )
-
-    // Server update
-    startTransition(async () => {
-      const workstreamId = activeGroup.tasks[activeIndex]?.workstreamId || null
-      const taskIds = reorderedTasks
-        .filter((t) => t.workstreamId === workstreamId)
-        .map((t) => t.id)
-
-      const result = await reorderTasks(workstreamId, activeGroup.project.id, taskIds)
-      if (result.error) {
-        toast.error("Failed to reorder tasks")
-        // Revert optimistic update on error
-        router.refresh()
-      }
-    })
   }
 
   if (!visibleGroups.length) {
@@ -358,12 +221,8 @@ export function MyTasksPage({
         <div className="flex items-center justify-between px-4 py-4 border-b border-border/70">
           <div className="space-y-1">
             <h1 className="text-lg font-semibold tracking-tight">Tasks</h1>
-            <p className="text-xs text-muted-foreground">No tasks assigned to you yet.</p>
+            <p className="text-xs text-muted-foreground">No tasks available yet.</p>
           </div>
-          <Button size="sm" variant="ghost" onClick={() => openCreateTask()}>
-            <Plus className="mr-1.5 h-4 w-4" />
-            New Task
-          </Button>
         </div>
       </div>
     )
@@ -452,9 +311,6 @@ export function MyTasksPage({
         onTaskCreated={handleTaskCreated}
         editingTask={editingTask}
         onTaskUpdated={handleTaskUpdated}
-        projects={projects}
-        workstreamsByProject={workstreamsByProject}
-        organizationId={organizationId}
       />
     </div>
   )

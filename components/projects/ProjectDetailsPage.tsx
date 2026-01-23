@@ -1,14 +1,12 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { LinkSimple, SquareHalf } from "@phosphor-icons/react/dist/ssr"
 import { toast } from "sonner"
 import { AnimatePresence, motion } from "motion/react"
 
-import type { ProjectDetails, ProjectTask } from "@/lib/data/project-details"
+import type { ProjectDetails } from "@/lib/data/project-details"
 import { getProjectDetailsById } from "@/lib/data/project-details"
-import { toWorkstreamGroups, toProjectTask } from "@/lib/utils/task-converters"
 import { Breadcrumbs } from "@/components/projects/Breadcrumbs"
 import { ProjectHeader } from "@/components/projects/ProjectHeader"
 import { ScopeColumns } from "@/components/projects/ScopeColumns"
@@ -26,100 +24,36 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
-import type { ProjectWithRelations } from "@/lib/actions/projects"
-import type { TaskWithRelations } from "@/lib/actions/tasks"
-import type { ProjectFileWithUploader } from "@/lib/actions/files"
-import type { ProjectNoteWithAuthor } from "@/lib/actions/notes"
-import type { Client, Workstream } from "@/lib/supabase/types"
-import type { User as UIUser } from "@/lib/data/project-details"
-import { toUIProjectFiles } from "@/lib/utils/file-converters"
-import { toUIProjectNotes } from "@/lib/utils/note-converters"
 
 type ProjectDetailsPageProps = {
-  project: ProjectWithRelations
-  clients: Client[]
-  tasks: TaskWithRelations[]
-  workstreams: Workstream[]
-  files: ProjectFileWithUploader[]
-  notes: ProjectNoteWithAuthor[]
-  organizationId: string
-  currentUser?: UIUser
+  projectId: string
 }
 
-// Convert real project to mock data format for backward compatibility
-function toProjectDetailsData(
-  project: ProjectWithRelations,
-  tasks: TaskWithRelations[],
-  workstreams: Workstream[]
-): { projectDetails: ProjectDetails; projectTasks: ProjectTask[] } {
-  // Get mock data as fallback for fields not in DB yet
-  const mockProject = getProjectDetailsById(project.id)
+type LoadState =
+  | { status: "loading" }
+  | { status: "ready"; project: ProjectDetails }
 
-  // Build source data from real project
-  const source = {
-    ...(mockProject.source || {}),
-    id: project.id,
-    name: project.name,
-    status: project.status,
-    priority: project.priority,
-    progress: project.progress,
-    client: project.client?.name,
-    typeLabel: project.type_label || undefined,
-    startDate: project.start_date ? new Date(project.start_date) : new Date(),
-    endDate: project.end_date ? new Date(project.end_date) : new Date(),
-    tags: project.tags || [],
-    members: project.members?.map(m => m.profile?.full_name || m.profile?.email || "Unknown") || [],
-    taskCount: tasks.length,
-    tasks: [],
-    durationLabel: undefined,
-  }
-
-  // Convert real workstreams/tasks when available using helper
-  const workstreamGroups = workstreams.length
-    ? toWorkstreamGroups(workstreams, tasks)
-    : mockProject.workstreams
-
-  // Convert tasks to ProjectTask format for the Tasks tab
-  const projectTasks: ProjectTask[] = tasks.map((t) => {
-    const ws = workstreams.find((w) => w.id === t.workstream_id)
-    return toProjectTask(t, project.name, ws?.name)
-  })
-
-  const projectDetails: ProjectDetails = {
-    ...mockProject,
-    id: project.id,
-    name: project.name,
-    description: project.description || mockProject.description,
-    workstreams: workstreamGroups,
-    source: source as ProjectDetails["source"],
-  }
-
-  return { projectDetails, projectTasks }
-}
-
-export function ProjectDetailsPage({
-  project,
-  clients,
-  tasks,
-  workstreams,
-  files,
-  notes,
-  organizationId,
-  currentUser,
-}: ProjectDetailsPageProps) {
-  const router = useRouter()
+export function ProjectDetailsPage({ projectId }: ProjectDetailsPageProps) {
+  const [state, setState] = useState<LoadState>({ status: "loading" })
   const [showMeta, setShowMeta] = useState(true)
   const [isWizardOpen, setIsWizardOpen] = useState(false)
 
-  // Convert to mock data format for backward compatibility
-  const { projectDetails, projectTasks } = useMemo(
-    () => toProjectDetailsData(project, tasks, workstreams),
-    [project, tasks, workstreams]
-  )
+  useEffect(() => {
+    let cancelled = false
+    setState({ status: "loading" })
 
-  // Convert files and notes to UI format
-  const uiFiles = useMemo(() => toUIProjectFiles(files), [files])
-  const uiNotes = useMemo(() => toUIProjectNotes(notes), [notes])
+    const delay = 600 + Math.floor(Math.random() * 301)
+    const t = setTimeout(() => {
+      if (cancelled) return
+      const project = getProjectDetailsById(projectId)
+      setState({ status: "ready", project })
+    }, delay)
+
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
+  }, [projectId])
 
   const copyLink = useCallback(async () => {
     if (!navigator.clipboard) {
@@ -138,9 +72,9 @@ export function ProjectDetailsPage({
   const breadcrumbs = useMemo(
     () => [
       { label: "Projects", href: "/" },
-      { label: project.name },
+      { label: state.status === "ready" ? state.project.name : "Project Details" },
     ],
-    [project.name]
+    [state.status, state.status === "ready" ? state.project.name : null]
   )
 
   const openWizard = useCallback(() => {
@@ -149,8 +83,13 @@ export function ProjectDetailsPage({
 
   const closeWizard = useCallback(() => {
     setIsWizardOpen(false)
-    router.refresh()
-  }, [router])
+  }, [])
+
+  if (state.status === "loading") {
+    return <ProjectDetailsSkeleton />
+  }
+
+  const project = state.project
 
   return (
     <div className="flex flex-1 flex-col min-w-0 m-2 border border-border rounded-lg">
@@ -192,7 +131,7 @@ export function ProjectDetailsPage({
               }
             >
               <div className="space-y-6 pt-4">
-                <ProjectHeader project={projectDetails} onEditProject={openWizard} />
+                <ProjectHeader project={project} onEditProject={openWizard} />
 
                 <Tabs defaultValue="overview">
                   <TabsList className="w-full gap-6">
@@ -205,28 +144,28 @@ export function ProjectDetailsPage({
 
                   <TabsContent value="overview">
                     <div className="space-y-10">
-                      <p className="text-sm leading-6 text-muted-foreground">{projectDetails.description}</p>
-                      <ScopeColumns scope={projectDetails.scope} />
-                      <OutcomesList outcomes={projectDetails.outcomes} />
-                      <KeyFeaturesColumns features={projectDetails.keyFeatures} />
-                      <TimelineGantt tasks={projectDetails.timelineTasks} />
+                      <p className="text-sm leading-6 text-muted-foreground">{project.description}</p>
+                      <ScopeColumns scope={project.scope} />
+                      <OutcomesList outcomes={project.outcomes} />
+                      <KeyFeaturesColumns features={project.keyFeatures} />
+                      <TimelineGantt tasks={project.timelineTasks} />
                     </div>
                   </TabsContent>
 
                   <TabsContent value="workstream">
-                    <WorkstreamTab workstreams={projectDetails.workstreams} projectId={project.id} />
+                    <WorkstreamTab workstreams={project.workstreams} />
                   </TabsContent>
 
                   <TabsContent value="tasks">
-                    <ProjectTasksTab tasks={projectTasks} projectId={project.id} />
+                    <ProjectTasksTab project={project} />
                   </TabsContent>
 
                   <TabsContent value="notes">
-                    <NotesTab notes={uiNotes} projectId={project.id} currentUser={currentUser} />
+                    <NotesTab notes={project.notes || []} />
                   </TabsContent>
 
                   <TabsContent value="assets">
-                    <AssetsFilesTab files={uiFiles} projectId={project.id} currentUser={currentUser} />
+                    <AssetsFilesTab files={project.files} />
                   </TabsContent>
                 </Tabs>
               </div>
@@ -241,7 +180,7 @@ export function ProjectDetailsPage({
                     transition={{ type: "spring", stiffness: 260, damping: 26 }}
                     className="lg:border-l lg:border-border lg:pl-6"
                   >
-                    <RightMetaPanel project={projectDetails} />
+                    <RightMetaPanel project={project} />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -252,12 +191,7 @@ export function ProjectDetailsPage({
         <Separator className="mt-auto" />
 
         {isWizardOpen && (
-          <ProjectWizard
-            onClose={closeWizard}
-            onCreate={closeWizard}
-            organizationId={organizationId}
-            clients={clients}
-          />
+          <ProjectWizard onClose={closeWizard} onCreate={closeWizard} />
         )}
       </div>
     </div>

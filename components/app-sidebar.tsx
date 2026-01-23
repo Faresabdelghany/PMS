@@ -1,6 +1,5 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -31,23 +30,8 @@ import {
   Question,
   CaretRight,
   CaretUpDown,
-  SignOut,
 } from "@phosphor-icons/react/dist/ssr"
-import { footerItems, navItems, type NavItemId, type SidebarFooterItemId } from "@/lib/data/sidebar"
-import { signOut } from "@/lib/actions/auth"
-import { useUser } from "@/hooks/use-user"
-import { useOrganization } from "@/hooks/use-organization"
-import { useProjectsRealtime } from "@/hooks/use-realtime"
-import type { Project } from "@/lib/supabase/types"
-
-// Color palette for projects
-const PROJECT_COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-]
+import { activeProjects, footerItems, navItems, type NavItemId, type SidebarFooterItemId } from "@/lib/data/sidebar"
 
 const navItemIcons: Record<NavItemId, React.ComponentType<{ className?: string }>> = {
   inbox: Tray,
@@ -63,70 +47,8 @@ const footerItemIcons: Record<SidebarFooterItemId, React.ComponentType<{ classNa
   help: Question,
 }
 
-type AppSidebarProps = {
-  activeProjects?: Project[]
-}
-
-export function AppSidebar({ activeProjects: initialProjects = [] }: AppSidebarProps) {
+export function AppSidebar() {
   const pathname = usePathname()
-  const { profile } = useUser()
-  const { organization } = useOrganization()
-
-  // Convert to local state for real-time updates
-  const [activeProjects, setActiveProjects] = useState(initialProjects)
-
-  // Sync with props when initialProjects changes (e.g., after navigation or hydration)
-  // Use JSON.stringify to compare array contents, not references
-  const initialProjectsJson = JSON.stringify(initialProjects.map(p => p.id))
-  useEffect(() => {
-    setActiveProjects(initialProjects)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialProjectsJson])
-
-  // Subscribe to project changes
-  // Active statuses that should appear in sidebar
-  const activeStatuses = ["active", "planned"]
-
-  useProjectsRealtime(organization?.id, {
-    onInsert: (newProject) => {
-      // Only add if project is active or planned
-      if (!activeStatuses.includes(newProject.status || "")) return
-      setActiveProjects((prev) => {
-        if (prev.some((p) => p.id === newProject.id)) return prev
-        return [...prev, newProject as Project].slice(0, 5) // Keep max 5
-      })
-    },
-    onUpdate: (updatedProject) => {
-      setActiveProjects((prev) => {
-        // If no longer active or planned, remove from sidebar
-        if (!activeStatuses.includes(updatedProject.status || "")) {
-          return prev.filter((p) => p.id !== updatedProject.id)
-        }
-        // Update existing or add if newly active/planned
-        const exists = prev.some((p) => p.id === updatedProject.id)
-        if (exists) {
-          return prev.map((p) =>
-            p.id === updatedProject.id ? { ...p, ...updatedProject } : p
-          )
-        }
-        // Newly active/planned project
-        return [...prev, updatedProject as Project].slice(0, 5)
-      })
-    },
-    onDelete: (deletedProject) => {
-      setActiveProjects((prev) => prev.filter((p) => p.id !== deletedProject.id))
-    },
-  })
-
-  // Get user display info
-  const userName = profile?.full_name || profile?.email?.split("@")[0] || "User"
-  const userEmail = profile?.email || ""
-  const userInitials = userName
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2)
 
   const getHrefForNavItem = (id: NavItemId): string => {
     if (id === "my-tasks") return "/tasks"
@@ -158,16 +80,10 @@ export function AppSidebar({ activeProjects: initialProjects = [] }: AppSidebarP
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-800 text-primary-foreground shadow-[inset_0_-5px_6.6px_0_rgba(0,0,0,0.25)]">
-              {organization?.logo_url ? (
-                <img src={organization.logo_url} alt="Logo" className="h-4 w-4" />
-              ) : (
-                <img src="/logo-wrapper.png" alt="Logo" className="h-4 w-4" />
-              )}
+              <img src="/logo-wrapper.png" alt="Logo" className="h-4 w-4" />
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-semibold truncate max-w-[140px]">
-                {organization?.name || "Workspace"}
-              </span>
+              <span className="text-sm font-semibold">Workspace</span>
               <span className="text-xs text-muted-foreground">Pro plan</span>
             </div>
           </div>
@@ -225,34 +141,26 @@ export function AppSidebar({ activeProjects: initialProjects = [] }: AppSidebarP
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {activeProjects.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="px-3 text-xs font-medium text-muted-foreground">
-              Active Projects
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {activeProjects.map((project, index) => (
-                  <SidebarMenuItem key={project.id}>
-                    <SidebarMenuButton asChild className="h-9 rounded-lg px-3 group">
-                      <Link href={`/projects/${project.id}`}>
-                        <ProgressCircle
-                          progress={project.progress}
-                          color={PROJECT_COLORS[index % PROJECT_COLORS.length]}
-                          size={18}
-                        />
-                        <span className="flex-1 truncate text-sm">{project.name}</span>
-                        <span className="opacity-0 group-hover:opacity-100 rounded p-0.5 hover:bg-accent">
-                          <span className="text-muted-foreground text-lg">···</span>
-                        </span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+        <SidebarGroup>
+          <SidebarGroupLabel className="px-3 text-xs font-medium text-muted-foreground">
+            Active Projects
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {activeProjects.map((project) => (
+                <SidebarMenuItem key={project.name}>
+                  <SidebarMenuButton className="h-9 rounded-lg px-3 group">
+                    <ProgressCircle progress={project.progress} color={project.color} size={18} />
+                    <span className="flex-1 truncate text-sm">{project.name}</span>
+                    <span className="opacity-0 group-hover:opacity-100 rounded p-0.5 hover:bg-accent">
+                      <span className="text-muted-foreground text-lg">···</span>
+                    </span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter className="border-t border-border/40 p-2">
@@ -268,31 +176,19 @@ export function AppSidebar({ activeProjects: initialProjects = [] }: AppSidebarP
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              className="h-9 rounded-lg px-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-              onClick={() => signOut()}
-            >
-              <SignOut className="h-[18px] w-[18px]" />
-              <span>Sign Out</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
         </SidebarMenu>
 
-        <Link
-          href="/settings/profile"
-          className="mt-2 flex items-center gap-3 rounded-lg p-2 hover:bg-accent cursor-pointer"
-        >
+        <div className="mt-2 flex items-center gap-3 rounded-lg p-2 hover:bg-accent cursor-pointer">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={profile?.avatar_url || ""} />
-            <AvatarFallback>{userInitials}</AvatarFallback>
+            <AvatarImage src="/avatar-profile.jpg" />
+            <AvatarFallback>JD</AvatarFallback>
           </Avatar>
           <div className="flex flex-1 flex-col">
-            <span className="text-sm font-medium">{userName}</span>
-            <span className="text-xs text-muted-foreground truncate">{userEmail}</span>
+            <span className="text-sm font-medium">Jason D</span>
+            <span className="text-xs text-muted-foreground">jason.duong@mail.com</span>
           </div>
           <CaretRight className="h-4 w-4 text-muted-foreground" />
-        </Link>
+        </div>
       </SidebarFooter>
     </Sidebar>
   )
