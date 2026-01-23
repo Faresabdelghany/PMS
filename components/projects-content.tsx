@@ -81,12 +81,13 @@ export function ProjectsContent({
     },
   })
 
-  // Use Supabase projects if available, otherwise fall back to mock data
+  // Use Supabase projects when organization is available
   const projects = useMemo(() => {
-    if (organizationId && supabaseProjects.length > 0) {
+    if (organizationId) {
+      // Always use Supabase projects for authenticated users (even if empty)
       return supabaseProjects.map(toMockProject)
     }
-    // Fall back to mock data if no organization or no Supabase projects
+    // Fall back to mock data only if no organization (shouldn't happen in normal flow)
     return mockProjects
   }, [organizationId, supabaseProjects])
 
