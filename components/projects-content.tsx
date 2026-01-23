@@ -1,29 +1,94 @@
 "use client"
 
-import { useEffect, useState, useRef, useMemo } from "react"
+import { useEffect, useState, useRef, useMemo, useCallback } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { ProjectHeader } from "@/components/project-header"
 import { ProjectTimeline } from "@/components/project-timeline"
 import { ProjectCardsView } from "@/components/project-cards-view"
 import { ProjectBoardView } from "@/components/project-board-view"
 import { ProjectWizard } from "@/components/project-wizard/ProjectWizard"
-import { computeFilterCounts, projects } from "@/lib/data/projects"
+import { projects as mockProjects, computeFilterCounts, type Project as MockProject } from "@/lib/data/projects"
 import { DEFAULT_VIEW_OPTIONS, type FilterChip, type ViewOptions } from "@/lib/view-options"
 import { chipsToParams, paramsToChips } from "@/lib/url/filters"
+import { getProjects, type ProjectWithRelations } from "@/lib/actions/projects"
+import { useProjectsRealtime } from "@/hooks/use-realtime"
 
-export function ProjectsContent() {
+// Convert Supabase project to mock project format for compatibility with existing views
+function toMockProject(p: ProjectWithRelations): MockProject {
+  return {
+    id: p.id,
+    name: p.name,
+    taskCount: 0,
+    progress: p.progress || 0,
+    startDate: p.start_date ? new Date(p.start_date) : new Date(),
+    endDate: p.end_date ? new Date(p.end_date) : new Date(),
+    status: p.status,
+    priority: p.priority,
+    tags: p.tags || [],
+    members: p.members?.map(m => m.profile?.full_name || m.profile?.email || "Unknown") || [],
+    client: p.client?.name,
+    typeLabel: p.type_label || undefined,
+    durationLabel: undefined,
+    tasks: [],
+  }
+}
+
+interface ProjectsContentProps {
+  initialProjects?: ProjectWithRelations[]
+  clients?: { id: string; name: string }[]
+  organizationId?: string
+}
+
+export function ProjectsContent({
+  initialProjects = [],
+  clients = [],
+  organizationId
+}: ProjectsContentProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
   const [viewOptions, setViewOptions] = useState<ViewOptions>(DEFAULT_VIEW_OPTIONS)
-
   const [filters, setFilters] = useState<FilterChip[]>([])
-
   const [isWizardOpen, setIsWizardOpen] = useState(false)
+  const [supabaseProjects, setSupabaseProjects] = useState<ProjectWithRelations[]>(initialProjects)
 
   const isSyncingRef = useRef(false)
   const prevParamsRef = useRef<string>("")
+
+  // Fetch projects from Supabase
+  const fetchProjects = useCallback(async () => {
+    if (!organizationId) return
+
+    const result = await getProjects(organizationId)
+    if (result.data) {
+      setSupabaseProjects(result.data)
+    }
+  }, [organizationId])
+
+  // Real-time updates
+  useProjectsRealtime(organizationId, {
+    onInsert: (project) => {
+      setSupabaseProjects(prev => [project as ProjectWithRelations, ...prev])
+    },
+    onUpdate: (project) => {
+      setSupabaseProjects(prev =>
+        prev.map(p => p.id === project.id ? { ...p, ...project } : p)
+      )
+    },
+    onDelete: (project) => {
+      setSupabaseProjects(prev => prev.filter(p => p.id !== project.id))
+    },
+  })
+
+  // Use Supabase projects if available, otherwise fall back to mock data
+  const projects = useMemo(() => {
+    if (organizationId && supabaseProjects.length > 0) {
+      return supabaseProjects.map(toMockProject)
+    }
+    // Fall back to mock data if no organization or no Supabase projects
+    return mockProjects
+  }, [organizationId, supabaseProjects])
 
   const openWizard = () => {
     setIsWizardOpen(true)
@@ -35,6 +100,8 @@ export function ProjectsContent() {
 
   const handleProjectCreated = () => {
     setIsWizardOpen(false)
+    // Refresh projects after creation
+    fetchProjects()
   }
 
   const removeFilter = (key: string, value: string) => {
@@ -128,7 +195,11 @@ export function ProjectsContent() {
       {viewOptions.viewType === "list" && <ProjectCardsView projects={filteredProjects} onCreateProject={openWizard} />}
       {viewOptions.viewType === "board" && <ProjectBoardView projects={filteredProjects} onAddProject={openWizard} />}
       {isWizardOpen && (
-        <ProjectWizard onClose={closeWizard} onCreate={handleProjectCreated} />
+        <ProjectWizard
+          onClose={closeWizard}
+          onCreate={handleProjectCreated}
+          organizationId={organizationId}
+        />
       )}
     </div>
   )

@@ -12,18 +12,21 @@ import { StepOutcome } from "./steps/StepOutcome";
 import { StepOwnership } from "./steps/StepOwnership";
 import { StepStructure } from "./steps/StepStructure";
 import { StepReview } from "./steps/StepReview";
-import { StepQuickCreate } from "./steps/StepQuickCreate";
+import { StepQuickCreate, type QuickCreateProjectData } from "./steps/StepQuickCreate";
 import { CaretLeft, CaretRight, X } from "@phosphor-icons/react/dist/ssr";
 import { cn } from "@/lib/utils";
+import { createProject } from "@/lib/actions/projects";
 
 const QUICK_CREATE_STEP = 100;
 
 interface ProjectWizardProps {
   onClose: () => void;
   onCreate?: () => void;
+  organizationId?: string;
 }
 
-export function ProjectWizard({ onClose, onCreate }: ProjectWizardProps) {
+export function ProjectWizard({ onClose, onCreate, organizationId }: ProjectWizardProps) {
+  const [isCreating, setIsCreating] = useState(false);
   const [step, setStep] = useState(0);
   const [maxStepReached, setMaxStepReached] = useState(0);
   const [isQuickCreateExpanded, setIsQuickCreateExpanded] = useState(false);
@@ -131,13 +134,42 @@ export function ProjectWizard({ onClose, onCreate }: ProjectWizardProps) {
                 onClose={handleClose}
              />
         ) : step === QUICK_CREATE_STEP ? (
-            <StepQuickCreate 
-                onClose={handleClose} 
-                onCreate={() => {
-                  onCreate?.();
-                  toast.success("Project created successfully");
-                  onClose();
-                }} 
+            <StepQuickCreate
+                onClose={handleClose}
+                onCreate={async (projectData: QuickCreateProjectData) => {
+                  if (!organizationId) {
+                    toast.error("Organization not found. Please log in again.");
+                    return;
+                  }
+
+                  setIsCreating(true);
+                  try {
+                    const result = await createProject(organizationId, {
+                      name: projectData.name,
+                      description: projectData.description || null,
+                      status: projectData.status,
+                      priority: projectData.priority,
+                      start_date: projectData.start_date || null,
+                      end_date: projectData.end_date || null,
+                      client_id: projectData.client_id || null,
+                      type_label: projectData.type_label || null,
+                      tags: projectData.tags || [],
+                    });
+
+                    if (result.error) {
+                      toast.error(result.error);
+                      return;
+                    }
+
+                    onCreate?.();
+                    toast.success("Project created successfully");
+                    onClose();
+                  } catch (error) {
+                    toast.error("Failed to create project");
+                  } finally {
+                    setIsCreating(false);
+                  }
+                }}
                 onExpandChange={setIsQuickCreateExpanded}
             />
         ) : (

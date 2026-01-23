@@ -30,8 +30,24 @@ import {
   Question,
   CaretRight,
   CaretUpDown,
+  SignOut,
 } from "@phosphor-icons/react/dist/ssr"
-import { activeProjects, footerItems, navItems, type NavItemId, type SidebarFooterItemId } from "@/lib/data/sidebar"
+import { footerItems, navItems, type NavItemId, type SidebarFooterItemId } from "@/lib/data/sidebar"
+import { useUser } from "@/hooks/use-user"
+import { signOut } from "@/lib/actions/auth"
+import type { Project } from "@/lib/supabase/types"
+
+// Color palette for projects based on progress
+const getProjectColor = (progress: number): string => {
+  if (progress >= 75) return "var(--chart-1)" // green-ish for near completion
+  if (progress >= 50) return "var(--chart-3)" // yellow-ish for mid-progress
+  if (progress >= 25) return "var(--chart-5)" // blue-ish for early progress
+  return "var(--chart-2)" // red-ish for just started
+}
+
+interface AppSidebarProps {
+  activeProjects?: Project[]
+}
 
 const navItemIcons: Record<NavItemId, React.ComponentType<{ className?: string }>> = {
   inbox: Tray,
@@ -47,8 +63,9 @@ const footerItemIcons: Record<SidebarFooterItemId, React.ComponentType<{ classNa
   help: Question,
 }
 
-export function AppSidebar() {
+export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
   const pathname = usePathname()
+  const { profile, user } = useUser()
 
   const getHrefForNavItem = (id: NavItemId): string => {
     if (id === "my-tasks") return "/tasks"
@@ -147,17 +164,29 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {activeProjects.map((project) => (
-                <SidebarMenuItem key={project.name}>
-                  <SidebarMenuButton className="h-9 rounded-lg px-3 group">
-                    <ProgressCircle progress={project.progress} color={project.color} size={18} />
-                    <span className="flex-1 truncate text-sm">{project.name}</span>
-                    <span className="opacity-0 group-hover:opacity-100 rounded p-0.5 hover:bg-accent">
-                      <span className="text-muted-foreground text-lg">···</span>
-                    </span>
-                  </SidebarMenuButton>
+              {activeProjects.length > 0 ? (
+                activeProjects.map((project) => (
+                  <SidebarMenuItem key={project.id}>
+                    <SidebarMenuButton asChild className="h-9 rounded-lg px-3 group">
+                      <Link href={`/projects/${project.id}`}>
+                        <ProgressCircle
+                          progress={project.progress || 0}
+                          color={getProjectColor(project.progress || 0)}
+                          size={18}
+                        />
+                        <span className="flex-1 truncate text-sm">{project.name}</span>
+                        <span className="opacity-0 group-hover:opacity-100 rounded p-0.5 hover:bg-accent">
+                          <span className="text-muted-foreground text-lg">···</span>
+                        </span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))
+              ) : (
+                <SidebarMenuItem>
+                  <span className="px-3 text-sm text-muted-foreground">No active projects</span>
                 </SidebarMenuItem>
-              ))}
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -180,14 +209,30 @@ export function AppSidebar() {
 
         <div className="mt-2 flex items-center gap-3 rounded-lg p-2 hover:bg-accent cursor-pointer">
           <Avatar className="h-8 w-8">
-            <AvatarImage src="/avatar-profile.jpg" />
-            <AvatarFallback>JD</AvatarFallback>
+            <AvatarImage src={profile?.avatar_url || "/avatar-profile.jpg"} />
+            <AvatarFallback>
+              {profile?.full_name
+                ? profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+                : user?.email?.slice(0, 2).toUpperCase() || "U"}
+            </AvatarFallback>
           </Avatar>
           <div className="flex flex-1 flex-col">
-            <span className="text-sm font-medium">Jason D</span>
-            <span className="text-xs text-muted-foreground">jason.duong@mail.com</span>
+            <span className="text-sm font-medium">
+              {profile?.full_name || user?.email?.split("@")[0] || "User"}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {user?.email || "No email"}
+            </span>
           </div>
-          <CaretRight className="h-4 w-4 text-muted-foreground" />
+          <button
+            onClick={async () => {
+              await signOut()
+            }}
+            className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+            title="Sign out"
+          >
+            <SignOut className="h-4 w-4" />
+          </button>
         </div>
       </SidebarFooter>
     </Sidebar>

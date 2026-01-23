@@ -20,6 +20,19 @@ import {
 import { Check, X, CornersOut, Star, CalendarBlank, UserCircle, Spinner, List, Paperclip, Microphone, Rows, ChartBar, Tag } from "@phosphor-icons/react/dist/ssr";
 import { ProjectDescriptionEditor } from "../ProjectDescriptionEditor";
 import { clients, type Client } from "@/lib/data/clients";
+import type { ProjectStatus, ProjectPriority } from "@/lib/supabase/types";
+
+export type QuickCreateProjectData = {
+  name: string;
+  description?: string;
+  status: ProjectStatus;
+  priority: ProjectPriority;
+  start_date?: string;
+  end_date?: string;
+  client_id?: string;
+  type_label?: string;
+  tags?: string[];
+};
 
 // --- Mock Data ---
 
@@ -176,7 +189,7 @@ export function DatePicker({
 
 interface StepQuickCreateProps {
   onClose: () => void;
-  onCreate: () => void;
+  onCreate: (data: QuickCreateProjectData) => void;
   onExpandChange?: (isExpanded: boolean) => void;
 }
 
@@ -222,9 +235,44 @@ export function StepQuickCreate({
     return () => clearTimeout(timer);
   }, []);
 
+  const mapStatusToSupabase = (statusId: string): ProjectStatus => {
+    const mapping: Record<string, ProjectStatus> = {
+      "backlog": "backlog",
+      "todo": "planned",
+      "in-progress": "active",
+      "done": "completed",
+      "canceled": "cancelled",
+    };
+    return mapping[statusId] || "planned";
+  };
+
+  const mapPriorityToSupabase = (priorityId: string | undefined): ProjectPriority => {
+    if (!priorityId || priorityId === "no-priority") return "medium";
+    return priorityId as ProjectPriority;
+  };
+
+  const handleCreate = () => {
+    if (!title.trim()) {
+      return;
+    }
+
+    const projectData: QuickCreateProjectData = {
+      name: title.trim(),
+      status: mapStatusToSupabase(status.id),
+      priority: mapPriorityToSupabase(priority?.id),
+      start_date: startDate ? startDate.toISOString().split('T')[0] : undefined,
+      end_date: targetDate ? targetDate.toISOString().split('T')[0] : undefined,
+      client_id: client?.id,
+      type_label: sprintType?.label,
+      tags: selectedTag ? [selectedTag.label] : [],
+    };
+
+    onCreate(projectData);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-      onCreate();
+      handleCreate();
     }
   };
 
@@ -546,8 +594,9 @@ export function StepQuickCreate({
           </div>
 
           <button
-            onClick={onCreate}
-            className="bg-primary hover:bg-primary/90 flex gap-3 h-10 items-center justify-center px-4 py-2 rounded-lg transition-colors cursor-pointer"
+            onClick={handleCreate}
+            disabled={!title.trim()}
+            className="bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex gap-3 h-10 items-center justify-center px-4 py-2 rounded-lg transition-colors cursor-pointer"
           >
             <span className="font-medium text-primary-foreground text-sm leading-5">
               Create Project

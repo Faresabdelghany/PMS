@@ -58,9 +58,9 @@ async function getActiveProjects(organizationId: string): Promise<Project[]> {
     .from("projects")
     .select("*")
     .eq("organization_id", organizationId)
-    .in("status", ["active", "planned"])
+    .eq("status", "active")
     .order("updated_at", { ascending: false })
-    .limit(5)
+    .limit(7)
 
   return data || []
 }
