@@ -74,10 +74,13 @@ export function AppSidebar({ activeProjects: initialProjects = [] }: AppSidebarP
   const [activeProjects, setActiveProjects] = useState(initialProjects)
 
   // Subscribe to project changes
+  // Active statuses that should appear in sidebar
+  const activeStatuses = ["active", "planned"]
+
   useProjectsRealtime(organization?.id, {
     onInsert: (newProject) => {
-      // Only add if project is active
-      if (newProject.status !== "active") return
+      // Only add if project is active or planned
+      if (!activeStatuses.includes(newProject.status || "")) return
       setActiveProjects((prev) => {
         if (prev.some((p) => p.id === newProject.id)) return prev
         return [...prev, newProject as Project].slice(0, 5) // Keep max 5
@@ -85,18 +88,18 @@ export function AppSidebar({ activeProjects: initialProjects = [] }: AppSidebarP
     },
     onUpdate: (updatedProject) => {
       setActiveProjects((prev) => {
-        // If no longer active, remove from sidebar
-        if (updatedProject.status !== "active") {
+        // If no longer active or planned, remove from sidebar
+        if (!activeStatuses.includes(updatedProject.status || "")) {
           return prev.filter((p) => p.id !== updatedProject.id)
         }
-        // Update existing or add if newly active
+        // Update existing or add if newly active/planned
         const exists = prev.some((p) => p.id === updatedProject.id)
         if (exists) {
           return prev.map((p) =>
             p.id === updatedProject.id ? { ...p, ...updatedProject } : p
           )
         }
-        // Newly active project
+        // Newly active/planned project
         return [...prev, updatedProject as Project].slice(0, 5)
       })
     },
