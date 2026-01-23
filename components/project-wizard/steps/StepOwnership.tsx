@@ -11,9 +11,22 @@ import { Separator } from "../../ui/separator";
 import { clients } from "@/lib/data/clients";
 import { getAvatarUrl } from "@/lib/assets/avatars";
 
+// Organization member type from Supabase
+export interface OrganizationMember {
+  user_id: string;
+  profile: {
+    id: string;
+    full_name: string | null;
+    email: string;
+    avatar_url: string | null;
+  } | null;
+}
+
 interface StepOwnershipProps {
   data: ProjectData;
   updateData: (updates: Partial<ProjectData>) => void;
+  currentUserId?: string;
+  organizationMembers?: OrganizationMember[];
 }
 
 interface Account {
@@ -22,61 +35,9 @@ interface Account {
   email: string;
   team?: string;
   initials: string;
+  avatarUrl?: string;
 }
 
-const DEFAULT_OWNER_ID = "jason-d";
-
-const DEFAULT_ACCOUNTS: Account[] = [
-  {
-    id: "jason-d",
-    name: "Jason D",
-    email: "jason.duong@mail.com",
-    team: "Product",
-    initials: "JD",
-  },
-  {
-    id: "alex-morgan",
-    name: "Alex Morgan",
-    email: "alex.morgan@workspace.com",
-    team: "Product",
-    initials: "AM",
-  },
-  {
-    id: "sarah-chen",
-    name: "Sarah Chen",
-    email: "sarah.chen@workspace.com",
-    team: "Engineering",
-    initials: "SC",
-  },
-  {
-    id: "mike-ross",
-    name: "Mike Ross",
-    email: "mike.ross@workspace.com",
-    team: "Design",
-    initials: "MR",
-  },
-  {
-    id: "harrold",
-    name: "Harrold",
-    email: "harrold@workspace.com",
-    team: "Engineering",
-    initials: "H",
-  },
-  {
-    id: "james",
-    name: "James",
-    email: "james.boarnd@workspace.com",
-    team: "Product",
-    initials: "JB",
-  },
-  {
-    id: "mitch",
-    name: "Mitch",
-    email: "mitch.sato@workspace.com",
-    team: "Design",
-    initials: "MS",
-  },
-];
 function getInitials(name: string) {
   const parts = name.trim().split(" ");
   if (parts.length === 1) return parts[0]?.[0]?.toUpperCase() ?? "";
@@ -85,36 +46,57 @@ function getInitials(name: string) {
   return `${first ?? ""}${last ?? ""}`.toUpperCase();
 }
 
-export function StepOwnership({ data, updateData }: StepOwnershipProps) {
-  const [accounts, setAccounts] = useState<Account[]>(DEFAULT_ACCOUNTS);
+// Convert organization members to Account format
+function membersToAccounts(members: OrganizationMember[]): Account[] {
+  return members
+    .filter((m) => m.profile)
+    .map((m) => ({
+      id: m.user_id,
+      name: m.profile!.full_name || m.profile!.email.split("@")[0],
+      email: m.profile!.email,
+      initials: getInitials(m.profile!.full_name || m.profile!.email.split("@")[0]),
+      avatarUrl: m.profile!.avatar_url || undefined,
+    }));
+}
+
+export function StepOwnership({ data, updateData, currentUserId, organizationMembers }: StepOwnershipProps) {
   const [query, setQuery] = useState("");
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
 
-  const ownerId = data.ownerId ?? DEFAULT_OWNER_ID;
-
-  useEffect(() => {
-    if (!data.ownerId) {
-      updateData({ ownerId: DEFAULT_OWNER_ID });
+  // Use real organization members if available, otherwise empty list
+  const accounts = useMemo(() => {
+    if (organizationMembers && organizationMembers.length > 0) {
+      return membersToAccounts(organizationMembers);
     }
-  }, [data.ownerId, updateData]);
+    return [];
+  }, [organizationMembers]);
 
+  // Default owner is the current user
+  const defaultOwnerId = currentUserId || accounts[0]?.id;
+  const ownerId = data.ownerId ?? defaultOwnerId;
+
+  // Set owner to current user on mount if not already set
   useEffect(() => {
-    if (!data.contributorOwnerships || data.contributorOwnerships.length === 0) {
+    if (!data.ownerId && defaultOwnerId) {
+      updateData({ ownerId: defaultOwnerId });
+    }
+  }, [data.ownerId, defaultOwnerId, updateData]);
+
+  // Initialize empty contributor/stakeholder lists (no mock data)
+  useEffect(() => {
+    if (data.contributorOwnerships === undefined) {
       updateData({
-        contributorOwnerships: [{ accountId: "harrold", access: "can_edit" }],
-        contributorIds: ["harrold"],
+        contributorOwnerships: [],
+        contributorIds: [],
       });
     }
   }, [data.contributorOwnerships, updateData]);
 
   useEffect(() => {
-    if (!data.stakeholderOwnerships || data.stakeholderOwnerships.length === 0) {
+    if (data.stakeholderOwnerships === undefined) {
       updateData({
-        stakeholderOwnerships: [
-          { accountId: "james", access: "can_view" },
-          { accountId: "mitch", access: "can_view" },
-        ],
-        stakeholderIds: ["james", "mitch"],
+        stakeholderOwnerships: [],
+        stakeholderIds: [],
       });
     }
   }, [data.stakeholderOwnerships, updateData]);
@@ -313,7 +295,7 @@ export function StepOwnership({ data, updateData }: StepOwnershipProps) {
             <div className="flex items-center gap-3">
               <Avatar className="h-5 w-5">
                 {ownerAccount && (
-                  <AvatarImage src={getAvatarUrl(ownerAccount.name)} />
+                  <AvatarImage src={ownerAccount.avatarUrl || getAvatarUrl(ownerAccount.name)} />
                 )}
                 <AvatarFallback>
                   {ownerAccount ? ownerAccount.initials : "PO"}
@@ -355,7 +337,7 @@ export function StepOwnership({ data, updateData }: StepOwnershipProps) {
               contributorOwnerships.map((entry) => {
                 const account = getAccountById(entry.accountId);
                 if (!account || account.id === ownerId) return null;
-                const avatarUrl = getAvatarUrl(account.name);
+                const avatarUrl = account.avatarUrl || getAvatarUrl(account.name);
 
                 return (
                   <div
@@ -364,7 +346,7 @@ export function StepOwnership({ data, updateData }: StepOwnershipProps) {
                   >
                     <div className="flex items-center gap-3">
                       <Avatar className="h-5 w-5 text-xs bg-background border border-border">
-                        {avatarUrl && <AvatarImage src={avatarUrl} />}
+                        <AvatarImage src={avatarUrl} />
                         <AvatarFallback>{account.initials}</AvatarFallback>
                       </Avatar>
                       <div>
@@ -440,7 +422,7 @@ export function StepOwnership({ data, updateData }: StepOwnershipProps) {
               stakeholderOwnerships.map((entry) => {
                 const account = getAccountById(entry.accountId);
                 if (!account || account.id === ownerId) return null;
-                const avatarUrl = getAvatarUrl(account.name);
+                const avatarUrl = account.avatarUrl || getAvatarUrl(account.name);
 
                 return (
                   <div
@@ -449,7 +431,7 @@ export function StepOwnership({ data, updateData }: StepOwnershipProps) {
                   >
                     <div className="flex items-center gap-3">
                       <Avatar className="h-5 w-5 text-xs bg-background border border-border">
-                        {avatarUrl && <AvatarImage src={avatarUrl} />}
+                        <AvatarImage src={avatarUrl} />
                         <AvatarFallback>{account.initials}</AvatarFallback>
                       </Avatar>
                       <div>

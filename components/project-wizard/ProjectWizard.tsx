@@ -9,13 +9,15 @@ import { ProjectData, ProjectMode } from "./types";
 import { StepMode } from "./steps/StepMode";
 import { StepIntent } from "./steps/StepIntent";
 import { StepOutcome } from "./steps/StepOutcome";
-import { StepOwnership } from "./steps/StepOwnership";
+import { StepOwnership, type OrganizationMember } from "./steps/StepOwnership";
 import { StepStructure } from "./steps/StepStructure";
 import { StepReview } from "./steps/StepReview";
 import { StepQuickCreate, type QuickCreateProjectData } from "./steps/StepQuickCreate";
 import { CaretLeft, CaretRight, X } from "@phosphor-icons/react/dist/ssr";
 import { cn } from "@/lib/utils";
 import { createProject } from "@/lib/actions/projects";
+import { getOrganizationMembers } from "@/lib/actions/organizations";
+import { useUser } from "@/hooks/use-user";
 
 const QUICK_CREATE_STEP = 100;
 
@@ -26,10 +28,12 @@ interface ProjectWizardProps {
 }
 
 export function ProjectWizard({ onClose, onCreate, organizationId }: ProjectWizardProps) {
+  const { user } = useUser();
   const [isCreating, setIsCreating] = useState(false);
   const [step, setStep] = useState(0);
   const [maxStepReached, setMaxStepReached] = useState(0);
   const [isQuickCreateExpanded, setIsQuickCreateExpanded] = useState(false);
+  const [organizationMembers, setOrganizationMembers] = useState<OrganizationMember[]>([]);
   const [data, setData] = useState<ProjectData>({
     mode: undefined,
     successType: 'undefined',
@@ -41,6 +45,18 @@ export function ProjectWizard({ onClose, onCreate, organizationId }: ProjectWiza
     stakeholderIds: [],
     addStarterTasks: false,
   });
+
+  // Fetch organization members on mount
+  useEffect(() => {
+    async function fetchMembers() {
+      if (!organizationId) return;
+      const result = await getOrganizationMembers(organizationId);
+      if (result.data) {
+        setOrganizationMembers(result.data as OrganizationMember[]);
+      }
+    }
+    fetchMembers();
+  }, [organizationId]);
 
   // Keyboard navigation: Escape to close wizard
   useEffect(() => {
@@ -239,7 +255,12 @@ export function ProjectWizard({ onClose, onCreate, organizationId }: ProjectWiza
                                     <StepOutcome data={data} updateData={updateData} />
                                 )}
                                 {step === 3 && (
-                                    <StepOwnership data={data} updateData={updateData} />
+                                    <StepOwnership
+                                      data={data}
+                                      updateData={updateData}
+                                      currentUserId={user?.id}
+                                      organizationMembers={organizationMembers}
+                                    />
                                 )}
                                 {step === 4 && (
                                     <StepStructure data={data} updateData={updateData} />
