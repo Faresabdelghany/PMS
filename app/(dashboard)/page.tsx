@@ -1,9 +1,7 @@
 import { redirect } from "next/navigation"
-import { AppSidebar } from "@/components/app-sidebar"
 import { ProjectsContent } from "@/components/projects-content"
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { getUserOrganizations } from "@/lib/actions/organizations"
-import { getProjects, type ProjectWithRelations } from "@/lib/actions/projects"
+import { getProjects } from "@/lib/actions/projects"
 import { getClients } from "@/lib/actions/clients"
 
 export default async function Page() {
@@ -25,15 +23,10 @@ export default async function Page() {
   const clients = clientsResult.data ?? []
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <ProjectsContent
-          initialProjects={projects}
-          clients={clients}
-          organizationId={organization.id}
-        />
-      </SidebarInset>
-    </SidebarProvider>
+    <ProjectsContent
+      initialProjects={projects}
+      clients={clients}
+      organizationId={organization.id}
+    />
   )
 }

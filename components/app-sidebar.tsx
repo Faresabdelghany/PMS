@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -72,6 +72,14 @@ export function AppSidebar({ activeProjects: initialProjects = [] }: AppSidebarP
 
   // Convert to local state for real-time updates
   const [activeProjects, setActiveProjects] = useState(initialProjects)
+
+  // Sync with props when initialProjects changes (e.g., after navigation or hydration)
+  // Use JSON.stringify to compare array contents, not references
+  const initialProjectsJson = JSON.stringify(initialProjects.map(p => p.id))
+  useEffect(() => {
+    setActiveProjects(initialProjects)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialProjectsJson])
 
   // Subscribe to project changes
   // Active statuses that should appear in sidebar
