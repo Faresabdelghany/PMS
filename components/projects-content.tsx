@@ -180,13 +180,16 @@ export function ProjectsContent({
     return sorted
   }, [filters, viewOptions, projects])
 
+  // Memoize filter counts to prevent recomputation on every render
+  const filterCounts = useMemo(() => computeFilterCounts(filteredProjects), [filteredProjects])
+
   return (
     <div className="flex flex-1 flex-col bg-background mx-2 my-2 border border-border rounded-lg min-w-0">
       <ProjectHeader
         filters={filters}
         onRemoveFilter={removeFilter}
         onFiltersChange={applyFilters}
-        counts={computeFilterCounts(filteredProjects)}
+        counts={filterCounts}
         viewOptions={viewOptions}
         onViewOptionsChange={setViewOptions}
         onAddProject={openWizard}

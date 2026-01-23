@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { Button } from "../ui/button";
@@ -41,6 +41,19 @@ export function ProjectWizard({ onClose, onCreate, organizationId }: ProjectWiza
     stakeholderIds: [],
     addStarterTasks: false,
   });
+
+  // Keyboard navigation: Escape to close wizard
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   // Step 0 is Mode Selection. It's separate from the numbered stepper.
   // The numbered stepper starts at Step 1 (Intent).
