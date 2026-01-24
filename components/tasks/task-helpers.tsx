@@ -4,14 +4,12 @@ import { format } from "date-fns"
 import { ChartBar, DotsSixVertical, FolderSimple, Plus } from "@phosphor-icons/react/dist/ssr"
 import {
   SortableContext,
-  arrayMove,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 
-import type { Project, FilterCounts } from "@/lib/data/projects"
-import type { ProjectTask } from "@/lib/data/project-details"
+import type { FilterCounts } from "@/lib/data/projects"
 import { TaskRowBase } from "@/components/tasks/TaskRowBase"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -21,12 +19,44 @@ import { cn } from "@/lib/utils"
 import type { FilterChip as FilterChipType } from "@/lib/view-options"
 import type { CreateTaskContext } from "@/components/tasks/TaskQuickCreateModal"
 
-export type ProjectTaskGroup = {
-  project: Project
-  tasks: ProjectTask[]
+// Generic task type that works with both mock data and Supabase data
+export type TaskLike = {
+  id: string
+  name: string
+  status: "todo" | "in-progress" | "done"
+  priority?: string | null
+  tag?: string | null
+  assignee?: {
+    name: string
+    avatarUrl?: string | null
+  } | null
+  startDate?: Date | null
+  endDate?: Date | null
+  dueLabel?: string | null
+  projectId?: string
+  projectName?: string
+  workstreamId?: string | null
+  workstreamName?: string | null
+  description?: string | null
 }
 
-export function filterTasksByChips(tasks: ProjectTask[], chips: FilterChipType[]): ProjectTask[] {
+// Generic project type for grouping
+export type ProjectLike = {
+  id: string
+  name: string
+  progress?: number
+  status?: string
+  priority?: string
+  typeLabel?: string | null
+  durationLabel?: string | null
+}
+
+export type ProjectTaskGroup = {
+  project: ProjectLike
+  tasks: TaskLike[]
+}
+
+export function filterTasksByChips(tasks: TaskLike[], chips: FilterChipType[]): TaskLike[] {
   if (!chips.length) return tasks
 
   const memberValues = chips
@@ -48,12 +78,11 @@ export function filterTasksByChips(tasks: ProjectTask[], chips: FilterChipType[]
   })
 }
 
-export function computeTaskFilterCounts(tasks: ProjectTask[]): FilterCounts {
+export function computeTaskFilterCounts(tasks: TaskLike[]): FilterCounts {
   const counts: FilterCounts = {
     members: {
       "no-member": 0,
       current: 0,
-      jason: 0,
     },
   }
 
@@ -63,9 +92,11 @@ export function computeTaskFilterCounts(tasks: ProjectTask[]): FilterCounts {
     } else {
       counts.members!.current = (counts.members!.current || 0) + 1
 
+      // Track unique member names
       const name = task.assignee.name.toLowerCase()
-      if (name.includes("jason duong")) {
-        counts.members!.jason = (counts.members!.jason || 0) + 1
+      const firstName = name.split(" ")[0]
+      if (firstName) {
+        counts.members![firstName] = (counts.members![firstName] || 0) + 1
       }
     }
   }
@@ -73,7 +104,7 @@ export function computeTaskFilterCounts(tasks: ProjectTask[]): FilterCounts {
   return counts
 }
 
-export function getTaskDescriptionSnippet(task: ProjectTask): string {
+export function getTaskDescriptionSnippet(task: TaskLike): string {
   if (!task.description) return ""
   const plain = task.description.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
   return plain
@@ -100,11 +131,13 @@ export function ProjectTasksSection({ group, onToggleTask, onAddTask }: ProjectT
         <div className="flex-1 space-y-1">
           <span className="text-sm font-semibold leading-tight">{project.name}</span>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              <ChartBar className="h-3 w-3" weight="regular" />
-              <span className="font-medium">{capitalize(project.priority)}</span>
-            </span>
-            <div className="h-4 w-px bg-border/70 hidden sm:inline" />
+            {project.priority && (
+              <span className="inline-flex items-center gap-1">
+                <ChartBar className="h-3 w-3" weight="regular" />
+                <span className="font-medium">{capitalize(project.priority)}</span>
+              </span>
+            )}
+            {project.priority && <div className="h-4 w-px bg-border/70 hidden sm:inline" />}
             {project.typeLabel && project.durationLabel && (
               <>
                 <span className="rounded-full bg-muted px-2 py-0.5 font-medium hidden sm:inline">
@@ -113,9 +146,11 @@ export function ProjectTasksSection({ group, onToggleTask, onAddTask }: ProjectT
                 <div className="h-4 w-px bg-border/70 hidden sm:inline" />
               </>
             )}
-            <span className="rounded-full bg-muted px-2 py-0.5 font-medium hidden sm:inline">
-              {getProjectStatusLabel(project.status)}
-            </span>
+            {project.status && (
+              <span className="rounded-full bg-muted px-2 py-0.5 font-medium hidden sm:inline">
+                {getProjectStatusLabel(project.status)}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -133,7 +168,7 @@ export function ProjectTasksSection({ group, onToggleTask, onAddTask }: ProjectT
             onClick={() =>
               onAddTask({
                 projectId: project.id,
-                workstreamName: tasks[0]?.workstreamName,
+                workstreamName: tasks[0]?.workstreamName || undefined,
               })
             }
           >
@@ -158,7 +193,7 @@ export function ProjectTasksSection({ group, onToggleTask, onAddTask }: ProjectT
 }
 
 export type TaskBadgesProps = {
-  workstreamName?: string
+  workstreamName?: string | null
   className?: string
 }
 
@@ -173,7 +208,7 @@ export function TaskBadges({ workstreamName, className }: TaskBadgesProps) {
 }
 
 export type TaskStatusProps = {
-  status: ProjectTask["status"]
+  status: TaskLike["status"]
 }
 
 export function TaskStatus({ status }: TaskStatusProps) {
@@ -183,7 +218,7 @@ export function TaskStatus({ status }: TaskStatusProps) {
   return <span className={cn("font-medium", color)}>{label}</span>
 }
 
-function getStatusLabel(status: ProjectTask["status"]): string {
+function getStatusLabel(status: TaskLike["status"]): string {
   switch (status) {
     case "done":
       return "Done"
@@ -194,7 +229,7 @@ function getStatusLabel(status: ProjectTask["status"]): string {
   }
 }
 
-function getStatusColor(status: ProjectTask["status"]): string {
+function getStatusColor(status: TaskLike["status"]): string {
   switch (status) {
     case "done":
       return "text-emerald-500"
@@ -205,7 +240,7 @@ function getStatusColor(status: ProjectTask["status"]): string {
   }
 }
 
-function getProjectStatusLabel(status: Project["status"]): string {
+function getProjectStatusLabel(status: string): string {
   switch (status) {
     case "active":
       return "In Progress"
@@ -228,7 +263,7 @@ function capitalize(value: string): string {
 }
 
 export type TaskPriorityProps = {
-  priority: NonNullable<ProjectTask["priority"]>
+  priority: string
   className?: string
 }
 
@@ -242,7 +277,7 @@ export function TaskPriority({ priority, className }: TaskPriorityProps) {
   )
 }
 
-function getPriorityLabel(priority: NonNullable<ProjectTask["priority"]>): string {
+function getPriorityLabel(priority: string): string {
   switch (priority) {
     case "high":
       return "High"
@@ -258,7 +293,7 @@ function getPriorityLabel(priority: NonNullable<ProjectTask["priority"]>): strin
 }
 
 export type TaskRowDnDProps = {
-  task: ProjectTask
+  task: TaskLike
   onToggle: () => void
 }
 

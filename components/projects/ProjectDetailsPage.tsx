@@ -1,13 +1,13 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { LinkSimple, SquareHalf } from "@phosphor-icons/react/dist/ssr"
 import { toast } from "sonner"
 import { AnimatePresence, motion } from "motion/react"
 
-import type { ProjectDetails } from "@/lib/data/project-details"
-import { getProjectDetailsById } from "@/lib/data/project-details"
 import type { ProjectFullDetails } from "@/lib/actions/projects"
+import type { TaskWithRelations } from "@/lib/actions/tasks"
+import type { Workstream } from "@/lib/supabase/types"
 import { Breadcrumbs } from "@/components/projects/Breadcrumbs"
 import { ProjectHeader } from "@/components/projects/ProjectHeader"
 import { ScopeColumns } from "@/components/projects/ScopeColumns"
@@ -24,105 +24,168 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Skeleton } from "@/components/ui/skeleton"
+
+// Workstream with tasks type from the action
+type WorkstreamWithTasks = Workstream & {
+  tasks: {
+    id: string
+    name: string
+    status: string
+    priority: string
+    assignee_id: string | null
+    sort_order: number
+  }[]
+}
+
+// Internal project details type for UI
+type ProjectDetailsUI = {
+  id: string
+  name: string
+  description: string
+  meta: {
+    priorityLabel: string
+  }
+  backlog: {
+    statusLabel: string
+    priorityLabel: string
+  }
+  time: {
+    progressPercent: number
+  }
+  scope: {
+    inScope: string[]
+    outOfScope: string[]
+  }
+  outcomes: string[]
+  keyFeatures: {
+    p0: string[]
+    p1: string[]
+    p2: string[]
+  }
+  workstreams: {
+    id: string
+    name: string
+    tasks: {
+      id: string
+      name: string
+      status: string
+      priority: string
+      assignee?: { name: string; avatarUrl?: string } | null
+    }[]
+  }[]
+  timelineTasks: {
+    id: string
+    name: string
+    status: string
+    startDate?: Date
+    endDate?: Date
+  }[]
+  files: never[]
+  notes: never[]
+}
 
 type ProjectDetailsPageProps = {
   projectId: string
-  supabaseProject?: ProjectFullDetails | null
+  supabaseProject: ProjectFullDetails
+  tasks?: TaskWithRelations[]
+  workstreams?: WorkstreamWithTasks[]
+  clients?: { id: string; name: string }[]
 }
 
-type LoadState =
-  | { status: "loading" }
-  | { status: "ready"; project: ProjectDetails }
-
-export function ProjectDetailsPage({ projectId, supabaseProject }: ProjectDetailsPageProps) {
-  const [state, setState] = useState<LoadState>({ status: "loading" })
+export function ProjectDetailsPage({
+  projectId,
+  supabaseProject,
+  tasks = [],
+  workstreams = [],
+  clients = [],
+}: ProjectDetailsPageProps) {
   const [showMeta, setShowMeta] = useState(true)
   const [isWizardOpen, setIsWizardOpen] = useState(false)
 
-  useEffect(() => {
-    let cancelled = false
+  // Map Supabase data to UI format
+  const project = useMemo<ProjectDetailsUI>(() => {
+    // Map scope to UI format
+    const inScope = supabaseProject.scope
+      .filter((s) => s.is_in_scope)
+      .map((s) => s.item)
+    const outOfScope = supabaseProject.scope
+      .filter((s) => !s.is_in_scope)
+      .map((s) => s.item)
 
-    // Get mock project details structure as fallback
-    let project = getProjectDetailsById(projectId)
+    // Map outcomes to UI format
+    const outcomes = supabaseProject.outcomes.map((o) => o.item)
 
-    // Override with Supabase data if available
-    if (supabaseProject) {
-      // Map Supabase scope to UI format
-      const inScope = supabaseProject.scope
-        .filter((s) => s.is_in_scope)
-        .map((s) => s.item)
-      const outOfScope = supabaseProject.scope
-        .filter((s) => !s.is_in_scope)
-        .map((s) => s.item)
+    // Map features to UI format (grouped by priority)
+    const p0Features = supabaseProject.features
+      .filter((f) => f.priority === 0)
+      .map((f) => f.item)
+    const p1Features = supabaseProject.features
+      .filter((f) => f.priority === 1)
+      .map((f) => f.item)
+    const p2Features = supabaseProject.features
+      .filter((f) => f.priority === 2)
+      .map((f) => f.item)
 
-      // Map Supabase outcomes to UI format
-      const outcomes = supabaseProject.outcomes.map((o) => o.item)
+    // Map workstreams to UI format
+    const uiWorkstreams = workstreams.map((ws) => ({
+      id: ws.id,
+      name: ws.name,
+      tasks: ws.tasks.map((t) => ({
+        id: t.id,
+        name: t.name,
+        status: t.status,
+        priority: t.priority,
+        assignee: null, // Will need to fetch assignee data if needed
+      })),
+    }))
 
-      // Map Supabase features to UI format (grouped by priority)
-      const p0Features = supabaseProject.features
-        .filter((f) => f.priority === 0)
-        .map((f) => f.item)
-      const p1Features = supabaseProject.features
-        .filter((f) => f.priority === 1)
-        .map((f) => f.item)
-      const p2Features = supabaseProject.features
-        .filter((f) => f.priority === 2)
-        .map((f) => f.item)
+    // Map tasks to timeline format
+    const timelineTasks = tasks.map((t) => ({
+      id: t.id,
+      name: t.name,
+      status: t.status,
+      startDate: t.start_date ? new Date(t.start_date) : undefined,
+      endDate: t.end_date ? new Date(t.end_date) : undefined,
+    }))
 
-      // Build the project object with Supabase data
-      project = {
-        ...project,
-        id: supabaseProject.id,
-        name: supabaseProject.name,
-        description: supabaseProject.description || project.description,
-        meta: {
-          ...project.meta,
-          priorityLabel: supabaseProject.priority.charAt(0).toUpperCase() + supabaseProject.priority.slice(1),
-        },
-        backlog: {
-          ...project.backlog,
-          statusLabel: supabaseProject.status === "active" ? "Active"
-            : supabaseProject.status === "planned" ? "Planned"
-            : supabaseProject.status === "completed" ? "Completed"
-            : supabaseProject.status === "cancelled" ? "Cancelled"
-            : "Backlog",
-          priorityLabel: supabaseProject.priority.charAt(0).toUpperCase() + supabaseProject.priority.slice(1),
-        },
-        time: {
-          ...project.time,
-          progressPercent: supabaseProject.progress || 0,
-        },
-        // Use Supabase data for scope, outcomes, features if available
-        scope: {
-          inScope: inScope.length > 0 ? inScope : project.scope.inScope,
-          outOfScope: outOfScope.length > 0 ? outOfScope : project.scope.outOfScope,
-        },
-        outcomes: outcomes.length > 0 ? outcomes : project.outcomes,
-        keyFeatures: {
-          p0: p0Features.length > 0 ? p0Features : project.keyFeatures.p0,
-          p1: p1Features.length > 0 ? p1Features : project.keyFeatures.p1,
-          p2: p2Features.length > 0 ? p2Features : project.keyFeatures.p2,
-        },
-      }
-      // When we have Supabase data, set state immediately (no artificial delay)
-      setState({ status: "ready", project })
-      return
+    const statusLabel = supabaseProject.status === "active" ? "Active"
+      : supabaseProject.status === "planned" ? "Planned"
+      : supabaseProject.status === "completed" ? "Completed"
+      : supabaseProject.status === "cancelled" ? "Cancelled"
+      : "Backlog"
+
+    const priorityLabel = supabaseProject.priority.charAt(0).toUpperCase() + supabaseProject.priority.slice(1)
+
+    return {
+      id: supabaseProject.id,
+      name: supabaseProject.name,
+      description: supabaseProject.description || "",
+      meta: {
+        priorityLabel,
+      },
+      backlog: {
+        statusLabel,
+        priorityLabel,
+      },
+      time: {
+        progressPercent: supabaseProject.progress || 0,
+      },
+      scope: {
+        inScope,
+        outOfScope,
+      },
+      outcomes,
+      keyFeatures: {
+        p0: p0Features,
+        p1: p1Features,
+        p2: p2Features,
+      },
+      workstreams: uiWorkstreams,
+      timelineTasks,
+      files: [],
+      notes: [],
     }
-
-    // Only use delay for mock data fallback
-    setState({ status: "loading" })
-    const delay = 600 + Math.floor(Math.random() * 301)
-    const t = setTimeout(() => {
-      if (cancelled) return
-      setState({ status: "ready", project })
-    }, delay)
-
-    return () => {
-      cancelled = true
-      clearTimeout(t)
-    }
-  }, [projectId, supabaseProject])
+  }, [supabaseProject, tasks, workstreams])
 
   const copyLink = useCallback(async () => {
     if (!navigator.clipboard) {
@@ -141,9 +204,9 @@ export function ProjectDetailsPage({ projectId, supabaseProject }: ProjectDetail
   const breadcrumbs = useMemo(
     () => [
       { label: "Projects", href: "/" },
-      { label: state.status === "ready" ? state.project.name : "Project Details" },
+      { label: project.name },
     ],
-    [state.status, state.status === "ready" ? state.project.name : null]
+    [project.name]
   )
 
   const openWizard = useCallback(() => {
@@ -153,12 +216,6 @@ export function ProjectDetailsPage({ projectId, supabaseProject }: ProjectDetail
   const closeWizard = useCallback(() => {
     setIsWizardOpen(false)
   }, [])
-
-  if (state.status === "loading") {
-    return <ProjectDetailsSkeleton />
-  }
-
-  const project = state.project
 
   return (
     <div className="flex flex-1 flex-col min-w-0 m-2 border border-border rounded-lg">
@@ -213,7 +270,9 @@ export function ProjectDetailsPage({ projectId, supabaseProject }: ProjectDetail
 
                   <TabsContent value="overview">
                     <div className="space-y-10">
-                      <p className="text-sm leading-6 text-muted-foreground">{project.description}</p>
+                      {project.description && (
+                        <p className="text-sm leading-6 text-muted-foreground">{project.description}</p>
+                      )}
                       <ScopeColumns scope={project.scope} />
                       <OutcomesList outcomes={project.outcomes} />
                       <KeyFeaturesColumns features={project.keyFeatures} />
@@ -226,7 +285,10 @@ export function ProjectDetailsPage({ projectId, supabaseProject }: ProjectDetail
                   </TabsContent>
 
                   <TabsContent value="tasks">
-                    <ProjectTasksTab project={project} />
+                    <ProjectTasksTab
+                      projectId={projectId}
+                      initialTasks={tasks}
+                    />
                   </TabsContent>
 
                   <TabsContent value="notes">
@@ -260,46 +322,15 @@ export function ProjectDetailsPage({ projectId, supabaseProject }: ProjectDetail
         <Separator className="mt-auto" />
 
         {isWizardOpen && (
-          <ProjectWizard onClose={closeWizard} onCreate={closeWizard} />
+          <ProjectWizard
+            onClose={closeWizard}
+            onCreate={closeWizard}
+            organizationId={supabaseProject.organization_id}
+            clients={clients}
+          />
         )}
       </div>
     </div>
   )
 }
 
-function ProjectDetailsSkeleton() {
-  return (
-    <div className="flex flex-1 flex-col bg-background mx-2 my-2 border border-border rounded-lg min-w-0">
-      <div className="p-6">
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-4 w-4" />
-          <Skeleton className="h-4 w-48" />
-        </div>
-
-        <div className="mt-4">
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="mt-3 h-8 w-[360px]" />
-          <Skeleton className="mt-3 h-5 w-[520px]" />
-          <Skeleton className="mt-5 h-px w-full" />
-          <Skeleton className="mt-5 h-16 w-full" />
-        </div>
-
-        <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[1fr_320px]">
-          <div className="space-y-8">
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-28 w-full" />
-            <Skeleton className="h-28 w-full" />
-            <Skeleton className="h-64 w-full" />
-          </div>
-
-          <div className="space-y-4">
-            <Skeleton className="h-40 w-full" />
-            <Skeleton className="h-52 w-full" />
-            <Skeleton className="h-64 w-full" />
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}

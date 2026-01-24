@@ -28,6 +28,7 @@ pnpm test:e2e --debug      # Debug mode with inspector
 pnpm test:e2e --ui         # Interactive UI mode
 pnpm test:e2e login.spec.ts              # Run a single test file
 pnpm test:e2e --project=chromium         # Run on specific browser
+pnpm test:e2e --grep "test name"         # Run specific test by name
 pnpm test:e2e:report       # View HTML test report
 pnpm test:e2e:codegen      # Generate tests via recording
 ```
@@ -36,16 +37,24 @@ Tests are in `e2e/` with Page Object Model pattern (`e2e/pages/`). Auth setup ru
 
 **E2E Test Environment:**
 ```bash
-TEST_USER_EMAIL=<test-user-email>      # Existing Supabase user for auth tests
+TEST_USER_EMAIL=<test-user-email>      # Must be an existing Supabase auth user
 TEST_USER_PASSWORD=<test-user-password>
 ```
+Note: The test user must already exist in Supabase auth—it is not created automatically by the test setup.
 
 ### Supabase Commands
 
 ```bash
 npx supabase db push                    # Push migrations to remote database
 npx supabase db reset --linked          # Reset remote database
-npx supabase gen types typescript       # Generate TypeScript types
+npx supabase gen types typescript --project-id lazhmdyajdqbnxxwyxun > lib/supabase/database.types.ts
+```
+
+**Local Development (optional):**
+```bash
+npx supabase start                      # Start local Supabase stack
+npx supabase stop                       # Stop local Supabase
+npx supabase status                     # Check local services status
 ```
 
 ## Architecture
@@ -151,18 +160,15 @@ export default async function Page({ params }: PageProps) {
 - `useFilesRealtime`, `useNotesRealtime`, `useOrganizationMembersRealtime`
 - Hooks automatically pause subscriptions when browser tab is hidden to reduce connection overhead
 
-**Supabase Integration Status:**
-- **Sidebar:** Real active projects and user profile from Supabase
-- **Projects list:** Fetches from Supabase with real-time updates (empty state shown when no projects)
-- **Project creation wizard:** Uses real clients and organization members from Supabase
-- **Project details:** Fetches project name, status, priority, progress from Supabase (scope, outcomes, features still use mock structure)
-- **Clients list:** Fetches from Supabase with project counts (empty state shown when no clients)
-- **Client details:** Fetches from Supabase at `/clients/[id]`
+**Supabase Integration Status:** All data is now fetched from Supabase:
+- **Sidebar:** Real active projects and user profile
+- **Projects list:** Supabase with real-time updates
+- **Project details:** Full project data including scope, outcomes, features, workstreams, tasks
+- **Tasks page:** User's assigned tasks from Supabase with CRUD operations
+- **Clients list & details:** Full Supabase integration with project counts
+- **Project creation wizard:** Real clients and organization members
 
-**Legacy Mock Data:** `lib/data/` contains mock data files:
-- Type definitions used throughout the app (Project, ProjectTask, ProjectDetails, etc.)
-- Mock data used as fallback only when no organizationId (edge case)
-- Project details pages still use mock structure for scope, outcomes, features, timeline
+**Legacy Mock Data:** `lib/data/` contains type definitions only (interfaces). All components now use Supabase data exclusively - no mock fallbacks.
 
 ## Environment Variables
 
@@ -196,14 +202,3 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 - Supabase project: `lazhmdyajdqbnxxwyxun`
 - Google OAuth configured for production
 
-## Features
-
-- **Authentication:** Email/password + Google OAuth with organization onboarding
-- **Multi-tenant:** Organization-based data isolation via RLS
-- **Projects:** Full CRUD with wizard, scope, outcomes, features
-- **Tasks:** Kanban boards, drag-drop reordering, workstream grouping
-- **Clients:** Client management with project associations
-- **Files:** Upload to Supabase Storage (up to 100MB)
-- **Notes:** Rich text notes with audio support
-- **AI:** User-provided API keys for OpenAI, Anthropic, Google Gemini
-- **Real-time:** Instant updates via Supabase Realtime (~50ms latency)

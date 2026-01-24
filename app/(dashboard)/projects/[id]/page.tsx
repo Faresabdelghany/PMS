@@ -1,6 +1,9 @@
 import { notFound } from "next/navigation"
 import { ProjectDetailsPage } from "@/components/projects/ProjectDetailsPage"
 import { getProjectWithDetails } from "@/lib/actions/projects"
+import { getTasks } from "@/lib/actions/tasks"
+import { getWorkstreamsWithTasks } from "@/lib/actions/workstreams"
+import { getClients } from "@/lib/actions/clients"
 
 type PageProps = {
   params: Promise<{ id: string }>
@@ -9,12 +12,35 @@ type PageProps = {
 export default async function Page({ params }: PageProps) {
   const { id } = await params
 
-  // Fetch project with full details from Supabase
-  const result = await getProjectWithDetails(id)
+  // Fetch project first to get organization_id
+  const projectResult = await getProjectWithDetails(id)
 
-  if (result.error || !result.data) {
+  if (projectResult.error || !projectResult.data) {
     notFound()
   }
 
-  return <ProjectDetailsPage projectId={id} supabaseProject={result.data} />
+  const organizationId = projectResult.data.organization_id
+
+  // Fetch tasks, workstreams, and clients in parallel
+  const [tasksResult, workstreamsResult, clientsResult] = await Promise.all([
+    getTasks(id),
+    getWorkstreamsWithTasks(id),
+    getClients(organizationId),
+  ])
+
+  // Map clients to the format expected by ProjectWizard
+  const clients = (clientsResult.data || []).map((c) => ({
+    id: c.id,
+    name: c.name,
+  }))
+
+  return (
+    <ProjectDetailsPage
+      projectId={id}
+      supabaseProject={projectResult.data}
+      tasks={tasksResult.data || []}
+      workstreams={workstreamsResult.data || []}
+      clients={clients}
+    />
+  )
 }

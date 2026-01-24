@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState, useCallback } from "react"
 import { DotsThreeVertical, Plus } from "@phosphor-icons/react/dist/ssr"
 import {
   DndContext,
@@ -14,62 +14,103 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import { toast } from "sonner"
 
-import type { ProjectDetails, ProjectTask } from "@/lib/data/project-details"
-import { getProjectTasks } from "@/lib/data/project-details"
-import type { FilterCounts } from "@/lib/data/projects"
+import type { TaskWithRelations } from "@/lib/actions/tasks"
+import { updateTaskStatus, reorderTasks } from "@/lib/actions/tasks"
 import type { FilterChip as FilterChipType } from "@/lib/view-options"
+import {
+  filterTasksByChips,
+  computeTaskFilterCounts,
+  type TaskLike,
+} from "@/components/tasks/task-helpers"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { FilterPopover } from "@/components/filter-popover"
 import { ChipOverflow } from "@/components/chip-overflow"
 import { TaskRowBase } from "@/components/tasks/TaskRowBase"
+import { formatDueLabel } from "@/lib/date-utils"
 import { cn } from "@/lib/utils"
 
-type ProjectTasksTabProps = {
-  project: ProjectDetails
+// Convert Supabase task to TaskLike format
+function toTaskLike(task: TaskWithRelations): TaskLike {
+  const endDate = task.end_date ? new Date(task.end_date) : null
+  return {
+    id: task.id,
+    name: task.name,
+    status: task.status as "todo" | "in-progress" | "done",
+    priority: task.priority,
+    tag: task.tag || null,
+    assignee: task.assignee ? {
+      name: task.assignee.full_name || task.assignee.email,
+      avatarUrl: task.assignee.avatar_url || null,
+    } : null,
+    workstreamName: task.workstream?.name || null,
+    dueLabel: endDate ? formatDueLabel(endDate) : null,
+  }
 }
 
-export function ProjectTasksTab({ project }: ProjectTasksTabProps) {
-  const [tasks, setTasks] = useState<ProjectTask[]>(() => getProjectTasks(project))
+type ProjectTasksTabProps = {
+  projectId: string
+  initialTasks?: TaskWithRelations[]
+}
+
+export function ProjectTasksTab({ projectId, initialTasks = [] }: ProjectTasksTabProps) {
+  const [tasks, setTasks] = useState<TaskWithRelations[]>(initialTasks)
   const [filters, setFilters] = useState<FilterChipType[]>([])
 
-  useEffect(() => {
-    setTasks(getProjectTasks(project))
-  }, [project])
+  const uiTasks = useMemo(() => tasks.map(toTaskLike), [tasks])
 
-  const counts = useMemo<FilterCounts>(() => computeTaskFilterCounts(tasks), [tasks])
+  const counts = useMemo(() => computeTaskFilterCounts(uiTasks), [uiTasks])
 
   const filteredTasks = useMemo(
-    () => filterTasksByChips(tasks, filters),
-    [tasks, filters],
+    () => filterTasksByChips(uiTasks, filters),
+    [uiTasks, filters],
   )
 
-  const toggleTask = (taskId: string) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === taskId
-          ? {
-              ...task,
-              status: task.status === "done" ? "todo" : "done",
-            }
-          : task,
-      ),
-    )
-  }
+  const toggleTask = useCallback(async (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId)
+    if (!task) return
 
-  const handleDragEnd = (event: DragEndEvent) => {
+    const newStatus = task.status === "done" ? "todo" : "done"
+
+    // Optimistic update
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId ? { ...t, status: newStatus } : t
+      )
+    )
+
+    const result = await updateTaskStatus(taskId, newStatus as "todo" | "in-progress" | "done")
+    if (result.error) {
+      // Revert on error
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId ? { ...t, status: task.status } : t
+        )
+      )
+      toast.error("Failed to update task status")
+    }
+  }, [tasks])
+
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event
 
     if (over && active.id !== over.id) {
-      setTasks((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id)
-        const newIndex = items.findIndex((item) => item.id === over.id)
-        return arrayMove(items, oldIndex, newIndex)
-      })
+      const oldIndex = tasks.findIndex((item) => item.id === active.id)
+      const newIndex = tasks.findIndex((item) => item.id === over.id)
+      const reorderedTasks = arrayMove(tasks, oldIndex, newIndex)
+
+      // Optimistic update
+      setTasks(reorderedTasks)
+
+      // Persist to Supabase
+      const taskIds = reorderedTasks.map(t => t.id)
+      const activeTask = tasks[oldIndex]
+      await reorderTasks(activeTask?.workstream_id || null, projectId, taskIds)
     }
-  }
+  }, [tasks, projectId])
 
   if (!tasks.length) {
     return (
@@ -144,7 +185,7 @@ function TaskBadges({ workstreamName }: TaskBadgesProps) {
 }
 
 type TaskStatusProps = {
-  status: ProjectTask["status"]
+  status: TaskLike["status"]
 }
 
 function TaskStatus({ status }: TaskStatusProps) {
@@ -154,7 +195,7 @@ function TaskStatus({ status }: TaskStatusProps) {
   return <span className={cn("font-medium", color)}>{label}</span>
 }
 
-function getStatusLabel(status: ProjectTask["status"]): string {
+function getStatusLabel(status: TaskLike["status"]): string {
   switch (status) {
     case "done":
       return "Done"
@@ -165,54 +206,7 @@ function getStatusLabel(status: ProjectTask["status"]): string {
   }
 }
 
-function filterTasksByChips(tasks: ProjectTask[], chips: FilterChipType[]): ProjectTask[] {
-  if (!chips.length) return tasks
-
-  const memberValues = chips
-    .filter((chip) => chip.key.toLowerCase().startsWith("member") || chip.key.toLowerCase() === "pic")
-    .map((chip) => chip.value.toLowerCase())
-
-  if (!memberValues.length) return tasks
-
-  return tasks.filter((task) => {
-    const name = task.assignee?.name.toLowerCase() ?? ""
-
-    for (const value of memberValues) {
-      if (value === "no member" && !task.assignee) return true
-      if (value === "current member" && task.assignee) return true
-      if (value && name.includes(value)) return true
-    }
-
-    return false
-  })
-}
-
-function computeTaskFilterCounts(tasks: ProjectTask[]): FilterCounts {
-  const counts: FilterCounts = {
-    members: {
-      "no-member": 0,
-      current: 0,
-      jason: 0,
-    },
-  }
-
-  for (const task of tasks) {
-    if (!task.assignee) {
-      counts.members!["no-member"] = (counts.members!["no-member"] || 0) + 1
-    } else {
-      counts.members!.current = (counts.members!.current || 0) + 1
-
-      const name = task.assignee.name.toLowerCase()
-      if (name.includes("jason duong")) {
-        counts.members!.jason = (counts.members!.jason || 0) + 1
-      }
-    }
-  }
-
-  return counts
-}
-
-function getStatusColor(status: ProjectTask["status"]): string {
+function getStatusColor(status: TaskLike["status"]): string {
   switch (status) {
     case "done":
       return "text-emerald-500"
@@ -224,7 +218,7 @@ function getStatusColor(status: ProjectTask["status"]): string {
 }
 
 type TaskRowDnDProps = {
-  task: ProjectTask
+  task: TaskLike
   onToggle: () => void
 }
 

@@ -7,7 +7,7 @@ import { ProjectTimeline } from "@/components/project-timeline"
 import { ProjectCardsView } from "@/components/project-cards-view"
 import { ProjectBoardView } from "@/components/project-board-view"
 import { ProjectWizard } from "@/components/project-wizard/ProjectWizard"
-import { projects as mockProjects, computeFilterCounts, type Project as MockProject } from "@/lib/data/projects"
+import { computeFilterCounts, type Project as MockProject } from "@/lib/data/projects"
 import { DEFAULT_VIEW_OPTIONS, type FilterChip, type ViewOptions } from "@/lib/view-options"
 import { chipsToParams, paramsToChips } from "@/lib/url/filters"
 import { getProjects, type ProjectWithRelations } from "@/lib/actions/projects"
@@ -81,15 +81,10 @@ export function ProjectsContent({
     },
   })
 
-  // Use Supabase projects when organization is available
+  // Map Supabase projects to mock format for view compatibility
   const projects = useMemo(() => {
-    if (organizationId) {
-      // Always use Supabase projects for authenticated users (even if empty)
-      return supabaseProjects.map(toMockProject)
-    }
-    // Fall back to mock data only if no organization (shouldn't happen in normal flow)
-    return mockProjects
-  }, [organizationId, supabaseProjects])
+    return supabaseProjects.map(toMockProject)
+  }, [supabaseProjects])
 
   const openWizard = () => {
     setIsWizardOpen(true)
