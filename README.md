@@ -1,11 +1,11 @@
-<h1 align="center">Project Dashboard · Next.js + shadcn/ui</h1>
+<h1 align="center">Project Dashboard · Next.js + Supabase</h1>
 
 <p align="center">
-  A modern project & task management dashboard, built as a real-world UI template for founders, product designers, and full‑stack developers.
+  A modern project & task management SaaS application built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, and Supabase.
 </p>
 
 <p align="center">
-  <a href="https://v0-project-workspace.vercel.app"><strong>Live demo</strong></a>
+  <a href="https://pms-nine-gold.vercel.app"><strong>Live demo</strong></a>
   ·
   <a href="#getting-started"><strong>Run locally</strong></a>
   ·
@@ -16,128 +16,150 @@
 
 ## Overview
 
-This repository is a small but opinionated **project management dashboard UI** built with:
+A full-featured **project management SaaS** with:
 
-- **Next.js App Router**
-- **TypeScript**
-- **Tailwind CSS**
-- **shadcn/ui + custom sidebar primitives**
-
-It is designed as a **living portfolio piece**:
-
-- You can browse the actual code, not just design mockups.
-- You can clone, run, and extend the dashboard like a real product.
-- It demonstrates how to combine design and engineering decisions in a clean, extensible way.
-
-If you are a founder, indie hacker, or engineer evaluating collaboration, this repo is meant to show how I think about **systems, structure, and UI details**.
+- **Next.js 16 App Router** with React Server Components
+- **TypeScript** (strict mode)
+- **Tailwind CSS 4** with CSS custom properties for theming
+- **Supabase** for PostgreSQL, Auth, Realtime, and Storage
+- **shadcn/ui** + Radix UI primitives
 
 ## Live Demo
 
-The dashboard is deployed on Vercel:
+The application is deployed on Vercel:
 
-- **Production**: https://v0-project-workspace.vercel.app
-
-> Note: This is a UI‑first demo. It uses mocked data and does not include authentication or a backend API.
+- **Production**: https://pms-nine-gold.vercel.app
 
 ## Features
 
-- **Project overview layout**
-  - Sidebar navigation with active states and badges.
-  - Active projects list with progress visualization.
+- **Authentication & Multi-tenancy**
+  - Email/password and Google OAuth authentication
+  - Organization-based multi-tenant architecture
+  - Role-based access control (admin/member for orgs, owner/pic/member/viewer for projects)
 
-- **Responsive sidebar system**
-  - Built on top of a custom `SidebarProvider` with context.
-  - Keyboard shortcut to toggle sidebar.
-  - Mobile behavior and state persisted via cookies.
+- **Project Management**
+  - Project creation wizard with multi-step flow
+  - Project scope, outcomes, and features tracking
+  - Workstreams for task grouping
+  - File uploads and notes with audio support
 
-- **Design‑system‑oriented components**
-  - Base primitives from shadcn/ui.
-  - Composed `AppSidebar` component using data from `lib/data`.
-  - Utility helpers in `lib/utils` for consistent styling.
+- **Task Management**
+  - Drag-and-drop task reordering
+  - Status updates and assignments
+  - Real-time updates via Supabase Realtime
 
-- **Mock data that resembles real workloads**
-  - Projects with statuses, priorities, tags, and time ranges.
-  - Sidebar navigation and “Active projects” summaries.
+- **Client Management**
+  - Client CRUD with project associations
+  - Client details and project counts
+
+- **Real-time Updates**
+  - Instant updates across all connected clients
+  - Automatic subscription pausing when tab is hidden
+
+- **UI/UX**
+  - Responsive sidebar with keyboard shortcuts
+  - Light/dark mode theming
+  - Rich text editing with Tiptap
+  - Charts and visualizations with Recharts
 
 ## Architecture
 
-High‑level structure:
+High-level structure:
 
-- `app/`
-  - `layout.tsx` – Root layout, metadata, fonts, and global styles.
-  - `page.tsx` – Main dashboard page wiring the `SidebarProvider`, `AppSidebar`, and page content.
+- `app/` - Next.js App Router
+  - `(auth)/` - Authentication pages (login, signup)
+  - `(dashboard)/` - Main app routes with shared layout
+  - `auth/callback/` - OAuth callback handler
+  - `onboarding/` - Organization onboarding flow
 
-- `components/`
-  - `app-sidebar.tsx` – Application sidebar composed from shared sidebar primitives and data.
-  - `projects-content.tsx` – Main dashboard content (project list, filters, and timeline). 
-  - `progress-circle.tsx` – Small reusable visualization for project progress.
-  - `ui/` – Design-system‑like primitives (buttons, sidebar primitives, input, tooltip, etc.).
+- `components/` - React components
+  - `ui/` - shadcn/ui design system primitives
+  - `projects/`, `tasks/`, `clients/` - Feature components
+  - `project-wizard/` - Multi-step project creation
 
-- `lib/`
-  - `utils.ts` – Utility helpers (e.g., class name helpers).
-  - `data/projects.ts` – Seed data for projects and helpers to compute filter counts.
-  - `data/sidebar.ts` – Seed data for sidebar navigation, active projects summary, and footer items.
+- `lib/` - Utilities and services
+  - `supabase/` - Supabase clients (browser, server, admin)
+  - `actions/` - Next.js Server Actions for data mutations
+  - `data/` - Type definitions and interfaces
 
-This separation keeps:
+- `hooks/` - Custom React hooks including real-time subscriptions
 
-- **UI primitives** (in `components/ui`) reusable across the app.
-- **Feature components** (like `AppSidebar`) focused on composition instead of raw config.
-- **Data** (in `lib/data`) decoupled from the UI, so you can easily swap mock data for real APIs later.
+- `supabase/migrations/` - Database schema migrations
+
+- `e2e/` - Playwright E2E tests with Page Object Model
 
 ## Tech Stack
 
-- **Framework**: Next.js (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
+- **Framework**: Next.js 16 (App Router, React Server Components)
+- **Language**: TypeScript (strict mode)
+- **Styling**: Tailwind CSS 4.1 + PostCSS
+- **Backend**: Supabase (PostgreSQL, Auth, Realtime, Storage)
 - **UI Library**: shadcn/ui, Radix UI primitives
+- **Forms**: React Hook Form + Zod validation
+- **Rich Text**: Tiptap editor
+- **Drag & Drop**: @dnd-kit
+- **Charts**: Recharts
 - **Icons**: Lucide, Phosphor Icons
-- **Analytics**: Vercel Analytics
+- **Testing**: Playwright E2E
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+
-- pnpm (recommended) or npm/yarn
+- Node.js 20+
+- pnpm
 
-### Install dependencies
+### Environment Variables
 
-\`\`\`bash
+Create a `.env.local` file:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+
+### Install & Run
+
+```bash
 pnpm install
-\`\`\`
-
-### Run the development server
-
-\`\`\`bash
 pnpm dev
-\`\`\`
+```
 
 The app will be available at `http://localhost:3000`.
 
-### Build for production
+### Build for Production
 
-\`\`\`bash
+```bash
 pnpm build
 pnpm start
-\`\`\`
+```
 
-## Reuse & Customization
+### Run E2E Tests
 
-This project is intentionally small so you can:
+```bash
+pnpm test:e2e              # Run all tests
+pnpm test:e2e --headed     # Run with visible browser
+pnpm test:e2e --ui         # Interactive UI mode
+```
 
-- **Use it as a starting point** for your own SaaS dashboard or internal tooling.
-- **Replace the mock data** in `lib/data` with real data from your API.
-- **Extend the design system** by adding more components under `components/ui`.
-- **Refine the information architecture** (routes under `app/`) to match your own product.
+## Database
 
-If you end up using this as a starting point, a link back or a star on the repo is always appreciated.
+The application uses Supabase with:
 
-## About
+- 17 tables with full Row Level Security (RLS) policies
+- Multi-tenant architecture with organization-based isolation
+- Real-time subscriptions for instant updates
 
-This project was built as an **open-source, living portfolio** to demonstrate how I approach:
+Push migrations to your Supabase project:
 
-- Structuring small front‑end apps.
-- Balancing visual design and implementation detail.
-- Building reusable UI primitives that are still easy to adapt.
+```bash
+npx supabase db push
+```
 
-If you are a founder, PM, or engineer and want to talk about collaborating, feel free to reach out.
+Generate TypeScript types:
+
+```bash
+npx supabase gen types typescript --project-id <project-id> > lib/supabase/database.types.ts
+```

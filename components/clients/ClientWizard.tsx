@@ -8,55 +8,84 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Client, ClientStatus, upsertClient } from "@/lib/data/clients"
+import type { Client, ClientStatus } from "@/lib/supabase/types"
+import { createClientAction, updateClient } from "@/lib/actions/clients"
 import { X } from "@phosphor-icons/react/dist/ssr"
 
 interface ClientWizardProps {
   mode: "create" | "edit"
   initialClient?: Client
+  organizationId?: string
   onClose: () => void
   onSubmit?: (client: Client) => void
 }
 
-export function ClientWizard({ mode, initialClient, onClose, onSubmit }: ClientWizardProps) {
+export function ClientWizard({ mode, initialClient, organizationId, onClose, onSubmit }: ClientWizardProps) {
   const [name, setName] = useState(initialClient?.name ?? "")
   const [status, setStatus] = useState<ClientStatus>(initialClient?.status ?? "active")
-  const [primaryContactName, setPrimaryContactName] = useState(initialClient?.primaryContactName ?? "")
-  const [primaryContactEmail, setPrimaryContactEmail] = useState(initialClient?.primaryContactEmail ?? "")
+  const [primaryContactName, setPrimaryContactName] = useState(initialClient?.primary_contact_name ?? "")
+  const [primaryContactEmail, setPrimaryContactEmail] = useState(initialClient?.primary_contact_email ?? "")
   const [industry, setIndustry] = useState(initialClient?.industry ?? "")
   const [website, setWebsite] = useState(initialClient?.website ?? "")
   const [location, setLocation] = useState(initialClient?.location ?? "")
-  const [owner, setOwner] = useState(initialClient?.owner ?? "Jason Duong")
   const [notes, setNotes] = useState(initialClient?.notes ?? "")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const isEdit = mode === "edit"
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) {
       toast.error("Client name is required")
       return
     }
 
+    if (!isEdit && !organizationId) {
+      toast.error("Organization ID is required")
+      return
+    }
+
     setIsSubmitting(true)
     try {
-      const id = isEdit ? initialClient!.id : name.trim().toLowerCase().replace(/\s+/g, "-")
-      const payload: Client = {
-        id,
-        name: name.trim(),
-        status,
-        primaryContactName: primaryContactName.trim() || undefined,
-        primaryContactEmail: primaryContactEmail.trim() || undefined,
-        industry: industry.trim() || undefined,
-        website: website.trim() || undefined,
-        location: location.trim() || undefined,
-        owner: owner.trim() || undefined,
-        notes: notes.trim() || undefined,
+      if (isEdit && initialClient) {
+        const result = await updateClient(initialClient.id, {
+          name: name.trim(),
+          status,
+          primary_contact_name: primaryContactName.trim() || null,
+          primary_contact_email: primaryContactEmail.trim() || null,
+          industry: industry.trim() || null,
+          website: website.trim() || null,
+          location: location.trim() || null,
+          notes: notes.trim() || null,
+        })
+
+        if (result.error) {
+          toast.error(result.error)
+          return
+        }
+
+        toast.success("Client updated")
+        onSubmit?.(result.data!)
+      } else {
+        const result = await createClientAction(organizationId!, {
+          name: name.trim(),
+          status,
+          primary_contact_name: primaryContactName.trim() || null,
+          primary_contact_email: primaryContactEmail.trim() || null,
+          industry: industry.trim() || null,
+          website: website.trim() || null,
+          location: location.trim() || null,
+          notes: notes.trim() || null,
+        })
+
+        if (result.error) {
+          toast.error(result.error)
+          return
+        }
+
+        toast.success("Client created")
+        onSubmit?.(result.data!)
       }
 
-      const saved = upsertClient(payload)
-      toast.success(isEdit ? "Client updated" : "Client created")
-      onSubmit?.(saved)
       onClose()
     } finally {
       setIsSubmitting(false)
@@ -162,31 +191,14 @@ export function ClientWizard({ mode, initialClient, onClose, onSubmit }: ClientW
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Website</Label>
-              <Input
-                value={website}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setWebsite(e.target.value)}
-                placeholder="https://"
-                className="h-9 text-sm"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Owner (internal)</Label>
-              <Select value={owner} onValueChange={setOwner}>
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder="Select owner" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Jason Duong">Jason Duong</SelectItem>
-                  <SelectItem value="Alex Chen">Alex Chen</SelectItem>
-                  <SelectItem value="Emma Wright">Emma Wright</SelectItem>
-                  <SelectItem value="Sarah Chen">Sarah Chen</SelectItem>
-                  <SelectItem value="Alex Morgan">Alex Morgan</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground">Website</Label>
+            <Input
+              value={website}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setWebsite(e.target.value)}
+              placeholder="https://"
+              className="h-9 text-sm"
+            />
           </div>
 
           <div className="space-y-1.5">

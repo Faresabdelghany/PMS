@@ -7,8 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { Client } from "@/lib/supabase/types"
-import type { ClientStatus } from "@/lib/data/clients"
+import type { Client, ClientStatus } from "@/lib/supabase/types"
 
 function statusLabel(status: ClientStatus): string {
   if (status === "prospect") return "Prospect"

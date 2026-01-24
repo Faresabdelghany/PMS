@@ -73,7 +73,7 @@ npx supabase status                     # Check local services status
 - **`lib/`** - Utilities and data
   - `supabase/` - Supabase clients and types
   - `actions/` - Server Actions for data mutations
-  - `data/` - Mock data (being migrated to Supabase)
+  - `data/` - Type definitions and interfaces (mock data fully migrated to Supabase)
   - `utils.ts` - Utility helpers including `cn()` for class merging
 - **`hooks/`** - Custom React hooks
 - **`supabase/`** - Database migrations
@@ -168,7 +168,7 @@ export default async function Page({ params }: PageProps) {
 - **Clients list & details:** Full Supabase integration with project counts
 - **Project creation wizard:** Real clients and organization members
 
-**Legacy Mock Data:** `lib/data/` contains type definitions only (interfaces). All components now use Supabase data exclusively - no mock fallbacks.
+**Data Types:** `lib/data/` contains UI type definitions only (interfaces and helper functions like `computeFilterCounts`). All data is fetched from Supabase - there is no mock data in the codebase.
 
 ## Environment Variables
 

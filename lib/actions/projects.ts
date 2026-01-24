@@ -306,6 +306,35 @@ export async function getProject(id: string): Promise<ActionResult<ProjectWithRe
   return { data: data as ProjectWithRelations }
 }
 
+// Get projects for a specific client
+export async function getProjectsByClient(
+  clientId: string
+): Promise<ActionResult<ProjectWithRelations[]>> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from("projects")
+    .select(`
+      *,
+      client:clients(id, name),
+      team:teams(id, name),
+      members:project_members(
+        id,
+        role,
+        user_id,
+        profile:profiles(id, full_name, email, avatar_url)
+      )
+    `)
+    .eq("client_id", clientId)
+    .order("updated_at", { ascending: false })
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  return { data: data as ProjectWithRelations[] }
+}
+
 // Extended type for full project details with all related data
 export type ProjectFullDetails = ProjectWithRelations & {
   scope: { id: string; item: string; is_in_scope: boolean; sort_order: number }[]

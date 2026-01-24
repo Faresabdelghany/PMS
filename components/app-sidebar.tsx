@@ -28,14 +28,41 @@ import {
   Gear,
   Layout,
   Question,
-  CaretRight,
   CaretUpDown,
   SignOut,
 } from "@phosphor-icons/react/dist/ssr"
-import { footerItems, navItems, type NavItemId, type SidebarFooterItemId } from "@/lib/data/sidebar"
 import { useUser } from "@/hooks/use-user"
 import { signOut } from "@/lib/actions/auth"
 import type { Project } from "@/lib/supabase/types"
+
+// Navigation items defined inline (no mock data dependency)
+type NavItemId = "inbox" | "my-tasks" | "projects" | "clients" | "performance"
+type SidebarFooterItemId = "settings" | "templates" | "help"
+
+type NavItem = {
+  id: NavItemId
+  label: string
+  badge?: number
+}
+
+type FooterItem = {
+  id: SidebarFooterItemId
+  label: string
+}
+
+const navItems: NavItem[] = [
+  { id: "inbox", label: "Inbox", badge: 24 },
+  { id: "my-tasks", label: "My task" },
+  { id: "projects", label: "Projects" },
+  { id: "clients", label: "Clients" },
+  { id: "performance", label: "Performance" },
+]
+
+const footerItems: FooterItem[] = [
+  { id: "settings", label: "Settings" },
+  { id: "templates", label: "Templates" },
+  { id: "help", label: "Help" },
+]
 
 // Color palette for projects based on progress
 const getProjectColor = (progress: number): string => {

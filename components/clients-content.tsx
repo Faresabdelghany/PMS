@@ -18,7 +18,7 @@ import { CaretRight, CaretUpDown, ArrowDown, ArrowUp, DotsThreeVertical, Plus, M
 import { toast } from "sonner"
 import Link from "next/link"
 import { useMemo, useState } from "react"
-import type { ClientStatus } from "@/lib/data/clients"
+import type { ClientStatus } from "@/lib/supabase/types"
 import { ClientWizard } from "@/components/clients/ClientWizard"
 import { ClientDetailsDrawer } from "@/components/clients/ClientDetailsDrawer"
 import type { ClientWithProjectCount } from "@/lib/actions/clients"
