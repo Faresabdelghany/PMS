@@ -11,7 +11,11 @@ type AvatarGroupProps = {
   className?: string
 }
 
-export function AvatarGroup({ users, max = 2, className }: AvatarGroupProps) {
+export function AvatarGroup({ users = [], max = 2, className }: AvatarGroupProps) {
+  if (!users || users.length === 0) {
+    return <span className="text-xs text-muted-foreground px-2">—</span>
+  }
+
   const visible = users.slice(0, max)
   const remaining = users.length - visible.length
 

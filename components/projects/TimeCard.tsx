@@ -1,15 +1,22 @@
 import { CalendarBlank, Clock } from "@phosphor-icons/react/dist/ssr"
 
-import type { TimeSummary } from "@/lib/data/project-details"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { StatRow } from "@/components/projects/StatRow"
 
 type TimeCardProps = {
-  time: TimeSummary
+  time: {
+    estimateLabel: string
+    dueDate: Date | null
+    daysRemainingLabel: string
+    progressPercent: number
+  }
 }
 
 export function TimeCard({ time }: TimeCardProps) {
+  const dueDateLabel = time.dueDate
+    ? time.dueDate.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" })
+    : "Not set"
+
   return (
     <div>
       <div className="pb-6">
@@ -19,7 +26,7 @@ export function TimeCard({ time }: TimeCardProps) {
         <StatRow label="Estimate" value={<span className="px-2">{time.estimateLabel}</span>} icon={<Clock className="h-4 w-4" />} />
         <StatRow
           label="Due Date"
-          value={<span className="px-2">{time.dueDate.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" })}</span>}
+          value={<span className="px-2">{dueDateLabel}</span>}
           icon={<CalendarBlank className="h-4 w-4" />}
         />
 

@@ -46,10 +46,17 @@ type ProjectDetailsUI = {
     priorityLabel: string
   }
   backlog: {
-    statusLabel: string
+    statusLabel: "Active" | "Backlog" | "Planned" | "Completed" | "Cancelled"
+    groupLabel: string
     priorityLabel: string
+    labelBadge: string
+    picUsers: { id: string; name: string; avatarUrl?: string }[]
+    supportUsers?: { id: string; name: string; avatarUrl?: string }[]
   }
   time: {
+    estimateLabel: string
+    dueDate: Date | null
+    daysRemainingLabel: string
     progressPercent: number
   }
   scope: {
@@ -82,6 +89,7 @@ type ProjectDetailsUI = {
   }[]
   files: never[]
   notes: never[]
+  quickLinks: { id: string; label: string; url: string; iconType: string }[]
 }
 
 type ProjectDetailsPageProps = {
@@ -156,6 +164,39 @@ export function ProjectDetailsPage({
 
     const priorityLabel = supabaseProject.priority.charAt(0).toUpperCase() + supabaseProject.priority.slice(1)
 
+    // Calculate time data
+    const dueDate = supabaseProject.end_date ? new Date(supabaseProject.end_date) : null
+    const now = new Date()
+    let daysRemaining = 0
+    let daysRemainingLabel = "No due date"
+
+    if (dueDate) {
+      daysRemaining = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      if (daysRemaining < 0) {
+        daysRemainingLabel = `${Math.abs(daysRemaining)} days overdue`
+      } else if (daysRemaining === 0) {
+        daysRemainingLabel = "Due today"
+      } else if (daysRemaining === 1) {
+        daysRemainingLabel = "1 day remaining"
+      } else {
+        daysRemainingLabel = `${daysRemaining} days remaining`
+      }
+    }
+
+    // Calculate estimate label from start and end dates
+    let estimateLabel = "Not set"
+    if (supabaseProject.start_date && supabaseProject.end_date) {
+      const startDate = new Date(supabaseProject.start_date)
+      const endDate = new Date(supabaseProject.end_date)
+      const durationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+      if (durationDays >= 7) {
+        const weeks = Math.round(durationDays / 7)
+        estimateLabel = `${weeks} week${weeks > 1 ? "s" : ""}`
+      } else {
+        estimateLabel = `${durationDays} day${durationDays > 1 ? "s" : ""}`
+      }
+    }
+
     return {
       id: supabaseProject.id,
       name: supabaseProject.name,
@@ -164,10 +205,29 @@ export function ProjectDetailsPage({
         priorityLabel,
       },
       backlog: {
-        statusLabel,
+        statusLabel: statusLabel as "Active" | "Backlog" | "Planned" | "Completed" | "Cancelled",
+        groupLabel: supabaseProject.group_label || "General",
         priorityLabel,
+        labelBadge: supabaseProject.label_badge || "Project",
+        picUsers: (supabaseProject.members || [])
+          .filter((m) => m.role === "owner" || m.role === "pic")
+          .map((m) => ({
+            id: m.profile.id,
+            name: m.profile.full_name || m.profile.email,
+            avatarUrl: m.profile.avatar_url || undefined,
+          })),
+        supportUsers: (supabaseProject.members || [])
+          .filter((m) => m.role === "member")
+          .map((m) => ({
+            id: m.profile.id,
+            name: m.profile.full_name || m.profile.email,
+            avatarUrl: m.profile.avatar_url || undefined,
+          })),
       },
       time: {
+        estimateLabel,
+        dueDate,
+        daysRemainingLabel,
         progressPercent: supabaseProject.progress || 0,
       },
       scope: {
@@ -184,6 +244,7 @@ export function ProjectDetailsPage({
       timelineTasks,
       files: [],
       notes: [],
+      quickLinks: [],
     }
   }, [supabaseProject, tasks, workstreams])
 

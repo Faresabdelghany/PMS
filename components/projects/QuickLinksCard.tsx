@@ -13,8 +13,8 @@ type QuickLinksCardProps = {
   links: QuickLink[]
 }
 
-export function QuickLinksCard({ links }: QuickLinksCardProps) {
-  const isEmpty = links.length === 0
+export function QuickLinksCard({ links = [] }: QuickLinksCardProps) {
+  const isEmpty = !links || links.length === 0
 
   return (
     <div>
