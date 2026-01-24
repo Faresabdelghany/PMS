@@ -1,13 +1,9 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import { CalendarBlank, ChartBar, Paperclip, Tag as TagIcon, Microphone, UserCircle, X, Folder, Rows } from '@phosphor-icons/react/dist/ssr'
 
-import { projects, type Project } from '@/lib/data/projects'
-import type { ProjectTask, ProjectDetails, User } from '@/lib/data/project-details'
-import { getProjectDetailsById } from '@/lib/data/project-details'
-import { getAvatarUrl } from '@/lib/assets/avatars'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { GenericPicker, DatePicker } from '@/components/project-wizard/steps/StepQuickCreate'
@@ -15,19 +11,63 @@ import { ProjectDescriptionEditor } from '@/components/project-wizard/ProjectDes
 import { QuickCreateModalLayout } from '@/components/QuickCreateModalLayout'
 import { toast } from 'sonner'
 
+// Types for data passed from parent
+type ProjectOption = {
+  id: string
+  name: string
+  workstreams?: { id: string; name: string }[]
+}
+
+type OrganizationMember = {
+  id: string
+  user_id: string
+  role: string
+  profile: {
+    id: string
+    full_name: string | null
+    email: string
+    avatar_url: string | null
+  }
+}
+
+type User = {
+  id: string
+  name: string
+  avatarUrl: string | null
+}
+
 export type CreateTaskContext = {
   projectId?: string
   workstreamId?: string
   workstreamName?: string
 }
 
+// Task data returned by the modal
+export type TaskData = {
+  id: string
+  name: string
+  status: 'todo' | 'in-progress' | 'done'
+  priority?: string
+  tag?: string | null
+  assignee?: User | null
+  startDate?: Date | null
+  dueLabel?: string | null
+  description?: string | null
+  projectId: string
+  projectName: string
+  workstreamId?: string | null
+  workstreamName?: string | null
+}
+
 interface TaskQuickCreateModalProps {
   open: boolean
   onClose: () => void
   context?: CreateTaskContext
-  onTaskCreated?: (task: ProjectTask) => void
-  editingTask?: ProjectTask
-  onTaskUpdated?: (task: ProjectTask) => void
+  onTaskCreated?: (task: TaskData) => void
+  editingTask?: TaskData
+  onTaskUpdated?: (task: TaskData) => void
+  projects?: ProjectOption[]
+  organizationMembers?: OrganizationMember[]
 }
 
 type TaskStatusId = 'todo' | 'in-progress' | 'done'
@@ -40,6 +80,7 @@ type StatusOption = {
 type AssigneeOption = {
   id: string
   name: string
+  avatar?: string | null
 }
 
 type PriorityOption = {
@@ -58,13 +99,6 @@ const STATUS_OPTIONS: StatusOption[] = [
   { id: 'done', label: 'Done' },
 ]
 
-const ASSIGNEE_OPTIONS: AssigneeOption[] = [
-  { id: 'jason-duong', name: 'Jason Duong' },
-  { id: 'hp', name: 'HP' },
-  { id: 'qa', name: 'QA' },
-  { id: 'pm', name: 'PM' },
-]
-
 const PRIORITY_OPTIONS: PriorityOption[] = [
   { id: 'no-priority', label: 'No priority' },
   { id: 'low', label: 'Low' },
@@ -78,27 +112,25 @@ export const TAG_OPTIONS: TagOption[] = [
   { id: 'internal', label: 'Internal' },
 ]
 
-function toUser(option: AssigneeOption | undefined): User | undefined {
-  if (!option) return undefined
+function toUser(option: AssigneeOption | undefined): User | null {
+  if (!option) return null
   return {
     id: option.id,
     name: option.name,
-    avatarUrl: getAvatarUrl(option.name),
+    avatarUrl: option.avatar || null,
   }
 }
 
-function getWorkstreamsForProject(projectId: string | undefined): { id: string; label: string }[] {
-  if (!projectId) return []
-  let details: ProjectDetails
-  try {
-    details = getProjectDetailsById(projectId)
-  } catch {
-    return []
-  }
-  return (details.workstreams ?? []).map((ws) => ({ id: ws.id, label: ws.name }))
-}
-
-export function TaskQuickCreateModal({ open, onClose, context, onTaskCreated, editingTask, onTaskUpdated }: TaskQuickCreateModalProps) {
+export function TaskQuickCreateModal({
+  open,
+  onClose,
+  context,
+  onTaskCreated,
+  editingTask,
+  onTaskUpdated,
+  projects = [],
+  organizationMembers = [],
+}: TaskQuickCreateModalProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState<string | undefined>(undefined)
   const [createMore, setCreateMore] = useState(false)
@@ -108,7 +140,25 @@ export function TaskQuickCreateModal({ open, onClose, context, onTaskCreated, ed
   const [workstreamId, setWorkstreamId] = useState<string | undefined>(undefined)
   const [workstreamName, setWorkstreamName] = useState<string | undefined>(undefined)
 
-  const [assignee, setAssignee] = useState<AssigneeOption | undefined>(ASSIGNEE_OPTIONS[0])
+  // Convert org members to picker format
+  const assigneeOptions: AssigneeOption[] = useMemo(() =>
+    organizationMembers.map((m) => ({
+      id: m.user_id,
+      name: m.profile.full_name || m.profile.email,
+      avatar: m.profile.avatar_url,
+    })),
+    [organizationMembers]
+  )
+
+  const [assignee, setAssignee] = useState<AssigneeOption | undefined>(undefined)
+
+  // Get workstreams for current project from props
+  const getWorkstreamsForProject = useCallback((projId: string | undefined): { id: string; label: string }[] => {
+    if (!projId) return []
+    const project = projects.find((p) => p.id === projId)
+    if (!project?.workstreams) return []
+    return project.workstreams.map((ws) => ({ id: ws.id, label: ws.name }))
+  }, [projects])
   const [status, setStatus] = useState<StatusOption>(STATUS_OPTIONS[0])
   const [startDate, setStartDate] = useState<Date | undefined>(new Date())
   const [targetDate, setTargetDate] = useState<Date | undefined>(undefined)
@@ -129,10 +179,10 @@ export function TaskQuickCreateModal({ open, onClose, context, onTaskCreated, ed
       setIsDescriptionExpanded(false)
 
       if (editingTask.assignee) {
-        const assigneeOption = ASSIGNEE_OPTIONS.find((a) => a.name === editingTask.assignee?.name)
-        setAssignee(assigneeOption ?? ASSIGNEE_OPTIONS[0])
+        const assigneeOption = assigneeOptions.find((a) => a.name === editingTask.assignee?.name)
+        setAssignee(assigneeOption ?? assigneeOptions[0])
       } else {
-        setAssignee(ASSIGNEE_OPTIONS[0])
+        setAssignee(assigneeOptions[0])
       }
 
       const statusOption = STATUS_OPTIONS.find((s) => s.id === editingTask.status)
@@ -167,22 +217,22 @@ export function TaskQuickCreateModal({ open, onClose, context, onTaskCreated, ed
     setDescription(undefined)
     setCreateMore(false)
     setIsDescriptionExpanded(false)
-    setAssignee(ASSIGNEE_OPTIONS[0])
+    setAssignee(assigneeOptions[0])
     setStatus(STATUS_OPTIONS[0])
     setStartDate(new Date())
     setTargetDate(undefined)
     setPriority(PRIORITY_OPTIONS[0])
     setSelectedTag(undefined)
-  }, [open, context?.projectId, context?.workstreamId, context?.workstreamName, editingTask])
+  }, [open, context?.projectId, context?.workstreamId, context?.workstreamName, editingTask, assigneeOptions, getWorkstreamsForProject])
 
   const projectOptions = useMemo(
     () => projects.map((p) => ({ id: p.id, label: p.name })),
-    [],
+    [projects],
   )
 
   const workstreamOptions = useMemo(
     () => getWorkstreamsForProject(projectId),
-    [projectId],
+    [projectId, getWorkstreamsForProject],
   )
 
   useEffect(() => {
@@ -206,11 +256,11 @@ export function TaskQuickCreateModal({ open, onClose, context, onTaskCreated, ed
   const handleSubmit = () => {
     if (editingTask) {
       const effectiveProjectId = projectId ?? editingTask.projectId
-      const project: Project | undefined = effectiveProjectId
+      const project = effectiveProjectId
         ? projects.find((p) => p.id === effectiveProjectId)
         : undefined
 
-      const updatedTask: ProjectTask = {
+      const updatedTask: TaskData = {
         ...editingTask,
         name: title.trim() || 'Untitled task',
         status: status.id,
@@ -235,10 +285,10 @@ export function TaskQuickCreateModal({ open, onClose, context, onTaskCreated, ed
     const effectiveProjectId = projectId ?? projects[0]?.id
     if (!effectiveProjectId) return
 
-    const project: Project | undefined = projects.find((p) => p.id === effectiveProjectId)
+    const project = projects.find((p) => p.id === effectiveProjectId)
     if (!project) return
 
-    const newTask: ProjectTask = {
+    const newTask: TaskData = {
       id: `${effectiveProjectId}-task-${Date.now()}`,
       name: title.trim() || 'Untitled task',
       status: status.id,
@@ -371,30 +421,40 @@ export function TaskQuickCreateModal({ open, onClose, context, onTaskCreated, ed
       {/* Properties */}
       <div className="flex flex-wrap gap-2.5 items-start w-full shrink-0">
         {/* Assignee */}
-        <GenericPicker
-          items={ASSIGNEE_OPTIONS}
-          onSelect={setAssignee}
-          selectedId={assignee?.id}
-          placeholder="Assign owner..."
-          renderItem={(item) => (
-            <div className="flex items-center gap-2 w-full">
-              <div className="size-5 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
-                {item.name.charAt(0)}
+        {assigneeOptions.length > 0 && (
+          <GenericPicker
+            items={assigneeOptions}
+            onSelect={setAssignee}
+            selectedId={assignee?.id}
+            placeholder="Assign owner..."
+            renderItem={(item) => (
+              <div className="flex items-center gap-2 w-full">
+                {item.avatar ? (
+                  <img
+                    src={item.avatar}
+                    alt=""
+                    className="size-5 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="size-5 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
+                    {item.name.charAt(0)}
+                  </div>
+                )}
+                <span className="flex-1">{item.name}</span>
               </div>
-              <span className="flex-1">{item.name}</span>
-            </div>
-          )}
-          trigger={
-            <button className="bg-muted flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:border-primary/50 transition-colors">
-              <div className="size-4 rounded-full bg-background flex items-center justify-center text-[10px] font-medium">
-                {assignee?.name.charAt(0) ?? '?'}
-              </div>
-              <span className="font-medium text-foreground text-sm leading-5">
-                {assignee?.name ?? 'Assignee'}
-              </span>
-            </button>
-          }
-        />
+            )}
+            trigger={
+              <button className="bg-muted flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:border-primary/50 transition-colors">
+                <div className="size-4 rounded-full bg-background flex items-center justify-center text-[10px] font-medium">
+                  {assignee?.name.charAt(0) ?? '?'}
+                </div>
+                <span className="font-medium text-foreground text-sm leading-5">
+                  {assignee?.name ?? 'Assignee'}
+                </span>
+              </button>
+            }
+          />
+        )}
 
         {/* Start date */}
         <DatePicker

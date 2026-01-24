@@ -23,6 +23,18 @@ import type { ProjectStatus, ProjectPriority } from "@/lib/supabase/types";
 
 type Client = { id: string; name: string };
 
+type OrganizationMember = {
+  id: string;
+  user_id: string;
+  role: string;
+  profile: {
+    id: string;
+    full_name: string | null;
+    email: string;
+    avatar_url: string | null;
+  };
+};
+
 export type QuickCreateProjectData = {
   name: string;
   description?: string;
@@ -33,15 +45,10 @@ export type QuickCreateProjectData = {
   client_id?: string;
   type_label?: string;
   tags?: string[];
+  owner_id?: string;
 };
 
-// --- Mock Data ---
-
-const USERS = [
-  { id: "1", name: "Jason D", avatar: "/avatar-profile.jpg" },
-  { id: "2", name: "Sarah Connor", avatar: "" },
-  { id: "3", name: "Alex Murphy", avatar: "" },
-];
+// --- Static Options (not user data) ---
 
 const STATUSES = [
   { id: "backlog", label: "Backlog", dotClass: "bg-orange-600" },
@@ -193,6 +200,7 @@ interface StepQuickCreateProps {
   onCreate: (data: QuickCreateProjectData) => void;
   onExpandChange?: (isExpanded: boolean) => void;
   clients?: Client[];
+  organizationMembers?: OrganizationMember[];
 }
 
 export function StepQuickCreate({
@@ -200,12 +208,22 @@ export function StepQuickCreate({
   onCreate,
   onExpandChange,
   clients = [],
+  organizationMembers = [],
 }: StepQuickCreateProps) {
   const [title, setTitle] = useState("");
   // Description is now managed by Tiptap editor
 
+  // Convert org members to picker format
+  const memberOptions = organizationMembers.map((m) => ({
+    id: m.user_id,
+    name: m.profile.full_name || m.profile.email,
+    avatar: m.profile.avatar_url || "",
+  }));
+
   // Data State
-  const [assignee, setAssignee] = useState(USERS[0]);
+  const [assignee, setAssignee] = useState<{ id: string; name: string; avatar: string } | null>(
+    memberOptions[0] || null
+  );
   const [startDate, setStartDate] = useState<Date | undefined>(
     new Date(),
   );
@@ -268,6 +286,7 @@ export function StepQuickCreate({
       client_id: client?.id,
       type_label: sprintType?.label,
       tags: selectedTag ? [selectedTag.label] : [],
+      owner_id: assignee?.id,
     };
 
     onCreate(projectData);
@@ -317,49 +336,51 @@ export function StepQuickCreate({
         {/* Property Buttons - Interactive Dropdowns */}
         <div className="flex flex-wrap gap-2.5 items-start w-full shrink-0">
           {/* Owner Picker */}
-          <GenericPicker
-            items={USERS}
-            onSelect={setAssignee}
-            selectedId={assignee.id}
-            placeholder="Assign owner..."
-            renderItem={(item, isSelected) => (
-              <div className="flex items-center gap-2 w-full">
-                {item.avatar ? (
-                  <img
-                    src={item.avatar}
-                    alt=""
-                    className="size-5 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="size-5 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
-                    {item.name.charAt(0)}
-                  </div>
-                )}
-                <span className="flex-1">{item.name}</span>
-                {isSelected && <Check className="size-4" />}
-              </div>
-            )}
-            trigger={
-              <button className="bg-muted flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:border-primary/50 transition-colors">
-                <div className="relative rounded-full size-4 overflow-hidden">
-                  {assignee.avatar ? (
+          {memberOptions.length > 0 && (
+            <GenericPicker
+              items={memberOptions}
+              onSelect={setAssignee}
+              selectedId={assignee?.id}
+              placeholder="Assign owner..."
+              renderItem={(item, isSelected) => (
+                <div className="flex items-center gap-2 w-full">
+                  {item.avatar ? (
                     <img
+                      src={item.avatar}
                       alt=""
-                      className="object-cover size-full"
-                      src={assignee.avatar}
+                      className="size-5 rounded-full object-cover"
                     />
                   ) : (
-                    <div className="bg-muted size-full flex items-center justify-center text-xs">
-                      {assignee.name.charAt(0)}
+                    <div className="size-5 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
+                      {item.name.charAt(0)}
                     </div>
                   )}
+                  <span className="flex-1">{item.name}</span>
+                  {isSelected && <Check className="size-4" />}
                 </div>
-                <span className="font-medium text-foreground text-sm leading-5">
-                  {assignee.name}
-                </span>
-              </button>
-            }
-          />
+              )}
+              trigger={
+                <button className="bg-muted flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:border-primary/50 transition-colors">
+                  <div className="relative rounded-full size-4 overflow-hidden">
+                    {assignee?.avatar ? (
+                      <img
+                        alt=""
+                        className="object-cover size-full"
+                        src={assignee.avatar}
+                      />
+                    ) : (
+                      <div className="bg-muted size-full flex items-center justify-center text-xs">
+                        {assignee?.name.charAt(0) ?? "?"}
+                      </div>
+                    )}
+                  </div>
+                  <span className="font-medium text-foreground text-sm leading-5">
+                    {assignee?.name ?? "Owner"}
+                  </span>
+                </button>
+              }
+            />
+          )}
 
           {/* Start Date Picker */}
           <DatePicker

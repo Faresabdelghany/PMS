@@ -59,16 +59,30 @@ function toUITask(task: TaskWithRelations): TaskLike {
   }
 }
 
+type OrganizationMember = {
+  id: string
+  user_id: string
+  role: string
+  profile: {
+    id: string
+    full_name: string | null
+    email: string
+    avatar_url: string | null
+  }
+}
+
 interface MyTasksPageProps {
   initialTasks?: TaskWithRelations[]
   projects?: ProjectWithRelations[]
   organizationId?: string
+  organizationMembers?: OrganizationMember[]
 }
 
 export function MyTasksPage({
   initialTasks = [],
   projects = [],
-  organizationId
+  organizationId,
+  organizationMembers = [],
 }: MyTasksPageProps) {
   const [tasks, setTasks] = useState<TaskWithRelations[]>(initialTasks)
   const [filters, setFilters] = useState<FilterChipType[]>([])
@@ -407,6 +421,15 @@ export function MyTasksPage({
         onTaskCreated={handleTaskCreated}
         editingTask={editingTask}
         onTaskUpdated={handleTaskUpdated}
+        projects={projects.map((p) => ({
+          id: p.id,
+          name: p.name,
+          workstreams: p.workstreams?.map((ws) => ({
+            id: ws.id,
+            name: ws.name,
+          })),
+        }))}
+        organizationMembers={organizationMembers}
       />
     </div>
   )

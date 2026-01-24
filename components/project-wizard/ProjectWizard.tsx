@@ -167,6 +167,7 @@ export function ProjectWizard({ onClose, onCreate, organizationId, clients = [] 
             <StepQuickCreate
                 onClose={handleClose}
                 clients={clients}
+                organizationMembers={organizationMembers}
                 onCreate={async (projectData: QuickCreateProjectData) => {
                   if (!organizationId) {
                     toast.error("Organization not found. Please log in again.");

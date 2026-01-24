@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useRef, useEffect, useMemo } from "react"
-import { projects as initialProjects, type Project } from "@/lib/data/projects"
 import {
   differenceInCalendarDays,
   addDays,
@@ -27,15 +26,44 @@ import { cn } from "@/lib/utils"
 import { DraggableBar } from "@/components/project-timeline-draggable-bar"
 import { PriorityGlyphIcon } from "@/components/priority-badge"
 
-// Fixed "today" so the demo stays visually consistent over time.
-// This controls the initial viewport and the vertical "today" line.
-const FIXED_TODAY = new Date(2024, 0, 23) // 23 Jan 2024
+// Timeline project type with tasks
+type TimelineTask = {
+  id: string
+  name: string
+  startDate: Date
+  endDate: Date
+  status: string
+  assignee?: string
+}
 
-// projects imported from lib/data
+type TimelineProject = {
+  id: string
+  name: string
+  startDate: Date
+  endDate: Date
+  progress: number
+  priority: string
+  taskCount: number
+  tasks: TimelineTask[]
+}
 
-export function ProjectTimeline() {
-  const [projects, setProjects] = useState(initialProjects)
+interface ProjectTimelineProps {
+  initialProjects?: TimelineProject[]
+}
+
+// Use today's date for the timeline
+const TODAY = new Date()
+
+export function ProjectTimeline({ initialProjects = [] }: ProjectTimelineProps) {
+  const [projects, setProjects] = useState<TimelineProject[]>(initialProjects)
   const [expandedProjects, setExpandedProjects] = useState<string[]>(initialProjects.map((p) => p.id))
+
+  // Update projects when initialProjects changes
+  useEffect(() => {
+    setProjects(initialProjects)
+    setExpandedProjects(initialProjects.map((p) => p.id))
+  }, [initialProjects])
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [viewMode, setViewMode] = useState<"Day" | "Week" | "Month" | "Quarter">("Week")
   const [zoom, setZoom] = useState(1)
@@ -47,10 +75,10 @@ export function ProjectTimeline() {
   }>({ isOpen: false, type: null, projectId: null, taskId: null })
   const [editStartDate, setEditStartDate] = useState("")
   const [editEndDate, setEditEndDate] = useState("")
-  // Start the visible range one week before the week of FIXED_TODAY
+  // Start the visible range one week before the week of TODAY
   // so the "today" line is not too close to the name column.
   const [viewStartDate, setViewStartDate] = useState(
-    () => startOfWeek(addWeeks(FIXED_TODAY, -1), { weekStartsOn: 1 }),
+    () => startOfWeek(addWeeks(TODAY, -1), { weekStartsOn: 1 }),
   )
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const nameColRef = useRef<HTMLDivElement>(null)
@@ -79,7 +107,7 @@ export function ProjectTimeline() {
 
   const goToToday = () => {
     shouldAutoScrollToTodayRef.current = true
-    setViewStartDate(startOfWeek(addWeeks(FIXED_TODAY, -1), { weekStartsOn: 1 }))
+    setViewStartDate(startOfWeek(addWeeks(TODAY, -1), { weekStartsOn: 1 }))
   }
 
   const navigateTime = (direction: "prev" | "next") => {
@@ -119,7 +147,7 @@ export function ProjectTimeline() {
 
   // Calculate today line position (based on fixed demo date)
   useEffect(() => {
-    const offset = differenceInCalendarDays(FIXED_TODAY, dates[0])
+    const offset = differenceInCalendarDays(TODAY, dates[0])
     if (offset < 0 || offset >= dates.length) {
       setTodayOffsetDays(null)
       return
@@ -450,7 +478,7 @@ export function ProjectTimeline() {
                             <span
                               className={cn(
                                 "block text-xs whitespace-nowrap leading-none",
-                                isSameDay(day, FIXED_TODAY) ? "text-primary font-semibold" : "text-muted-foreground",
+                                isSameDay(day, TODAY) ? "text-primary font-semibold" : "text-muted-foreground",
                               )}
                             >
                               {label}

@@ -86,6 +86,28 @@ export function ProjectsContent({
     return supabaseProjects.map(toMockProject)
   }, [supabaseProjects])
 
+  // Map projects to timeline format
+  const timelineProjects = useMemo(() =>
+    projects.map((p) => ({
+      id: p.id,
+      name: p.name,
+      startDate: p.startDate,
+      endDate: p.endDate,
+      progress: p.progress,
+      priority: p.priority,
+      taskCount: p.taskCount,
+      tasks: p.tasks.map((t) => ({
+        id: t.id,
+        name: t.name,
+        startDate: t.startDate,
+        endDate: t.endDate,
+        status: t.status,
+        assignee: t.assignee,
+      })),
+    })),
+    [projects]
+  )
+
   const openWizard = () => {
     setIsWizardOpen(true)
   }
@@ -190,7 +212,9 @@ export function ProjectsContent({
         onViewOptionsChange={setViewOptions}
         onAddProject={openWizard}
       />
-      {viewOptions.viewType === "timeline" && <ProjectTimeline />}
+      {viewOptions.viewType === "timeline" && (
+        <ProjectTimeline initialProjects={timelineProjects} />
+      )}
       {viewOptions.viewType === "list" && <ProjectCardsView projects={filteredProjects} onCreateProject={openWizard} />}
       {viewOptions.viewType === "board" && <ProjectBoardView projects={filteredProjects} onAddProject={openWizard} />}
       {isWizardOpen && (

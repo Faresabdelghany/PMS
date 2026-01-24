@@ -372,7 +372,12 @@ export function ProjectDetailsPage({
                     transition={{ type: "spring", stiffness: 260, damping: 26 }}
                     className="lg:border-l lg:border-border lg:pl-6"
                   >
-                    <RightMetaPanel project={project} />
+                    <RightMetaPanel
+                      time={project.time}
+                      backlog={project.backlog}
+                      quickLinks={project.quickLinks}
+                      client={supabaseProject.client}
+                    />
                   </motion.div>
                 )}
               </AnimatePresence>
