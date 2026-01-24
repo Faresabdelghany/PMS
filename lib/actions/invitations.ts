@@ -5,7 +5,6 @@ import { revalidatePath } from "next/cache"
 import type { Invitation, OrgMemberRole } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
-export type { ActionResult }
 
 // Invite member to organization
 export async function inviteMember(

@@ -9,7 +9,6 @@ import type {
 } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
-export type { ActionResult }
 
 // Extended file type with uploader info
 export type ProjectFileWithUploader = ProjectFile & {

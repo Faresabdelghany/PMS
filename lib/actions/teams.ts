@@ -5,7 +5,6 @@ import { revalidatePath } from "next/cache"
 import type { Team, TeamInsert, TeamUpdate } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
-export type { ActionResult }
 
 // Create team
 export async function createTeam(

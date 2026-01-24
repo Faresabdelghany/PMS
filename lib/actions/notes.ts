@@ -12,7 +12,6 @@ import type {
 } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
-export type { ActionResult }
 
 // Extended note type with author info
 export type ProjectNoteWithAuthor = ProjectNote & {

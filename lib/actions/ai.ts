@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server"
 import { getDecryptedApiKey, getAISettings } from "./user-settings"
 import type { ActionResult } from "./types"
 
-export type { ActionResult }
 
 // AI generation context for projects
 export type ProjectContext = {

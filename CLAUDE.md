@@ -182,7 +182,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
 ## Tech Stack
 
-- Next.js 16 (App Router, React Server Components)
+- Next.js 16.1 (App Router, React Server Components)
 - React 19 + TypeScript (strict mode)
 - Tailwind CSS 4.1 + PostCSS
 - Supabase (PostgreSQL, Auth, Realtime, Storage)

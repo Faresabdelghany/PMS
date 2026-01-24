@@ -6,7 +6,6 @@ import { revalidatePath } from "next/cache"
 import type { Organization, OrganizationInsert, OrganizationUpdate, OrgMemberRole } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
-export type { ActionResult }
 
 // Generate slug from name
 function generateSlug(name: string): string {

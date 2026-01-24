@@ -5,7 +5,6 @@ import { revalidatePath } from "next/cache"
 import type { Client, ClientInsert, ClientUpdate, ClientStatus } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
-export type { ActionResult }
 
 export type ClientFilters = {
   status?: ClientStatus

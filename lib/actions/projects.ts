@@ -17,7 +17,6 @@ import type {
 } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
-export type { ActionResult }
 
 // Extended type for guided wizard project creation
 export type GuidedProjectInput = {
