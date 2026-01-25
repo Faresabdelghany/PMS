@@ -1,7 +1,7 @@
 "use client"
 
 import { format } from "date-fns"
-import { ChartBar, DotsSixVertical, FolderSimple, Plus } from "@phosphor-icons/react/dist/ssr"
+import { ChartBar, DotsThreeVertical, DotsSixVertical, FolderSimple, PencilSimple, Plus, Trash } from "@phosphor-icons/react/dist/ssr"
 import {
   SortableContext,
   useSortable,
@@ -15,6 +15,13 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ProgressCircle } from "@/components/progress-circle"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import type { FilterChip as FilterChipType } from "@/lib/view-options"
 import type { CreateTaskContext } from "@/components/tasks/TaskQuickCreateModal"
@@ -114,9 +121,11 @@ export type ProjectTasksSectionProps = {
   group: ProjectTaskGroup
   onToggleTask: (taskId: string) => void
   onAddTask: (context: CreateTaskContext) => void
+  onEditTask?: (task: TaskLike) => void
+  onDeleteTask?: (taskId: string) => void
 }
 
-export function ProjectTasksSection({ group, onToggleTask, onAddTask }: ProjectTasksSectionProps) {
+export function ProjectTasksSection({ group, onToggleTask, onAddTask, onEditTask, onDeleteTask }: ProjectTasksSectionProps) {
   const { project, tasks } = group
   const total = tasks.length
   const done = tasks.filter((t) => t.status === "done").length
@@ -184,6 +193,8 @@ export function ProjectTasksSection({ group, onToggleTask, onAddTask }: ProjectT
               key={task.id}
               task={task}
               onToggle={() => onToggleTask(task.id)}
+              onEdit={onEditTask}
+              onDelete={onDeleteTask}
             />
           ))}
         </SortableContext>
@@ -295,9 +306,11 @@ function getPriorityLabel(priority: string): string {
 export type TaskRowDnDProps = {
   task: TaskLike
   onToggle: () => void
+  onEdit?: (task: TaskLike) => void
+  onDelete?: (taskId: string) => void
 }
 
-export function TaskRowDnD({ task, onToggle }: TaskRowDnDProps) {
+export function TaskRowDnD({ task, onToggle, onEdit, onDelete }: TaskRowDnDProps) {
   const isDone = task.status === "done"
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -343,6 +356,39 @@ export function TaskRowDnD({ task, onToggle }: TaskRowDnDProps) {
                 <AvatarFallback>{task.assignee.name.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
             )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="ghost"
+                  className="size-7 rounded-md text-muted-foreground"
+                  aria-label="Task actions"
+                >
+                  <DotsThreeVertical className="h-4 w-4" weight="bold" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                {onEdit && (
+                  <DropdownMenuItem onClick={() => onEdit(task)}>
+                    <PencilSimple className="h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <>
+                    {onEdit && <DropdownMenuSeparator />}
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => onDelete(task.id)}
+                    >
+                      <Trash className="h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               type="button"
               size="icon-sm"
@@ -366,9 +412,11 @@ export type ProjectTaskListViewProps = {
   groups: ProjectTaskGroup[]
   onToggleTask: (taskId: string) => void
   onAddTask: (context: CreateTaskContext) => void
+  onEditTask?: (task: TaskLike) => void
+  onDeleteTask?: (taskId: string) => void
 }
 
-export function ProjectTaskListView({ groups, onToggleTask, onAddTask }: ProjectTaskListViewProps) {
+export function ProjectTaskListView({ groups, onToggleTask, onAddTask, onEditTask, onDeleteTask }: ProjectTaskListViewProps) {
   return (
     <>
       {groups.map((group) => (
@@ -377,6 +425,8 @@ export function ProjectTaskListView({ groups, onToggleTask, onAddTask }: Project
           group={group}
           onToggleTask={onToggleTask}
           onAddTask={onAddTask}
+          onEditTask={onEditTask}
+          onDeleteTask={onDeleteTask}
         />
       ))}
     </>

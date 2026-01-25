@@ -13,7 +13,7 @@ import {
 
 import type { TaskWithRelations } from "@/lib/actions/tasks"
 import type { ProjectWithRelations } from "@/lib/actions/projects"
-import { updateTask, updateTaskStatus, reorderTasks } from "@/lib/actions/tasks"
+import { deleteTask, updateTask, updateTaskStatus, reorderTasks } from "@/lib/actions/tasks"
 import { DEFAULT_VIEW_OPTIONS, type FilterChip as FilterChipType, type ViewOptions } from "@/lib/view-options"
 import type { FilterCounts } from "@/lib/data/projects"
 import { TaskWeekBoardView } from "@/components/tasks/TaskWeekBoardView"
@@ -26,6 +26,16 @@ import {
 } from "@/components/tasks/task-helpers"
 import { Button } from "@/components/ui/button"
 import { SidebarTrigger } from "@/components/ui/sidebar"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { FilterPopover } from "@/components/filter-popover"
 import { ChipOverflow } from "@/components/chip-overflow"
 import { ViewOptionsPopover } from "@/components/view-options-popover"
@@ -91,6 +101,8 @@ export function MyTasksPage({
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false)
   const [createContext, setCreateContext] = useState<CreateTaskContext | undefined>(undefined)
   const [editingTask, setEditingTask] = useState<UITask | undefined>(undefined)
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Group tasks by project
   const groups = useMemo<ProjectTaskGroup[]>(() => {
@@ -275,6 +287,24 @@ export function MyTasksPage({
     )
   }, [])
 
+  const handleDeleteTask = useCallback(async () => {
+    if (!taskToDelete) return
+
+    setIsDeleting(true)
+    const result = await deleteTask(taskToDelete)
+
+    if (result.error) {
+      toast.error("Failed to delete task")
+    } else {
+      // Remove task from local state
+      setTasks((prev) => prev.filter((t) => t.id !== taskToDelete))
+      toast.success("Task deleted")
+    }
+
+    setIsDeleting(false)
+    setTaskToDelete(null)
+  }, [taskToDelete])
+
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event
 
@@ -427,6 +457,8 @@ export function MyTasksPage({
               groups={visibleGroups}
               onToggleTask={toggleTask}
               onAddTask={(context) => openCreateTask(context)}
+              onEditTask={openEditTask}
+              onDeleteTask={(taskId) => setTaskToDelete(taskId)}
             />
           </DndContext>
         )}
@@ -463,6 +495,27 @@ export function MyTasksPage({
         }))}
         organizationMembers={organizationMembers}
       />
+
+      <AlertDialog open={!!taskToDelete} onOpenChange={(open) => !open && setTaskToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete task?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the task.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteTask}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

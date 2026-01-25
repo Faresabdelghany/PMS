@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState, useCallback } from "react"
-import { DotsSixVertical, Plus } from "@phosphor-icons/react/dist/ssr"
+import { DotsThreeVertical, DotsSixVertical, PencilSimple, Plus, Trash } from "@phosphor-icons/react/dist/ssr"
 import {
   DndContext,
   type DragEndEvent,
@@ -18,7 +18,7 @@ import { toast } from "sonner"
 import { format } from "date-fns"
 
 import type { TaskWithRelations } from "@/lib/actions/tasks"
-import { updateTaskStatus, reorderTasks } from "@/lib/actions/tasks"
+import { deleteTask, updateTaskStatus, reorderTasks } from "@/lib/actions/tasks"
 import type { FilterChip as FilterChipType } from "@/lib/view-options"
 import {
   filterTasksByChips,
@@ -29,6 +29,23 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { FilterPopover } from "@/components/filter-popover"
 import { ChipOverflow } from "@/components/chip-overflow"
 import { TaskRowBase } from "@/components/tasks/TaskRowBase"
@@ -88,6 +105,9 @@ export function ProjectTasksTab({
   const [tasks, setTasks] = useState<TaskWithRelations[]>(initialTasks)
   const [filters, setFilters] = useState<FilterChipType[]>([])
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [editingTask, setEditingTask] = useState<TaskLike | null>(null)
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Realtime subscription for tasks
   useTasksRealtime(projectId, {
@@ -199,6 +219,58 @@ export function ProjectTasksTab({
     setTasks((prev) => [...prev, newTask])
   }, [projectId, projectName, tasks.length])
 
+  const handleTaskUpdated = useCallback((updated: TaskData) => {
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === updated.id
+          ? {
+              ...t,
+              name: updated.name,
+              status: updated.status,
+              priority: updated.priority || "no-priority",
+              tag: updated.tag || null,
+              description: updated.description || null,
+              start_date: updated.startDate?.toISOString().split('T')[0] || null,
+              end_date: updated.endDate?.toISOString().split('T')[0] || null,
+              workstream_id: updated.workstreamId || null,
+              workstream: updated.workstreamId ? { id: updated.workstreamId, name: updated.workstreamName || "" } : null,
+              assignee_id: updated.assignee?.id || null,
+              assignee: updated.assignee ? {
+                id: updated.assignee.id,
+                full_name: updated.assignee.name,
+                email: "",
+                avatar_url: updated.assignee.avatarUrl || null
+              } : null,
+            }
+          : t
+      )
+    )
+    setEditingTask(null)
+  }, [])
+
+  const openEditTask = useCallback((task: TaskLike) => {
+    setEditingTask(task)
+    setIsCreateModalOpen(true)
+  }, [])
+
+  const handleDeleteTask = useCallback(async () => {
+    if (!taskToDelete) return
+
+    setIsDeleting(true)
+    const result = await deleteTask(taskToDelete)
+
+    if (result.error) {
+      toast.error("Failed to delete task")
+    } else {
+      // Remove task from local state
+      setTasks((prev) => prev.filter((t) => t.id !== taskToDelete))
+      toast.success("Task deleted")
+    }
+
+    setIsDeleting(false)
+    setTaskToDelete(null)
+  }, [taskToDelete])
+
   // Projects data for modal (single project since we're in project context)
   const projectsForModal = useMemo(() => [{
     id: projectId,
@@ -218,9 +290,14 @@ export function ProjectTasksTab({
         </section>
         <TaskQuickCreateModal
           open={isCreateModalOpen}
-          onClose={() => setIsCreateModalOpen(false)}
-          context={{ projectId }}
+          onClose={() => {
+            setIsCreateModalOpen(false)
+            setEditingTask(null)
+          }}
+          context={editingTask ? undefined : { projectId }}
           onTaskCreated={handleTaskCreated}
+          editingTask={editingTask || undefined}
+          onTaskUpdated={handleTaskUpdated}
           projects={projectsForModal}
           organizationMembers={organizationMembers}
         />
@@ -269,6 +346,8 @@ export function ProjectTasksTab({
                 key={task.id}
                 task={task}
                 onToggle={() => toggleTask(task.id)}
+                onEdit={openEditTask}
+                onDelete={(taskId) => setTaskToDelete(taskId)}
               />
             ))}
           </SortableContext>
@@ -277,12 +356,38 @@ export function ProjectTasksTab({
 
       <TaskQuickCreateModal
         open={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        context={{ projectId }}
+        onClose={() => {
+          setIsCreateModalOpen(false)
+          setEditingTask(null)
+        }}
+        context={editingTask ? undefined : { projectId }}
         onTaskCreated={handleTaskCreated}
+        editingTask={editingTask || undefined}
+        onTaskUpdated={handleTaskUpdated}
         projects={projectsForModal}
         organizationMembers={organizationMembers}
       />
+
+      <AlertDialog open={!!taskToDelete} onOpenChange={(open) => !open && setTaskToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete task?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the task.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteTask}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   )
 }
@@ -338,9 +443,11 @@ function getStatusColor(status: TaskLike["status"]): string {
 type TaskRowDnDProps = {
   task: TaskLike
   onToggle: () => void
+  onEdit?: (task: TaskLike) => void
+  onDelete?: (taskId: string) => void
 }
 
-function TaskRowDnD({ task, onToggle }: TaskRowDnDProps) {
+function TaskRowDnD({ task, onToggle, onEdit, onDelete }: TaskRowDnDProps) {
   const isDone = task.status === "done"
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -385,6 +492,39 @@ function TaskRowDnD({ task, onToggle }: TaskRowDnDProps) {
                 <AvatarFallback>{task.assignee.name.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
             )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="ghost"
+                  className="size-7 rounded-md text-muted-foreground"
+                  aria-label="Task actions"
+                >
+                  <DotsThreeVertical className="h-4 w-4" weight="bold" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                {onEdit && (
+                  <DropdownMenuItem onClick={() => onEdit(task)}>
+                    <PencilSimple className="h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <>
+                    {onEdit && <DropdownMenuSeparator />}
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => onDelete(task.id)}
+                    >
+                      <Trash className="h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               type="button"
               size="icon-sm"
