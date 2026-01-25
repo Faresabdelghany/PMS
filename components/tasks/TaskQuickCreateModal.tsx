@@ -10,6 +10,7 @@ import { GenericPicker, DatePicker } from '@/components/project-wizard/steps/Ste
 import { ProjectDescriptionEditorLazy as ProjectDescriptionEditor } from '@/components/project-wizard/ProjectDescriptionEditorLazy'
 import { QuickCreateModalLayout } from '@/components/QuickCreateModalLayout'
 import { toast } from 'sonner'
+import { createTask, updateTask } from '@/lib/actions/tasks'
 
 // Types for data passed from parent
 type ProjectOption = {
@@ -51,6 +52,7 @@ export type TaskData = {
   tag?: string | null
   assignee?: User | null
   startDate?: Date | null
+  endDate?: Date | null
   dueLabel?: string | null
   description?: string | null
   projectId: string
@@ -253,70 +255,122 @@ export function TaskQuickCreateModal({
     }
   }, [projectId, workstreamOptions, workstreamId, workstreamName])
 
-  const handleSubmit = () => {
-    if (editingTask) {
-      const effectiveProjectId = projectId ?? editingTask.projectId
-      const project = effectiveProjectId
-        ? projects.find((p) => p.id === effectiveProjectId)
-        : undefined
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-      const updatedTask: TaskData = {
-        ...editingTask,
+  const handleSubmit = async () => {
+    if (isSubmitting) return
+    setIsSubmitting(true)
+
+    try {
+      if (editingTask) {
+        const effectiveProjectId = projectId ?? editingTask.projectId
+        const project = effectiveProjectId
+          ? projects.find((p) => p.id === effectiveProjectId)
+          : undefined
+
+        // Call updateTask server action
+        const result = await updateTask(editingTask.id, {
+          name: title.trim() || 'Untitled task',
+          status: status.id,
+          priority: priority?.id || 'no-priority',
+          tag: selectedTag?.label || null,
+          description: description || null,
+          start_date: startDate?.toISOString().split('T')[0] || null,
+          end_date: targetDate?.toISOString().split('T')[0] || null,
+          workstream_id: workstreamId || null,
+          assignee_id: assignee?.id || null,
+        })
+
+        if (result.error) {
+          toast.error(result.error)
+          return
+        }
+
+        const updatedTask: TaskData = {
+          ...editingTask,
+          name: title.trim() || 'Untitled task',
+          status: status.id,
+          dueLabel: targetDate ? format(targetDate, 'dd/MM/yyyy') : editingTask.dueLabel,
+          assignee: toUser(assignee),
+          startDate,
+          priority: priority?.id,
+          tag: selectedTag?.label,
+          description,
+          projectId: effectiveProjectId ?? editingTask.projectId,
+          projectName: project?.name ?? editingTask.projectName,
+          workstreamId: workstreamId ?? editingTask.workstreamId,
+          workstreamName: workstreamName ?? editingTask.workstreamName,
+        }
+
+        onTaskUpdated?.(updatedTask)
+        toast.success("Task updated successfully")
+        onClose()
+        return
+      }
+
+      const effectiveProjectId = projectId ?? projects[0]?.id
+      if (!effectiveProjectId) {
+        toast.error("Please select a project")
+        return
+      }
+
+      const project = projects.find((p) => p.id === effectiveProjectId)
+      if (!project) {
+        toast.error("Project not found")
+        return
+      }
+
+      // Call createTask server action
+      const result = await createTask(effectiveProjectId, {
         name: title.trim() || 'Untitled task',
         status: status.id,
-        dueLabel: targetDate ? format(targetDate, 'dd/MM/yyyy') : editingTask.dueLabel,
+        priority: priority?.id || 'no-priority',
+        tag: selectedTag?.label || null,
+        description: description || null,
+        start_date: startDate?.toISOString().split('T')[0] || null,
+        end_date: targetDate?.toISOString().split('T')[0] || null,
+        workstream_id: workstreamId || null,
+        assignee_id: assignee?.id || null,
+      })
+
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
+
+      const newTask: TaskData = {
+        id: result.data!.id,
+        name: title.trim() || 'Untitled task',
+        status: status.id,
+        dueLabel: targetDate ? format(targetDate, 'dd/MM/yyyy') : undefined,
         assignee: toUser(assignee),
         startDate,
+        endDate: targetDate || null,
         priority: priority?.id,
         tag: selectedTag?.label,
         description,
-        projectId: effectiveProjectId ?? editingTask.projectId,
-        projectName: project?.name ?? editingTask.projectName,
-        workstreamId: workstreamId ?? editingTask.workstreamId,
-        workstreamName: workstreamName ?? editingTask.workstreamName,
+        projectId: effectiveProjectId,
+        projectName: project.name,
+        workstreamId: workstreamId || null,
+        workstreamName: workstreamName || null,
       }
 
-      onTaskUpdated?.(updatedTask)
-      toast.success("Task updated successfully")
+      onTaskCreated?.(newTask)
+
+      if (createMore) {
+        toast.success("Task created! Ready for another.")
+        setTitle('')
+        setDescription(undefined)
+        setStatus(STATUS_OPTIONS[0])
+        setTargetDate(undefined)
+        return
+      }
+
+      toast.success("Task created successfully")
       onClose()
-      return
+    } finally {
+      setIsSubmitting(false)
     }
-
-    const effectiveProjectId = projectId ?? projects[0]?.id
-    if (!effectiveProjectId) return
-
-    const project = projects.find((p) => p.id === effectiveProjectId)
-    if (!project) return
-
-    const newTask: TaskData = {
-      id: `${effectiveProjectId}-task-${Date.now()}`,
-      name: title.trim() || 'Untitled task',
-      status: status.id,
-      dueLabel: targetDate ? format(targetDate, 'dd/MM/yyyy') : undefined,
-      assignee: toUser(assignee),
-      startDate,
-      priority: priority?.id,
-      tag: selectedTag?.label,
-      description,
-      projectId: effectiveProjectId,
-      projectName: project.name,
-      workstreamId: workstreamId ?? `${effectiveProjectId}-ws`,
-      workstreamName: workstreamName ?? 'General',
-    }
-
-    onTaskCreated?.(newTask)
-
-    if (createMore) {
-      toast.success("Task created! Ready for another.")
-      setTitle('')
-      setDescription(undefined)
-      setStatus(STATUS_OPTIONS[0])
-      setTargetDate(undefined)
-      return
-    }
-
-    toast.success("Task created successfully")
-    onClose()
   }
 
   const projectLabel = projectOptions.find((p) => p.id === projectId)?.label
@@ -570,8 +624,8 @@ export function TaskQuickCreateModal({
             </div>
           )}
 
-          <Button type="button" onClick={handleSubmit} className="h-10 px-4 rounded-xl">
-            {editingTask ? 'Save changes' : 'Create Task'}
+          <Button type="button" onClick={handleSubmit} disabled={isSubmitting} className="h-10 px-4 rounded-xl">
+            {isSubmitting ? 'Saving...' : editingTask ? 'Save changes' : 'Create Task'}
           </Button>
         </div>
       </div>

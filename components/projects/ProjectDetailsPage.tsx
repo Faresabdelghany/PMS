@@ -92,12 +92,25 @@ type ProjectDetailsUI = {
   quickLinks: { id: string; label: string; url: string; iconType: string }[]
 }
 
+type OrganizationMember = {
+  id: string
+  user_id: string
+  role: string
+  profile: {
+    id: string
+    full_name: string | null
+    email: string
+    avatar_url: string | null
+  }
+}
+
 type ProjectDetailsPageProps = {
   projectId: string
   supabaseProject: ProjectFullDetails
   tasks?: TaskWithRelations[]
   workstreams?: WorkstreamWithTasks[]
   clients?: { id: string; name: string }[]
+  organizationMembers?: OrganizationMember[]
 }
 
 export function ProjectDetailsPage({
@@ -106,6 +119,7 @@ export function ProjectDetailsPage({
   tasks = [],
   workstreams = [],
   clients = [],
+  organizationMembers = [],
 }: ProjectDetailsPageProps) {
   const [showMeta, setShowMeta] = useState(true)
   const [isWizardOpen, setIsWizardOpen] = useState(false)
@@ -348,7 +362,10 @@ export function ProjectDetailsPage({
                   <TabsContent value="tasks">
                     <ProjectTasksTab
                       projectId={projectId}
+                      projectName={supabaseProject.name}
                       initialTasks={tasks}
+                      workstreams={workstreams.map(ws => ({ id: ws.id, name: ws.name }))}
+                      organizationMembers={organizationMembers}
                     />
                   </TabsContent>
 

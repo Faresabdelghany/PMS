@@ -325,6 +325,16 @@ export function MyTasksPage({
             <SidebarTrigger className="h-8 w-8 rounded-lg hover:bg-accent text-muted-foreground" />
             <p className="text-base font-medium text-foreground">Tasks</p>
           </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => openCreateTask()}
+            >
+              <Plus className="mr-1.5 h-4 w-4" />
+              New Task
+            </Button>
+          </div>
         </header>
         <div className="flex-1 flex flex-col items-center justify-center p-8">
           <div className="text-center space-y-3">
@@ -334,6 +344,28 @@ export function MyTasksPage({
             </p>
           </div>
         </div>
+
+        <TaskQuickCreateModal
+          open={isCreateTaskOpen}
+          onClose={() => {
+            setIsCreateTaskOpen(false)
+            setEditingTask(undefined)
+            setCreateContext(undefined)
+          }}
+          context={editingTask ? undefined : createContext}
+          onTaskCreated={handleTaskCreated}
+          editingTask={editingTask}
+          onTaskUpdated={handleTaskUpdated}
+          projects={projects.map((p) => ({
+            id: p.id,
+            name: p.name,
+            workstreams: p.workstreams?.map((ws) => ({
+              id: ws.id,
+              name: ws.name,
+            })),
+          }))}
+          organizationMembers={organizationMembers}
+        />
       </div>
     )
   }
