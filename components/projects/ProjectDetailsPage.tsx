@@ -20,10 +20,13 @@ import { ProjectTasksTab } from "@/components/projects/ProjectTasksTab"
 import { NotesTab } from "@/components/projects/NotesTab"
 import { AssetsFilesTab } from "@/components/projects/AssetsFilesTab"
 import { ProjectWizard } from "@/components/project-wizard/ProjectWizard"
+import { TaskQuickCreateModal, type TaskData, type CreateTaskContext } from "@/components/tasks/TaskQuickCreateModal"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import type { WorkstreamTask } from "@/lib/data/project-details"
+import { formatDueLabel, getDueTone, formatStartLabel } from "@/lib/date-utils"
 
 // Workstream with tasks type from the action
 type WorkstreamWithTasks = Workstream & {
@@ -33,6 +36,9 @@ type WorkstreamWithTasks = Workstream & {
     status: string
     priority: string
     assignee_id: string | null
+    start_date: string | null
+    end_date: string | null
+    tag: string | null
     sort_order: number
   }[]
 }
@@ -124,6 +130,11 @@ export function ProjectDetailsPage({
   const [showMeta, setShowMeta] = useState(true)
   const [isWizardOpen, setIsWizardOpen] = useState(false)
 
+  // Workstream tab state
+  const [isWorkstreamTaskModalOpen, setIsWorkstreamTaskModalOpen] = useState(false)
+  const [workstreamTaskContext, setWorkstreamTaskContext] = useState<CreateTaskContext | undefined>(undefined)
+  const [editingWorkstreamTask, setEditingWorkstreamTask] = useState<TaskData | undefined>(undefined)
+
   // Map Supabase data to UI format
   const project = useMemo<ProjectDetailsUI>(() => {
     // Map scope to UI format
@@ -152,13 +163,32 @@ export function ProjectDetailsPage({
     const uiWorkstreams = workstreams.map((ws) => ({
       id: ws.id,
       name: ws.name,
-      tasks: ws.tasks.map((t) => ({
-        id: t.id,
-        name: t.name,
-        status: t.status,
-        priority: t.priority,
-        assignee: null, // Will need to fetch assignee data if needed
-      })),
+      tasks: ws.tasks.map((t) => {
+        // Find assignee from organization members if assignee_id is present
+        const assigneeMember = t.assignee_id
+          ? organizationMembers.find((m) => m.user_id === t.assignee_id)
+          : null
+
+        // Parse dates
+        const startDate = t.start_date ? new Date(t.start_date) : undefined
+        const endDate = t.end_date ? new Date(t.end_date) : undefined
+
+        return {
+          id: t.id,
+          name: t.name,
+          status: t.status,
+          priority: t.priority,
+          startDate,
+          dueLabel: endDate ? formatDueLabel(endDate) : undefined,
+          dueTone: endDate ? getDueTone(endDate) : undefined,
+          tag: t.tag || undefined,
+          assignee: assigneeMember ? {
+            id: assigneeMember.user_id,
+            name: assigneeMember.profile.full_name || assigneeMember.profile.email,
+            avatarUrl: assigneeMember.profile.avatar_url || undefined,
+          } : undefined,
+        }
+      }),
     }))
 
     // Map tasks to timeline format
@@ -292,6 +322,50 @@ export function ProjectDetailsPage({
     setIsWizardOpen(false)
   }, [])
 
+  // Workstream tab callbacks
+  const handleAddTaskFromWorkstream = useCallback((workstreamId: string, workstreamName: string) => {
+    setWorkstreamTaskContext({ projectId, workstreamId, workstreamName })
+    setEditingWorkstreamTask(undefined)
+    setIsWorkstreamTaskModalOpen(true)
+  }, [projectId])
+
+  const handleEditTaskFromWorkstream = useCallback((task: WorkstreamTask) => {
+    // Convert WorkstreamTask to TaskData format
+    const taskData: TaskData = {
+      id: task.id,
+      name: task.name,
+      status: task.status as "todo" | "in-progress" | "done",
+      priority: task.priority,
+      description: task.description || undefined,
+      tag: task.tag || undefined,
+      startDate: task.startDate || undefined,
+      endDate: task.endDate || undefined,
+      assignee: task.assignee ? {
+        id: task.assignee.id || "",
+        name: task.assignee.name,
+        avatarUrl: task.assignee.avatarUrl || null,
+      } : undefined,
+      projectId,
+      projectName: supabaseProject.name,
+    }
+    setEditingWorkstreamTask(taskData)
+    setWorkstreamTaskContext(undefined)
+    setIsWorkstreamTaskModalOpen(true)
+  }, [projectId, supabaseProject.name])
+
+  const handleWorkstreamTaskModalClose = useCallback(() => {
+    setIsWorkstreamTaskModalOpen(false)
+    setWorkstreamTaskContext(undefined)
+    setEditingWorkstreamTask(undefined)
+  }, [])
+
+  // Projects data for workstream task modal
+  const projectsForWorkstreamModal = useMemo(() => [{
+    id: projectId,
+    name: supabaseProject.name,
+    workstreams: workstreams.map(ws => ({ id: ws.id, name: ws.name })),
+  }], [projectId, supabaseProject.name, workstreams])
+
   return (
     <div className="flex flex-1 flex-col min-w-0 m-2 border border-border rounded-lg">
       <div className="flex items-center justify-between gap-4 px-4 py-4">
@@ -356,7 +430,14 @@ export function ProjectDetailsPage({
                   </TabsContent>
 
                   <TabsContent value="workstream">
-                    <WorkstreamTab workstreams={project.workstreams} />
+                    <WorkstreamTab
+                      projectId={projectId}
+                      projectEndDate={supabaseProject.end_date}
+                      workstreams={project.workstreams}
+                      organizationMembers={organizationMembers}
+                      onAddTask={handleAddTaskFromWorkstream}
+                      onEditTask={handleEditTaskFromWorkstream}
+                    />
                   </TabsContent>
 
                   <TabsContent value="tasks">
@@ -412,6 +493,16 @@ export function ProjectDetailsPage({
             clients={clients}
           />
         )}
+
+        {/* Task Modal for Workstream Tab */}
+        <TaskQuickCreateModal
+          open={isWorkstreamTaskModalOpen}
+          onClose={handleWorkstreamTaskModalClose}
+          context={editingWorkstreamTask ? undefined : workstreamTaskContext}
+          editingTask={editingWorkstreamTask}
+          projects={projectsForWorkstreamModal}
+          organizationMembers={organizationMembers}
+        />
       </div>
     </div>
   )

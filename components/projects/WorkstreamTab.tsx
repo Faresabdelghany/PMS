@@ -1,7 +1,7 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { CaretDown, DotsSixVertical, Plus } from "@phosphor-icons/react/dist/ssr"
+import { useMemo, useState, useCallback, useEffect } from "react"
+import { CaretDown, DotsSixVertical, DotsThreeVertical, PencilSimple, Plus, Trash } from "@phosphor-icons/react/dist/ssr"
 import {
   DndContext,
   type DragEndEvent,
@@ -21,27 +21,189 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import { toast } from "sonner"
+import { format } from "date-fns"
 
 import type { WorkstreamGroup, WorkstreamTask } from "@/lib/data/project-details"
+import { Badge } from "@/components/ui/badge"
+import type { Workstream } from "@/lib/supabase/types"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { ProgressCircle } from "@/components/progress-circle"
 import { cn } from "@/lib/utils"
-import { TaskRowBase } from "@/components/tasks/TaskRowBase"
+import { CreateWorkstreamModal } from "./CreateWorkstreamModal"
+import { moveTaskToWorkstream, reorderTasks, updateTaskStatus, deleteTask } from "@/lib/actions/tasks"
+import { deleteWorkstream } from "@/lib/actions/workstreams"
+import { useTasksRealtime, useWorkstreamsRealtime } from "@/hooks/use-realtime"
+import { formatDueLabel, getDueTone } from "@/lib/date-utils"
+import type { Database } from "@/lib/supabase/types"
 
-type WorkstreamTabProps = {
-  workstreams: WorkstreamGroup[] | undefined
+type TaskRow = Database["public"]["Tables"]["tasks"]["Row"]
+type WorkstreamRow = Database["public"]["Tables"]["workstreams"]["Row"]
+
+type OrganizationMember = {
+  id: string
+  user_id: string
+  role: string
+  profile: {
+    id: string
+    full_name: string | null
+    email: string
+    avatar_url: string | null
+  }
 }
 
-export function WorkstreamTab({ workstreams }: WorkstreamTabProps) {
+type WorkstreamTabProps = {
+  projectId: string
+  projectEndDate?: string | null
+  workstreams: WorkstreamGroup[] | undefined
+  organizationMembers?: OrganizationMember[]
+  onAddTask?: (workstreamId: string, workstreamName: string) => void
+  onEditTask?: (task: WorkstreamTask) => void
+  onRefresh?: () => void
+}
+
+export function WorkstreamTab({
+  projectId,
+  projectEndDate,
+  workstreams,
+  organizationMembers = [],
+  onAddTask,
+  onEditTask,
+  onRefresh,
+}: WorkstreamTabProps) {
   const [state, setState] = useState<WorkstreamGroup[]>(() => workstreams ?? [])
   const [openValues, setOpenValues] = useState<string[]>(() =>
     workstreams && workstreams.length ? [workstreams[0].id] : [],
   )
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
   const [overTaskId, setOverTaskId] = useState<string | null>(null)
+
+  // Modal states
+  const [isCreateWorkstreamOpen, setIsCreateWorkstreamOpen] = useState(false)
+  const [editingWorkstream, setEditingWorkstream] = useState<Workstream | null>(null)
+  const [taskToDelete, setTaskToDelete] = useState<{ id: string; name: string } | null>(null)
+  const [workstreamToDelete, setWorkstreamToDelete] = useState<{ id: string; name: string } | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  // Helper function to convert database task to WorkstreamTask
+  const convertTaskToWorkstreamTask = useCallback((task: TaskRow): WorkstreamTask => {
+    const startDate = task.start_date ? new Date(task.start_date) : undefined
+    const endDate = task.end_date ? new Date(task.end_date) : undefined
+
+    // Find assignee from organization members
+    const assigneeMember = task.assignee_id
+      ? organizationMembers.find((m) => m.user_id === task.assignee_id)
+      : undefined
+
+    return {
+      id: task.id,
+      name: task.name,
+      status: task.status as WorkstreamTask["status"],
+      priority: task.priority as WorkstreamTask["priority"],
+      startDate,
+      dueLabel: endDate ? formatDueLabel(endDate) : undefined,
+      dueTone: endDate ? getDueTone(endDate) : undefined,
+      tag: task.tag || undefined,
+      assignee: assigneeMember
+        ? {
+            id: assigneeMember.user_id,
+            name: assigneeMember.profile.full_name || assigneeMember.profile.email,
+            avatarUrl: assigneeMember.profile.avatar_url || undefined,
+          }
+        : undefined,
+    }
+  }, [organizationMembers])
+
+  // Sync state when workstreams prop changes
+  useEffect(() => {
+    if (workstreams) {
+      setState(workstreams)
+    }
+  }, [workstreams])
+
+  // Real-time task updates
+  useTasksRealtime(projectId, {
+    onInsert: (task) => {
+      if (!task.workstream_id) return
+      const workstreamTask = convertTaskToWorkstreamTask(task)
+      setState((prev) =>
+        prev.map((g) =>
+          g.id === task.workstream_id
+            ? { ...g, tasks: [...g.tasks, workstreamTask] }
+            : g
+        )
+      )
+    },
+    onUpdate: (task) => {
+      const workstreamTask = convertTaskToWorkstreamTask(task)
+      setState((prev) => {
+        // First, remove task from all workstreams (in case it moved)
+        const withoutTask = prev.map((g) => ({
+          ...g,
+          tasks: g.tasks.filter((t) => t.id !== task.id),
+        }))
+
+        // If task has a workstream_id, add it to that workstream
+        if (task.workstream_id) {
+          return withoutTask.map((g) =>
+            g.id === task.workstream_id
+              ? { ...g, tasks: [...g.tasks, workstreamTask].sort((a, b) => 0) }
+              : g
+          )
+        }
+        return withoutTask
+      })
+    },
+    onDelete: (task) => {
+      setState((prev) =>
+        prev.map((g) => ({
+          ...g,
+          tasks: g.tasks.filter((t) => t.id !== task.id),
+        }))
+      )
+    },
+  })
+
+  // Real-time workstream updates
+  useWorkstreamsRealtime(projectId, {
+    onInsert: (workstream) => {
+      setState((prev) => {
+        // Check if workstream already exists
+        if (prev.some((g) => g.id === workstream.id)) return prev
+        return [...prev, { id: workstream.id, name: workstream.name, tasks: [] }]
+      })
+    },
+    onUpdate: (workstream) => {
+      setState((prev) =>
+        prev.map((g) =>
+          g.id === workstream.id ? { ...g, name: workstream.name } : g
+        )
+      )
+    },
+    onDelete: (workstream) => {
+      setState((prev) => prev.filter((g) => g.id !== workstream.id))
+    },
+  })
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -62,25 +224,46 @@ export function WorkstreamTab({ workstreams }: WorkstreamTabProps) {
 
   const activeTask = findTaskById(activeTaskId)
 
-  const toggleTask = (groupId: string, taskId: string) => {
+  const toggleTask = useCallback(async (groupId: string, taskId: string) => {
+    const group = state.find((g) => g.id === groupId)
+    const task = group?.tasks.find((t) => t.id === taskId)
+    if (!task) return
+
+    const newStatus = task.status === "done" ? "todo" : "done"
+
+    // Optimistic update
     setState((prev) =>
-      prev.map((group) =>
-        group.id === groupId
+      prev.map((g) =>
+        g.id === groupId
           ? {
-              ...group,
-              tasks: group.tasks.map((task) =>
-                task.id === taskId
-                  ? {
-                      ...task,
-                      status: task.status === "done" ? "todo" : "done",
-                    }
-                  : task,
+              ...g,
+              tasks: g.tasks.map((t) =>
+                t.id === taskId ? { ...t, status: newStatus } : t
               ),
             }
-          : group,
-      ),
+          : g
+      )
     )
-  }
+
+    // Persist to database
+    const result = await updateTaskStatus(taskId, newStatus as "todo" | "in-progress" | "done")
+    if (result.error) {
+      // Revert on error
+      setState((prev) =>
+        prev.map((g) =>
+          g.id === groupId
+            ? {
+                ...g,
+                tasks: g.tasks.map((t) =>
+                  t.id === taskId ? { ...t, status: task.status } : t
+                ),
+              }
+            : g
+        )
+      )
+      toast.error("Failed to update task status")
+    }
+  }, [state])
 
   const handleDragStart = (event: DragStartEvent) => {
     const id = event.active.id
@@ -92,14 +275,13 @@ export function WorkstreamTab({ workstreams }: WorkstreamTabProps) {
   const handleDragOver = (event: DragOverEvent) => {
     const overId = event.over?.id
     if (typeof overId === "string" && !overId.startsWith("group:")) {
-      // only track task ids for per-row drop indicator
       setOverTaskId(overId)
     } else {
       setOverTaskId(null)
     }
   }
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event
     setActiveTaskId(null)
     setOverTaskId(null)
@@ -110,49 +292,53 @@ export function WorkstreamTab({ workstreams }: WorkstreamTabProps) {
     const activeId = String(active.id)
     const overId = String(over.id)
 
-    setState((prev) => {
-      let sourceGroupIndex = -1
-      let sourceTaskIndex = -1
-      let targetGroupIndex = -1
-      let targetTaskIndex = -1
+    let sourceGroupIndex = -1
+    let sourceTaskIndex = -1
+    let targetGroupIndex = -1
+    let targetTaskIndex = -1
+    let sourceGroupId: string | null = null
+    let targetGroupId: string | null = null
 
-      prev.forEach((group, groupIndex) => {
-        const aIndex = group.tasks.findIndex((task) => task.id === activeId)
-        if (aIndex !== -1) {
-          sourceGroupIndex = groupIndex
-          sourceTaskIndex = aIndex
-        }
-
-        const oIndex = group.tasks.findIndex((task) => task.id === overId)
-        if (oIndex !== -1) {
-          targetGroupIndex = groupIndex
-          targetTaskIndex = oIndex
-        }
-      })
-
-      // If we didn't land on a task but on a group container, allow dropping into empty lists
-      if (targetGroupIndex === -1 && overId.startsWith("group:")) {
-        const groupId = overId.slice("group:".length)
-        targetGroupIndex = prev.findIndex((group) => group.id === groupId)
-        if (targetGroupIndex !== -1) {
-          targetTaskIndex = prev[targetGroupIndex].tasks.length
-        }
+    state.forEach((group, groupIndex) => {
+      const aIndex = group.tasks.findIndex((task) => task.id === activeId)
+      if (aIndex !== -1) {
+        sourceGroupIndex = groupIndex
+        sourceTaskIndex = aIndex
+        sourceGroupId = group.id
       }
 
-      if (sourceGroupIndex === -1 || targetGroupIndex === -1) return prev
+      const oIndex = group.tasks.findIndex((task) => task.id === overId)
+      if (oIndex !== -1) {
+        targetGroupIndex = groupIndex
+        targetTaskIndex = oIndex
+        targetGroupId = group.id
+      }
+    })
 
+    // If we didn't land on a task but on a group container
+    if (targetGroupIndex === -1 && overId.startsWith("group:")) {
+      const groupId = overId.slice("group:".length)
+      targetGroupIndex = state.findIndex((group) => group.id === groupId)
+      if (targetGroupIndex !== -1) {
+        targetTaskIndex = state[targetGroupIndex].tasks.length
+        targetGroupId = groupId
+      }
+    }
+
+    if (sourceGroupIndex === -1 || targetGroupIndex === -1) return
+
+    // Optimistic update
+    setState((prev) => {
       const next = [...prev]
       const sourceGroup = next[sourceGroupIndex]
       const targetGroup = next[targetGroupIndex]
 
-      // Reorder within the same workstream
       if (sourceGroupIndex === targetGroupIndex) {
         const reordered = arrayMove(sourceGroup.tasks, sourceTaskIndex, targetTaskIndex)
         next[sourceGroupIndex] = { ...sourceGroup, tasks: reordered }
         return next
       }
 
-      // Move across workstreams
       const sourceTasks = [...sourceGroup.tasks]
       const [moved] = sourceTasks.splice(sourceTaskIndex, 1)
       if (!moved) return prev
@@ -165,22 +351,126 @@ export function WorkstreamTab({ workstreams }: WorkstreamTabProps) {
 
       return next
     })
-  }
+
+    // Persist to database
+    if (sourceGroupId === targetGroupId) {
+      // Reorder within same workstream
+      const newTaskIds = state[targetGroupIndex].tasks.map((t) => t.id)
+      const reorderedIds = arrayMove(newTaskIds, sourceTaskIndex, targetTaskIndex)
+      await reorderTasks(targetGroupId, projectId, reorderedIds)
+    } else {
+      // Move across workstreams
+      await moveTaskToWorkstream(activeId, targetGroupId, targetTaskIndex)
+    }
+  }, [state, projectId])
 
   const handleDragCancel = () => {
     setActiveTaskId(null)
     setOverTaskId(null)
   }
 
+  const handleDeleteTask = useCallback(async () => {
+    if (!taskToDelete) return
+
+    setIsDeleting(true)
+    const result = await deleteTask(taskToDelete.id)
+
+    if (result.error) {
+      toast.error("Failed to delete task")
+    } else {
+      setState((prev) =>
+        prev.map((g) => ({
+          ...g,
+          tasks: g.tasks.filter((t) => t.id !== taskToDelete.id),
+        }))
+      )
+      toast.success("Task deleted")
+    }
+
+    setIsDeleting(false)
+    setTaskToDelete(null)
+  }, [taskToDelete])
+
+  const handleDeleteWorkstream = useCallback(async () => {
+    if (!workstreamToDelete) return
+
+    setIsDeleting(true)
+    const result = await deleteWorkstream(workstreamToDelete.id)
+
+    if (result.error) {
+      toast.error("Failed to delete workstream")
+    } else {
+      setState((prev) => prev.filter((g) => g.id !== workstreamToDelete.id))
+      toast.success("Workstream deleted")
+      onRefresh?.()
+    }
+
+    setIsDeleting(false)
+    setWorkstreamToDelete(null)
+  }, [workstreamToDelete, onRefresh])
+
+  const handleWorkstreamCreated = useCallback((workstream: Workstream) => {
+    setState((prev) => [
+      ...prev,
+      {
+        id: workstream.id,
+        name: workstream.name,
+        tasks: [],
+      },
+    ])
+    onRefresh?.()
+  }, [onRefresh])
+
+  const handleWorkstreamUpdated = useCallback((workstream: Workstream) => {
+    setState((prev) =>
+      prev.map((g) =>
+        g.id === workstream.id ? { ...g, name: workstream.name } : g
+      )
+    )
+    setEditingWorkstream(null)
+    onRefresh?.()
+  }, [onRefresh])
+
+  // Convert tasks to TaskOption format for modal
+  const existingTasks = useMemo(() => {
+    const tasks: { id: string; name: string; workstreamId: string | null; workstreamName: string | null }[] = []
+    state.forEach((group) => {
+      group.tasks.forEach((task) => {
+        tasks.push({
+          id: task.id,
+          name: task.name,
+          workstreamId: group.id,
+          workstreamName: group.name,
+        })
+      })
+    })
+    return tasks
+  }, [state])
+
   if (!state.length) {
     return (
       <section>
-        <h2 className="text-sm font-semibold tracking-normal text-foreground uppercase">
-          WORKSTEAM BREAKDOWN
-        </h2>
-        <div className="mt-4 rounded-lg border border-dashed border-border/70 p-6 text-sm text-muted-foreground">
-          No workstreams defined yet.
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h2 className="text-sm font-semibold tracking-normal text-foreground uppercase">
+            WORKSTREAM BREAKDOWN
+          </h2>
         </div>
+        <div className="rounded-lg border border-dashed border-border/70 p-6 text-sm text-muted-foreground text-center">
+          <p className="mb-3">No workstreams defined yet.</p>
+          <Button size="sm" onClick={() => setIsCreateWorkstreamOpen(true)}>
+            <Plus className="mr-1.5 h-4 w-4" />
+            Add Workstream
+          </Button>
+        </div>
+
+        <CreateWorkstreamModal
+          open={isCreateWorkstreamOpen}
+          onClose={() => setIsCreateWorkstreamOpen(false)}
+          projectId={projectId}
+          projectEndDate={projectEndDate}
+          existingTasks={existingTasks}
+          onWorkstreamCreated={handleWorkstreamCreated}
+        />
       </section>
     )
   }
@@ -189,7 +479,7 @@ export function WorkstreamTab({ workstreams }: WorkstreamTabProps) {
     <section className="rounded-2xl border border-border bg-muted shadow-[var(--shadow-workstream)] p-3 space-y-3">
       <div className="flex items-center justify-between gap-3 px-2">
         <h2 className="text-sm font-semibold tracking-normal text-foreground uppercase">
-          WORKSTEAM BREAKDOWN
+          WORKSTREAM BREAKDOWN
         </h2>
         <div className="flex items-center gap-1 opacity-60">
           <Button
@@ -244,13 +534,18 @@ export function WorkstreamTab({ workstreams }: WorkstreamTabProps) {
                       {group.name}
                     </span>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Button asChild size="icon-sm" variant="ghost" className="size-6 rounded-md">
+                      <Button
+                        asChild
+                        size="icon-sm"
+                        variant="ghost"
+                        className="size-6 rounded-md"
+                      >
                         <span
                           role="button"
                           aria-label="Add task"
                           onClick={(event) => {
-                            // Prevent toggling the accordion when clicking the add icon.
                             event.stopPropagation()
+                            onAddTask?.(group.id, group.name)
                           }}
                         >
                           <Plus className="h-3.5 w-3.5" />
@@ -258,6 +553,53 @@ export function WorkstreamTab({ workstreams }: WorkstreamTabProps) {
                       </Button>
                       <Separator orientation="vertical" className="h-4" />
                       <GroupSummary group={group} />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            size="icon-sm"
+                            variant="ghost"
+                            className="size-6 rounded-md"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <DotsThreeVertical className="h-4 w-4" weight="bold" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setEditingWorkstream({
+                                id: group.id,
+                                project_id: projectId,
+                                name: group.name,
+                                description: null,
+                                start_date: null,
+                                end_date: null,
+                                tag: null,
+                                sort_order: 0,
+                                created_at: "",
+                                updated_at: "",
+                              })
+                              setIsCreateWorkstreamOpen(true)
+                            }}
+                          >
+                            <PencilSimple className="h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setWorkstreamToDelete({ id: group.id, name: group.name })
+                            }}
+                          >
+                            <Trash className="h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </AccordionTrigger>
@@ -266,7 +608,8 @@ export function WorkstreamTab({ workstreams }: WorkstreamTabProps) {
                   group={group}
                   activeTaskId={activeTaskId}
                   overTaskId={overTaskId}
-                  onToggleTask={(taskId) => toggleTask(group.id, taskId)}
+                  onEditTask={onEditTask}
+                  onDeleteTask={(task) => setTaskToDelete({ id: task.id, name: task.name })}
                 />
               </AccordionItem>
             ))}
@@ -281,6 +624,81 @@ export function WorkstreamTab({ workstreams }: WorkstreamTabProps) {
           </DragOverlay>
         </DndContext>
       </div>
+
+      {/* Add Workstream button */}
+      <div className="px-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
+          onClick={() => {
+            setEditingWorkstream(null)
+            setIsCreateWorkstreamOpen(true)
+          }}
+        >
+          <Plus className="h-4 w-4" />
+          Add Workstream
+        </Button>
+      </div>
+
+      {/* Create/Edit Workstream Modal */}
+      <CreateWorkstreamModal
+        open={isCreateWorkstreamOpen}
+        onClose={() => {
+          setIsCreateWorkstreamOpen(false)
+          setEditingWorkstream(null)
+        }}
+        projectId={projectId}
+        projectEndDate={projectEndDate}
+        existingTasks={existingTasks}
+        editingWorkstream={editingWorkstream}
+        onWorkstreamCreated={handleWorkstreamCreated}
+        onWorkstreamUpdated={handleWorkstreamUpdated}
+      />
+
+      {/* Delete Task Dialog */}
+      <AlertDialog open={!!taskToDelete} onOpenChange={(open) => !open && setTaskToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete task?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete &quot;{taskToDelete?.name}&quot;. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteTask}
+              disabled={isDeleting}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Workstream Dialog */}
+      <AlertDialog open={!!workstreamToDelete} onOpenChange={(open) => !open && setWorkstreamToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete workstream?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will delete &quot;{workstreamToDelete?.name}&quot;. Tasks in this workstream will be kept but unassigned.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteWorkstream}
+              disabled={isDeleting}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   )
 }
@@ -316,10 +734,17 @@ type WorkstreamTasksProps = {
   group: WorkstreamGroup
   activeTaskId: string | null
   overTaskId: string | null
-  onToggleTask: (taskId: string) => void
+  onEditTask?: (task: WorkstreamTask) => void
+  onDeleteTask?: (task: WorkstreamTask) => void
 }
 
-function WorkstreamTasks({ group, activeTaskId, overTaskId, onToggleTask }: WorkstreamTasksProps) {
+function WorkstreamTasks({
+  group,
+  activeTaskId,
+  overTaskId,
+  onEditTask,
+  onDeleteTask,
+}: WorkstreamTasksProps) {
   const { setNodeRef } = useDroppable({ id: `group:${group.id}` })
 
   return (
@@ -330,7 +755,8 @@ function WorkstreamTasks({ group, activeTaskId, overTaskId, onToggleTask }: Work
             <TaskRow
               key={task.id}
               task={task}
-              onToggle={() => onToggleTask(task.id)}
+              onEdit={onEditTask}
+              onDelete={onDeleteTask}
               activeTaskId={activeTaskId}
               overTaskId={overTaskId}
             />
@@ -343,12 +769,13 @@ function WorkstreamTasks({ group, activeTaskId, overTaskId, onToggleTask }: Work
 
 type TaskRowProps = {
   task: WorkstreamTask
-  onToggle: () => void
+  onEdit?: (task: WorkstreamTask) => void
+  onDelete?: (task: WorkstreamTask) => void
   activeTaskId: string | null
   overTaskId: string | null
 }
 
-function TaskRow({ task, onToggle, activeTaskId, overTaskId }: TaskRowProps) {
+function TaskRow({ task, onToggle, onEdit, onDelete, activeTaskId, overTaskId }: TaskRowProps) {
   const isDone = task.status === "done"
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
@@ -362,50 +789,142 @@ function TaskRow({ task, onToggle, activeTaskId, overTaskId }: TaskRowProps) {
 
   const showDropLine = !isDragging && (isOver || overTaskId === task.id)
 
+  // Format status label
+  const statusLabel = task.status === "todo" ? "To do"
+    : task.status === "in-progress" ? "In Progress"
+    : "Done"
+
+  const statusColor = task.status === "todo" ? "text-muted-foreground"
+    : task.status === "in-progress" ? "text-amber-600"
+    : "text-green-600"
+
+  // Format priority label
+  const priorityLabel = task.priority === "no-priority" ? null
+    : task.priority === "low" ? "Low"
+    : task.priority === "medium" ? "Medium"
+    : task.priority === "high" ? "High"
+    : task.priority === "urgent" ? "Urgent"
+    : null
+
+  const priorityColor = task.priority === "low" ? "text-green-600"
+    : task.priority === "medium" ? "text-amber-600"
+    : task.priority === "high" ? "text-orange-600"
+    : task.priority === "urgent" ? "text-red-600"
+    : "text-muted-foreground"
+
   return (
     <div ref={setNodeRef} style={style} className="space-y-1">
       {showDropLine && <div className="h-px w-full rounded-full bg-primary" />}
-      <TaskRowBase
-        checked={isDone}
-        title={task.name}
-        onCheckedChange={onToggle}
-        titleAriaLabel={task.name}
-        meta={
-          <>
-            {task.dueLabel && (
-              <span
-                className={cn(
-                  "text-muted-foreground",
-                  task.dueTone === "danger" && "text-red-500",
-                  task.dueTone === "warning" && "text-amber-500",
-                )}
-              >
-                {task.dueLabel}
-              </span>
-            )}
-            {task.assignee && (
-              <Avatar className="size-6">
-                {task.assignee.avatarUrl && (
-                  <AvatarImage src={task.assignee.avatarUrl} alt={task.assignee.name} />
-                )}
-                <AvatarFallback>{task.assignee.name.charAt(0).toUpperCase()}</AvatarFallback>
-              </Avatar>
-            )}
-            <Button
-              type="button"
-              size="icon-sm"
-              variant="ghost"
-              className="size-7 rounded-md text-muted-foreground cursor-grab active:cursor-grabbing"
-              aria-label="Reorder task"
-              {...attributes}
-              {...listeners}
+      <div
+        className={cn(
+          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm bg-background hover:bg-muted/50 transition-colors",
+          isDragging && "opacity-60"
+        )}
+      >
+        {/* Task name - left side */}
+        <span className="font-medium text-foreground truncate flex-1 min-w-0">
+          {task.name}
+        </span>
+
+        {/* Metadata - right side */}
+        <div className="flex items-center gap-3 shrink-0">
+          {/* Status */}
+          <span className={cn("text-xs font-medium whitespace-nowrap", statusColor)}>
+            {statusLabel}
+          </span>
+
+          {/* Start date */}
+          {task.startDate && (
+            <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:inline">
+              Start: {format(task.startDate, "dd/MM")}
+            </span>
+          )}
+
+          {/* Due label */}
+          {task.dueLabel && (
+            <span
+              className={cn(
+                "text-xs whitespace-nowrap hidden sm:inline",
+                task.dueTone === "danger" && "text-red-500",
+                task.dueTone === "warning" && "text-amber-500",
+                task.dueTone === "muted" && "text-muted-foreground",
+              )}
             >
-              <DotsSixVertical className="h-4 w-4" weight="regular" />
-            </Button>
-          </>
-        }
-        className={cn(isDragging && "opacity-60")}
-      />
+              {task.dueLabel}
+            </span>
+          )}
+
+          {/* Priority */}
+          {priorityLabel && (
+            <span className={cn("text-xs font-medium whitespace-nowrap hidden sm:inline", priorityColor)}>
+              {priorityLabel}
+            </span>
+          )}
+
+          {/* Tag */}
+          {task.tag && (
+            <Badge variant="outline" className="text-xs font-normal h-5 px-2 hidden sm:inline-flex">
+              {task.tag}
+            </Badge>
+          )}
+
+          {/* Assignee */}
+          {task.assignee && (
+            <Avatar className="size-6">
+              {task.assignee.avatarUrl && (
+                <AvatarImage src={task.assignee.avatarUrl} alt={task.assignee.name} />
+              )}
+              <AvatarFallback>{task.assignee.name.charAt(0).toUpperCase()}</AvatarFallback>
+            </Avatar>
+          )}
+
+          {/* Actions */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                className="size-7 rounded-md text-muted-foreground"
+                aria-label="Task actions"
+              >
+                <DotsThreeVertical className="h-4 w-4" weight="bold" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              {onEdit && (
+                <DropdownMenuItem onClick={() => onEdit(task)}>
+                  <PencilSimple className="h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+              )}
+              {onDelete && (
+                <>
+                  {onEdit && <DropdownMenuSeparator />}
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => onDelete(task)}
+                  >
+                    <Trash className="h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            className="size-7 rounded-md text-muted-foreground cursor-grab active:cursor-grabbing"
+            aria-label="Reorder task"
+            {...attributes}
+            {...listeners}
+          >
+            <DotsSixVertical className="h-4 w-4" weight="regular" />
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }

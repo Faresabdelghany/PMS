@@ -1,3 +1,5 @@
+import { format } from "date-fns"
+
 /**
  * Format a date into a human-readable "due" label
  * Returns labels like "Overdue", "Today", "Tomorrow", "3 days", or a formatted date
@@ -11,4 +13,23 @@ export function formatDueLabel(date: Date): string {
   if (diffDays === 1) return "Tomorrow"
   if (diffDays <= 7) return `${diffDays} days`
   return date.toLocaleDateString()
+}
+
+/**
+ * Get the tone/color for a due date based on urgency
+ */
+export function getDueTone(date: Date): "danger" | "warning" | "muted" {
+  const now = new Date()
+  const diffDays = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+  if (diffDays < 0) return "danger" // Overdue
+  if (diffDays <= 1) return "warning" // Today or Tomorrow
+  return "muted" // Future
+}
+
+/**
+ * Format a date as "Start: DD/MM"
+ */
+export function formatStartLabel(date: Date): string {
+  return `Start: ${format(date, "dd/MM")}`
 }

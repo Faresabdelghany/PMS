@@ -5,13 +5,45 @@ import { revalidatePath } from "next/cache"
 import type { Workstream, WorkstreamInsert, WorkstreamUpdate } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
-
-// Create workstream
-export async function createWorkstream(
-  projectId: string,
+export type CreateWorkstreamInput = {
+  projectId: string
   name: string
+  description?: string | null
+  startDate?: string | null
+  endDate?: string | null
+  tag?: string | null
+  taskIds?: string[] // Tasks to assign to this workstream
+}
+
+// Create workstream with full fields
+export async function createWorkstream(
+  input: CreateWorkstreamInput
 ): Promise<ActionResult<Workstream>> {
+  const { projectId, name, description, startDate, endDate, tag, taskIds } = input
   const supabase = await createClient()
+
+  // Get project to validate end_date
+  const { data: project } = await supabase
+    .from("projects")
+    .select("end_date")
+    .eq("id", projectId)
+    .single()
+
+  // Validate workstream end_date against project end_date
+  if (endDate && project?.end_date) {
+    if (new Date(endDate) > new Date(project.end_date)) {
+      return {
+        error: `Workstream end date cannot be after project end date (${project.end_date})`
+      }
+    }
+  }
+
+  // Validate start_date is before end_date
+  if (startDate && endDate) {
+    if (new Date(startDate) > new Date(endDate)) {
+      return { error: "Start date cannot be after end date" }
+    }
+  }
 
   // Get max sort_order
   const { data: existing } = await supabase
@@ -29,6 +61,10 @@ export async function createWorkstream(
     .insert({
       project_id: projectId,
       name,
+      description: description || null,
+      start_date: startDate || null,
+      end_date: endDate || null,
+      tag: tag || null,
       sort_order: sortOrder,
     })
     .select()
@@ -36,6 +72,20 @@ export async function createWorkstream(
 
   if (error) {
     return { error: error.message }
+  }
+
+  // If task IDs provided, assign them to this workstream
+  if (taskIds && taskIds.length > 0 && data) {
+    const { error: taskError } = await supabase
+      .from("tasks")
+      .update({ workstream_id: data.id })
+      .in("id", taskIds)
+      .eq("project_id", projectId) // Safety: only update tasks in same project
+
+    if (taskError) {
+      console.error("Failed to assign tasks to workstream:", taskError)
+      // Don't fail the whole operation, workstream was created
+    }
   }
 
   revalidatePath(`/projects/${projectId}`)
@@ -71,6 +121,9 @@ export async function getWorkstreamsWithTasks(projectId: string): Promise<
         status: string
         priority: string
         assignee_id: string | null
+        start_date: string | null
+        end_date: string | null
+        tag: string | null
         sort_order: number
       }[]
     })[]
@@ -82,7 +135,7 @@ export async function getWorkstreamsWithTasks(projectId: string): Promise<
     .from("workstreams")
     .select(`
       *,
-      tasks(id, name, status, priority, assignee_id, sort_order)
+      tasks(id, name, status, priority, assignee_id, start_date, end_date, tag, sort_order)
     `)
     .eq("project_id", projectId)
     .order("sort_order")
@@ -100,16 +153,64 @@ export async function getWorkstreamsWithTasks(projectId: string): Promise<
   return { data: sortedData }
 }
 
+export type UpdateWorkstreamInput = {
+  name?: string
+  description?: string | null
+  startDate?: string | null
+  endDate?: string | null
+  tag?: string | null
+}
+
 // Update workstream
 export async function updateWorkstream(
   id: string,
-  data: WorkstreamUpdate
+  input: UpdateWorkstreamInput
 ): Promise<ActionResult<Workstream>> {
   const supabase = await createClient()
 
+  // Get current workstream to find project_id
+  const { data: current } = await supabase
+    .from("workstreams")
+    .select("project_id")
+    .eq("id", id)
+    .single()
+
+  if (!current) {
+    return { error: "Workstream not found" }
+  }
+
+  // Get project to validate end_date
+  if (input.endDate) {
+    const { data: project } = await supabase
+      .from("projects")
+      .select("end_date")
+      .eq("id", current.project_id)
+      .single()
+
+    if (project?.end_date && new Date(input.endDate) > new Date(project.end_date)) {
+      return {
+        error: `Workstream end date cannot be after project end date (${project.end_date})`
+      }
+    }
+  }
+
+  // Validate start_date is before end_date
+  if (input.startDate && input.endDate) {
+    if (new Date(input.startDate) > new Date(input.endDate)) {
+      return { error: "Start date cannot be after end date" }
+    }
+  }
+
+  const updateData: WorkstreamUpdate = {}
+  if (input.name !== undefined) updateData.name = input.name
+  if (input.description !== undefined) updateData.description = input.description
+  if (input.startDate !== undefined) updateData.start_date = input.startDate
+  if (input.endDate !== undefined) updateData.end_date = input.endDate
+  if (input.tag !== undefined) updateData.tag = input.tag
+
   const { data: workstream, error } = await supabase
     .from("workstreams")
-    .update(data)
+    .update(updateData)
     .eq("id", id)
     .select()
     .single()
@@ -118,7 +219,7 @@ export async function updateWorkstream(
     return { error: error.message }
   }
 
-  revalidatePath("/projects")
+  revalidatePath(`/projects/${current.project_id}`)
   return { data: workstream }
 }
 
