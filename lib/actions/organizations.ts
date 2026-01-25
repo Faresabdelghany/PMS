@@ -2,8 +2,9 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { cookies } from "next/headers"
+import { CacheTags } from "@/lib/cache-tags"
 import type { Organization, OrganizationInsert, OrganizationUpdate, OrgMemberRole } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
@@ -14,12 +15,19 @@ async function clearOrgMembershipCache() {
 }
 
 
-// Generate slug from name
-function generateSlug(name: string): string {
-  return name
+// Generate slug from name with optional uniqueness suffix
+function generateSlug(name: string, addSuffix = false): string {
+  const base = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
+
+  if (addSuffix) {
+    // Add a short random suffix for uniqueness (6 chars from UUID)
+    const suffix = crypto.randomUUID().split("-")[0]
+    return `${base}-${suffix}`
+  }
+  return base
 }
 
 // Create organization
@@ -43,22 +51,16 @@ export async function createOrganization(
     return { error: "Organization name must be at least 2 characters" }
   }
 
-  // Generate a unique slug
+  // Generate a unique slug - try base slug first, add suffix if it exists
   const baseSlug = generateSlug(name)
-  let slug = baseSlug
-  let counter = 1
+  const { data: existing } = await supabase
+    .from("organizations")
+    .select("id")
+    .eq("slug", baseSlug)
+    .single()
 
-  // Check for slug uniqueness
-  while (true) {
-    const { data: existing } = await supabase
-      .from("organizations")
-      .select("id")
-      .eq("slug", slug)
-      .single()
-
-    if (!existing) break
-    slug = `${baseSlug}-${counter++}`
-  }
+  // If base slug exists, generate a unique one with random suffix
+  const slug = existing ? generateSlug(name, true) : baseSlug
 
   // Create organization
   const { data: org, error: orgError } = await supabase
@@ -90,6 +92,7 @@ export async function createOrganization(
   // Clear the membership cache to reflect the new organization
   await clearOrgMembershipCache()
   revalidatePath("/", "layout")
+  revalidateTag(CacheTags.organizations(user.id))
   return { data: org }
 }
 
@@ -158,6 +161,7 @@ export async function updateOrganization(
   }
 
   revalidatePath("/", "layout")
+  revalidateTag(CacheTags.organization(id))
   return { data: org }
 }
 
@@ -172,6 +176,8 @@ export async function deleteOrganization(id: string): Promise<ActionResult> {
   }
 
   revalidatePath("/", "layout")
+  revalidateTag(CacheTags.organization(id))
+  revalidateTag(CacheTags.organizationMembers(id))
   redirect("/")
 }
 
@@ -213,6 +219,7 @@ export async function updateMemberRole(
   }
 
   revalidatePath("/", "layout")
+  revalidateTag(CacheTags.organizationMembers(orgId))
   return {}
 }
 
@@ -233,6 +240,8 @@ export async function removeOrganizationMember(orgId: string, userId: string): P
   // Clear the membership cache as user may have lost their only organization
   await clearOrgMembershipCache()
   revalidatePath("/", "layout")
+  revalidateTag(CacheTags.organizationMembers(orgId))
+  revalidateTag(CacheTags.organizations(userId))
   return {}
 }
 

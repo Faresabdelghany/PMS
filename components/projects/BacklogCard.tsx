@@ -1,3 +1,4 @@
+import { memo } from "react"
 import Link from "next/link"
 import { Tag, UsersThree, UserCircle, SquaresFour } from "@phosphor-icons/react/dist/ssr"
 import { CircleDashed, Cube, User, Users } from "@phosphor-icons/react/dist/ssr"
@@ -22,7 +23,7 @@ function statusStyles(status: BacklogSummary["statusLabel"]) {
   return "bg-muted text-muted-foreground border-border"
 }
 
-export function BacklogCard({ backlog }: BacklogCardProps) {
+export const BacklogCard = memo(function BacklogCard({ backlog }: BacklogCardProps) {
   return (
     <div>
       <div className="pb-6">
@@ -44,4 +45,4 @@ export function BacklogCard({ backlog }: BacklogCardProps) {
       </div>
     </div>
   )
-}
+})

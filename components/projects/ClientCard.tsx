@@ -1,5 +1,6 @@
 "use client"
 
+import { memo } from "react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import type { Client, ClientStatus } from "@/lib/data/clients"
@@ -15,7 +16,7 @@ function statusLabel(status: ClientStatus): string {
   return "Archived"
 }
 
-export function ClientCard({ client }: ClientCardProps) {
+export const ClientCard = memo(function ClientCard({ client }: ClientCardProps) {
   return (
     <div className="rounded-lg border border-border bg-card/80 p-4 space-y-3">
       <div className="flex items-center justify-between gap-2">
@@ -40,4 +41,4 @@ export function ClientCard({ client }: ClientCardProps) {
       </div>
     </div>
   )
-}
+})

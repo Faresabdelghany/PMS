@@ -5,6 +5,7 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { OrganizationProvider } from "@/components/providers/organization-provider"
 import { UserProvider } from "@/components/providers/user-provider"
+import { RealtimeProvider } from "@/hooks/realtime-context"
 import type { OrganizationWithRole } from "@/hooks/use-organization"
 import type { Profile, Project } from "@/lib/supabase/types"
 
@@ -90,12 +91,14 @@ export default async function DashboardLayout({
       initialProfile={profile}
     >
       <OrganizationProvider initialOrganizations={organizations}>
-        <SidebarProvider>
-          <AppSidebar activeProjects={activeProjects} />
-          <SidebarInset>
-            <Suspense fallback={null}>{children}</Suspense>
-          </SidebarInset>
-        </SidebarProvider>
+        <RealtimeProvider>
+          <SidebarProvider>
+            <AppSidebar activeProjects={activeProjects} />
+            <SidebarInset>
+              <Suspense fallback={null}>{children}</Suspense>
+            </SidebarInset>
+          </SidebarProvider>
+        </RealtimeProvider>
       </OrganizationProvider>
     </UserProvider>
   )

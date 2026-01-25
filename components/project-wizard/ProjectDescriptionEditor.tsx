@@ -8,9 +8,9 @@ import TaskItem from "@tiptap/extension-task-item";
 import "@/styles/tiptap.css";
 import { Plus, StarFour, ArrowsOutSimple } from "@phosphor-icons/react/dist/ssr";
 
- type TemplateType = "goal" | "scope" | "inScope" | "outScope" | "outcomes" | "feature";
+type TemplateType = "goal" | "scope" | "inScope" | "outScope" | "outcomes" | "feature";
 
- interface ProjectDescriptionEditorProps {
+export interface ProjectDescriptionEditorProps {
   value?: string;
   onChange?: (value: string) => void;
   onExpandChange?: (isExpanded: boolean) => void;

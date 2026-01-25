@@ -18,7 +18,7 @@ import {
   CommandList,
 } from "../../ui/command";
 import { Check, X, CornersOut, Star, CalendarBlank, UserCircle, Spinner, List, Paperclip, Microphone, Rows, ChartBar, Tag } from "@phosphor-icons/react/dist/ssr";
-import { ProjectDescriptionEditor } from "../ProjectDescriptionEditor";
+import { ProjectDescriptionEditorLazy as ProjectDescriptionEditor } from "../ProjectDescriptionEditorLazy";
 import type { ProjectStatus, ProjectPriority } from "@/lib/supabase/types";
 
 type Client = { id: string; name: string };

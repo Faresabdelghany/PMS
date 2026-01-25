@@ -1,6 +1,6 @@
 "use client"
 
-import type { ReactNode } from "react"
+import { memo, type ReactNode } from "react"
 
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
@@ -16,7 +16,7 @@ export type TaskRowBaseProps = {
   subtitle?: ReactNode
 }
 
-export function TaskRowBase({
+export const TaskRowBase = memo(function TaskRowBase({
   checked,
   title,
   onCheckedChange,
@@ -67,4 +67,4 @@ export function TaskRowBase({
       </div>
     </div>
   )
-}
+})

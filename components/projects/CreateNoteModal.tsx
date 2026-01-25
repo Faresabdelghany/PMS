@@ -7,7 +7,7 @@ import type { User } from "@/lib/data/project-details"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { QuickCreateModalLayout } from "@/components/QuickCreateModalLayout"
-import { ProjectDescriptionEditor } from "@/components/project-wizard/ProjectDescriptionEditor"
+import { ProjectDescriptionEditorLazy as ProjectDescriptionEditor } from "@/components/project-wizard/ProjectDescriptionEditorLazy"
 
 type CreateNoteModalProps = {
     open: boolean

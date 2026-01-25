@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { format, parse } from "date-fns";
 import { ProjectData, SuccessType, DeadlineType, ProjectDeliverable, ProjectMetric } from "../types";
-import { ProjectDescriptionEditor } from "../ProjectDescriptionEditor";
+import { ProjectDescriptionEditorLazy as ProjectDescriptionEditor } from "../ProjectDescriptionEditorLazy";
 import { RadioGroup, RadioGroupItem } from "../../ui/radio-group";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";

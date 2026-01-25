@@ -1,7 +1,8 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
+import { CacheTags } from "@/lib/cache-tags"
 import type {
   Project,
   ProjectInsert,
@@ -224,6 +225,7 @@ export async function createProject(
   }
 
   revalidatePath("/projects")
+  revalidateTag(CacheTags.projects(orgId))
   return { data: project }
 }
 
@@ -429,6 +431,11 @@ export async function updateProject(
 
   revalidatePath("/projects")
   revalidatePath(`/projects/${id}`)
+  revalidateTag(CacheTags.project(id))
+  revalidateTag(CacheTags.projectDetails(id))
+  if (project.organization_id) {
+    revalidateTag(CacheTags.projects(project.organization_id))
+  }
   return { data: project }
 }
 
@@ -455,6 +462,13 @@ export async function updateProjectProgress(
 export async function deleteProject(id: string): Promise<ActionResult> {
   const supabase = await createClient()
 
+  // Get org_id for cache invalidation before deleting
+  const { data: project } = await supabase
+    .from("projects")
+    .select("organization_id")
+    .eq("id", id)
+    .single()
+
   const { error } = await supabase.from("projects").delete().eq("id", id)
 
   if (error) {
@@ -462,6 +476,11 @@ export async function deleteProject(id: string): Promise<ActionResult> {
   }
 
   revalidatePath("/projects")
+  revalidateTag(CacheTags.project(id))
+  revalidateTag(CacheTags.projectDetails(id))
+  if (project?.organization_id) {
+    revalidateTag(CacheTags.projects(project.organization_id))
+  }
   return {}
 }
 
@@ -491,6 +510,8 @@ export async function addProjectMember(
   }
 
   revalidatePath(`/projects/${projectId}`)
+  revalidateTag(CacheTags.project(projectId))
+  revalidateTag(CacheTags.projectMembers(projectId))
   return { data }
 }
 
@@ -513,6 +534,8 @@ export async function updateProjectMemberRole(
   }
 
   revalidatePath(`/projects/${projectId}`)
+  revalidateTag(CacheTags.project(projectId))
+  revalidateTag(CacheTags.projectMembers(projectId))
   return {}
 }
 
@@ -534,6 +557,8 @@ export async function removeProjectMember(
   }
 
   revalidatePath(`/projects/${projectId}`)
+  revalidateTag(CacheTags.project(projectId))
+  revalidateTag(CacheTags.projectMembers(projectId))
   return {}
 }
 

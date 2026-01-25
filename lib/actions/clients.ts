@@ -1,7 +1,8 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
+import { CacheTags } from "@/lib/cache-tags"
 import type { Client, ClientInsert, ClientUpdate, ClientStatus } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
@@ -33,6 +34,7 @@ export async function createClientAction(
   }
 
   revalidatePath("/clients")
+  revalidateTag(CacheTags.clients(orgId))
   return { data: client }
 }
 
@@ -140,12 +142,23 @@ export async function updateClient(
   }
 
   revalidatePath("/clients")
+  revalidateTag(CacheTags.client(id))
+  if (client.organization_id) {
+    revalidateTag(CacheTags.clients(client.organization_id))
+  }
   return { data: client }
 }
 
 // Delete client
 export async function deleteClient(id: string): Promise<ActionResult> {
   const supabase = await createClient()
+
+  // Get org_id for cache invalidation before deleting
+  const { data: client } = await supabase
+    .from("clients")
+    .select("organization_id")
+    .eq("id", id)
+    .single()
 
   // Check if client has projects
   const { count } = await supabase
@@ -164,6 +177,10 @@ export async function deleteClient(id: string): Promise<ActionResult> {
   }
 
   revalidatePath("/clients")
+  revalidateTag(CacheTags.client(id))
+  if (client?.organization_id) {
+    revalidateTag(CacheTags.clients(client.organization_id))
+  }
   return {}
 }
 

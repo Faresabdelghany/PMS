@@ -6,7 +6,7 @@ import { Paperclip, UploadSimple, X } from "@phosphor-icons/react/dist/ssr"
 import type { ProjectFile, QuickLink, User } from "@/lib/data/project-details"
 import { Button } from "@/components/ui/button"
 import { QuickCreateModalLayout } from "@/components/QuickCreateModalLayout"
-import { ProjectDescriptionEditor } from "@/components/project-wizard/ProjectDescriptionEditor"
+import { ProjectDescriptionEditorLazy as ProjectDescriptionEditor } from "@/components/project-wizard/ProjectDescriptionEditorLazy"
 import { UploadAssetFilesModal } from "@/components/projects/UploadAssetFilesModal"
 
 type AddFileModalProps = {

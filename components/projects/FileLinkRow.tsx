@@ -1,3 +1,4 @@
+import { memo } from "react"
 import { DownloadSimple } from "@phosphor-icons/react/dist/ssr"
 import Image from "next/image"
 
@@ -23,7 +24,7 @@ export function getFileIcon(type: QuickLink["type"]) {
   }
 }
 
-export function FileLinkRow({ file, className }: FileLinkRowProps) {
+export const FileLinkRow = memo(function FileLinkRow({ file, className }: FileLinkRowProps) {
   const icon = getFileIcon(file.type)
 
   return (
@@ -57,4 +58,4 @@ export function FileLinkRow({ file, className }: FileLinkRowProps) {
       </Button>
     </div>
   )
-}
+})

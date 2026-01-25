@@ -1,6 +1,6 @@
 "use client"
 
-import type { ReactNode } from "react"
+import { memo, type ReactNode } from "react"
 import { format } from "date-fns"
 import { CaretDown, FolderSimple, CalendarBlank, Tag as TagIcon } from "@phosphor-icons/react/dist/ssr"
 
@@ -26,7 +26,7 @@ type TaskBoardCardProps = {
   onChangeTag?: (tagLabel?: string) => void
 }
 
-export function TaskBoardCard({ task, variant = "default", onToggle, onOpen, onChangeTag }: TaskBoardCardProps) {
+export const TaskBoardCard = memo(function TaskBoardCard({ task, variant = "default", onToggle, onOpen, onChangeTag }: TaskBoardCardProps) {
   const isDefault = variant === "default" && task
   const isCompleted = variant === "completed" && task
   const isEmpty = variant === "empty"
@@ -153,4 +153,4 @@ export function TaskBoardCard({ task, variant = "default", onToggle, onOpen, onC
       </div>
     </div>
   )
-}
+})

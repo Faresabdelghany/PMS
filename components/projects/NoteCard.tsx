@@ -1,3 +1,4 @@
+import { memo } from "react"
 import { File, DotsThree, Waveform } from "@phosphor-icons/react/dist/ssr"
 import { format } from "date-fns"
 
@@ -17,7 +18,7 @@ type NoteCardProps = {
     onClick?: () => void
 }
 
-export function NoteCard({ note, onEdit, onDelete, onClick }: NoteCardProps) {
+export const NoteCard = memo(function NoteCard({ note, onEdit, onDelete, onClick }: NoteCardProps) {
     const isAudio = note.noteType === "audio"
     return (
         <div
@@ -63,4 +64,4 @@ export function NoteCard({ note, onEdit, onDelete, onClick }: NoteCardProps) {
             </div>
         </div>
     )
-}
+})

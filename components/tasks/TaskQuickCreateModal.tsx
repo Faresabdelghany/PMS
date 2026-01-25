@@ -7,7 +7,7 @@ import { CalendarBlank, ChartBar, Paperclip, Tag as TagIcon, Microphone, UserCir
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { GenericPicker, DatePicker } from '@/components/project-wizard/steps/StepQuickCreate'
-import { ProjectDescriptionEditor } from '@/components/project-wizard/ProjectDescriptionEditor'
+import { ProjectDescriptionEditorLazy as ProjectDescriptionEditor } from '@/components/project-wizard/ProjectDescriptionEditorLazy'
 import { QuickCreateModalLayout } from '@/components/QuickCreateModalLayout'
 import { toast } from 'sonner'
 

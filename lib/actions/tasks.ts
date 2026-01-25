@@ -1,7 +1,8 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
+import { CacheTags } from "@/lib/cache-tags"
 import type { Task, TaskInsert, TaskUpdate, TaskStatus, TaskPriority } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
@@ -77,6 +78,8 @@ export async function createTask(
 
   revalidatePath(`/projects/${projectId}`)
   revalidatePath("/tasks")
+  revalidateTag(CacheTags.tasks(projectId))
+  revalidateTag(CacheTags.projectDetails(projectId))
   return { data: task }
 }
 
@@ -219,6 +222,10 @@ export async function updateTask(
 
   revalidatePath("/projects")
   revalidatePath("/tasks")
+  revalidateTag(CacheTags.task(id))
+  if (task.project_id) {
+    revalidateTag(CacheTags.tasks(task.project_id))
+  }
   return { data: task }
 }
 
@@ -255,8 +262,10 @@ export async function deleteTask(id: string): Promise<ActionResult> {
     return { error: error.message }
   }
 
+  revalidateTag(CacheTags.task(id))
   if (task) {
     revalidatePath(`/projects/${task.project_id}`)
+    revalidateTag(CacheTags.tasks(task.project_id))
   }
   revalidatePath("/tasks")
   return {}
@@ -283,6 +292,7 @@ export async function reorderTasks(
   }
 
   revalidatePath(`/projects/${projectId}`)
+  revalidateTag(CacheTags.tasks(projectId))
   return {}
 }
 
@@ -319,6 +329,8 @@ export async function moveTaskToWorkstream(
   }
 
   revalidatePath(`/projects/${task.project_id}`)
+  revalidateTag(CacheTags.task(taskId))
+  revalidateTag(CacheTags.tasks(task.project_id))
   return {}
 }
 
@@ -338,6 +350,8 @@ export async function bulkUpdateTaskStatus(
     return { error: error.message }
   }
 
+  // Invalidate individual task caches
+  taskIds.forEach(id => revalidateTag(CacheTags.task(id)))
   revalidatePath("/projects")
   revalidatePath("/tasks")
   return {}
