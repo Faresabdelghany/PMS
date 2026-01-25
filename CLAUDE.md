@@ -33,7 +33,12 @@ pnpm test:e2e:report       # View HTML test report
 pnpm test:e2e:codegen      # Generate tests via recording
 ```
 
-Tests are in `e2e/` with Page Object Model pattern (`e2e/pages/`). Auth setup runs first via `e2e/auth.setup.ts`.
+Tests are in `e2e/` with Page Object Model pattern:
+- `e2e/pages/BasePage.ts` - Base class with common page methods
+- Page objects extend BasePage (LoginPage, DashboardPage, ProjectsPage, etc.)
+- `e2e/fixtures.ts` - Custom test fixtures providing page objects and test data
+- `e2e/auth.setup.ts` - Saves auth state to `e2e/.auth/user.json` for reuse
+- Playwright auto-starts dev server; runs on chromium/firefox/webkit + mobile viewports
 
 **E2E Test Environment:**
 ```bash
@@ -89,15 +94,18 @@ npx supabase status                     # Check local services status
 - `lib/supabase/server.ts` - Server client with cookies (use in Server Components/Actions)
 - `lib/supabase/admin.ts` - Service role client (bypasses RLS, server-only)
 
-**Server Actions:**
+**Server Actions:** All actions return `ActionResult<T>` type (`{ data?, error? }`) from `lib/actions/types.ts`.
 - `lib/actions/auth.ts` - Authentication (signIn, signUp, signOut, OAuth)
 - `lib/actions/organizations.ts` - Organization CRUD and member management
 - `lib/actions/projects.ts` - Project CRUD and member management
+- `lib/actions/project-details.ts` - Project details fetching with relations
 - `lib/actions/clients.ts` - Client CRUD
 - `lib/actions/tasks.ts` - Task CRUD, reordering, status updates
 - `lib/actions/workstreams.ts` - Workstream CRUD and reordering
 - `lib/actions/files.ts` - File upload/download to Supabase Storage
 - `lib/actions/notes.ts` - Notes CRUD with audio support
+- `lib/actions/invitations.ts` - Organization member invitations
+- `lib/actions/teams.ts` - Team CRUD
 - `lib/actions/ai.ts` - AI generation (OpenAI, Anthropic, Google)
 - `lib/actions/user-settings.ts` - AI settings and API key management
 
@@ -110,7 +118,7 @@ npx supabase status                     # Check local services status
 
 **Path aliases:** Use `@/` for imports (e.g., `@/components/ui/button`)
 
-**Server Actions:** All data mutations use Next.js Server Actions in `lib/actions/`. Actions return `{ data?, error? }` pattern.
+**Server Actions:** All data mutations use Next.js Server Actions in `lib/actions/`. Actions return `ActionResult<T>` (`{ data?, error? }`) pattern.
 
 **Authentication Flow:**
 1. User signs up/in via `/login` or `/signup`
