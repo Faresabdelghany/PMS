@@ -66,45 +66,112 @@ export type ProjectTaskGroup = {
 export function filterTasksByChips(tasks: TaskLike[], chips: FilterChipType[]): TaskLike[] {
   if (!chips.length) return tasks
 
+  // Group chips by type
+  const statusValues = chips
+    .filter((chip) => chip.key.toLowerCase() === "status")
+    .map((chip) => chip.value.toLowerCase())
+
+  const priorityValues = chips
+    .filter((chip) => chip.key.toLowerCase() === "priority")
+    .map((chip) => chip.value.toLowerCase())
+
+  const tagValues = chips
+    .filter((chip) => chip.key.toLowerCase() === "tag" || chip.key.toLowerCase() === "tags")
+    .map((chip) => chip.value.toLowerCase())
+
   const memberValues = chips
     .filter((chip) => chip.key.toLowerCase().startsWith("member") || chip.key.toLowerCase() === "pic")
     .map((chip) => chip.value.toLowerCase())
 
-  if (!memberValues.length) return tasks
-
   return tasks.filter((task) => {
-    const name = task.assignee?.name.toLowerCase() ?? ""
-
-    for (const value of memberValues) {
-      if (value === "no member" && !task.assignee) return true
-      if (value === "current member" && task.assignee) return true
-      if (value && name.includes(value)) return true
+    // Status filter
+    if (statusValues.length > 0) {
+      // Match against actual task status values (todo, in-progress, done)
+      // Handle display label variations (e.g., "to do" -> "todo", "in progress" -> "in-progress")
+      const normalizeStatus = (s: string) => s.toLowerCase().replace(/\s+/g, "-")
+      const taskStatus = normalizeStatus(task.status)
+      const matches = statusValues.some((v) => taskStatus === normalizeStatus(v))
+      if (!matches) return false
     }
 
-    return false
+    // Priority filter
+    if (priorityValues.length > 0) {
+      const taskPriority = task.priority?.toLowerCase() || "no-priority"
+      const matches = priorityValues.some((v) => taskPriority === v)
+      if (!matches) return false
+    }
+
+    // Tags filter
+    if (tagValues.length > 0) {
+      const taskTag = task.tag?.toLowerCase() || ""
+      const matches = tagValues.some((v) => taskTag === v)
+      if (!matches) return false
+    }
+
+    // Member filter
+    if (memberValues.length > 0) {
+      const name = task.assignee?.name.toLowerCase() ?? ""
+
+      const matches = memberValues.some((value) => {
+        if ((value === "unassigned" || value === "no member") && !task.assignee) return true
+        if (value && name.includes(value)) return true
+        return false
+      })
+      if (!matches) return false
+    }
+
+    return true
   })
 }
 
 export function computeTaskFilterCounts(tasks: TaskLike[]): FilterCounts {
   const counts: FilterCounts = {
+    status: {
+      todo: 0,
+      "in-progress": 0,
+      done: 0,
+    },
+    priority: {
+      urgent: 0,
+      high: 0,
+      medium: 0,
+      low: 0,
+    },
+    tags: {},
     members: {
-      "no-member": 0,
-      current: 0,
+      unassigned: 0,
     },
   }
 
   for (const task of tasks) {
-    if (!task.assignee) {
-      counts.members!["no-member"] = (counts.members!["no-member"] || 0) + 1
-    } else {
-      counts.members!.current = (counts.members!.current || 0) + 1
+    // Count status using actual task status values
+    if (task.status === "todo") {
+      counts.status!.todo = (counts.status!.todo || 0) + 1
+    } else if (task.status === "in-progress") {
+      counts.status!["in-progress"] = (counts.status!["in-progress"] || 0) + 1
+    } else if (task.status === "done") {
+      counts.status!.done = (counts.status!.done || 0) + 1
+    }
 
-      // Track unique member names
+    // Count priority
+    if (task.priority) {
+      const priority = task.priority.toLowerCase()
+      counts.priority![priority] = (counts.priority![priority] || 0) + 1
+    }
+
+    // Count tags
+    if (task.tag) {
+      const tag = task.tag.toLowerCase()
+      counts.tags![tag] = (counts.tags![tag] || 0) + 1
+    }
+
+    // Count members
+    if (!task.assignee) {
+      counts.members!.unassigned = (counts.members!.unassigned || 0) + 1
+    } else {
+      // Track by name
       const name = task.assignee.name.toLowerCase()
-      const firstName = name.split(" ")[0]
-      if (firstName) {
-        counts.members![firstName] = (counts.members![firstName] || 0) + 1
-      }
+      counts.members![name] = (counts.members![name] || 0) + 1
     }
   }
 

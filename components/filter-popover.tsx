@@ -31,14 +31,27 @@ interface FilterCounts {
   members?: Record<string, number>
 }
 
+export type MemberOption = {
+  id: string
+  label: string
+  avatar?: string | null
+}
+
+export type TagOption = {
+  id: string
+  label: string
+}
+
 interface FilterPopoverProps {
   initialChips?: FilterChip[]
   onApply: (chips: FilterChip[]) => void
   onClear: () => void
   counts?: FilterCounts
+  members?: MemberOption[]
+  tags?: TagOption[]
 }
 
-export function FilterPopover({ initialChips, onApply, onClear, counts }: FilterPopoverProps) {
+export function FilterPopover({ initialChips, onApply, onClear, counts, members = [], tags = [] }: FilterPopoverProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [active, setActive] = useState<
@@ -54,6 +67,29 @@ export function FilterPopover({ initialChips, onApply, onClear, counts }: Filter
 
   const [tagSearch, setTagSearch] = useState("")
 
+  // Build member options from props with "Unassigned" option
+  const memberOptions = useMemo(() => {
+    const options: Array<{ id: string; label: string; avatar?: string | null }> = [
+      { id: "unassigned", label: "Unassigned", avatar: undefined },
+    ]
+    for (const member of members) {
+      options.push({
+        id: member.id,
+        label: member.label,
+        avatar: member.avatar,
+      })
+    }
+    return options
+  }, [members])
+
+  // Build tag options from props
+  const tagOptions = useMemo(() => {
+    return tags.map((tag) => ({
+      id: tag.id,
+      label: tag.label,
+    }))
+  }, [tags])
+
   // Preselect from chips when opening
   useEffect(() => {
     if (!open) return
@@ -67,11 +103,15 @@ export function FilterPopover({ initialChips, onApply, onClear, counts }: Filter
       const k = c.key.toLowerCase()
       if (k === "status") next.status.add(c.value.toLowerCase())
       if (k === "priority") next.priority.add(c.value.toLowerCase())
-      if (k === "member" || k === "pic" || k === "members") next.members.add(c.value)
+      if (k === "member" || k === "pic" || k === "members") {
+        // Find the member id by label
+        const member = memberOptions.find((m) => m.label === c.value)
+        if (member) next.members.add(member.id)
+      }
       if (k === "tag" || k === "tags") next.tags.add(c.value.toLowerCase())
     }
     setTemp(next)
-  }, [open, initialChips])
+  }, [open, initialChips, memberOptions])
 
   const categories = [
     { id: "status", label: "Status", icon: Spinner },
@@ -81,11 +121,9 @@ export function FilterPopover({ initialChips, onApply, onClear, counts }: Filter
   ] as const
 
   const statusOptions = [
-    { id: "backlog", label: "Backlog", color: "var(--chart-2)" },
-    { id: "planned", label: "Planned", color: "var(--chart-2)" },
-    { id: "active", label: "Active", color: "var(--chart-3)" },
-    { id: "cancelled", label: "Cancelled", color: "var(--chart-5)" },
-    { id: "completed", label: "Completed", color: "var(--chart-3)" },
+    { id: "todo", label: "To Do", color: "var(--chart-2)" },
+    { id: "in-progress", label: "In Progress", color: "var(--chart-3)" },
+    { id: "done", label: "Done", color: "var(--chart-1)" },
   ]
 
   const priorityOptions = [
@@ -93,20 +131,6 @@ export function FilterPopover({ initialChips, onApply, onClear, counts }: Filter
     { id: "high", label: "High" },
     { id: "medium", label: "Medium" },
     { id: "low", label: "Low" },
-  ]
-
-  const memberOptions = [
-    { id: "no-member", label: "No member", avatar: undefined },
-    { id: "current", label: "Current member", avatar: undefined, hint: "1 projects" },
-    { id: "jason", label: "jason duong", avatar: "/placeholder-user.jpg", hint: "3 projects" },
-  ]
-
-  const tagOptions = [
-    { id: "frontend", label: "frontend" },
-    { id: "backend", label: "backend" },
-    { id: "bug", label: "bug" },
-    { id: "feature", label: "feature" },
-    { id: "urgent", label: "urgent" },
   ]
 
   const filteredCategories = useMemo(() => {
@@ -126,7 +150,11 @@ export function FilterPopover({ initialChips, onApply, onClear, counts }: Filter
     const chips: FilterChip[] = []
     temp.status.forEach((v) => chips.push({ key: "Status", value: capitalize(v) }))
     temp.priority.forEach((v) => chips.push({ key: "Priority", value: capitalize(v) }))
-    temp.members.forEach((v) => chips.push({ key: "Member", value: v }))
+    temp.members.forEach((memberId) => {
+      // Find the member label for display
+      const member = memberOptions.find((m) => m.id === memberId)
+      chips.push({ key: "Member", value: member?.label || memberId })
+    })
     temp.tags.forEach((v) => chips.push({ key: "Tag", value: v }))
     onApply(chips)
     setOpen(false)
@@ -220,49 +248,67 @@ export function FilterPopover({ initialChips, onApply, onClear, counts }: Filter
 
             {active === "members" && (
               <div className="space-y-2">
-                {memberOptions.map((m) => (
-                  <label key={m.id} className="flex items-center gap-2 rounded-lg border p-2 hover:bg-accent cursor-pointer">
-                    <Checkbox
-                      checked={temp.members.has(m.label)}
-                      onCheckedChange={() => setTemp((t) => ({ ...t, members: toggleSet(t.members, m.label) }))}
-                    />
-                    <span className="text-sm flex-1">{m.label}</span>
-                    {counts?.members?.[m.id] != null ? (
-                      <span className="text-xs text-muted-foreground">{counts.members[m.id]}</span>
-                    ) : (
-                      m.hint && <span className="text-xs text-muted-foreground">{m.hint}</span>
-                    )}
-                  </label>
-                ))}
+                {memberOptions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">No members available</p>
+                ) : (
+                  memberOptions.map((m) => (
+                    <label key={m.id} className="flex items-center gap-2 rounded-lg border p-2 hover:bg-accent cursor-pointer">
+                      <Checkbox
+                        checked={temp.members.has(m.id)}
+                        onCheckedChange={() => setTemp((t) => ({ ...t, members: toggleSet(t.members, m.id) }))}
+                      />
+                      {m.avatar ? (
+                        <Avatar className="h-6 w-6">
+                          <AvatarImage src={m.avatar} alt={m.label} />
+                          <AvatarFallback>{m.label.charAt(0).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                      ) : m.id !== "unassigned" ? (
+                        <Avatar className="h-6 w-6">
+                          <AvatarFallback>{m.label.charAt(0).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                      ) : null}
+                      <span className="text-sm flex-1">{m.label}</span>
+                      {counts?.members?.[m.id] != null && (
+                        <span className="text-xs text-muted-foreground">{counts.members[m.id]}</span>
+                      )}
+                    </label>
+                  ))
+                )}
               </div>
             )}
 
             {active === "tags" && (
               <div>
-                <div className="pb-2">
-                  <Input
-                    placeholder="Search tags..."
-                    value={tagSearch}
-                    onChange={(e) => setTagSearch(e.target.value)}
-                    className="h-8"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {tagOptions
-                    .filter((t) => t.label.toLowerCase().includes(tagSearch.toLowerCase()))
-                    .map((t) => (
-                      <label key={t.id} className="flex items-center gap-2 rounded-lg border p-2 hover:bg-accent cursor-pointer">
-                        <Checkbox
-                          checked={temp.tags.has(t.id)}
-                          onCheckedChange={() => setTemp((s) => ({ ...s, tags: toggleSet(s.tags, t.id) }))}
-                        />
-                        <span className="text-sm flex-1">{t.label}</span>
-                        {counts?.tags?.[t.id] != null && (
-                          <span className="text-xs text-muted-foreground">{counts.tags[t.id]}</span>
-                        )}
-                      </label>
-                    ))}
-                </div>
+                {tagOptions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">No tags available</p>
+                ) : (
+                  <>
+                    <div className="pb-2">
+                      <Input
+                        placeholder="Search tags..."
+                        value={tagSearch}
+                        onChange={(e) => setTagSearch(e.target.value)}
+                        className="h-8"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {tagOptions
+                        .filter((t) => t.label.toLowerCase().includes(tagSearch.toLowerCase()))
+                        .map((t) => (
+                          <label key={t.id} className="flex items-center gap-2 rounded-lg border p-2 hover:bg-accent cursor-pointer">
+                            <Checkbox
+                              checked={temp.tags.has(t.id)}
+                              onCheckedChange={() => setTemp((s) => ({ ...s, tags: toggleSet(s.tags, t.id) }))}
+                            />
+                            <span className="text-sm flex-1">{t.label}</span>
+                            {counts?.tags?.[t.id] != null && (
+                              <span className="text-xs text-muted-foreground">{counts.tags[t.id]}</span>
+                            )}
+                          </label>
+                        ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 

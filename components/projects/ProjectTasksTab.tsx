@@ -46,7 +46,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { FilterPopover } from "@/components/filter-popover"
+import { FilterPopover, type MemberOption, type TagOption } from "@/components/filter-popover"
 import { ChipOverflow } from "@/components/chip-overflow"
 import { TaskRowBase } from "@/components/tasks/TaskRowBase"
 import { TaskQuickCreateModal, type TaskData } from "@/components/tasks/TaskQuickCreateModal"
@@ -141,6 +141,27 @@ export function ProjectTasksTab({
   const uiTasks = useMemo(() => tasks.map(toTaskLike), [tasks])
 
   const counts = useMemo(() => computeTaskFilterCounts(uiTasks), [uiTasks])
+
+  // Build member options for filter from organization members
+  const filterMembers = useMemo<MemberOption[]>(() => {
+    return organizationMembers.map((member) => ({
+      id: member.user_id,
+      label: member.profile.full_name || member.profile.email,
+      avatar: member.profile.avatar_url,
+    }))
+  }, [organizationMembers])
+
+  // Extract unique tags from tasks for filter
+  const filterTags = useMemo<TagOption[]>(() => {
+    const tagSet = new Set<string>()
+    for (const task of tasks) {
+      if (task.tag) tagSet.add(task.tag)
+    }
+    return Array.from(tagSet).map((tag) => ({
+      id: tag.toLowerCase(),
+      label: tag,
+    }))
+  }, [tasks])
 
   const filteredTasks = useMemo(
     () => filterTasksByChips(uiTasks, filters),
@@ -314,6 +335,8 @@ export function ProjectTasksTab({
             onApply={setFilters}
             onClear={() => setFilters([])}
             counts={counts}
+            members={filterMembers}
+            tags={filterTags}
           />
           <ChipOverflow
             chips={filters}

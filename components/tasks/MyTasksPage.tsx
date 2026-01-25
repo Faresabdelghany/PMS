@@ -36,7 +36,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { FilterPopover } from "@/components/filter-popover"
+import { FilterPopover, type MemberOption, type TagOption } from "@/components/filter-popover"
 import { ChipOverflow } from "@/components/chip-overflow"
 import { ViewOptionsPopover } from "@/components/view-options-popover"
 import { TaskQuickCreateModal, type CreateTaskContext } from "@/components/tasks/TaskQuickCreateModal"
@@ -135,6 +135,27 @@ export function MyTasksPage({
     const allTasks = groups.flatMap((g) => g.tasks)
     return computeTaskFilterCounts(allTasks)
   }, [groups])
+
+  // Build member options for filter from organization members
+  const filterMembers = useMemo<MemberOption[]>(() => {
+    return organizationMembers.map((member) => ({
+      id: member.user_id,
+      label: member.profile.full_name || member.profile.email,
+      avatar: member.profile.avatar_url,
+    }))
+  }, [organizationMembers])
+
+  // Extract unique tags from tasks for filter
+  const filterTags = useMemo<TagOption[]>(() => {
+    const tagSet = new Set<string>()
+    for (const task of tasks) {
+      if (task.tag) tagSet.add(task.tag)
+    }
+    return Array.from(tagSet).map((tag) => ({
+      id: tag.toLowerCase(),
+      label: tag,
+    }))
+  }, [tasks])
 
   const visibleGroups = useMemo<ProjectTaskGroup[]>(() => {
     if (!filters.length) return groups
@@ -427,6 +448,8 @@ export function MyTasksPage({
               onApply={setFilters}
               onClear={() => setFilters([])}
               counts={counts}
+              members={filterMembers}
+              tags={filterTags}
             />
             <ChipOverflow
               chips={filters}
