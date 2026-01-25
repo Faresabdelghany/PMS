@@ -3,8 +3,15 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
+import { cookies } from "next/headers"
 import type { Organization, OrganizationInsert, OrganizationUpdate, OrgMemberRole } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
+
+// Helper to clear the organization membership cache cookie
+async function clearOrgMembershipCache() {
+  const cookieStore = await cookies()
+  cookieStore.delete("has_organization")
+}
 
 
 // Generate slug from name
@@ -80,6 +87,8 @@ export async function createOrganization(
     return { error: memberError.message }
   }
 
+  // Clear the membership cache to reflect the new organization
+  await clearOrgMembershipCache()
   revalidatePath("/", "layout")
   return { data: org }
 }
@@ -221,6 +230,8 @@ export async function removeOrganizationMember(orgId: string, userId: string): P
     return { error: error.message }
   }
 
+  // Clear the membership cache as user may have lost their only organization
+  await clearOrgMembershipCache()
   revalidatePath("/", "layout")
   return {}
 }

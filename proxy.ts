@@ -64,19 +64,34 @@ export async function proxy(request: NextRequest) {
 
   // For authenticated users, check if they have an organization
   // (Skip this check on onboarding and api routes)
+  // Use cookie cache to avoid repeated database queries
   if (user && !isOnboardingPage && !isAuthPage && !isPublicPage) {
-    const { data: membership } = await supabase
-      .from("organization_members")
-      .select("organization_id")
-      .eq("user_id", user.id)
-      .limit(1)
-      .single()
+    const hasOrgCookie = request.cookies.get("has_organization")
 
-    // If user has no organization, redirect to onboarding
-    if (!membership) {
-      const url = request.nextUrl.clone()
-      url.pathname = "/onboarding"
-      return NextResponse.redirect(url)
+    // Only query database if cookie doesn't exist
+    if (!hasOrgCookie) {
+      const { data: membership } = await supabase
+        .from("organization_members")
+        .select("organization_id")
+        .eq("user_id", user.id)
+        .limit(1)
+        .single()
+
+      // If user has no organization, redirect to onboarding
+      if (!membership) {
+        const url = request.nextUrl.clone()
+        url.pathname = "/onboarding"
+        return NextResponse.redirect(url)
+      }
+
+      // Cache the organization membership status for 5 minutes
+      response.cookies.set("has_organization", "true", {
+        path: "/",
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 300, // 5 minutes
+      })
     }
   }
 

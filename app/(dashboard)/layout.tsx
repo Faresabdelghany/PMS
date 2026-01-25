@@ -8,16 +8,8 @@ import { UserProvider } from "@/components/providers/user-provider"
 import type { OrganizationWithRole } from "@/hooks/use-organization"
 import type { Profile, Project } from "@/lib/supabase/types"
 
-async function getOrganizations(): Promise<OrganizationWithRole[]> {
+async function getOrganizations(userId: string): Promise<OrganizationWithRole[]> {
   const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return []
-  }
 
   const { data, error } = await supabase
     .from("organization_members")
@@ -25,7 +17,7 @@ async function getOrganizations(): Promise<OrganizationWithRole[]> {
       role,
       organization:organizations(*)
     `)
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
 
   if (error || !data) {
     return []
@@ -81,7 +73,7 @@ export default async function DashboardLayout({
   }
 
   const [organizations, profile] = await Promise.all([
-    getOrganizations(),
+    getOrganizations(user.id),
     getUserProfile(user.id),
   ])
 

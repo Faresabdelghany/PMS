@@ -19,8 +19,10 @@ export function UserProvider({ children, initialUser = null, initialProfile = nu
   })
 
   useEffect(() => {
-    // If we have initial data, don't fetch again
-    if (initialUser && initialProfile) {
+    // If we have initial user data, don't fetch again
+    // initialProfile can be null for new users, but if initialUser is provided
+    // we already fetched on the server and shouldn't fetch again
+    if (initialUser) {
       return
     }
 

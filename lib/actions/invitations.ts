@@ -2,8 +2,15 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { cookies } from "next/headers"
 import type { Invitation, OrgMemberRole } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
+
+// Helper to clear the organization membership cache cookie
+async function clearOrgMembershipCache() {
+  const cookieStore = await cookies()
+  cookieStore.delete("has_organization")
+}
 
 
 // Invite member to organization
@@ -193,6 +200,8 @@ export async function acceptInvitation(token: string): Promise<ActionResult> {
     .update({ status: "accepted" })
     .eq("id", invitation.id)
 
+  // Clear the membership cache to reflect the new organization
+  await clearOrgMembershipCache()
   revalidatePath("/", "layout")
   return {}
 }
