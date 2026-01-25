@@ -59,6 +59,14 @@ export type WorkstreamGroup = {
   id: string
   name: string
   tasks: WorkstreamTask[]
+  /** Optional description of the workstream */
+  description?: string | null
+  /** Optional start date for the workstream */
+  startDate?: string | null
+  /** Optional end date for the workstream */
+  endDate?: string | null
+  /** Optional tag for the workstream */
+  tag?: string | null
 }
 
 export type ProjectTask = WorkstreamTask & {

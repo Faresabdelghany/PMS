@@ -163,6 +163,10 @@ export function ProjectDetailsPage({
     const uiWorkstreams = workstreams.map((ws) => ({
       id: ws.id,
       name: ws.name,
+      description: ws.description,
+      startDate: ws.start_date,
+      endDate: ws.end_date,
+      tag: ws.tag,
       tasks: ws.tasks.map((t) => {
         // Find assignee from organization members if assignee_id is present
         const assigneeMember = t.assignee_id

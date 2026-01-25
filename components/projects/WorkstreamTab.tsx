@@ -167,7 +167,7 @@ export function WorkstreamTab({
         if (task.workstream_id) {
           return withoutTask.map((g) =>
             g.id === task.workstream_id
-              ? { ...g, tasks: [...g.tasks, workstreamTask].sort((a, b) => 0) }
+              ? { ...g, tasks: [...g.tasks, workstreamTask] }
               : g
           )
         }
@@ -352,15 +352,51 @@ export function WorkstreamTab({
       return next
     })
 
-    // Persist to database
-    if (sourceGroupId === targetGroupId) {
-      // Reorder within same workstream
-      const newTaskIds = state[targetGroupIndex].tasks.map((t) => t.id)
-      const reorderedIds = arrayMove(newTaskIds, sourceTaskIndex, targetTaskIndex)
-      await reorderTasks(targetGroupId, projectId, reorderedIds)
-    } else {
-      // Move across workstreams
-      await moveTaskToWorkstream(activeId, targetGroupId, targetTaskIndex)
+    // Persist to database with error handling
+    try {
+      if (sourceGroupId === targetGroupId) {
+        // Reorder within same workstream
+        const newTaskIds = state[targetGroupIndex].tasks.map((t) => t.id)
+        const reorderedIds = arrayMove(newTaskIds, sourceTaskIndex, targetTaskIndex)
+        const result = await reorderTasks(targetGroupId, projectId, reorderedIds)
+        if (result?.error) {
+          throw new Error(result.error)
+        }
+      } else {
+        // Move across workstreams
+        const result = await moveTaskToWorkstream(activeId, targetGroupId, targetTaskIndex)
+        if (result?.error) {
+          throw new Error(result.error)
+        }
+      }
+    } catch (error) {
+      // Revert optimistic update on error
+      setState((prev) => {
+        const next = [...prev]
+        const sourceGroup = next[sourceGroupIndex]
+        const targetGroup = next[targetGroupIndex]
+
+        if (sourceGroupIndex === targetGroupIndex) {
+          // Revert reorder
+          const reverted = arrayMove(sourceGroup.tasks, targetTaskIndex, sourceTaskIndex)
+          next[sourceGroupIndex] = { ...sourceGroup, tasks: reverted }
+          return next
+        }
+
+        // Revert cross-workstream move
+        const targetTasks = [...targetGroup.tasks]
+        const [movedBack] = targetTasks.splice(targetTaskIndex, 1)
+        if (!movedBack) return prev
+
+        const sourceTasks = [...sourceGroup.tasks]
+        sourceTasks.splice(sourceTaskIndex, 0, movedBack)
+
+        next[sourceGroupIndex] = { ...sourceGroup, tasks: sourceTasks }
+        next[targetGroupIndex] = { ...targetGroup, tasks: targetTasks }
+
+        return next
+      })
+      toast.error("Failed to move task")
     }
   }, [state, projectId])
 
@@ -573,10 +609,10 @@ export function WorkstreamTab({
                                 id: group.id,
                                 project_id: projectId,
                                 name: group.name,
-                                description: null,
-                                start_date: null,
-                                end_date: null,
-                                tag: null,
+                                description: group.description || null,
+                                start_date: group.startDate || null,
+                                end_date: group.endDate || null,
+                                tag: group.tag || null,
                                 sort_order: 0,
                                 created_at: "",
                                 updated_at: "",
@@ -775,7 +811,7 @@ type TaskRowProps = {
   overTaskId: string | null
 }
 
-function TaskRow({ task, onToggle, onEdit, onDelete, activeTaskId, overTaskId }: TaskRowProps) {
+function TaskRow({ task, onEdit, onDelete, activeTaskId, overTaskId }: TaskRowProps) {
   const isDone = task.status === "done"
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
