@@ -34,5 +34,5 @@ export default async function Page() {
   const result = await getClientsWithProjectCounts(organizationId)
   const clients = result.data || []
 
-  return <ClientsContent initialClients={clients} />
+  return <ClientsContent initialClients={clients} organizationId={organizationId} />
 }

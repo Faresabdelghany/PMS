@@ -22,6 +22,7 @@ export type InvitationStatus = "pending" | "accepted" | "cancelled" | "expired"
 export type NoteType = "general" | "meeting" | "audio"
 export type NoteStatus = "completed" | "processing"
 export type FileType = "pdf" | "zip" | "fig" | "doc" | "file" | "image" | "video" | "audio"
+export type InboxItemType = "comment" | "task_update" | "client_update" | "project_milestone" | "system"
 
 export interface Database {
   public: {
@@ -367,6 +368,10 @@ export interface Database {
           id: string
           project_id: string
           name: string
+          description: string | null
+          start_date: string | null
+          end_date: string | null
+          tag: string | null
           sort_order: number
           created_at: string
           updated_at: string
@@ -375,6 +380,10 @@ export interface Database {
           id?: string
           project_id: string
           name: string
+          description?: string | null
+          start_date?: string | null
+          end_date?: string | null
+          tag?: string | null
           sort_order?: number
           created_at?: string
           updated_at?: string
@@ -383,6 +392,10 @@ export interface Database {
           id?: string
           project_id?: string
           name?: string
+          description?: string | null
+          start_date?: string | null
+          end_date?: string | null
+          tag?: string | null
           sort_order?: number
           created_at?: string
           updated_at?: string
@@ -801,6 +814,97 @@ export interface Database {
           }
         ]
       }
+      inbox_items: {
+        Row: {
+          id: string
+          organization_id: string
+          user_id: string
+          actor_id: string | null
+          item_type: InboxItemType
+          title: string
+          message: string | null
+          is_read: boolean
+          project_id: string | null
+          task_id: string | null
+          client_id: string | null
+          metadata: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          user_id: string
+          actor_id?: string | null
+          item_type: InboxItemType
+          title: string
+          message?: string | null
+          is_read?: boolean
+          project_id?: string | null
+          task_id?: string | null
+          client_id?: string | null
+          metadata?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          user_id?: string
+          actor_id?: string | null
+          item_type?: InboxItemType
+          title?: string
+          message?: string | null
+          is_read?: boolean
+          project_id?: string | null
+          task_id?: string | null
+          client_id?: string | null
+          metadata?: Json
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbox_items_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbox_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbox_items_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbox_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbox_items_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbox_items_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -831,6 +935,7 @@ export interface Database {
       note_type: NoteType
       note_status: NoteStatus
       file_type: FileType
+      inbox_item_type: InboxItemType
     }
   }
 }
@@ -924,3 +1029,15 @@ export type ProjectOutcomeInsert = Database["public"]["Tables"]["project_outcome
 
 export type ProjectFeature = Database["public"]["Tables"]["project_features"]["Row"]
 export type ProjectFeatureInsert = Database["public"]["Tables"]["project_features"]["Insert"]
+
+export type InboxItem = Database["public"]["Tables"]["inbox_items"]["Row"]
+export type InboxItemInsert = Database["public"]["Tables"]["inbox_items"]["Insert"]
+export type InboxItemUpdate = Database["public"]["Tables"]["inbox_items"]["Update"]
+
+// Extended inbox item with relations
+export type InboxItemWithRelations = InboxItem & {
+  actor?: Profile | null
+  project?: Project | null
+  task?: Task | null
+  client?: Client | null
+}

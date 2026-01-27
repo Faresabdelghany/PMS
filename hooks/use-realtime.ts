@@ -326,3 +326,22 @@ export function useOrganizationMembersRealtime(
     ...callbacks,
   })
 }
+
+/**
+ * Hook for subscribing to inbox item changes for current user
+ */
+export function useInboxRealtime(
+  userId: string | undefined,
+  callbacks: {
+    onInsert?: (item: TableRow<"inbox_items">) => void
+    onUpdate?: (item: TableRow<"inbox_items">, oldItem: TableRow<"inbox_items">) => void
+    onDelete?: (item: TableRow<"inbox_items">) => void
+  }
+) {
+  return useRealtime({
+    table: "inbox_items",
+    filter: userId ? `user_id=eq.${userId}` : undefined,
+    enabled: !!userId,
+    ...callbacks,
+  })
+}

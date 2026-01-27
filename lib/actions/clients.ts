@@ -184,9 +184,17 @@ export async function deleteClient(id: string): Promise<ActionResult> {
   return {}
 }
 
+// Project count breakdown by status
+export type ProjectCountBreakdown = {
+  active: number
+  planned: number
+  completed: number
+}
+
 // Get clients with project counts (for list view)
 export type ClientWithProjectCount = Client & {
   project_count: number
+  project_breakdown: ProjectCountBreakdown
   owner?: {
     id: string
     full_name: string | null
@@ -231,30 +239,43 @@ export async function getClientsWithProjectCounts(
     return { data: [] }
   }
 
-  // Get project counts for all clients in one query
+  // Get project counts with status for all clients in one query
   const clientIds = clients.map((c) => c.id)
-  const { data: projectCounts, error: countsError } = await supabase
+  const { data: projectData, error: countsError } = await supabase
     .from("projects")
-    .select("client_id")
+    .select("client_id, status")
     .in("client_id", clientIds)
 
   if (countsError) {
     return { error: countsError.message }
   }
 
-  // Count projects per client
-  const countMap = new Map<string, number>()
-  projectCounts?.forEach((p) => {
+  // Count projects per client with breakdown by status
+  const countMap = new Map<string, { total: number; active: number; planned: number; completed: number }>()
+  projectData?.forEach((p) => {
     if (p.client_id) {
-      countMap.set(p.client_id, (countMap.get(p.client_id) || 0) + 1)
+      const current = countMap.get(p.client_id) || { total: 0, active: 0, planned: 0, completed: 0 }
+      current.total++
+      if (p.status === "active") current.active++
+      else if (p.status === "planned" || p.status === "backlog") current.planned++
+      else if (p.status === "completed") current.completed++
+      countMap.set(p.client_id, current)
     }
   })
 
   // Merge counts into clients
-  const clientsWithCounts: ClientWithProjectCount[] = clients.map((client) => ({
-    ...client,
-    project_count: countMap.get(client.id) || 0,
-  }))
+  const clientsWithCounts: ClientWithProjectCount[] = clients.map((client) => {
+    const counts = countMap.get(client.id) || { total: 0, active: 0, planned: 0, completed: 0 }
+    return {
+      ...client,
+      project_count: counts.total,
+      project_breakdown: {
+        active: counts.active,
+        planned: counts.planned,
+        completed: counts.completed,
+      },
+    }
+  })
 
   return { data: clientsWithCounts }
 }
