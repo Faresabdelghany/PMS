@@ -71,6 +71,7 @@ npx supabase status                     # Check local services status
   - `(dashboard)/` - Main app routes with shared layout (projects, clients, tasks, settings)
   - `auth/callback/` - OAuth callback handler
   - `onboarding/` - Organization onboarding
+  - `invite/` - Organization invitation acceptance flow
 - **`components/`** - React components organized by feature
   - `ui/` - shadcn/ui design system primitives
   - `projects/`, `tasks/`, `clients/` - Feature components
@@ -108,6 +109,7 @@ npx supabase status                     # Check local services status
 - `lib/actions/teams.ts` - Team CRUD
 - `lib/actions/ai.ts` - AI generation (OpenAI, Anthropic, Google)
 - `lib/actions/user-settings.ts` - AI settings and API key management
+- `lib/actions/search.ts` - Global search across projects, tasks, and clients
 
 **Database Schema:**
 - 17 tables with full RLS policies
@@ -122,14 +124,11 @@ npx supabase status                     # Check local services status
 
 **Authentication Flow:**
 1. User signs up/in via `/login` or `/signup`
-2. OAuth callback at `/auth/callback` handles session
-3. Middleware checks auth and redirects appropriately
-4. First-time users go to `/onboarding` to create organization
-
-**Middleware:** `middleware.ts` handles:
-- Route protection (redirects unauthenticated users to `/login`)
-- Auth page redirects (authenticated users go to `/`)
-- Organization check (users without org go to `/onboarding`)
+2. OAuth callback at `/auth/callback` handles session exchange
+3. OAuth callback auto-creates personal organization for new users
+4. Dashboard layout (`app/(dashboard)/layout.tsx`) checks auth on every request:
+   - Redirects unauthenticated users to `/login`
+   - Redirects users without organization to `/onboarding`
 
 **Styling:** Tailwind CSS with CSS custom properties for theming. Light/dark mode via `next-themes`. Component variants use `class-variance-authority`.
 
@@ -145,9 +144,14 @@ export default async function Page({ params }: PageProps) {
 
 **Dashboard Layout Pattern:** All main app pages are under `app/(dashboard)/` route group which:
 - Provides shared layout with sidebar, header, and providers
-- Wraps pages with `UserProvider` and `OrganizationProvider` for context
+- Wraps pages with `UserProvider`, `OrganizationProvider`, `RealtimeProvider`, and `CommandPaletteProvider`
 - Fetches active projects for sidebar display
 - Server Components fetch Supabase data and pass to Client Components as props
+
+**Command Palette:** Global search and actions via Cmd+K (Mac) / Ctrl+K (Windows):
+- Search projects, tasks, and clients globally
+- Quick create project or task
+- Managed by `CommandPaletteProvider` in dashboard layout
 
 ### Data Layer
 
@@ -163,10 +167,12 @@ export default async function Page({ params }: PageProps) {
 - `workstreams` - Task grouping within projects
 - `project_files`, `project_notes` - Project assets
 
-**Real-time Hooks:** `hooks/use-realtime.ts` provides instant updates via Supabase Realtime:
-- `useTasksRealtime`, `useWorkstreamsRealtime`, `useProjectsRealtime`, `useClientsRealtime`
-- `useFilesRealtime`, `useNotesRealtime`, `useOrganizationMembersRealtime`
-- Hooks automatically pause subscriptions when browser tab is hidden to reduce connection overhead
+**Real-time Hooks:** Two realtime systems available:
+- `hooks/use-realtime.ts` - Individual hooks: `useTasksRealtime`, `useWorkstreamsRealtime`, `useProjectsRealtime`, etc.
+- `hooks/realtime-context.tsx` - Pooled subscriptions via `RealtimeProvider`:
+  - Multiple components share subscriptions through context
+  - Auto-pauses when browser tab is hidden to reduce connection overhead
+  - Use `usePooledRealtime`, `usePooledTasksRealtime`, `usePooledProjectsRealtime`, etc.
 
 **Supabase Integration Status:** All data is now fetched from Supabase:
 - **Sidebar:** Real active projects and user profile
