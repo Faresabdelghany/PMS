@@ -14,6 +14,7 @@ import {
   validate,
   formDataToObject,
 } from "@/lib/validations"
+import { rateLimiters, checkRateLimit, rateLimitError } from "@/lib/rate-limit/limiter"
 
 export type AuthResult = {
   error?: string
@@ -83,6 +84,16 @@ export async function createPersonalOrganization(userId: string, fullName: strin
 
 // Sign up with email and password
 export async function signUp(formData: FormData): Promise<AuthResult> {
+  // Get client IP for rate limiting
+  const headersList = await headers()
+  const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"
+
+  // Check rate limit
+  const limit = await checkRateLimit(rateLimiters.auth, ip)
+  if (!limit.success) {
+    return rateLimitError(limit.reset)
+  }
+
   // Validate input
   const validation = validate(signUpSchema, formDataToObject(formData))
   if (!validation.success) {
@@ -147,6 +158,16 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
 
 // Sign in with email and password
 export async function signIn(formData: FormData): Promise<AuthResult> {
+  // Get client IP for rate limiting
+  const headersList = await headers()
+  const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"
+
+  // Check rate limit
+  const limit = await checkRateLimit(rateLimiters.auth, ip)
+  if (!limit.success) {
+    return rateLimitError(limit.reset)
+  }
+
   // Validate input
   const validation = validate(signInSchema, formDataToObject(formData))
   if (!validation.success) {
