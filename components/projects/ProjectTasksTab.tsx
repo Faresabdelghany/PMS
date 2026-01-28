@@ -52,7 +52,7 @@ import { TaskRowBase } from "@/components/tasks/TaskRowBase"
 import { TaskQuickCreateModal, type TaskData } from "@/components/tasks/TaskQuickCreateModal"
 import { formatDueLabel } from "@/lib/date-utils"
 import { cn } from "@/lib/utils"
-import { useTasksRealtime } from "@/hooks/use-realtime"
+import { usePooledTasksRealtime } from "@/hooks/realtime-context"
 
 type OrganizationMember = {
   id: string
@@ -110,7 +110,7 @@ export function ProjectTasksTab({
   const [isDeleting, setIsDeleting] = useState(false)
 
   // Realtime subscription for tasks
-  useTasksRealtime(projectId, {
+  usePooledTasksRealtime(projectId, {
     onInsert: (newTask) => {
       setTasks((prev) => {
         // Avoid duplicates

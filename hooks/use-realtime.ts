@@ -56,6 +56,9 @@ function useDocumentVisibility(): boolean {
  * Hook for subscribing to Supabase Realtime changes on a table
  * Uses refs to store callbacks to prevent subscription recreation on callback changes
  * Supports pausing when tab is hidden to reduce subscription proliferation
+ *
+ * Optimization: Channel is created once and paused/resumed on visibility changes
+ * instead of being destroyed and recreated, reducing WebSocket overhead.
  */
 export function useRealtime<T extends TableName>({
   table,
@@ -70,10 +73,10 @@ export function useRealtime<T extends TableName>({
   pauseWhenHidden = true,
 }: UseRealtimeOptions<T>) {
   const channelRef = useRef<RealtimeChannel | null>(null)
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null)
   const isVisible = useDocumentVisibility()
-
-  // Effective enabled state considers both explicit enabled and visibility
-  const isEffectivelyEnabled = enabled && (pauseWhenHidden ? isVisible : true)
+  // Track visibility in a ref for use in the main effect without triggering re-runs
+  const isVisibleRef = useRef(isVisible)
 
   // Store callbacks in refs to avoid recreating subscription when callbacks change
   const onInsertRef = useRef(onInsert)
@@ -81,36 +84,52 @@ export function useRealtime<T extends TableName>({
   const onDeleteRef = useRef(onDelete)
   const onChangeRef = useRef(onChange)
 
-  // Keep refs updated with latest callbacks
+  // Keep refs updated with latest values
   useEffect(() => {
     onInsertRef.current = onInsert
     onUpdateRef.current = onUpdate
     onDeleteRef.current = onDelete
     onChangeRef.current = onChange
+    isVisibleRef.current = isVisible
   })
 
+  // Separate effect for pause/resume based on visibility
+  // This avoids destroying and recreating the channel on visibility toggle
   useEffect(() => {
-    if (!isEffectivelyEnabled) {
-      // Clean up existing channel when disabled or hidden
-      // Clear ref first to prevent double cleanup on rapid visibility changes
+    const channel = channelRef.current
+    if (!channel || !pauseWhenHidden) return
+
+    if (isVisible) {
+      channel.subscribe()
+    } else {
+      channel.unsubscribe()
+    }
+  }, [isVisible, pauseWhenHidden])
+
+  // Main effect for channel creation/destruction
+  // Does NOT depend on visibility to avoid recreating channel on toggle
+  useEffect(() => {
+    if (!enabled) {
+      // Clean up existing channel when explicitly disabled
       const channel = channelRef.current
-      if (channel) {
-        channelRef.current = null
-        const supabase = createClient()
+      if (channel && supabaseRef.current) {
         channel.unsubscribe()
-        supabase.removeChannel(channel)
+        supabaseRef.current.removeChannel(channel)
+        channelRef.current = null
+        supabaseRef.current = null
       }
       return
     }
 
     const supabase = createClient()
+    supabaseRef.current = supabase
 
     // Create channel with unique name
     const channelName = `realtime:${schema}:${table}:${filter || "all"}`
     const channel = supabase.channel(channelName)
 
     // Subscribe to changes - use type assertion for the config object
-     
+
     const config: any = {
       event,
       schema,
@@ -121,39 +140,45 @@ export function useRealtime<T extends TableName>({
       config.filter = filter
     }
 
-    channel
-      .on(
-        "postgres_changes",
-        config,
-        (payload: RealtimePostgresChangesPayload<TableRow<T>>) => {
-          // Call generic onChange handler using ref
-          onChangeRef.current?.(payload)
+    channel.on(
+      "postgres_changes",
+      config,
+      (payload: RealtimePostgresChangesPayload<TableRow<T>>) => {
+        // Call generic onChange handler using ref
+        onChangeRef.current?.(payload)
 
-          // Call specific handlers based on event type using refs
-          switch (payload.eventType) {
-            case "INSERT":
-              onInsertRef.current?.(payload.new as TableRow<T>)
-              break
-            case "UPDATE":
-              onUpdateRef.current?.(payload.new as TableRow<T>, payload.old as TableRow<T>)
-              break
-            case "DELETE":
-              onDeleteRef.current?.(payload.old as TableRow<T>)
-              break
-          }
+        // Call specific handlers based on event type using refs
+        switch (payload.eventType) {
+          case "INSERT":
+            onInsertRef.current?.(payload.new as TableRow<T>)
+            break
+          case "UPDATE":
+            onUpdateRef.current?.(payload.new as TableRow<T>, payload.old as TableRow<T>)
+            break
+          case "DELETE":
+            onDeleteRef.current?.(payload.old as TableRow<T>)
+            break
         }
-      )
-      .subscribe()
+      }
+    )
 
     channelRef.current = channel
 
+    // Only subscribe if currently visible (or if pauseWhenHidden is false)
+    // Use ref to get current visibility without adding it to dependencies
+    // The visibility effect will handle subsequent pause/resume
+    if (!pauseWhenHidden || isVisibleRef.current) {
+      channel.subscribe()
+    }
+
     return () => {
-      // Proper cleanup: unsubscribe first, then remove channel
+      // Proper cleanup on unmount or when table/filter/enabled changes
       channel.unsubscribe()
       supabase.removeChannel(channel)
       channelRef.current = null
+      supabaseRef.current = null
     }
-  }, [table, schema, event, filter, isEffectivelyEnabled]) // Removed callback dependencies
+  }, [table, schema, event, filter, enabled, pauseWhenHidden])
 
   return channelRef.current
 }

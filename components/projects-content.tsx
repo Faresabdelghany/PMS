@@ -11,7 +11,7 @@ import { computeFilterCounts, type Project as MockProject } from "@/lib/data/pro
 import { DEFAULT_VIEW_OPTIONS, type FilterChip, type ViewOptions } from "@/lib/view-options"
 import { chipsToParams, paramsToChips } from "@/lib/url/filters"
 import { getProjects, type ProjectWithRelations } from "@/lib/actions/projects"
-import { useProjectsRealtime } from "@/hooks/use-realtime"
+import { usePooledProjectsRealtime } from "@/hooks/realtime-context"
 
 // Convert Supabase project to mock project format for compatibility with existing views
 function toMockProject(p: ProjectWithRelations): MockProject {
@@ -67,7 +67,7 @@ export function ProjectsContent({
   }, [organizationId])
 
   // Real-time updates
-  useProjectsRealtime(organizationId, {
+  usePooledProjectsRealtime(organizationId, {
     onInsert: (project) => {
       setSupabaseProjects(prev => [project as ProjectWithRelations, ...prev])
     },

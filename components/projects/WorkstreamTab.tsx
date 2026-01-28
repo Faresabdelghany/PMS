@@ -54,7 +54,7 @@ import { cn } from "@/lib/utils"
 import { CreateWorkstreamModal } from "./CreateWorkstreamModal"
 import { moveTaskToWorkstream, reorderTasks, updateTaskStatus, deleteTask } from "@/lib/actions/tasks"
 import { deleteWorkstream } from "@/lib/actions/workstreams"
-import { useTasksRealtime, useWorkstreamsRealtime } from "@/hooks/use-realtime"
+import { usePooledTasksRealtime, usePooledWorkstreamsRealtime } from "@/hooks/realtime-context"
 import { formatDueLabel, getDueTone } from "@/lib/date-utils"
 import type { Database } from "@/lib/supabase/types"
 
@@ -143,7 +143,7 @@ export function WorkstreamTab({
   }, [workstreams])
 
   // Real-time task updates
-  useTasksRealtime(projectId, {
+  usePooledTasksRealtime(projectId, {
     onInsert: (task) => {
       if (!task.workstream_id) return
       const workstreamTask = convertTaskToWorkstreamTask(task)
@@ -186,7 +186,7 @@ export function WorkstreamTab({
   })
 
   // Real-time workstream updates
-  useWorkstreamsRealtime(projectId, {
+  usePooledWorkstreamsRealtime(projectId, {
     onInsert: (workstream) => {
       setState((prev) => {
         // Check if workstream already exists
