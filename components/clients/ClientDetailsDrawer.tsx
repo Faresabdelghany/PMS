@@ -26,7 +26,7 @@ import { getClientWithProjects } from "@/lib/actions/clients"
 import { getProjectsByClient, type ProjectWithRelations } from "@/lib/actions/projects"
 import type { QuickLink } from "@/lib/data/project-details"
 import { ClientWizard } from "@/components/clients/ClientWizard"
-import { ProjectWizard } from "@/components/project-wizard/ProjectWizard"
+import { ProjectWizardLazy } from "@/components/project-wizard/ProjectWizardLazy"
 
 interface ClientData {
   id: string
@@ -429,7 +429,7 @@ export function ClientDetailsDrawer({ clientId, onClose }: ClientDetailsDrawerPr
         )}
 
         {isProjectWizardOpen && (
-          <ProjectWizard
+          <ProjectWizardLazy
             onClose={() => setIsProjectWizardOpen(false)}
             onCreate={() => {
               setIsProjectWizardOpen(false)

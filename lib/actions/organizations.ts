@@ -3,8 +3,10 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { revalidatePath, revalidateTag } from "next/cache"
+import { after } from "next/server"
 import { cookies } from "next/headers"
 import { CacheTags } from "@/lib/cache-tags"
+import { requireOrgMember } from "./auth-helpers"
 import type { Organization, OrganizationInsert, OrganizationUpdate, OrgMemberRole } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
@@ -91,8 +93,12 @@ export async function createOrganization(
 
   // Clear the membership cache to reflect the new organization
   await clearOrgMembershipCache()
-  revalidatePath("/", "layout")
-  revalidateTag(CacheTags.organizations(user.id))
+
+  after(() => {
+    revalidatePath("/", "layout")
+    revalidateTag(CacheTags.organizations(user.id))
+  })
+
   return { data: org }
 }
 
@@ -147,6 +153,13 @@ export async function updateOrganization(
   id: string,
   data: OrganizationUpdate
 ): Promise<ActionResult<Organization>> {
+  // Require admin access to update organization
+  try {
+    await requireOrgMember(id, true)
+  } catch {
+    return { error: "Admin access required to update organization" }
+  }
+
   const supabase = await createClient()
 
   const { data: org, error } = await supabase
@@ -160,13 +173,23 @@ export async function updateOrganization(
     return { error: error.message }
   }
 
-  revalidatePath("/", "layout")
-  revalidateTag(CacheTags.organization(id))
+  after(() => {
+    revalidatePath("/", "layout")
+    revalidateTag(CacheTags.organization(id))
+  })
+
   return { data: org }
 }
 
 // Delete organization
 export async function deleteOrganization(id: string): Promise<ActionResult> {
+  // Require admin access to delete organization
+  try {
+    await requireOrgMember(id, true)
+  } catch {
+    return { error: "Admin access required to delete organization" }
+  }
+
   const supabase = await createClient()
 
   const { error } = await supabase.from("organizations").delete().eq("id", id)
@@ -175,9 +198,12 @@ export async function deleteOrganization(id: string): Promise<ActionResult> {
     return { error: error.message }
   }
 
-  revalidatePath("/", "layout")
-  revalidateTag(CacheTags.organization(id))
-  revalidateTag(CacheTags.organizationMembers(id))
+  after(() => {
+    revalidatePath("/", "layout")
+    revalidateTag(CacheTags.organization(id))
+    revalidateTag(CacheTags.organizationMembers(id))
+  })
+
   redirect("/")
 }
 
@@ -206,6 +232,13 @@ export async function updateMemberRole(
   userId: string,
   role: OrgMemberRole
 ): Promise<ActionResult> {
+  // Require admin access to update member roles
+  try {
+    await requireOrgMember(orgId, true)
+  } catch {
+    return { error: "Admin access required to update member roles" }
+  }
+
   const supabase = await createClient()
 
   const { error } = await supabase
@@ -218,13 +251,23 @@ export async function updateMemberRole(
     return { error: error.message }
   }
 
-  revalidatePath("/", "layout")
-  revalidateTag(CacheTags.organizationMembers(orgId))
+  after(() => {
+    revalidatePath("/", "layout")
+    revalidateTag(CacheTags.organizationMembers(orgId))
+  })
+
   return {}
 }
 
 // Remove member from organization
 export async function removeOrganizationMember(orgId: string, userId: string): Promise<ActionResult> {
+  // Require admin access to remove members
+  try {
+    await requireOrgMember(orgId, true)
+  } catch {
+    return { error: "Admin access required to remove members" }
+  }
+
   const supabase = await createClient()
 
   const { error } = await supabase
@@ -239,9 +282,13 @@ export async function removeOrganizationMember(orgId: string, userId: string): P
 
   // Clear the membership cache as user may have lost their only organization
   await clearOrgMembershipCache()
-  revalidatePath("/", "layout")
-  revalidateTag(CacheTags.organizationMembers(orgId))
-  revalidateTag(CacheTags.organizations(userId))
+
+  after(() => {
+    revalidatePath("/", "layout")
+    revalidateTag(CacheTags.organizationMembers(orgId))
+    revalidateTag(CacheTags.organizations(userId))
+  })
+
   return {}
 }
 

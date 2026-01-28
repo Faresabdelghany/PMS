@@ -19,7 +19,7 @@ import { WorkstreamTab } from "@/components/projects/WorkstreamTab"
 import { ProjectTasksTab } from "@/components/projects/ProjectTasksTab"
 import { NotesTab } from "@/components/projects/NotesTab"
 import { AssetsFilesTab } from "@/components/projects/AssetsFilesTab"
-import { ProjectWizard } from "@/components/project-wizard/ProjectWizard"
+import { ProjectWizardLazy } from "@/components/project-wizard/ProjectWizardLazy"
 import { TaskQuickCreateModal, type TaskData, type CreateTaskContext } from "@/components/tasks/TaskQuickCreateModal"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
@@ -490,7 +490,7 @@ export function ProjectDetailsPage({
         <Separator className="mt-auto" />
 
         {isWizardOpen && (
-          <ProjectWizard
+          <ProjectWizardLazy
             onClose={closeWizard}
             onCreate={closeWizard}
             organizationId={supabaseProject.organization_id}

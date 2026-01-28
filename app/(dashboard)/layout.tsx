@@ -10,9 +10,10 @@ import { CommandPaletteProvider } from "@/components/command-palette-provider"
 import type { OrganizationWithRole } from "@/hooks/use-organization"
 import type { Profile, Project } from "@/lib/supabase/types"
 
-async function getOrganizations(userId: string): Promise<OrganizationWithRole[]> {
-  const supabase = await createClient()
-
+async function getOrganizationsWithActiveProjects(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string
+): Promise<{ organizations: OrganizationWithRole[]; activeProjects: Project[] }> {
   const { data, error } = await supabase
     .from("organization_members")
     .select(`
@@ -22,20 +23,36 @@ async function getOrganizations(userId: string): Promise<OrganizationWithRole[]>
     .eq("user_id", userId)
 
   if (error || !data) {
-    return []
+    return { organizations: [], activeProjects: [] }
   }
 
-  return data
+  const organizations = data
     .filter((m) => m.organization)
     .map((m) => ({
       ...(m.organization as unknown as OrganizationWithRole),
       role: m.role as "admin" | "member",
     }))
+
+  // If we have organizations, fetch active projects for the first one in parallel
+  if (organizations.length === 0) {
+    return { organizations, activeProjects: [] }
+  }
+
+  const { data: activeProjects } = await supabase
+    .from("projects")
+    .select("*")
+    .eq("organization_id", organizations[0].id)
+    .eq("status", "active")
+    .order("updated_at", { ascending: false })
+    .limit(7)
+
+  return { organizations, activeProjects: activeProjects || [] }
 }
 
-async function getUserProfile(userId: string): Promise<Profile | null> {
-  const supabase = await createClient()
-
+async function getUserProfile(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string
+): Promise<Profile | null> {
   const { data } = await supabase
     .from("profiles")
     .select("*")
@@ -43,20 +60,6 @@ async function getUserProfile(userId: string): Promise<Profile | null> {
     .single()
 
   return data
-}
-
-async function getActiveProjects(organizationId: string): Promise<Project[]> {
-  const supabase = await createClient()
-
-  const { data } = await supabase
-    .from("projects")
-    .select("*")
-    .eq("organization_id", organizationId)
-    .eq("status", "active")
-    .order("updated_at", { ascending: false })
-    .limit(7)
-
-  return data || []
 }
 
 export default async function DashboardLayout({
@@ -74,17 +77,15 @@ export default async function DashboardLayout({
     redirect("/login")
   }
 
-  const [organizations, profile] = await Promise.all([
-    getOrganizations(user.id),
-    getUserProfile(user.id),
+  // Fetch organizations (with active projects) and profile in parallel
+  const [{ organizations, activeProjects }, profile] = await Promise.all([
+    getOrganizationsWithActiveProjects(supabase, user.id),
+    getUserProfile(supabase, user.id),
   ])
 
   if (organizations.length === 0) {
     redirect("/onboarding")
   }
-
-  // Get active projects for the first organization
-  const activeProjects = await getActiveProjects(organizations[0].id)
 
   return (
     <UserProvider

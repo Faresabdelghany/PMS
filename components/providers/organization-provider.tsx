@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { OrganizationContext, type OrganizationWithRole } from "@/hooks/use-organization"
 
-const ORG_STORAGE_KEY = "selected-organization-id"
+const ORG_STORAGE_KEY = "selected-organization-id-v1"
 
 type OrganizationProviderProps = {
   children: ReactNode
@@ -69,7 +69,14 @@ export function OrganizationProvider({
     // Set current organization
     if (orgs.length > 0) {
       // Try to restore from localStorage
-      const storedOrgId = typeof window !== "undefined" ? localStorage.getItem(ORG_STORAGE_KEY) : null
+      let storedOrgId: string | null = null
+      if (typeof window !== "undefined") {
+        try {
+          storedOrgId = localStorage.getItem(ORG_STORAGE_KEY)
+        } catch {
+          // localStorage unavailable
+        }
+      }
       const storedOrg = storedOrgId ? orgs.find((o) => o.id === storedOrgId) : null
       setOrganization(storedOrg || orgs[0])
     } else {
@@ -88,7 +95,11 @@ export function OrganizationProvider({
   // Persist selected organization
   useEffect(() => {
     if (organization && typeof window !== "undefined") {
-      localStorage.setItem(ORG_STORAGE_KEY, organization.id)
+      try {
+        localStorage.setItem(ORG_STORAGE_KEY, organization.id)
+      } catch {
+        // localStorage unavailable (e.g., private browsing, storage quota exceeded)
+      }
     }
   }, [organization])
 

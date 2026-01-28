@@ -162,7 +162,7 @@ export function TaskQuickCreateModal({
     return project.workstreams.map((ws) => ({ id: ws.id, label: ws.name }))
   }, [projects])
   const [status, setStatus] = useState<StatusOption>(STATUS_OPTIONS[0])
-  const [startDate, setStartDate] = useState<Date | undefined>(new Date())
+  const [startDate, setStartDate] = useState<Date | undefined>(() => new Date())
   const [targetDate, setTargetDate] = useState<Date | undefined>(undefined)
   const [priority, setPriority] = useState<PriorityOption | undefined>(PRIORITY_OPTIONS[0])
   const [selectedTag, setSelectedTag] = useState<TagOption | undefined>(undefined)

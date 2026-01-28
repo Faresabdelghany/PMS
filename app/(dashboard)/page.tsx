@@ -14,12 +14,12 @@ export default async function Page() {
 
   const organization = orgsResult.data[0]
 
-  // Fetch projects for the organization
-  const projectsResult = await getProjects(organization.id)
+  // Fetch projects and clients in parallel
+  const [projectsResult, clientsResult] = await Promise.all([
+    getProjects(organization.id),
+    getClients(organization.id),
+  ])
   const projects = projectsResult.data ?? []
-
-  // Fetch clients for project creation
-  const clientsResult = await getClients(organization.id)
   const clients = clientsResult.data ?? []
 
   return (

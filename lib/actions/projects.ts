@@ -2,7 +2,9 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath, revalidateTag } from "next/cache"
+import { after } from "next/server"
 import { CacheTags } from "@/lib/cache-tags"
+import { requireProjectMember, requireProjectOwnerOrPIC, requireOrgMember } from "./auth-helpers"
 import type {
   Project,
   ProjectInsert,
@@ -140,81 +142,89 @@ export async function createProject(
       throw new Error(`Failed to add project owner: ${ownerError.message}`)
     }
 
-    // 3. Insert deliverables (user is now a project member, RLS will pass)
-    if (validDeliverables.length > 0) {
-      const { error: deliverablesError } = await supabase
-        .from("project_deliverables")
-        .insert(
-          validDeliverables.map((d, index) => ({
-            project_id: project.id,
-            title: d.title.trim(),
-            due_date: d.due_date || null,
-            sort_order: index,
-          }))
-        )
-
-      if (deliverablesError) {
-        throw new Error(`Failed to insert deliverables: ${deliverablesError.message}`)
-      }
-    }
-
-    // 4. Insert metrics
-    if (validMetrics.length > 0) {
-      const { error: metricsError } = await supabase
-        .from("project_metrics")
-        .insert(
-          validMetrics.map((m, index) => ({
-            project_id: project.id,
-            name: m.name.trim(),
-            target: m.target?.trim() || null,
-            sort_order: index,
-          }))
-        )
-
-      if (metricsError) {
-        throw new Error(`Failed to insert metrics: ${metricsError.message}`)
-      }
-    }
-
-    // 5. Add contributors as 'member' role (only valid org members, excluding owner)
+    // Pre-compute contributor and stakeholder lists
     const validContributors = (contributor_ids || []).filter(
       (id) => id !== ownerId && validMemberIds.has(id)
     )
-    if (validContributors.length > 0) {
-      const { error: contributorsError } = await supabase
-        .from("project_members")
-        .insert(
-          validContributors.map((userId) => ({
-            project_id: project.id,
-            user_id: userId,
-            role: "member" as ProjectMemberRole,
-          }))
-        )
-
-      if (contributorsError) {
-        throw new Error(`Failed to add contributors: ${contributorsError.message}`)
-      }
-    }
-
-    // 6. Add stakeholders as 'viewer' role (only valid org members, excluding owner and contributors)
     const contributorSet = new Set(validContributors)
     const validStakeholders = (stakeholder_ids || []).filter(
       (id) => id !== ownerId && !contributorSet.has(id) && validMemberIds.has(id)
     )
-    if (validStakeholders.length > 0) {
-      const { error: stakeholdersError } = await supabase
-        .from("project_members")
-        .insert(
-          validStakeholders.map((userId) => ({
-            project_id: project.id,
-            user_id: userId,
-            role: "viewer" as ProjectMemberRole,
-          }))
-        )
 
-      if (stakeholdersError) {
-        throw new Error(`Failed to add stakeholders: ${stakeholdersError.message}`)
-      }
+    // 3. Insert deliverables, metrics, contributors, and stakeholders in parallel
+    const parallelInserts: Promise<{ error: Error | null }>[] = []
+
+    // Deliverables insert
+    if (validDeliverables.length > 0) {
+      parallelInserts.push(
+        supabase
+          .from("project_deliverables")
+          .insert(
+            validDeliverables.map((d, index) => ({
+              project_id: project.id,
+              title: d.title.trim(),
+              due_date: d.due_date || null,
+              sort_order: index,
+            }))
+          )
+          .then(({ error }) => ({ error: error ? new Error(`Failed to insert deliverables: ${error.message}`) : null }))
+      )
+    }
+
+    // Metrics insert
+    if (validMetrics.length > 0) {
+      parallelInserts.push(
+        supabase
+          .from("project_metrics")
+          .insert(
+            validMetrics.map((m, index) => ({
+              project_id: project.id,
+              name: m.name.trim(),
+              target: m.target?.trim() || null,
+              sort_order: index,
+            }))
+          )
+          .then(({ error }) => ({ error: error ? new Error(`Failed to insert metrics: ${error.message}`) : null }))
+      )
+    }
+
+    // Contributors insert
+    if (validContributors.length > 0) {
+      parallelInserts.push(
+        supabase
+          .from("project_members")
+          .insert(
+            validContributors.map((userId) => ({
+              project_id: project.id,
+              user_id: userId,
+              role: "member" as ProjectMemberRole,
+            }))
+          )
+          .then(({ error }) => ({ error: error ? new Error(`Failed to add contributors: ${error.message}`) : null }))
+      )
+    }
+
+    // Stakeholders insert
+    if (validStakeholders.length > 0) {
+      parallelInserts.push(
+        supabase
+          .from("project_members")
+          .insert(
+            validStakeholders.map((userId) => ({
+              project_id: project.id,
+              user_id: userId,
+              role: "viewer" as ProjectMemberRole,
+            }))
+          )
+          .then(({ error }) => ({ error: error ? new Error(`Failed to add stakeholders: ${error.message}`) : null }))
+      )
+    }
+
+    // Wait for all parallel inserts and check for errors
+    const results = await Promise.all(parallelInserts)
+    const firstError = results.find((r) => r.error)
+    if (firstError?.error) {
+      throw firstError.error
     }
   } catch (relatedError) {
     // Cleanup: delete project if any related insert fails
@@ -224,8 +234,11 @@ export async function createProject(
     }
   }
 
-  revalidatePath("/projects")
-  revalidateTag(CacheTags.projects(orgId))
+  after(() => {
+    revalidatePath("/projects")
+    revalidateTag(CacheTags.projects(orgId))
+  })
+
   return { data: project }
 }
 
@@ -416,6 +429,13 @@ export async function updateProject(
   id: string,
   data: ProjectUpdate
 ): Promise<ActionResult<Project>> {
+  // Require project membership to update
+  try {
+    await requireProjectMember(id)
+  } catch {
+    return { error: "You must be a project member to update this project" }
+  }
+
   const supabase = await createClient()
 
   const { data: project, error } = await supabase
@@ -429,13 +449,16 @@ export async function updateProject(
     return { error: error.message }
   }
 
-  revalidatePath("/projects")
-  revalidatePath(`/projects/${id}`)
-  revalidateTag(CacheTags.project(id))
-  revalidateTag(CacheTags.projectDetails(id))
-  if (project.organization_id) {
-    revalidateTag(CacheTags.projects(project.organization_id))
-  }
+  after(() => {
+    revalidatePath("/projects")
+    revalidatePath(`/projects/${id}`)
+    revalidateTag(CacheTags.project(id))
+    revalidateTag(CacheTags.projectDetails(id))
+    if (project.organization_id) {
+      revalidateTag(CacheTags.projects(project.organization_id))
+    }
+  })
+
   return { data: project }
 }
 
@@ -460,6 +483,13 @@ export async function updateProjectProgress(
 
 // Delete project
 export async function deleteProject(id: string): Promise<ActionResult> {
+  // Require owner/PIC access to delete project
+  try {
+    await requireProjectOwnerOrPIC(id)
+  } catch {
+    return { error: "Owner or PIC access required to delete this project" }
+  }
+
   const supabase = await createClient()
 
   // Get org_id for cache invalidation before deleting
@@ -475,12 +505,15 @@ export async function deleteProject(id: string): Promise<ActionResult> {
     return { error: error.message }
   }
 
-  revalidatePath("/projects")
-  revalidateTag(CacheTags.project(id))
-  revalidateTag(CacheTags.projectDetails(id))
-  if (project?.organization_id) {
-    revalidateTag(CacheTags.projects(project.organization_id))
-  }
+  after(() => {
+    revalidatePath("/projects")
+    revalidateTag(CacheTags.project(id))
+    revalidateTag(CacheTags.projectDetails(id))
+    if (project?.organization_id) {
+      revalidateTag(CacheTags.projects(project.organization_id))
+    }
+  })
+
   return {}
 }
 
@@ -490,6 +523,13 @@ export async function addProjectMember(
   userId: string,
   role: ProjectMemberRole = "member"
 ): Promise<ActionResult<ProjectMember>> {
+  // Require owner/PIC access to add members
+  try {
+    await requireProjectOwnerOrPIC(projectId)
+  } catch {
+    return { error: "Owner or PIC access required to add project members" }
+  }
+
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -509,9 +549,12 @@ export async function addProjectMember(
     return { error: error.message }
   }
 
-  revalidatePath(`/projects/${projectId}`)
-  revalidateTag(CacheTags.project(projectId))
-  revalidateTag(CacheTags.projectMembers(projectId))
+  after(() => {
+    revalidatePath(`/projects/${projectId}`)
+    revalidateTag(CacheTags.project(projectId))
+    revalidateTag(CacheTags.projectMembers(projectId))
+  })
+
   return { data }
 }
 
@@ -521,6 +564,13 @@ export async function updateProjectMemberRole(
   userId: string,
   role: ProjectMemberRole
 ): Promise<ActionResult> {
+  // Require owner/PIC access to update member roles
+  try {
+    await requireProjectOwnerOrPIC(projectId)
+  } catch {
+    return { error: "Owner or PIC access required to update member roles" }
+  }
+
   const supabase = await createClient()
 
   const { error } = await supabase
@@ -533,9 +583,12 @@ export async function updateProjectMemberRole(
     return { error: error.message }
   }
 
-  revalidatePath(`/projects/${projectId}`)
-  revalidateTag(CacheTags.project(projectId))
-  revalidateTag(CacheTags.projectMembers(projectId))
+  after(() => {
+    revalidatePath(`/projects/${projectId}`)
+    revalidateTag(CacheTags.project(projectId))
+    revalidateTag(CacheTags.projectMembers(projectId))
+  })
+
   return {}
 }
 
@@ -544,6 +597,13 @@ export async function removeProjectMember(
   projectId: string,
   userId: string
 ): Promise<ActionResult> {
+  // Require owner/PIC access to remove members
+  try {
+    await requireProjectOwnerOrPIC(projectId)
+  } catch {
+    return { error: "Owner or PIC access required to remove project members" }
+  }
+
   const supabase = await createClient()
 
   const { error } = await supabase
@@ -556,9 +616,12 @@ export async function removeProjectMember(
     return { error: error.message }
   }
 
-  revalidatePath(`/projects/${projectId}`)
-  revalidateTag(CacheTags.project(projectId))
-  revalidateTag(CacheTags.projectMembers(projectId))
+  after(() => {
+    revalidatePath(`/projects/${projectId}`)
+    revalidateTag(CacheTags.project(projectId))
+    revalidateTag(CacheTags.projectMembers(projectId))
+  })
+
   return {}
 }
 

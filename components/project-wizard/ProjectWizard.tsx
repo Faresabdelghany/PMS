@@ -21,6 +21,22 @@ import { useUser } from "@/hooks/use-user";
 
 const QUICK_CREATE_STEP = 100;
 
+// Stable empty array reference to prevent re-renders
+const EMPTY_CLIENTS: { id: string; name: string }[] = [];
+
+// Stable default project data
+const DEFAULT_PROJECT_DATA: ProjectData = {
+  mode: undefined,
+  successType: 'undefined',
+  deliverables: [],
+  metrics: [],
+  description: '',
+  deadlineType: 'none',
+  contributorIds: [],
+  stakeholderIds: [],
+  addStarterTasks: false,
+};
+
 interface ProjectWizardProps {
   onClose: () => void;
   onCreate?: () => void;
@@ -28,24 +44,14 @@ interface ProjectWizardProps {
   clients?: { id: string; name: string }[];
 }
 
-export function ProjectWizard({ onClose, onCreate, organizationId, clients = [] }: ProjectWizardProps) {
+export function ProjectWizard({ onClose, onCreate, organizationId, clients = EMPTY_CLIENTS }: ProjectWizardProps) {
   const { user } = useUser();
   const [isCreating, setIsCreating] = useState(false);
   const [step, setStep] = useState(0);
   const [maxStepReached, setMaxStepReached] = useState(0);
   const [isQuickCreateExpanded, setIsQuickCreateExpanded] = useState(false);
   const [organizationMembers, setOrganizationMembers] = useState<OrganizationMember[]>([]);
-  const [data, setData] = useState<ProjectData>({
-    mode: undefined,
-    successType: 'undefined',
-    deliverables: [],
-    metrics: [],
-    description: '',
-    deadlineType: 'none',
-    contributorIds: [],
-    stakeholderIds: [],
-    addStarterTasks: false,
-  });
+  const [data, setData] = useState<ProjectData>(() => ({ ...DEFAULT_PROJECT_DATA }));
 
   // Fetch organization members on mount
   useEffect(() => {
@@ -82,45 +88,45 @@ export function ProjectWizard({ onClose, onCreate, organizationId, clients = [] 
   // 4: Structure
   // 5: Review
 
-  const updateData = (updates: Partial<ProjectData>) => {
+  const updateData = useCallback((updates: Partial<ProjectData>) => {
     setData(prev => ({ ...prev, ...updates }));
-  };
+  }, []);
 
-  const nextStep = () => {
+  const nextStep = useCallback(() => {
     if (step === 0 && data.mode === 'quick') {
       setStep(QUICK_CREATE_STEP); // Magic number for Quick Create View
       return;
     }
-    
+
     setStep(prev => {
-        const next = prev + 1;
-        setMaxStepReached(m => Math.max(m, next));
-        return next;
+      const next = prev + 1;
+      setMaxStepReached(m => Math.max(m, next));
+      return next;
     });
-  };
+  }, [step, data.mode]);
 
-  const prevStep = () => {
+  const prevStep = useCallback(() => {
     setStep(prev => prev - 1);
-  };
+  }, []);
 
-  const jumpToStep = (s: number) => {
-      // Adjust because stepper index 0 maps to internal step 1
-      setStep(s + 1);
-  }
+  const jumpToStep = useCallback((s: number) => {
+    // Adjust because stepper index 0 maps to internal step 1
+    setStep(s + 1);
+  }, []);
 
-  const handleEditStepFromReview = (targetStep: number) => {
+  const handleEditStepFromReview = useCallback((targetStep: number) => {
     // targetStep uses the internal step index (1-4)
     setStep(targetStep);
-  };
+  }, []);
 
-  const isNextDisabled = () => {
-      if (step === 3 && !data.ownerId) return true; // Step 3: Ownership
-      return false;
-  }
+  const isNextDisabled = useCallback(() => {
+    if (step === 3 && !data.ownerId) return true; // Step 3: Ownership
+    return false;
+  }, [step, data.ownerId]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     onClose();
-  };
+  }, [onClose]);
 
   // Define steps for the stepper (excluding Mode selection)
   const steps = [

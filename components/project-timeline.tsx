@@ -360,10 +360,7 @@ export function ProjectTimeline({ initialProjects = [] }: ProjectTimelineProps) 
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-muted-foreground hidden sm:inline">
-            {viewStartDate.toLocaleString("en", {
-              month: "long",
-              year: "numeric",
-            })}
+            {format(viewStartDate, "MMMM yyyy")}
           </span>
           <div className="hidden md:flex items-center gap-1 ml-4 justify-between">
             <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={() => navigateTime("prev")}>
@@ -672,7 +669,7 @@ export function ProjectTimeline({ initialProjects = [] }: ProjectTimelineProps) 
                     </span>
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    {project.startDate.toLocaleDateString("vi")} - {project.endDate.toLocaleDateString("vi")}
+                    {format(project.startDate, "dd/MM/yyyy")} - {format(project.endDate, "dd/MM/yyyy")}
                   </div>
                 </div>
               </div>

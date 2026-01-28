@@ -26,6 +26,11 @@ import { cn } from "@/lib/utils"
 import type { FilterChip as FilterChipType } from "@/lib/view-options"
 import type { CreateTaskContext } from "@/components/tasks/TaskQuickCreateModal"
 
+// Hoisted regex patterns for performance (avoid recreating on each call)
+const HTML_TAG_REGEX = /<[^>]+>/g
+const WHITESPACE_REGEX = /\s+/g
+const WHITESPACE_TO_DASH_REGEX = /\s+/g
+
 // Generic task type that works with both mock data and Supabase data
 export type TaskLike = {
   id: string
@@ -63,21 +68,32 @@ export type ProjectTaskGroup = {
   tasks: TaskLike[]
 }
 
+// Helper to normalize status (uses hoisted regex)
+function normalizeStatus(s: string): string {
+  return s.toLowerCase().replace(WHITESPACE_TO_DASH_REGEX, "-")
+}
+
 export function filterTasksByChips(tasks: TaskLike[], chips: FilterChipType[]): TaskLike[] {
   if (!chips.length) return tasks
 
-  // Group chips by type
-  const statusValues = chips
-    .filter((chip) => chip.key.toLowerCase() === "status")
-    .map((chip) => chip.value.toLowerCase())
+  // Group chips by type and convert to Sets for O(1) lookup
+  const statusValues = new Set(
+    chips
+      .filter((chip) => chip.key.toLowerCase() === "status")
+      .map((chip) => normalizeStatus(chip.value))
+  )
 
-  const priorityValues = chips
-    .filter((chip) => chip.key.toLowerCase() === "priority")
-    .map((chip) => chip.value.toLowerCase())
+  const priorityValues = new Set(
+    chips
+      .filter((chip) => chip.key.toLowerCase() === "priority")
+      .map((chip) => chip.value.toLowerCase())
+  )
 
-  const tagValues = chips
-    .filter((chip) => chip.key.toLowerCase() === "tag" || chip.key.toLowerCase() === "tags")
-    .map((chip) => chip.value.toLowerCase())
+  const tagValues = new Set(
+    chips
+      .filter((chip) => chip.key.toLowerCase() === "tag" || chip.key.toLowerCase() === "tags")
+      .map((chip) => chip.value.toLowerCase())
+  )
 
   const memberValues = chips
     .filter((chip) => chip.key.toLowerCase().startsWith("member") || chip.key.toLowerCase() === "pic")
@@ -85,30 +101,26 @@ export function filterTasksByChips(tasks: TaskLike[], chips: FilterChipType[]): 
 
   return tasks.filter((task) => {
     // Status filter
-    if (statusValues.length > 0) {
+    if (statusValues.size > 0) {
       // Match against actual task status values (todo, in-progress, done)
       // Handle display label variations (e.g., "to do" -> "todo", "in progress" -> "in-progress")
-      const normalizeStatus = (s: string) => s.toLowerCase().replace(/\s+/g, "-")
       const taskStatus = normalizeStatus(task.status)
-      const matches = statusValues.some((v) => taskStatus === normalizeStatus(v))
-      if (!matches) return false
+      if (!statusValues.has(taskStatus)) return false
     }
 
     // Priority filter
-    if (priorityValues.length > 0) {
+    if (priorityValues.size > 0) {
       const taskPriority = task.priority?.toLowerCase() || "no-priority"
-      const matches = priorityValues.some((v) => taskPriority === v)
-      if (!matches) return false
+      if (!priorityValues.has(taskPriority)) return false
     }
 
     // Tags filter
-    if (tagValues.length > 0) {
+    if (tagValues.size > 0) {
       const taskTag = task.tag?.toLowerCase() || ""
-      const matches = tagValues.some((v) => taskTag === v)
-      if (!matches) return false
+      if (!tagValues.has(taskTag)) return false
     }
 
-    // Member filter
+    // Member filter (kept as array for includes() substring matching)
     if (memberValues.length > 0) {
       const name = task.assignee?.name.toLowerCase() ?? ""
 
@@ -180,7 +192,8 @@ export function computeTaskFilterCounts(tasks: TaskLike[]): FilterCounts {
 
 export function getTaskDescriptionSnippet(task: TaskLike): string {
   if (!task.description) return ""
-  const plain = task.description.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+  // Use hoisted regex patterns for performance
+  const plain = task.description.replace(HTML_TAG_REGEX, " ").replace(WHITESPACE_REGEX, " ").trim()
   return plain
 }
 

@@ -2,7 +2,9 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath, revalidateTag } from "next/cache"
+import { after } from "next/server"
 import { CacheTags } from "@/lib/cache-tags"
+import { requireOrgMember } from "./auth-helpers"
 import type { Client, ClientInsert, ClientUpdate, ClientStatus } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
@@ -18,6 +20,13 @@ export async function createClientAction(
   orgId: string,
   data: Omit<ClientInsert, "organization_id">
 ): Promise<ActionResult<Client>> {
+  // Require org membership
+  try {
+    await requireOrgMember(orgId)
+  } catch {
+    return { error: "You must be an organization member to create clients" }
+  }
+
   const supabase = await createClient()
 
   const { data: client, error } = await supabase
@@ -33,8 +42,11 @@ export async function createClientAction(
     return { error: error.message }
   }
 
-  revalidatePath("/clients")
-  revalidateTag(CacheTags.clients(orgId))
+  after(() => {
+    revalidatePath("/clients")
+    revalidateTag(CacheTags.clients(orgId))
+  })
+
   return { data: client }
 }
 
@@ -96,29 +108,31 @@ export async function getClientWithProjects(
 ): Promise<ActionResult<Client & { project_count: number }>> {
   const supabase = await createClient()
 
-  const { data: client, error: clientError } = await supabase
-    .from("clients")
-    .select("*, owner:profiles(id, full_name, email, avatar_url)")
-    .eq("id", id)
-    .single()
+  // Fetch client and project count in parallel
+  const [clientResult, countResult] = await Promise.all([
+    supabase
+      .from("clients")
+      .select("*, owner:profiles(id, full_name, email, avatar_url)")
+      .eq("id", id)
+      .single(),
+    supabase
+      .from("projects")
+      .select("id", { count: "exact", head: true })
+      .eq("client_id", id),
+  ])
 
-  if (clientError) {
-    return { error: clientError.message }
+  if (clientResult.error) {
+    return { error: clientResult.error.message }
   }
 
-  const { count, error: countError } = await supabase
-    .from("projects")
-    .select("id", { count: "exact", head: true })
-    .eq("client_id", id)
-
-  if (countError) {
-    return { error: countError.message }
+  if (countResult.error) {
+    return { error: countResult.error.message }
   }
 
   return {
     data: {
-      ...client,
-      project_count: count || 0,
+      ...clientResult.data,
+      project_count: countResult.count || 0,
     } as Client & { project_count: number },
   }
 }
@@ -129,6 +143,24 @@ export async function updateClient(
   data: ClientUpdate
 ): Promise<ActionResult<Client>> {
   const supabase = await createClient()
+
+  // First fetch the client to check org membership
+  const { data: existingClient } = await supabase
+    .from("clients")
+    .select("organization_id")
+    .eq("id", id)
+    .single()
+
+  if (!existingClient) {
+    return { error: "Client not found" }
+  }
+
+  // Require org membership
+  try {
+    await requireOrgMember(existingClient.organization_id)
+  } catch {
+    return { error: "You must be an organization member to update clients" }
+  }
 
   const { data: client, error } = await supabase
     .from("clients")
@@ -141,11 +173,14 @@ export async function updateClient(
     return { error: error.message }
   }
 
-  revalidatePath("/clients")
-  revalidateTag(CacheTags.client(id))
-  if (client.organization_id) {
-    revalidateTag(CacheTags.clients(client.organization_id))
-  }
+  after(() => {
+    revalidatePath("/clients")
+    revalidateTag(CacheTags.client(id))
+    if (client.organization_id) {
+      revalidateTag(CacheTags.clients(client.organization_id))
+    }
+  })
+
   return { data: client }
 }
 
@@ -153,12 +188,23 @@ export async function updateClient(
 export async function deleteClient(id: string): Promise<ActionResult> {
   const supabase = await createClient()
 
-  // Get org_id for cache invalidation before deleting
+  // Get org_id for cache invalidation and auth check before deleting
   const { data: client } = await supabase
     .from("clients")
     .select("organization_id")
     .eq("id", id)
     .single()
+
+  if (!client) {
+    return { error: "Client not found" }
+  }
+
+  // Require org membership
+  try {
+    await requireOrgMember(client.organization_id)
+  } catch {
+    return { error: "You must be an organization member to delete clients" }
+  }
 
   // Check if client has projects
   const { count } = await supabase
@@ -176,11 +222,12 @@ export async function deleteClient(id: string): Promise<ActionResult> {
     return { error: error.message }
   }
 
-  revalidatePath("/clients")
-  revalidateTag(CacheTags.client(id))
-  if (client?.organization_id) {
+  after(() => {
+    revalidatePath("/clients")
+    revalidateTag(CacheTags.client(id))
     revalidateTag(CacheTags.clients(client.organization_id))
-  }
+  })
+
   return {}
 }
 

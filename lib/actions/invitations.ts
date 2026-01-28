@@ -30,20 +30,19 @@ export async function inviteMember(
     return { error: "Not authenticated" }
   }
 
-  // Check if email is already a member
+  // Check if email is already a member using Set for O(1) lookup
   const { data: members } = await supabase
     .from("organization_members")
     .select("id, profile:profiles(email)")
     .eq("organization_id", orgId)
 
-  const isAlreadyMember = members?.some(
-    (member) => {
-      const profile = member.profile as { email: string } | null
-      return profile?.email?.toLowerCase() === email.toLowerCase()
-    }
+  const memberEmailSet = new Set(
+    members
+      ?.map((m) => (m.profile as { email: string } | null)?.email?.toLowerCase())
+      .filter((email): email is string => Boolean(email)) || []
   )
 
-  if (isAlreadyMember) {
+  if (memberEmailSet.has(email.toLowerCase())) {
     return { error: "This email is already a member of the organization" }
   }
 

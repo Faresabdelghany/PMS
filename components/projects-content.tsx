@@ -6,7 +6,7 @@ import { ProjectHeader } from "@/components/project-header"
 import { ProjectTimeline } from "@/components/project-timeline"
 import { ProjectCardsView } from "@/components/project-cards-view"
 import { ProjectBoardView } from "@/components/project-board-view"
-import { ProjectWizard } from "@/components/project-wizard/ProjectWizard"
+import { ProjectWizardLazy } from "@/components/project-wizard/ProjectWizardLazy"
 import { computeFilterCounts, type Project as MockProject } from "@/lib/data/projects"
 import { DEFAULT_VIEW_OPTIONS, type FilterChip, type ViewOptions } from "@/lib/view-options"
 import { chipsToParams, paramsToChips } from "@/lib/url/filters"
@@ -218,7 +218,7 @@ export function ProjectsContent({
       {viewOptions.viewType === "list" && <ProjectCardsView projects={filteredProjects} onCreateProject={openWizard} />}
       {viewOptions.viewType === "board" && <ProjectBoardView projects={filteredProjects} onAddProject={openWizard} />}
       {isWizardOpen && (
-        <ProjectWizard
+        <ProjectWizardLazy
           onClose={closeWizard}
           onCreate={handleProjectCreated}
           organizationId={organizationId}

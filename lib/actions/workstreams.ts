@@ -2,6 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { after } from "next/server"
+import { requireProjectMember } from "./auth-helpers"
 import type { Workstream, WorkstreamInsert, WorkstreamUpdate } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
@@ -20,6 +22,14 @@ export async function createWorkstream(
   input: CreateWorkstreamInput
 ): Promise<ActionResult<Workstream>> {
   const { projectId, name, description, startDate, endDate, tag, taskIds } = input
+
+  // Require project membership
+  try {
+    await requireProjectMember(projectId)
+  } catch {
+    return { error: "You must be a project member to create workstreams" }
+  }
+
   const supabase = await createClient()
 
   // Get project to validate end_date
@@ -88,7 +98,10 @@ export async function createWorkstream(
     }
   }
 
-  revalidatePath(`/projects/${projectId}`)
+  after(() => {
+    revalidatePath(`/projects/${projectId}`)
+  })
+
   return { data }
 }
 
@@ -179,6 +192,13 @@ export async function updateWorkstream(
     return { error: "Workstream not found" }
   }
 
+  // Require project membership
+  try {
+    await requireProjectMember(current.project_id)
+  } catch {
+    return { error: "You must be a project member to update workstreams" }
+  }
+
   // Get project to validate end_date
   if (input.endDate) {
     const { data: project } = await supabase
@@ -219,7 +239,10 @@ export async function updateWorkstream(
     return { error: error.message }
   }
 
-  revalidatePath(`/projects/${current.project_id}`)
+  after(() => {
+    revalidatePath(`/projects/${current.project_id}`)
+  })
+
   return { data: workstream }
 }
 
@@ -227,12 +250,23 @@ export async function updateWorkstream(
 export async function deleteWorkstream(id: string): Promise<ActionResult> {
   const supabase = await createClient()
 
-  // Get project_id for revalidation
+  // Get project_id for revalidation and auth check
   const { data: ws } = await supabase
     .from("workstreams")
     .select("project_id")
     .eq("id", id)
     .single()
+
+  if (!ws) {
+    return { error: "Workstream not found" }
+  }
+
+  // Require project membership
+  try {
+    await requireProjectMember(ws.project_id)
+  } catch {
+    return { error: "You must be a project member to delete workstreams" }
+  }
 
   const { error } = await supabase.from("workstreams").delete().eq("id", id)
 
@@ -240,9 +274,10 @@ export async function deleteWorkstream(id: string): Promise<ActionResult> {
     return { error: error.message }
   }
 
-  if (ws) {
+  after(() => {
     revalidatePath(`/projects/${ws.project_id}`)
-  }
+  })
+
   return {}
 }
 
@@ -251,6 +286,13 @@ export async function reorderWorkstreams(
   projectId: string,
   workstreamIds: string[]
 ): Promise<ActionResult> {
+  // Require project membership
+  try {
+    await requireProjectMember(projectId)
+  } catch {
+    return { error: "You must be a project member to reorder workstreams" }
+  }
+
   const supabase = await createClient()
 
   // Update sort_order for each workstream
@@ -269,6 +311,9 @@ export async function reorderWorkstreams(
     return { error: error.message }
   }
 
-  revalidatePath(`/projects/${projectId}`)
+  after(() => {
+    revalidatePath(`/projects/${projectId}`)
+  })
+
   return {}
 }

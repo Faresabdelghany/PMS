@@ -2,7 +2,7 @@
 
 import { useState, createContext, useContext, useCallback, type ReactNode } from "react"
 import { CommandPalette } from "@/components/command-palette"
-import { ProjectWizard } from "@/components/project-wizard/ProjectWizard"
+import { ProjectWizardLazy } from "@/components/project-wizard/ProjectWizardLazy"
 import { TaskQuickCreateModal } from "@/components/tasks/TaskQuickCreateModal"
 import { useOrganization } from "@/hooks/use-organization"
 
@@ -50,7 +50,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
 
       {/* Project Creation Wizard */}
       {showProjectWizard && organization && (
-        <ProjectWizard
+        <ProjectWizardLazy
           organizationId={organization.id}
           onClose={() => setShowProjectWizard(false)}
         />
