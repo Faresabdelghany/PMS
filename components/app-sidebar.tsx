@@ -15,7 +15,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ProgressCircle } from "@/components/progress-circle"
 import {
@@ -34,6 +33,7 @@ import {
 import { useUser } from "@/hooks/use-user"
 import { signOut } from "@/lib/actions/auth"
 import type { Project } from "@/lib/supabase/types"
+import { useCommandPalette } from "@/components/command-palette"
 
 // Navigation items defined inline (no mock data dependency)
 type NavItemId = "inbox" | "my-tasks" | "projects" | "clients" | "performance"
@@ -93,6 +93,7 @@ const footerItemIcons: Record<SidebarFooterItemId, React.ComponentType<{ classNa
 export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
   const pathname = usePathname()
   const { profile, user } = useUser()
+  const { open: openCommandPalette } = useCommandPalette()
 
   const getHrefForNavItem = (id: NavItemId): string => {
     if (id === "my-tasks") return "/tasks"
@@ -139,16 +140,18 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
 
       <SidebarContent className="px-0 gap-0">
         <SidebarGroup>
-          <div className="relative px-0 py-0">
+          <button
+            onClick={openCommandPalette}
+            className="relative w-full px-0 py-0 text-left"
+          >
             <MagnifyingGlass className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search"
-              className="h-9 rounded-lg bg-muted/50 pl-8 text-sm placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary/20 border-border border shadow-none"
-            />
+            <div className="h-9 rounded-lg bg-muted/50 pl-8 text-sm text-muted-foreground flex items-center border-border border shadow-none cursor-pointer hover:bg-muted/70 transition-colors">
+              Search
+            </div>
             <kbd className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
               <span className="text-xs">⌘</span>K
             </kbd>
-          </div>
+          </button>
         </SidebarGroup>
 
         <SidebarGroup>
