@@ -1,4 +1,22 @@
 import { defineConfig, devices } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// Load test environment variables from e2e/.env.test
+const envTestPath = path.join(__dirname, 'e2e', '.env.test');
+if (fs.existsSync(envTestPath)) {
+  const envContent = fs.readFileSync(envTestPath, 'utf-8');
+  for (const line of envContent.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#')) {
+      const [key, ...valueParts] = trimmed.split('=');
+      const value = valueParts.join('=').replace(/^["']|["']$/g, ''); // Remove quotes
+      if (key && !process.env[key]) {
+        process.env[key] = value;
+      }
+    }
+  }
+}
 
 /**
  * Playwright configuration for Project Dashboard E2E tests

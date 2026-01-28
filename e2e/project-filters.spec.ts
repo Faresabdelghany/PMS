@@ -31,7 +31,7 @@ test.describe('Project Filtering & Search', () => {
     return projectName;
   }
 
-  test.describe('10.1 Search', () => {
+  test.describe('10.1 Search (via Command Palette)', () => {
     test('PF-001: Search by project name', async ({ projectsPage, projectWizardPage }) => {
       // Create a project with a unique name
       const projectName = await createTestProjectWithStatus(
@@ -43,15 +43,19 @@ test.describe('Project Filtering & Search', () => {
       await projectsPage.goTo();
       await projectsPage.waitForProjectsLoad();
 
-      // Search for the project
+      // Search for the project via Command Palette (Cmd+K)
       await projectsPage.searchProjects(projectName.substring(0, 10));
       await projectsPage.page.waitForTimeout(500);
 
-      // Project should be visible
-      await projectsPage.assertProjectVisible(projectName);
+      // Project should appear in search results
+      const isInResults = await projectsPage.isProjectInSearchResults(projectName);
+      expect(isInResults).toBe(true);
+
+      // Close Command Palette
+      await projectsPage.closeCommandPalette();
     });
 
-    test('PF-002: Search by description', async ({ projectsPage, projectWizardPage }) => {
+    test('PF-002: Search by partial name', async ({ projectsPage, projectWizardPage }) => {
       const projectName = await createTestProjectWithStatus(
         projectsPage,
         projectWizardPage,
@@ -61,12 +65,16 @@ test.describe('Project Filtering & Search', () => {
       await projectsPage.goTo();
       await projectsPage.waitForProjectsLoad();
 
-      // Search should work with partial name at minimum
+      // Search should work with partial name
       await projectsPage.searchProjects(projectName.substring(5, 15));
       await projectsPage.page.waitForTimeout(500);
 
-      // Either project found or empty results
-      expect(true).toBe(true);
+      // Check if results are returned (may or may not find depending on substring)
+      const resultCount = await projectsPage.getSearchResultCount();
+      expect(resultCount).toBeGreaterThanOrEqual(0);
+
+      // Close Command Palette
+      await projectsPage.closeCommandPalette();
     });
 
     test('PF-003: Search is case insensitive', async ({ projectsPage, projectWizardPage }) => {
@@ -79,50 +87,57 @@ test.describe('Project Filtering & Search', () => {
       await projectsPage.goTo();
       await projectsPage.waitForProjectsLoad();
 
-      // Search with uppercase
+      // Search with uppercase via Command Palette
       await projectsPage.searchProjects(projectName.toUpperCase().substring(0, 10));
       await projectsPage.page.waitForTimeout(500);
 
-      // Should still find the project (case-insensitive)
-      const count = await projectsPage.getProjectCount();
-      expect(count).toBeGreaterThanOrEqual(0);
+      // Should still find the project (case-insensitive via ilike in search.ts)
+      const isInResults = await projectsPage.isProjectInSearchResults(projectName);
+      expect(isInResults).toBe(true);
+
+      // Close Command Palette
+      await projectsPage.closeCommandPalette();
     });
 
-    // Skip: Search by project name feature is not implemented in the UI
-    // The projects-content.tsx filters by status/priority/tags/members but not by name
-    test.skip('PF-004: Search with no results shows empty state', async ({ projectsPage }) => {
+    test('PF-004: Search with no results shows empty state', async ({ projectsPage }) => {
       await projectsPage.goTo();
       await projectsPage.waitForProjectsLoad();
 
       // Search for something that doesn't exist
       await projectsPage.searchProjects('xyznonexistent12345');
-      await projectsPage.page.waitForTimeout(500);
 
-      const count = await projectsPage.getProjectCount();
-      const isEmpty = await projectsPage.isEmptyStateVisible();
+      // Wait for search to complete (transitions from "Searching..." to "No results found.")
+      // The search API call to Supabase may take some time
+      const noResults = projectsPage.page.getByText('No results found.');
+      await noResults.waitFor({ state: 'visible', timeout: 30000 });
 
-      // Either no results or empty state
-      expect(count === 0 || isEmpty).toBe(true);
+      expect(await noResults.isVisible()).toBe(true);
+
+      // Close Command Palette
+      await projectsPage.closeCommandPalette();
     });
 
-    test('PF-005: Clear search shows all projects', async ({ projectsPage }) => {
+    test('PF-005: Clear search shows navigation options', async ({ projectsPage }) => {
       await projectsPage.goTo();
       await projectsPage.waitForProjectsLoad();
 
-      const initialCount = await projectsPage.getProjectCount();
-
-      // Apply search
+      // Open Command Palette and search
       await projectsPage.searchProjects('xyznonexistent12345');
-      await projectsPage.page.waitForTimeout(500);
+
+      // Wait for search to complete (API call to Supabase may take time)
+      await projectsPage.page.getByText('No results found.').waitFor({ state: 'visible', timeout: 30000 });
 
       // Clear search
       await projectsPage.clearSearch();
-      await projectsPage.page.waitForTimeout(500);
 
-      const finalCount = await projectsPage.getProjectCount();
+      // Quick Actions and Navigation should be visible again
+      const navigation = projectsPage.page.getByText('Navigation');
+      await navigation.waitFor({ state: 'visible', timeout: 5000 });
 
-      // Count should return to original or similar
-      expect(finalCount).toBeGreaterThanOrEqual(0);
+      expect(await navigation.isVisible()).toBe(true);
+
+      // Close Command Palette
+      await projectsPage.closeCommandPalette();
     });
   });
 

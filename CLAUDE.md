@@ -97,6 +97,7 @@ npx supabase status                     # Check local services status
 
 **Server Actions:** All actions return `ActionResult<T>` type (`{ data?, error? }`) from `lib/actions/types.ts`.
 - `lib/actions/auth.ts` - Authentication (signIn, signUp, signOut, OAuth)
+- `lib/actions/auth-helpers.ts` - Authorization helpers (`requireAuth`, `requireOrgMember`, `requireProjectMember`)
 - `lib/actions/organizations.ts` - Organization CRUD and member management
 - `lib/actions/projects.ts` - Project CRUD and member management
 - `lib/actions/project-details.ts` - Project details fetching with relations
@@ -105,6 +106,7 @@ npx supabase status                     # Check local services status
 - `lib/actions/workstreams.ts` - Workstream CRUD and reordering
 - `lib/actions/files.ts` - File upload/download to Supabase Storage
 - `lib/actions/notes.ts` - Notes CRUD with audio support
+- `lib/actions/inbox.ts` - User inbox/notifications
 - `lib/actions/invitations.ts` - Organization member invitations
 - `lib/actions/teams.ts` - Team CRUD
 - `lib/actions/ai.ts` - AI generation (OpenAI, Anthropic, Google)
@@ -120,7 +122,13 @@ npx supabase status                     # Check local services status
 
 **Path aliases:** Use `@/` for imports (e.g., `@/components/ui/button`)
 
-**Server Actions:** All data mutations use Next.js Server Actions in `lib/actions/`. Actions return `ActionResult<T>` (`{ data?, error? }`) pattern.
+**Server Actions:** All data mutations use Next.js Server Actions in `lib/actions/`. Actions return `ActionResult<T>` (`{ data?, error? }`) pattern. Use auth helpers for authorization:
+```typescript
+const { user, supabase } = await requireAuth()           // Basic auth
+const ctx = await requireOrgMember(orgId)                // Org membership
+const ctx = await requireProjectMember(projectId)       // Project membership
+const ctx = await requireProjectOwnerOrPIC(projectId)   // Elevated access
+```
 
 **Authentication Flow:**
 1. User signs up/in via `/login` or `/signup`
@@ -166,6 +174,7 @@ export default async function Page({ params }: PageProps) {
 - `tasks` - Task management
 - `workstreams` - Task grouping within projects
 - `project_files`, `project_notes` - Project assets
+- `inbox_items` - User notifications/inbox
 
 **Real-time Hooks:** Two realtime systems available:
 - `hooks/use-realtime.ts` - Individual hooks: `useTasksRealtime`, `useWorkstreamsRealtime`, `useProjectsRealtime`, etc.

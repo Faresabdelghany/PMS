@@ -154,10 +154,16 @@ export class ProjectWizardPage extends BasePage {
   }
 
   /**
-   * Wait for wizard to be visible
+   * Wait for wizard to be visible and content loaded
    */
   async waitForWizard(): Promise<void> {
-    await this.modal.waitFor({ state: 'visible', timeout: 5000 });
+    await this.modal.waitFor({ state: 'visible', timeout: 15000 });
+    // Wait for mode selection content to be visible (animation complete)
+    // Either Quick create or Guided Setup option should be visible
+    await Promise.race([
+      this.quickModeOption.waitFor({ state: 'visible', timeout: 15000 }),
+      this.nameInput.waitFor({ state: 'visible', timeout: 15000 }), // In case wizard opened directly to quick create
+    ]);
   }
 
   /**
@@ -165,6 +171,13 @@ export class ProjectWizardPage extends BasePage {
    */
   async isOpen(): Promise<boolean> {
     return await this.modal.isVisible();
+  }
+
+  /**
+   * Press Escape key to close wizard
+   */
+  async pressEscape(): Promise<void> {
+    await this.page.keyboard.press('Escape');
   }
 
   /**

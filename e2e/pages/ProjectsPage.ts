@@ -42,6 +42,12 @@ export class ProjectsPage extends BasePage {
   readonly activeColumn: Locator;
   readonly completedColumn: Locator;
 
+  // Command Palette (global search via Cmd+K)
+  readonly commandPaletteDialog: Locator;
+  readonly commandPaletteInput: Locator;
+  readonly commandPaletteResults: Locator;
+  readonly commandPaletteProjectResults: Locator;
+
   constructor(page: Page, baseURL: string) {
     super(page, baseURL);
 
@@ -88,6 +94,15 @@ export class ProjectsPage extends BasePage {
     this.plannedColumn = page.locator('[data-status="planned"]').or(page.locator('[data-testid="column-planned"]'));
     this.activeColumn = page.locator('[data-status="active"]').or(page.locator('[data-testid="column-active"]'));
     this.completedColumn = page.locator('[data-status="completed"]').or(page.locator('[data-testid="column-completed"]'));
+
+    // Command Palette (global search via Cmd+K / Ctrl+K)
+    // Uses Radix Dialog + cmdk Command component
+    this.commandPaletteDialog = page.locator('[role="dialog"]').filter({
+      has: page.locator('[data-slot="command"]')
+    });
+    this.commandPaletteInput = page.getByPlaceholder(/search projects, tasks, clients/i);
+    this.commandPaletteResults = page.locator('[data-slot="command-list"]');
+    this.commandPaletteProjectResults = page.locator('[data-slot="command-group"]').filter({ hasText: 'Projects' });
   }
 
   /**
@@ -124,25 +139,78 @@ export class ProjectsPage extends BasePage {
    * Test case: PL-007
    */
   async clickAddProject(): Promise<void> {
+    // Wait for button to be visible and clickable
+    await this.addProjectButton.waitFor({ state: 'visible', timeout: 15000 });
     await this.addProjectButton.click();
   }
 
   /**
-   * Search for projects
-   * Test cases: PF-001 through PF-005
+   * Open Command Palette with keyboard shortcut
    */
-  async searchProjects(query: string): Promise<void> {
-    await this.searchInput.fill(query);
-    await this.searchInput.press('Enter');
-    await this.page.waitForTimeout(500); // Wait for filter to apply
+  async openCommandPalette(): Promise<void> {
+    // Use Meta+k for Mac, Control+k for others
+    const isMac = process.platform === 'darwin';
+    await this.page.keyboard.press(isMac ? 'Meta+k' : 'Control+k');
+    await this.commandPaletteDialog.waitFor({ state: 'visible', timeout: 5000 });
   }
 
   /**
-   * Clear search input
+   * Close Command Palette
+   */
+  async closeCommandPalette(): Promise<void> {
+    if (await this.commandPaletteDialog.isVisible()) {
+      await this.page.keyboard.press('Escape');
+      await this.commandPaletteDialog.waitFor({ state: 'hidden', timeout: 3000 });
+    }
+  }
+
+  /**
+   * Search for projects via Command Palette (Cmd+K / Ctrl+K)
+   * Test cases: PF-001 through PF-005
+   */
+  async searchProjects(query: string): Promise<void> {
+    // Open Command Palette if not already open
+    if (!await this.commandPaletteDialog.isVisible()) {
+      await this.openCommandPalette();
+    }
+
+    // Type search query
+    await this.commandPaletteInput.fill(query);
+    await this.page.waitForTimeout(500); // Wait for search results (debounced)
+  }
+
+  /**
+   * Get search results from Command Palette
+   */
+  async getSearchResultCount(): Promise<number> {
+    const items = this.commandPaletteResults.locator('[data-slot="command-item"]');
+    return await items.count();
+  }
+
+  /**
+   * Click on a search result in Command Palette
+   */
+  async clickSearchResult(name: string): Promise<void> {
+    const result = this.commandPaletteResults.locator('[data-slot="command-item"]').filter({ hasText: name });
+    await result.first().click();
+  }
+
+  /**
+   * Check if project appears in search results
+   */
+  async isProjectInSearchResults(name: string): Promise<boolean> {
+    const result = this.commandPaletteProjectResults.locator('[data-slot="command-item"]').filter({ hasText: name });
+    return await result.isVisible();
+  }
+
+  /**
+   * Clear search input in Command Palette
    */
   async clearSearch(): Promise<void> {
-    await this.searchInput.clear();
-    await this.page.waitForTimeout(500);
+    if (await this.commandPaletteDialog.isVisible()) {
+      await this.commandPaletteInput.clear();
+      await this.page.waitForTimeout(300);
+    }
   }
 
   /**
