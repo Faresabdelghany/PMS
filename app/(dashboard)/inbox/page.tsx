@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation"
 import { InboxContent } from "@/components/inbox/InboxContent"
-import { getUserOrganizations } from "@/lib/actions/organizations"
+import { cachedGetUserOrganizations } from "@/lib/request-cache"
 import { getInboxItems, getUnreadCount } from "@/lib/actions/inbox"
 
 export default async function Page() {
-  // Get user's organizations
-  const orgsResult = await getUserOrganizations()
+  // Use cached orgs - shared with layout (no duplicate DB hit)
+  const orgsResult = await cachedGetUserOrganizations()
 
   if (orgsResult.error || !orgsResult.data?.length) {
     redirect("/onboarding")

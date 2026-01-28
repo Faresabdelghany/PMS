@@ -1,17 +1,17 @@
 import { redirect } from "next/navigation"
 import { ClientsContent } from "@/components/clients-content"
-import { getClientsWithProjectCounts } from "@/lib/actions/clients"
-import { getUserOrganizations } from "@/lib/actions/organizations"
+import { cachedGetUserOrganizations, cachedGetClientsWithProjectCounts } from "@/lib/request-cache"
 
 export default async function Page() {
-  const orgsResult = await getUserOrganizations()
+  // Use cached orgs - shared with layout (no duplicate DB hit)
+  const orgsResult = await cachedGetUserOrganizations()
 
   if (orgsResult.error || !orgsResult.data?.length) {
     redirect("/login")
   }
 
   const organizationId = orgsResult.data[0].id
-  const result = await getClientsWithProjectCounts(organizationId)
+  const result = await cachedGetClientsWithProjectCounts(organizationId)
   const clients = result.data || []
 
   return <ClientsContent initialClients={clients} organizationId={organizationId} />

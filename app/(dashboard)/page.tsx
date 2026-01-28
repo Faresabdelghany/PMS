@@ -1,12 +1,10 @@
 import { redirect } from "next/navigation"
 import { ProjectsContent } from "@/components/projects-content"
-import { getUserOrganizations } from "@/lib/actions/organizations"
-import { getProjects } from "@/lib/actions/projects"
-import { getClients } from "@/lib/actions/clients"
+import { cachedGetUserOrganizations, cachedGetProjects, cachedGetClients } from "@/lib/request-cache"
 
 export default async function Page() {
-  // Get user's organizations
-  const orgsResult = await getUserOrganizations()
+  // Use cached orgs - shared with layout (no duplicate DB hit)
+  const orgsResult = await cachedGetUserOrganizations()
 
   if (orgsResult.error || !orgsResult.data?.length) {
     redirect("/onboarding")
@@ -16,8 +14,8 @@ export default async function Page() {
 
   // Fetch projects and clients in parallel
   const [projectsResult, clientsResult] = await Promise.all([
-    getProjects(organization.id),
-    getClients(organization.id),
+    cachedGetProjects(organization.id),
+    cachedGetClients(organization.id),
   ])
   const projects = projectsResult.data ?? []
   const clients = clientsResult.data ?? []

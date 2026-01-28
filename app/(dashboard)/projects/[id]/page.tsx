@@ -13,8 +13,13 @@ type PageProps = {
 export default async function Page({ params }: PageProps) {
   const { id } = await params
 
-  // Fetch project first to get organization_id
-  const projectResult = await getProjectWithDetails(id)
+  // Start all project-id-dependent queries in parallel immediately
+  // This eliminates the waterfall where tasks/workstreams waited for project
+  const [projectResult, tasksResult, workstreamsResult] = await Promise.all([
+    getProjectWithDetails(id),
+    getTasks(id),
+    getWorkstreamsWithTasks(id),
+  ])
 
   if (projectResult.error || !projectResult.data) {
     notFound()
@@ -22,10 +27,8 @@ export default async function Page({ params }: PageProps) {
 
   const organizationId = projectResult.data.organization_id
 
-  // Fetch tasks, workstreams, clients, and org members in parallel
-  const [tasksResult, workstreamsResult, clientsResult, membersResult] = await Promise.all([
-    getTasks(id),
-    getWorkstreamsWithTasks(id),
+  // Now fetch org-dependent data (clients, members) in parallel
+  const [clientsResult, membersResult] = await Promise.all([
     getClients(organizationId),
     getOrganizationMembers(organizationId),
   ])

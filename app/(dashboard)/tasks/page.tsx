@@ -1,36 +1,39 @@
 import { redirect } from "next/navigation"
 import { MyTasksPage } from "@/components/tasks/MyTasksPage"
-import { getUserOrganizations, getOrganizationMembers } from "@/lib/actions/organizations"
-import { getMyTasks } from "@/lib/actions/tasks"
-import { getProjects } from "@/lib/actions/projects"
+import { cachedGetUser, cachedGetUserOrganizations, cachedGetOrganizationMembers, cachedGetProjects, cachedGetMyTasks } from "@/lib/request-cache"
+import type { TaskWithRelations } from "@/lib/actions/tasks"
+import type { ProjectWithRelations } from "@/lib/actions/projects"
 
 export default async function Page() {
-  // Get user's organizations
-  const orgsResult = await getUserOrganizations()
+  // Use cached auth - shared with layout (no duplicate DB hit)
+  const { user, error: authError } = await cachedGetUser()
+
+  if (authError || !user) {
+    redirect("/login")
+  }
+
+  // Use cached orgs - shared with layout (no duplicate DB hit)
+  const orgsResult = await cachedGetUserOrganizations()
 
   if (orgsResult.error || !orgsResult.data?.length) {
     redirect("/onboarding")
   }
 
-  const organization = orgsResult.data[0]
+  const orgId = orgsResult.data[0].id
 
-  // Fetch data in parallel
+  // Fetch all data in parallel (these are specific to this page)
   const [tasksResult, projectsResult, membersResult] = await Promise.all([
-    getMyTasks(organization.id),
-    getProjects(organization.id),
-    getOrganizationMembers(organization.id),
+    cachedGetMyTasks(orgId),
+    cachedGetProjects(orgId),
+    cachedGetOrganizationMembers(orgId),
   ])
-
-  const tasks = tasksResult.data ?? []
-  const projects = projectsResult.data ?? []
-  const members = membersResult.data ?? []
 
   return (
     <MyTasksPage
-      initialTasks={tasks}
-      projects={projects}
-      organizationId={organization.id}
-      organizationMembers={members}
+      initialTasks={(tasksResult.data || []) as TaskWithRelations[]}
+      projects={(projectsResult.data || []) as ProjectWithRelations[]}
+      organizationId={orgId}
+      organizationMembers={membersResult.data || []}
     />
   )
 }

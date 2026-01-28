@@ -1,4 +1,5 @@
 import { cache } from "react"
+import { createClient } from "@/lib/supabase/server"
 
 /**
  * Request-level cache utilities
@@ -16,6 +17,16 @@ import { cache } from "react"
 
 // Lazy imports to avoid circular dependencies and keep server actions in their files
 // We use dynamic imports inside the cached functions
+
+/**
+ * Cached auth check - deduplicates supabase.auth.getUser() within a single request
+ * This is critical for performance: layout and pages can both call this without duplicate DB hits
+ */
+export const cachedGetUser = cache(async () => {
+  const supabase = await createClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  return { user, error, supabase }
+})
 
 /**
  * Cached version of getProjects - deduplicates within a single request

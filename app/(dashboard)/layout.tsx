@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
 import { cacheGet, CacheKeys, CacheTTL } from "@/lib/cache"
+import { cachedGetUser } from "@/lib/request-cache"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { OrganizationProvider } from "@/components/providers/organization-provider"
@@ -10,9 +10,13 @@ import { RealtimeProvider } from "@/hooks/realtime-context"
 import { CommandPaletteProvider } from "@/components/command-palette-provider"
 import type { OrganizationWithRole } from "@/hooks/use-organization"
 import type { Profile, Project } from "@/lib/supabase/types"
+import type { SupabaseClient } from "@supabase/supabase-js"
+import type { Database } from "@/lib/supabase/database.types"
+
+type TypedSupabaseClient = SupabaseClient<Database>
 
 async function getOrganizations(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: TypedSupabaseClient,
   userId: string
 ): Promise<OrganizationWithRole[]> {
   return cacheGet(
@@ -42,7 +46,7 @@ async function getOrganizations(
 }
 
 async function getActiveProjects(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: TypedSupabaseClient,
   organizationId: string
 ): Promise<Project[]> {
   return cacheGet(
@@ -63,7 +67,7 @@ async function getActiveProjects(
 }
 
 async function getUserProfile(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: TypedSupabaseClient,
   userId: string
 ): Promise<Profile | null> {
   return cacheGet(
@@ -86,29 +90,30 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Use cached auth - shared with child pages (no duplicate DB hit)
+  const { user, supabase } = await cachedGetUser()
 
   if (!user) {
     redirect("/login")
   }
 
-  // Start organizations and profile queries in parallel (no dependencies)
-  const [organizations, profile] = await Promise.all([
-    getOrganizations(supabase, user.id),
-    getUserProfile(supabase, user.id),
-  ])
+  // Start ALL queries in parallel - no waterfall!
+  // We start activeProjects query speculatively and check org access afterward
+  const orgsPromise = getOrganizations(supabase, user.id)
+  const profilePromise = getUserProfile(supabase, user.id)
+
+  // Wait for orgs first to check if user has any (fast due to KV cache)
+  const organizations = await orgsPromise
 
   if (organizations.length === 0) {
     redirect("/onboarding")
   }
 
-  // Now that we have org ID, fetch active projects
-  // This query starts immediately after we have the org ID
-  const activeProjects = await getActiveProjects(supabase, organizations[0].id)
+  // Now fetch profile and activeProjects in parallel
+  const [profile, activeProjects] = await Promise.all([
+    profilePromise,
+    getActiveProjects(supabase, organizations[0].id),
+  ])
 
   return (
     <UserProvider
