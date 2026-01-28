@@ -23,6 +23,7 @@ export type NoteType = "general" | "meeting" | "audio"
 export type NoteStatus = "completed" | "processing"
 export type FileType = "pdf" | "zip" | "fig" | "doc" | "file" | "image" | "video" | "audio"
 export type InboxItemType = "comment" | "task_update" | "client_update" | "project_milestone" | "system"
+export type LabelCategory = "type" | "duration" | "group" | "badge"
 
 export interface Database {
   public: {
@@ -905,6 +906,85 @@ export interface Database {
           }
         ]
       }
+      organization_tags: {
+        Row: {
+          id: string
+          organization_id: string
+          name: string
+          description: string | null
+          color: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          name: string
+          description?: string | null
+          color: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          name?: string
+          description?: string | null
+          color?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_tags_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      organization_labels: {
+        Row: {
+          id: string
+          organization_id: string
+          category: LabelCategory
+          name: string
+          description: string | null
+          color: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          category: LabelCategory
+          name: string
+          description?: string | null
+          color: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          category?: LabelCategory
+          name?: string
+          description?: string | null
+          color?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_labels_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1041,3 +1121,12 @@ export type InboxItemWithRelations = InboxItem & {
   task?: Task | null
   client?: Client | null
 }
+
+// Organization Tags & Labels
+export type OrganizationTag = Database["public"]["Tables"]["organization_tags"]["Row"]
+export type OrganizationTagInsert = Database["public"]["Tables"]["organization_tags"]["Insert"]
+export type OrganizationTagUpdate = Database["public"]["Tables"]["organization_tags"]["Update"]
+
+export type OrganizationLabel = Database["public"]["Tables"]["organization_labels"]["Row"]
+export type OrganizationLabelInsert = Database["public"]["Tables"]["organization_labels"]["Insert"]
+export type OrganizationLabelUpdate = Database["public"]["Tables"]["organization_labels"]["Update"]
