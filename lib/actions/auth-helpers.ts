@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/supabase/database.types"
+import { cacheGet, CacheKeys, CacheTTL } from "@/lib/cache"
 
 type TypedSupabaseClient = SupabaseClient<Database>
 
@@ -50,14 +51,23 @@ export async function requireOrgMember(
 ): Promise<OrgMemberContext> {
   const { user, supabase } = await requireAuth()
 
-  const { data: member, error } = await supabase
-    .from("organization_members")
-    .select("role")
-    .eq("organization_id", orgId)
-    .eq("user_id", user.id)
-    .single()
+  const member = await cacheGet(
+    CacheKeys.membership(orgId, user.id),
+    async () => {
+      const { data, error } = await supabase
+        .from("organization_members")
+        .select("role")
+        .eq("organization_id", orgId)
+        .eq("user_id", user.id)
+        .single()
 
-  if (error || !member) {
+      if (error || !data) return null
+      return { role: data.role as "admin" | "member" }
+    },
+    CacheTTL.MEMBERSHIP
+  )
+
+  if (!member) {
     throw new Error("Not a member of this organization")
   }
 
@@ -68,7 +78,7 @@ export async function requireOrgMember(
   return {
     user,
     supabase,
-    member: { role: member.role as "admin" | "member" },
+    member,
   }
 }
 
