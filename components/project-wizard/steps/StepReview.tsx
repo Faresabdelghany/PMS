@@ -85,7 +85,7 @@ export function StepReview({ data, updateData, onEditStep }: StepReviewProps) {
 
   return (
     <div className="flex flex-col space-y-4 bg-muted p-4 rounded-2xl">
-      <p className="text-sm text-muted-foreground">Everything look good? You're ready to go.</p>
+      <p className="text-sm text-muted-foreground">Everything look good? You&apos;re ready to go.</p>
 
       {/* Project Name */}
       <div className="space-y-2">

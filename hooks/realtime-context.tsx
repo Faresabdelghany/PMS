@@ -122,7 +122,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       const channelName = `pooled:${key}`
       const channel = supabase.channel(channelName)
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const config: any = {
         event: "*",
         schema: "public",

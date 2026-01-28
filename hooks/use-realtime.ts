@@ -110,7 +110,7 @@ export function useRealtime<T extends TableName>({
     const channel = supabase.channel(channelName)
 
     // Subscribe to changes - use type assertion for the config object
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const config: any = {
       event,
       schema,

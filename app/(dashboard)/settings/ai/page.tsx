@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -78,14 +78,16 @@ export default function AISettingsPage() {
   }, [])
 
   // Update model when provider changes
+  const prevProviderRef = useRef(provider)
   useEffect(() => {
-    if (provider && AI_MODELS[provider]) {
-      // Set default model for provider if no model selected
-      if (!model || !AI_MODELS[provider].find((m) => m.value === model)) {
+    // Only update model if provider actually changed
+    if (prevProviderRef.current !== provider) {
+      prevProviderRef.current = provider
+      if (provider && AI_MODELS[provider]) {
         setModel(AI_MODELS[provider][0].value)
+      } else {
+        setModel("")
       }
-    } else {
-      setModel("")
     }
   }, [provider])
 
@@ -302,7 +304,7 @@ export default function AISettingsPage() {
               )}
               {!maskedKey && (
                 <p className="text-xs text-muted-foreground">
-                  Get your API key from your provider's dashboard.
+                  Get your API key from your provider&apos;s dashboard.
                 </p>
               )}
             </div>
@@ -418,7 +420,7 @@ export default function AISettingsPage() {
         <CardHeader>
           <CardTitle>AI-Powered Features</CardTitle>
           <CardDescription>
-            Once configured, you'll have access to these AI features:
+            Once configured, you&apos;ll have access to these AI features:
           </CardDescription>
         </CardHeader>
         <CardContent>

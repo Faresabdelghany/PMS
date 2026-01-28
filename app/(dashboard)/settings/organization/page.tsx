@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -57,14 +57,7 @@ export default function OrganizationSettingsPage() {
   const [isInviting, setIsInviting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (organization) {
-      setName(organization.name)
-      loadData()
-    }
-  }, [organization])
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     if (!organization) return
     setIsLoading(true)
 
@@ -81,7 +74,14 @@ export default function OrganizationSettingsPage() {
     }
 
     setIsLoading(false)
-  }
+  }, [organization])
+
+  useEffect(() => {
+    if (organization) {
+      setName(organization.name)
+      loadData()
+    }
+  }, [organization, loadData])
 
   async function handleSave() {
     if (!organization) return

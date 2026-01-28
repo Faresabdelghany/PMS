@@ -8,7 +8,7 @@ import { encrypt, decrypt, isEncryptedFormat, migrateFromBase64 } from "@/lib/cr
 
 // Note: user_settings table exists in DB but not in generated types
 // Using explicit any for the table queries
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 
 // User settings row type
 export type UserSettings = {

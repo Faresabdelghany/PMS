@@ -26,6 +26,7 @@ import { format } from "date-fns"
 
 import type { WorkstreamGroup, WorkstreamTask } from "@/lib/data/project-details"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 import type { Workstream } from "@/lib/supabase/types"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
@@ -646,6 +647,7 @@ export function WorkstreamTab({
                   overTaskId={overTaskId}
                   onEditTask={onEditTask}
                   onDeleteTask={(task) => setTaskToDelete({ id: task.id, name: task.name })}
+                  onToggle={(taskId) => toggleTask(group.id, taskId)}
                 />
               </AccordionItem>
             ))}
@@ -772,6 +774,7 @@ type WorkstreamTasksProps = {
   overTaskId: string | null
   onEditTask?: (task: WorkstreamTask) => void
   onDeleteTask?: (task: WorkstreamTask) => void
+  onToggle?: (taskId: string) => void
 }
 
 function WorkstreamTasks({
@@ -780,6 +783,7 @@ function WorkstreamTasks({
   overTaskId,
   onEditTask,
   onDeleteTask,
+  onToggle,
 }: WorkstreamTasksProps) {
   const { setNodeRef } = useDroppable({ id: `group:${group.id}` })
 
@@ -793,6 +797,7 @@ function WorkstreamTasks({
               task={task}
               onEdit={onEditTask}
               onDelete={onDeleteTask}
+              onToggle={onToggle}
               activeTaskId={activeTaskId}
               overTaskId={overTaskId}
             />
@@ -807,11 +812,12 @@ type TaskRowProps = {
   task: WorkstreamTask
   onEdit?: (task: WorkstreamTask) => void
   onDelete?: (task: WorkstreamTask) => void
+  onToggle?: (taskId: string) => void
   activeTaskId: string | null
   overTaskId: string | null
 }
 
-function TaskRow({ task, onEdit, onDelete, activeTaskId, overTaskId }: TaskRowProps) {
+function TaskRow({ task, onEdit, onDelete, onToggle, activeTaskId, overTaskId }: TaskRowProps) {
   const isDone = task.status === "done"
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
@@ -857,8 +863,19 @@ function TaskRow({ task, onEdit, onDelete, activeTaskId, overTaskId }: TaskRowPr
           isDragging && "opacity-60"
         )}
       >
+        {/* Checkbox */}
+        <Checkbox
+          checked={isDone}
+          onCheckedChange={() => onToggle?.(task.id)}
+          aria-label={`Mark ${task.name} as ${isDone ? "not done" : "done"}`}
+          className="rounded-full border-border bg-background data-[state=checked]:border-teal-600 data-[state=checked]:bg-teal-600 hover:cursor-pointer shrink-0"
+        />
+
         {/* Task name - left side */}
-        <span className="font-medium text-foreground truncate flex-1 min-w-0">
+        <span className={cn(
+          "font-medium text-foreground truncate flex-1 min-w-0",
+          isDone && "line-through text-muted-foreground"
+        )}>
           {task.name}
         </span>
 
