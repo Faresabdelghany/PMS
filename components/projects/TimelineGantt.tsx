@@ -1,4 +1,6 @@
-import { useState } from "react"
+"use client"
+
+import { useState, useMemo } from "react"
 import { addDays, differenceInDays, format, isWithinInterval, startOfWeek } from "date-fns"
 
 import type { TimelineTask } from "@/lib/data/project-details"
@@ -16,6 +18,9 @@ function clamp(n: number, min: number, max: number) {
 
 export function TimelineGantt({ tasks }: TimelineGanttProps) {
   const [rangeStart, setRangeStart] = useState<Date | null>(null)
+  // Use useMemo to ensure today is stable during render (avoids hydration mismatch)
+  // All hooks must be called before any early returns
+  const today = useMemo(() => new Date(), [])
 
   if (tasks.length === 0) {
     return (
@@ -48,8 +53,6 @@ export function TimelineGantt({ tasks }: TimelineGanttProps) {
   })()
 
   const monthLabel = format(days[0], "MMMM yyyy")
-
-  const today = new Date()
   const todayInRange = isWithinInterval(today, { start: days[0], end: addDays(days[days.length - 1], 1) })
   const todayIndex = todayInRange
     ? clamp(differenceInDays(today, days[0]), 0, days.length - 1)

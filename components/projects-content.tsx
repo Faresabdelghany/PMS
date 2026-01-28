@@ -14,14 +14,17 @@ import { getProjects, type ProjectWithRelations } from "@/lib/actions/projects"
 import { usePooledProjectsRealtime } from "@/hooks/realtime-context"
 
 // Convert Supabase project to mock project format for compatibility with existing views
+// Note: Use a stable fallback date to avoid hydration mismatch (server vs client time diff)
+const FALLBACK_DATE = new Date("2000-01-01")
+
 function toMockProject(p: ProjectWithRelations): MockProject {
   return {
     id: p.id,
     name: p.name,
     taskCount: 0,
     progress: p.progress || 0,
-    startDate: p.start_date ? new Date(p.start_date) : new Date(),
-    endDate: p.end_date ? new Date(p.end_date) : new Date(),
+    startDate: p.start_date ? new Date(p.start_date) : FALLBACK_DATE,
+    endDate: p.end_date ? new Date(p.end_date) : FALLBACK_DATE,
     status: p.status,
     priority: p.priority,
     tags: p.tags || [],

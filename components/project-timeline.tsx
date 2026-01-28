@@ -51,10 +51,10 @@ interface ProjectTimelineProps {
   initialProjects?: TimelineProject[]
 }
 
-// Use today's date for the timeline
-const TODAY = new Date()
-
 export function ProjectTimeline({ initialProjects = [] }: ProjectTimelineProps) {
+  // Use useMemo to compute today's date once on mount (client-side only)
+  // This avoids hydration mismatch from module-level new Date()
+  const TODAY = useMemo(() => new Date(), [])
   const [projects, setProjects] = useState<TimelineProject[]>(initialProjects)
   const [expandedProjects, setExpandedProjects] = useState<string[]>(initialProjects.map((p) => p.id))
 
