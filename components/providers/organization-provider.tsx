@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, type ReactNode } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { OrganizationContext, type OrganizationWithRole } from "@/hooks/use-organization"
@@ -28,6 +28,12 @@ export function OrganizationProvider({
     return initialOrganizations[0] || null
   })
   const [isLoading, setIsLoading] = useState(!initialOrganizations.length)
+
+  // Use ref for organizations lookup to stabilize switchOrganization callback
+  const organizationsRef = useRef<OrganizationWithRole[]>(initialOrganizations)
+  useEffect(() => {
+    organizationsRef.current = organizations
+  }, [organizations])
 
   const fetchOrganizations = useCallback(async () => {
     const supabase = createClient()
@@ -103,15 +109,16 @@ export function OrganizationProvider({
     }
   }, [organization])
 
+  // Use ref for stable callback - avoids re-renders when organizations array changes
   const switchOrganization = useCallback(
     (orgId: string) => {
-      const org = organizations.find((o) => o.id === orgId)
+      const org = organizationsRef.current.find((o) => o.id === orgId)
       if (org) {
         setOrganization(org)
         router.refresh()
       }
     },
-    [organizations, router]
+    [router]
   )
 
   const refreshOrganizations = useCallback(async () => {
@@ -119,16 +126,20 @@ export function OrganizationProvider({
     await fetchOrganizations()
   }, [fetchOrganizations])
 
+  // Memoize context value to prevent unnecessary re-renders of consumers
+  const contextValue = useMemo(
+    () => ({
+      organization,
+      organizations,
+      isLoading,
+      switchOrganization,
+      refreshOrganizations,
+    }),
+    [organization, organizations, isLoading, switchOrganization, refreshOrganizations]
+  )
+
   return (
-    <OrganizationContext.Provider
-      value={{
-        organization,
-        organizations,
-        isLoading,
-        switchOrganization,
-        refreshOrganizations,
-      }}
-    >
+    <OrganizationContext.Provider value={contextValue}>
       {children}
     </OrganizationContext.Provider>
   )

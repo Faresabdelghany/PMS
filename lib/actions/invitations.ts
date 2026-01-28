@@ -21,23 +21,31 @@ export async function inviteMember(
 ): Promise<ActionResult<Invitation>> {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
+  // Parallel fetch: auth, members, and pending invite (eliminates 2 waterfalls)
+  const [authResult, membersResult, inviteResult] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from("organization_members")
+      .select("id, profile:profiles(email)")
+      .eq("organization_id", orgId),
+    supabase
+      .from("invitations")
+      .select("id")
+      .eq("organization_id", orgId)
+      .eq("email", email.toLowerCase())
+      .eq("status", "pending")
+      .single(),
+  ])
+
+  const { data: { user }, error: authError } = authResult
 
   if (authError || !user) {
     return { error: "Not authenticated" }
   }
 
   // Check if email is already a member using Set for O(1) lookup
-  const { data: members } = await supabase
-    .from("organization_members")
-    .select("id, profile:profiles(email)")
-    .eq("organization_id", orgId)
-
   const memberEmailSet = new Set(
-    members
+    membersResult.data
       ?.map((m) => (m.profile as { email: string } | null)?.email?.toLowerCase())
       .filter((email): email is string => Boolean(email)) || []
   )
@@ -46,16 +54,8 @@ export async function inviteMember(
     return { error: "This email is already a member of the organization" }
   }
 
-  // Check for existing pending invitation
-  const { data: existingInvite } = await supabase
-    .from("invitations")
-    .select("id")
-    .eq("organization_id", orgId)
-    .eq("email", email.toLowerCase())
-    .eq("status", "pending")
-    .single()
-
-  if (existingInvite) {
+  // Check for existing pending invitation (note: .single() returns error if not found, which is OK)
+  if (inviteResult.data) {
     return { error: "An invitation is already pending for this email" }
   }
 

@@ -1,5 +1,6 @@
 "use client"
 
+import { memo } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -89,6 +90,31 @@ const footerItemIcons: Record<SidebarFooterItemId, React.ComponentType<{ classNa
   templates: Layout,
   help: Question,
 }
+
+// Memoized project item to prevent re-renders when other projects change
+const ProjectMenuItem = memo(function ProjectMenuItem({
+  project,
+}: {
+  project: Project
+}) {
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild className="h-9 rounded-lg px-3 group">
+        <Link href={`/projects/${project.id}`}>
+          <ProgressCircle
+            progress={project.progress || 0}
+            color={getProjectColor(project.progress || 0)}
+            size={18}
+          />
+          <span className="flex-1 truncate text-sm">{project.name}</span>
+          <span className="opacity-0 group-hover:opacity-100 rounded p-0.5 hover:bg-accent">
+            <span className="text-muted-foreground text-lg">···</span>
+          </span>
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  )
+})
 
 export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
   const pathname = usePathname()
@@ -196,21 +222,7 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
             <SidebarMenu>
               {activeProjects.length > 0 ? (
                 activeProjects.map((project) => (
-                  <SidebarMenuItem key={project.id}>
-                    <SidebarMenuButton asChild className="h-9 rounded-lg px-3 group">
-                      <Link href={`/projects/${project.id}`}>
-                        <ProgressCircle
-                          progress={project.progress || 0}
-                          color={getProjectColor(project.progress || 0)}
-                          size={18}
-                        />
-                        <span className="flex-1 truncate text-sm">{project.name}</span>
-                        <span className="opacity-0 group-hover:opacity-100 rounded p-0.5 hover:bg-accent">
-                          <span className="text-muted-foreground text-lg">···</span>
-                        </span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                  <ProjectMenuItem key={project.id} project={project} />
                 ))
               ) : (
                 <SidebarMenuItem>

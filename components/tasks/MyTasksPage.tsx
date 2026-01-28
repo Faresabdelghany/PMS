@@ -172,6 +172,19 @@ export function MyTasksPage({
     return visibleGroups.flatMap((group) => group.tasks)
   }, [visibleGroups])
 
+  // Memoize project options for TaskQuickCreateModal to prevent re-renders
+  const projectOptions = useMemo(() =>
+    projects.map((p) => ({
+      id: p.id,
+      name: p.name,
+      workstreams: p.workstreams?.map((ws) => ({
+        id: ws.id,
+        name: ws.name,
+      })),
+    })),
+    [projects]
+  )
+
   const openCreateTask = (context?: CreateTaskContext) => {
     setEditingTask(undefined)
     setCreateContext(context)
@@ -407,14 +420,7 @@ export function MyTasksPage({
           onTaskCreated={handleTaskCreated}
           editingTask={editingTask}
           onTaskUpdated={handleTaskUpdated}
-          projects={projects.map((p) => ({
-            id: p.id,
-            name: p.name,
-            workstreams: p.workstreams?.map((ws) => ({
-              id: ws.id,
-              name: ws.name,
-            })),
-          }))}
+          projects={projectOptions}
           organizationMembers={organizationMembers}
         />
       </div>
@@ -508,14 +514,7 @@ export function MyTasksPage({
         onTaskCreated={handleTaskCreated}
         editingTask={editingTask}
         onTaskUpdated={handleTaskUpdated}
-        projects={projects.map((p) => ({
-          id: p.id,
-          name: p.name,
-          workstreams: p.workstreams?.map((ws) => ({
-            id: ws.id,
-            name: ws.name,
-          })),
-        }))}
+        projects={projectOptions}
         organizationMembers={organizationMembers}
       />
 

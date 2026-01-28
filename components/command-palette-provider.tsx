@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, createContext, useContext, useCallback, type ReactNode } from "react"
+import { useState, createContext, useContext, useCallback, useMemo, type ReactNode } from "react"
 import { CommandPalette } from "@/components/command-palette"
 import { ProjectWizardLazy } from "@/components/project-wizard/ProjectWizardLazy"
-import { TaskQuickCreateModal } from "@/components/tasks/TaskQuickCreateModal"
+import { TaskQuickCreateModalLazy } from "@/components/tasks/TaskQuickCreateModalLazy"
 import { useOrganization } from "@/hooks/use-organization"
 
 type CommandPaletteContextValue = {
@@ -38,8 +38,14 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
     setShowTaskModal(true)
   }, [])
 
+  // Memoize context value to prevent unnecessary re-renders of consumers
+  const contextValue = useMemo(
+    () => ({ openCreateProject, openCreateTask }),
+    [openCreateProject, openCreateTask]
+  )
+
   return (
-    <CommandPaletteContext.Provider value={{ openCreateProject, openCreateTask }}>
+    <CommandPaletteContext.Provider value={contextValue}>
       {children}
 
       {/* Command Palette - always rendered, listens for Cmd+K */}
@@ -58,7 +64,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
 
       {/* Task Creation Modal */}
       {showTaskModal && (
-        <TaskQuickCreateModal
+        <TaskQuickCreateModalLazy
           open={showTaskModal}
           onOpenChange={setShowTaskModal}
           projects={[]}

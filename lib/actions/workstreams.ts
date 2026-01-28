@@ -33,12 +33,30 @@ export async function createWorkstream(
 
   const supabase = await createClient()
 
-  // Get project to validate end_date
-  const { data: project } = await supabase
-    .from("projects")
-    .select("end_date")
-    .eq("id", projectId)
-    .single()
+  // Validate start_date is before end_date (can check without DB)
+  if (startDate && endDate) {
+    if (new Date(startDate) > new Date(endDate)) {
+      return { error: "Start date cannot be after end date" }
+    }
+  }
+
+  // Parallel fetch: project end_date AND max sort_order (eliminates 1 waterfall)
+  const [projectResult, sortOrderResult] = await Promise.all([
+    supabase
+      .from("projects")
+      .select("end_date")
+      .eq("id", projectId)
+      .single(),
+    supabase
+      .from("workstreams")
+      .select("sort_order")
+      .eq("project_id", projectId)
+      .order("sort_order", { ascending: false })
+      .limit(1)
+      .single(),
+  ])
+
+  const project = projectResult.data
 
   // Validate workstream end_date against project end_date
   if (endDate && project?.end_date) {
@@ -49,23 +67,7 @@ export async function createWorkstream(
     }
   }
 
-  // Validate start_date is before end_date
-  if (startDate && endDate) {
-    if (new Date(startDate) > new Date(endDate)) {
-      return { error: "Start date cannot be after end date" }
-    }
-  }
-
-  // Get max sort_order
-  const { data: existing } = await supabase
-    .from("workstreams")
-    .select("sort_order")
-    .eq("project_id", projectId)
-    .order("sort_order", { ascending: false })
-    .limit(1)
-    .single()
-
-  const sortOrder = existing ? existing.sort_order + 1 : 0
+  const sortOrder = sortOrderResult.data ? sortOrderResult.data.sort_order + 1 : 0
 
   const { data, error } = await supabase
     .from("workstreams")

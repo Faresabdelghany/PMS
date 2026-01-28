@@ -294,7 +294,7 @@ export function ProjectDetailsPage({
       notes: [],
       quickLinks: [],
     }
-  }, [supabaseProject, tasks, workstreams])
+  }, [supabaseProject, tasks, workstreams, organizationMembers])
 
   const copyLink = useCallback(async () => {
     if (!navigator.clipboard) {

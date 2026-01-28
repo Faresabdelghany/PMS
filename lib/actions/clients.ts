@@ -290,32 +290,33 @@ export async function updateClient(
 export async function deleteClient(id: string): Promise<ActionResult> {
   const supabase = await createClient()
 
-  // Get org_id for cache invalidation and auth check before deleting
-  const { data: client } = await supabase
-    .from("clients")
-    .select("organization_id")
-    .eq("id", id)
-    .single()
+  // Parallel fetch: client data AND project count (eliminates 1 waterfall)
+  const [clientResult, countResult] = await Promise.all([
+    supabase
+      .from("clients")
+      .select("organization_id")
+      .eq("id", id)
+      .single(),
+    supabase
+      .from("projects")
+      .select("id", { count: "exact", head: true })
+      .eq("client_id", id),
+  ])
 
-  if (!client) {
+  if (!clientResult.data) {
     return { error: "Client not found" }
+  }
+
+  // Check project count early (can fail fast before auth check)
+  if (countResult.count && countResult.count > 0) {
+    return { error: "Cannot delete client with existing projects" }
   }
 
   // Require org membership
   try {
-    await requireOrgMember(client.organization_id)
+    await requireOrgMember(clientResult.data.organization_id)
   } catch {
     return { error: "You must be an organization member to delete clients" }
-  }
-
-  // Check if client has projects
-  const { count } = await supabase
-    .from("projects")
-    .select("id", { count: "exact", head: true })
-    .eq("client_id", id)
-
-  if (count && count > 0) {
-    return { error: "Cannot delete client with existing projects" }
   }
 
   const { error } = await supabase.from("clients").delete().eq("id", id)
@@ -327,9 +328,9 @@ export async function deleteClient(id: string): Promise<ActionResult> {
   after(async () => {
     revalidatePath("/clients")
     revalidateTag(CacheTags.client(id))
-    revalidateTag(CacheTags.clients(client.organization_id))
+    revalidateTag(CacheTags.clients(clientResult.data.organization_id))
     // KV cache invalidation
-    await invalidate.client(client.organization_id)
+    await invalidate.client(clientResult.data.organization_id)
   })
 
   return {}

@@ -80,35 +80,36 @@ export async function createTask(
   const validatedData = validation.data
   const supabase = await createClient()
 
-  // Get max sort_order for the workstream (or project if no workstream)
-  let sortOrder = 0
-  if (validatedData.workstream_id) {
-    const { data: existing } = await supabase
-      .from("tasks")
-      .select("sort_order")
-      .eq("workstream_id", validatedData.workstream_id)
-      .order("sort_order", { ascending: false })
-      .limit(1)
-      .single()
-    sortOrder = existing ? existing.sort_order + 1 : 0
-  } else {
-    const { data: existing } = await supabase
-      .from("tasks")
-      .select("sort_order")
-      .eq("project_id", projectId)
-      .is("workstream_id", null)
-      .order("sort_order", { ascending: false })
-      .limit(1)
-      .single()
-    sortOrder = existing ? existing.sort_order + 1 : 0
-  }
+  // Build sort_order query based on workstream
+  const sortOrderQuery = validatedData.workstream_id
+    ? supabase
+        .from("tasks")
+        .select("sort_order")
+        .eq("workstream_id", validatedData.workstream_id)
+        .order("sort_order", { ascending: false })
+        .limit(1)
+        .single()
+    : supabase
+        .from("tasks")
+        .select("sort_order")
+        .eq("project_id", projectId)
+        .is("workstream_id", null)
+        .order("sort_order", { ascending: false })
+        .limit(1)
+        .single()
 
-  // Get orgId from project for cache invalidation
-  const { data: project } = await supabase
-    .from("projects")
-    .select("organization_id")
-    .eq("id", projectId)
-    .single()
+  // Parallel fetch: sort_order AND project org_id (eliminates 1 waterfall)
+  const [sortOrderResult, projectResult] = await Promise.all([
+    sortOrderQuery,
+    supabase
+      .from("projects")
+      .select("organization_id")
+      .eq("id", projectId)
+      .single(),
+  ])
+
+  const sortOrder = sortOrderResult.data ? sortOrderResult.data.sort_order + 1 : 0
+  const project = projectResult.data
 
   const { data: task, error } = await supabase
     .from("tasks")
