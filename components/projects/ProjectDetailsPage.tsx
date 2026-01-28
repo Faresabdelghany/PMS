@@ -15,8 +15,8 @@ import { OutcomesList } from "@/components/projects/OutcomesList"
 import { KeyFeaturesColumns } from "@/components/projects/KeyFeaturesColumns"
 import { TimelineGantt } from "@/components/projects/TimelineGantt"
 import { RightMetaPanel } from "@/components/projects/RightMetaPanel"
-import { WorkstreamTab } from "@/components/projects/WorkstreamTab"
-import { ProjectTasksTab } from "@/components/projects/ProjectTasksTab"
+import { WorkstreamTabLazy } from "@/components/projects/WorkstreamTabLazy"
+import { ProjectTasksTabLazy } from "@/components/projects/ProjectTasksTabLazy"
 import { NotesTab } from "@/components/projects/NotesTab"
 import { AssetsFilesTab } from "@/components/projects/AssetsFilesTab"
 import { ProjectWizardLazy } from "@/components/project-wizard/ProjectWizardLazy"
@@ -434,7 +434,7 @@ export function ProjectDetailsPage({
                   </TabsContent>
 
                   <TabsContent value="workstream">
-                    <WorkstreamTab
+                    <WorkstreamTabLazy
                       projectId={projectId}
                       projectEndDate={supabaseProject.end_date}
                       workstreams={project.workstreams}
@@ -445,7 +445,7 @@ export function ProjectDetailsPage({
                   </TabsContent>
 
                   <TabsContent value="tasks">
-                    <ProjectTasksTab
+                    <ProjectTasksTabLazy
                       projectId={projectId}
                       projectName={supabaseProject.name}
                       initialTasks={tasks}
