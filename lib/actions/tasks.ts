@@ -5,6 +5,7 @@ import { revalidatePath, revalidateTag } from "next/cache"
 import { after } from "next/server"
 import { z } from "zod"
 import { CacheTags } from "@/lib/cache-tags"
+import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
 import { uuidSchema, validate } from "@/lib/validations"
 import type { Task, TaskInsert, TaskUpdate, TaskStatus, TaskPriority } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
@@ -102,6 +103,13 @@ export async function createTask(
     sortOrder = existing ? existing.sort_order + 1 : 0
   }
 
+  // Get orgId from project for cache invalidation
+  const { data: project } = await supabase
+    .from("projects")
+    .select("organization_id")
+    .eq("id", projectId)
+    .single()
+
   const { data: task, error } = await supabase
     .from("tasks")
     .insert({
@@ -116,11 +124,13 @@ export async function createTask(
     return { error: error.message }
   }
 
-  after(() => {
+  after(async () => {
     revalidatePath(`/projects/${projectId}`)
     revalidatePath("/tasks")
     revalidateTag(CacheTags.tasks(projectId))
     revalidateTag(CacheTags.projectDetails(projectId))
+    // KV cache invalidation
+    await invalidate.task(projectId, validatedData.assignee_id ?? null, project?.organization_id ?? "")
   })
 
   return { data: task }
@@ -171,7 +181,7 @@ export async function getTasks(
   return { data: data as TaskWithRelations[] }
 }
 
-// Get tasks for current user across all projects
+// Get tasks for current user across all projects in an organization
 export async function getMyTasks(
   orgId: string,
   filters?: Omit<TaskFilters, "assigneeId">
@@ -187,15 +197,50 @@ export async function getMyTasks(
     return { error: "Not authenticated" }
   }
 
+  // Only cache unfiltered queries
+  const hasFilters = filters && Object.values(filters).some((v) => v !== undefined)
+
+  if (!hasFilters) {
+    try {
+      const tasks = await cacheGet(
+        CacheKeys.userTasks(user.id, orgId),
+        async () => {
+          const { data, error } = await supabase
+            .from("tasks")
+            .select(`
+              *,
+              assignee:profiles(id, full_name, email, avatar_url),
+              workstream:workstreams(id, name),
+              project:projects!inner(id, name, organization_id)
+            `)
+            .eq("assignee_id", user.id)
+            .eq("project.organization_id", orgId)
+            .order("updated_at", { ascending: false })
+
+          if (error) throw error
+          return data as TaskWithRelations[]
+        },
+        CacheTTL.TASKS
+      )
+      return { data: tasks }
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : "Failed to fetch tasks" }
+    }
+  }
+
+  // Filtered query - don't cache
+  // Use !inner join to filter by organization at the database level
+  // This is more efficient than fetching all tasks and filtering in JS
   let query = supabase
     .from("tasks")
     .select(`
       *,
       assignee:profiles(id, full_name, email, avatar_url),
       workstream:workstreams(id, name),
-      project:projects(id, name, organization_id)
+      project:projects!inner(id, name, organization_id)
     `)
     .eq("assignee_id", user.id)
+    .eq("project.organization_id", orgId)
 
   if (filters?.status) {
     query = query.eq("status", filters.status)
@@ -215,12 +260,7 @@ export async function getMyTasks(
     return { error: error.message }
   }
 
-  // Filter by organization
-  const filteredData = data.filter(
-    (task) => (task.project as { organization_id: string })?.organization_id === orgId
-  )
-
-  return { data: filteredData as TaskWithRelations[] }
+  return { data: data as TaskWithRelations[] }
 }
 
 // Get single task
@@ -263,12 +303,25 @@ export async function updateTask(
     return { error: error.message }
   }
 
-  after(() => {
+  // Get orgId from project for cache invalidation
+  let orgId = ""
+  if (task.project_id) {
+    const { data: project } = await supabase
+      .from("projects")
+      .select("organization_id")
+      .eq("id", task.project_id)
+      .single()
+    orgId = project?.organization_id ?? ""
+  }
+
+  after(async () => {
     revalidatePath("/projects")
     revalidatePath("/tasks")
     revalidateTag(CacheTags.task(id))
     if (task.project_id) {
       revalidateTag(CacheTags.tasks(task.project_id))
+      // KV cache invalidation
+      await invalidate.task(task.project_id, task.assignee_id, orgId)
     }
   })
 
@@ -295,12 +348,23 @@ export async function updateTaskAssignee(
 export async function deleteTask(id: string): Promise<ActionResult> {
   const supabase = await createClient()
 
-  // Get project_id for revalidation
+  // Get task info for revalidation and cache invalidation
   const { data: task } = await supabase
     .from("tasks")
-    .select("project_id")
+    .select("project_id, assignee_id")
     .eq("id", id)
     .single()
+
+  // Get orgId from project for cache invalidation
+  let orgId = ""
+  if (task?.project_id) {
+    const { data: project } = await supabase
+      .from("projects")
+      .select("organization_id")
+      .eq("id", task.project_id)
+      .single()
+    orgId = project?.organization_id ?? ""
+  }
 
   const { error } = await supabase.from("tasks").delete().eq("id", id)
 
@@ -308,11 +372,13 @@ export async function deleteTask(id: string): Promise<ActionResult> {
     return { error: error.message }
   }
 
-  after(() => {
+  after(async () => {
     revalidateTag(CacheTags.task(id))
     if (task) {
       revalidatePath(`/projects/${task.project_id}`)
       revalidateTag(CacheTags.tasks(task.project_id))
+      // KV cache invalidation
+      await invalidate.task(task.project_id, task.assignee_id, orgId)
     }
     revalidatePath("/tasks")
   })
@@ -328,6 +394,13 @@ export async function reorderTasks(
 ): Promise<ActionResult> {
   const supabase = await createClient()
 
+  // Get orgId from project for cache invalidation
+  const { data: project } = await supabase
+    .from("projects")
+    .select("organization_id")
+    .eq("id", projectId)
+    .single()
+
   // Update sort_order for each task
   const updates = taskIds.map((id, index) =>
     supabase.from("tasks").update({ sort_order: index }).eq("id", id)
@@ -340,9 +413,11 @@ export async function reorderTasks(
     return { error: error.message }
   }
 
-  after(() => {
+  after(async () => {
     revalidatePath(`/projects/${projectId}`)
     revalidateTag(CacheTags.tasks(projectId))
+    // KV cache invalidation - invalidate project tasks cache
+    await invalidate.key(CacheKeys.projectTasks(projectId))
   })
 
   return {}
@@ -356,16 +431,23 @@ export async function moveTaskToWorkstream(
 ): Promise<ActionResult> {
   const supabase = await createClient()
 
-  // Get task's project_id
+  // Get task's project_id and assignee_id
   const { data: task } = await supabase
     .from("tasks")
-    .select("project_id")
+    .select("project_id, assignee_id")
     .eq("id", taskId)
     .single()
 
   if (!task) {
     return { error: "Task not found" }
   }
+
+  // Get orgId from project for cache invalidation
+  const { data: project } = await supabase
+    .from("projects")
+    .select("organization_id")
+    .eq("id", task.project_id)
+    .single()
 
   // Update task's workstream and sort_order
   const { error } = await supabase
@@ -380,10 +462,12 @@ export async function moveTaskToWorkstream(
     return { error: error.message }
   }
 
-  after(() => {
+  after(async () => {
     revalidatePath(`/projects/${task.project_id}`)
     revalidateTag(CacheTags.task(taskId))
     revalidateTag(CacheTags.tasks(task.project_id))
+    // KV cache invalidation
+    await invalidate.task(task.project_id, task.assignee_id, project?.organization_id ?? "")
   })
 
   return {}
@@ -396,6 +480,12 @@ export async function bulkUpdateTaskStatus(
 ): Promise<ActionResult> {
   const supabase = await createClient()
 
+  // Get task info for cache invalidation before update
+  const { data: tasks } = await supabase
+    .from("tasks")
+    .select("project_id, assignee_id")
+    .in("id", taskIds)
+
   const { error } = await supabase
     .from("tasks")
     .update({ status })
@@ -405,11 +495,44 @@ export async function bulkUpdateTaskStatus(
     return { error: error.message }
   }
 
-  after(() => {
+  after(async () => {
     // Invalidate individual task caches
     taskIds.forEach(id => revalidateTag(CacheTags.task(id)))
     revalidatePath("/projects")
     revalidatePath("/tasks")
+
+    // KV cache invalidation - invalidate affected project and user task caches
+    if (tasks && tasks.length > 0) {
+      const projectIds = new Set<string>()
+      const assigneeIds = new Set<string>()
+
+      for (const task of tasks) {
+        if (task.project_id) projectIds.add(task.project_id)
+        if (task.assignee_id) assigneeIds.add(task.assignee_id)
+      }
+
+      // Get orgIds for all affected projects
+      const { data: projects } = await supabase
+        .from("projects")
+        .select("id, organization_id")
+        .in("id", Array.from(projectIds))
+
+      const projectOrgMap = new Map(projects?.map(p => [p.id, p.organization_id]) ?? [])
+
+      // Invalidate project task caches
+      for (const projectId of projectIds) {
+        await invalidate.key(CacheKeys.projectTasks(projectId))
+      }
+
+      // Invalidate user task caches
+      for (const assigneeId of assigneeIds) {
+        for (const [projectId, orgId] of projectOrgMap) {
+          if (orgId) {
+            await invalidate.key(CacheKeys.userTasks(assigneeId, orgId))
+          }
+        }
+      }
+    }
   })
 
   return {}
