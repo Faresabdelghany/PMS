@@ -5,6 +5,7 @@ import { revalidatePath, revalidateTag } from "next/cache"
 import { after } from "next/server"
 import { z } from "zod"
 import { CacheTags } from "@/lib/cache-tags"
+import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
 import { requireProjectMember, requireProjectOwnerOrPIC, requireOrgMember } from "./auth-helpers"
 import { uuidSchema, validate } from "@/lib/validations"
 import type {
@@ -277,9 +278,10 @@ export async function createProject(
     }
   }
 
-  after(() => {
+  after(async () => {
     revalidatePath("/projects")
     revalidateTag(CacheTags.projects(orgId))
+    await invalidate.project(project.id, orgId)
   })
 
   return { data: project }
@@ -292,6 +294,42 @@ export async function getProjects(
 ): Promise<ActionResult<ProjectWithRelations[]>> {
   const supabase = await createClient()
 
+  // Only cache unfiltered queries
+  const hasFilters = filters && Object.values(filters).some((v) => v !== undefined)
+
+  if (!hasFilters) {
+    try {
+      const projects = await cacheGet(
+        CacheKeys.projects(orgId),
+        async () => {
+          const { data, error } = await supabase
+            .from("projects")
+            .select(`
+              *,
+              client:clients(id, name),
+              team:teams(id, name),
+              members:project_members(
+                id,
+                role,
+                user_id,
+                profile:profiles(id, full_name, email, avatar_url)
+              )
+            `)
+            .eq("organization_id", orgId)
+            .order("updated_at", { ascending: false })
+
+          if (error) throw error
+          return data as ProjectWithRelations[]
+        },
+        CacheTTL.PROJECTS
+      )
+      return { data: projects }
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : "Failed to fetch projects" }
+    }
+  }
+
+  // Filtered query - don't cache
   let query = supabase
     .from("projects")
     .select(`
@@ -492,13 +530,14 @@ export async function updateProject(
     return { error: error.message }
   }
 
-  after(() => {
+  after(async () => {
     revalidatePath("/projects")
     revalidatePath(`/projects/${id}`)
     revalidateTag(CacheTags.project(id))
     revalidateTag(CacheTags.projectDetails(id))
     if (project.organization_id) {
       revalidateTag(CacheTags.projects(project.organization_id))
+      await invalidate.project(id, project.organization_id)
     }
   })
 
@@ -548,12 +587,13 @@ export async function deleteProject(id: string): Promise<ActionResult> {
     return { error: error.message }
   }
 
-  after(() => {
+  after(async () => {
     revalidatePath("/projects")
     revalidateTag(CacheTags.project(id))
     revalidateTag(CacheTags.projectDetails(id))
     if (project?.organization_id) {
       revalidateTag(CacheTags.projects(project.organization_id))
+      await invalidate.project(id, project.organization_id)
     }
   })
 
