@@ -288,7 +288,7 @@ export function ClientsContent({ initialClients = [], organizationId }: ClientsC
         <div className="flex items-center justify-between px-4 pb-3 pt-3 gap-3 flex-wrap">
           <div className="flex-1 min-w-[260px]">
             <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | ClientStatus)}>
-              <TabsList className="h-9 rounded-full bg-muted p-1">
+              <TabsList className="inline-flex bg-muted rounded-full px-1 py-0.5 text-xs border border-border/50 h-8">
                 {[
                   { id: "all" as const, label: "All" },
                   { id: "active" as const, label: "Active" },
@@ -299,7 +299,7 @@ export function ClientsContent({ initialClients = [], organizationId }: ClientsC
                   <TabsTrigger
                     key={tab.id}
                     value={tab.id}
-                    className="h-7 rounded-full px-3 text-xs"
+                    className="h-7 px-3 rounded-full text-xs data-[state=active]:bg-background data-[state=active]:text-foreground"
                   >
                     {tab.label}
                   </TabsTrigger>
