@@ -7,10 +7,11 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Loader2 } from "lucide-react"
-import { useAuth } from "@/hooks/use-auth"
+import { useUser } from "@/hooks/use-user"
+import { createClient } from "@/lib/supabase/client"
 
-export default function ProfileSettingsPage() {
-  const { user, profile, isLoading, updateProfile } = useAuth()
+export function ProfileSettings() {
+  const { user, profile, isLoading } = useUser()
   const [fullName, setFullName] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -24,17 +25,27 @@ export default function ProfileSettingsPage() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
+    if (!user) return
+
     setIsSaving(true)
     setError(null)
     setSuccess(false)
 
-    const result = await updateProfile({ full_name: fullName })
+    try {
+      const supabase = createClient()
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ full_name: fullName })
+        .eq("id", user.id)
 
-    if (result.error) {
-      setError(result.error)
-    } else {
-      setSuccess(true)
-      setTimeout(() => setSuccess(false), 3000)
+      if (updateError) {
+        setError(updateError.message)
+      } else {
+        setSuccess(true)
+        setTimeout(() => setSuccess(false), 3000)
+      }
+    } catch {
+      setError("Failed to update profile")
     }
 
     setIsSaving(false)
@@ -57,12 +68,7 @@ export default function ProfileSettingsPage() {
   }
 
   return (
-    <div className="container max-w-2xl py-8 space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">Profile Settings</h1>
-        <p className="text-muted-foreground">Manage your personal account settings.</p>
-      </div>
-
+    <div className="space-y-6">
       {error && (
         <div className="rounded-lg bg-destructive/10 p-4 text-destructive text-sm">
           {error}
@@ -135,17 +141,6 @@ export default function ProfileSettingsPage() {
           <div className="space-y-2">
             <Label>User ID</Label>
             <Input value={user.id} disabled />
-          </div>
-          <div className="space-y-2">
-            <Label>Account Created</Label>
-            <Input value={new Date(user.created_at).toLocaleDateString()} disabled />
-          </div>
-          <div className="space-y-2">
-            <Label>Last Sign In</Label>
-            <Input
-              value={user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString() : "N/A"}
-              disabled
-            />
           </div>
         </CardContent>
       </Card>

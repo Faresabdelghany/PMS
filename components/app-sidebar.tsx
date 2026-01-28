@@ -236,17 +236,26 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
 
       <SidebarFooter className="border-t border-border/40 p-2">
         <SidebarMenu>
-          {footerItems.map((item) => (
-            <SidebarMenuItem key={item.label}>
-              <SidebarMenuButton className="h-9 rounded-lg px-3 text-muted-foreground">
-                {(() => {
-                  const Icon = footerItemIcons[item.id]
-                  return Icon ? <Icon className="h-[18px] w-[18px]" /> : null
-                })()}
-                <span>{item.label}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+          {footerItems.map((item) => {
+            const Icon = footerItemIcons[item.id]
+            const href = item.id === "settings" ? "/settings" : "#"
+            const isActive = item.id === "settings" && pathname.startsWith("/settings")
+
+            return (
+              <SidebarMenuItem key={item.label}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive}
+                  className="h-9 rounded-lg px-3 text-muted-foreground"
+                >
+                  <Link href={href}>
+                    {Icon && <Icon className="h-[18px] w-[18px]" />}
+                    <span>{item.label}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )
+          })}
         </SidebarMenu>
 
         <div className="mt-2 flex items-center gap-3 rounded-lg p-2 hover:bg-accent cursor-pointer">

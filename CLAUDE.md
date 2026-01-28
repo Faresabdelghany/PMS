@@ -79,7 +79,8 @@ npx supabase status                     # Check local services status
 - **`lib/`** - Utilities and data
   - `supabase/` - Supabase clients and types
   - `actions/` - Server Actions for data mutations
-  - `data/` - Type definitions and interfaces (mock data fully migrated to Supabase)
+  - `rate-limit/` - Rate limiting with Upstash/Vercel KV
+  - `data/` - Type definitions and interfaces
   - `utils.ts` - Utility helpers including `cn()` for class merging
 - **`hooks/`** - Custom React hooks
 - **`supabase/`** - Database migrations
@@ -97,7 +98,7 @@ npx supabase status                     # Check local services status
 
 **Server Actions:** All actions return `ActionResult<T>` type (`{ data?, error? }`) from `lib/actions/types.ts`.
 - `lib/actions/auth.ts` - Authentication (signIn, signUp, signOut, OAuth)
-- `lib/actions/auth-helpers.ts` - Authorization helpers (`requireAuth`, `requireOrgMember`, `requireProjectMember`)
+- `lib/actions/auth-helpers.ts` - Authorization helpers (`requireAuth`, `requireOrgMember`, `requireProjectMember`, `requireProjectOwnerOrPIC`)
 - `lib/actions/organizations.ts` - Organization CRUD and member management
 - `lib/actions/projects.ts` - Project CRUD and member management
 - `lib/actions/project-details.ts` - Project details fetching with relations
@@ -161,6 +162,14 @@ export default async function Page({ params }: PageProps) {
 - Quick create project or task
 - Managed by `CommandPaletteProvider` in dashboard layout
 
+**Rate Limiting:** Production uses Upstash + Vercel KV for rate limiting in `lib/rate-limit/`:
+- `rateLimiters.auth` - 5 requests per 15 min (brute force protection)
+- `rateLimiters.ai` - 50 requests per 24h (cost control)
+- `rateLimiters.aiConcurrent` - 3 requests per min
+- `rateLimiters.fileUpload` - 50 requests per hour
+- `rateLimiters.invite` - 20 requests per hour (email spam protection)
+- Gracefully degrades when KV is unavailable (local dev)
+
 ### Data Layer
 
 **Supabase Tables:**
@@ -183,15 +192,7 @@ export default async function Page({ params }: PageProps) {
   - Auto-pauses when browser tab is hidden to reduce connection overhead
   - Use `usePooledRealtime`, `usePooledTasksRealtime`, `usePooledProjectsRealtime`, etc.
 
-**Supabase Integration Status:** All data is now fetched from Supabase:
-- **Sidebar:** Real active projects and user profile
-- **Projects list:** Supabase with real-time updates
-- **Project details:** Full project data including scope, outcomes, features, workstreams, tasks
-- **Tasks page:** User's assigned tasks from Supabase with CRUD operations
-- **Clients list & details:** Full Supabase integration with project counts
-- **Project creation wizard:** Real clients and organization members
-
-**Data Types:** `lib/data/` contains UI type definitions only (interfaces and helper functions like `computeFilterCounts`). All data is fetched from Supabase - there is no mock data in the codebase.
+**Data Types:** `lib/data/` contains UI type definitions only (interfaces and helper functions like `computeFilterCounts`). All data is fetched from Supabase.
 
 ## Environment Variables
 
@@ -205,6 +206,10 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 # Required for AI API key encryption (AES-256-GCM)
 # Generate with: openssl rand -hex 32
 ENCRYPTION_KEY=<64-hex-character-key>
+
+# Optional: Rate limiting (production only)
+KV_REST_API_URL=<vercel-kv-url>
+KV_REST_API_TOKEN=<vercel-kv-token>
 ```
 
 ## Tech Stack
@@ -220,6 +225,7 @@ ENCRYPTION_KEY=<64-hex-character-key>
 - Charts: Recharts
 - Icons: Lucide, Phosphor Icons
 - E2E Testing: Playwright with Page Object Model
+- Rate Limiting: Upstash + Vercel KV
 
 ## Deployment
 
@@ -228,4 +234,3 @@ ENCRYPTION_KEY=<64-hex-character-key>
 - Hosted on Vercel with auto-deploy from `main` branch
 - Supabase project: `lazhmdyajdqbnxxwyxun`
 - Google OAuth configured for production
-

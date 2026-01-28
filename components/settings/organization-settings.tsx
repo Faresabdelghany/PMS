@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -44,8 +43,7 @@ type Member = {
   }
 }
 
-export default function OrganizationSettingsPage() {
-  const router = useRouter()
+export function OrganizationSettings() {
   const { organization, refreshOrganizations } = useOrganization()
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -170,12 +168,7 @@ export default function OrganizationSettingsPage() {
   const isAdmin = organization.role === "admin"
 
   return (
-    <div className="container max-w-4xl py-8 space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">Organization Settings</h1>
-        <p className="text-muted-foreground">Manage your organization settings and team members.</p>
-      </div>
-
+    <div className="space-y-6">
       {error && (
         <div className="rounded-lg bg-destructive/10 p-4 text-destructive text-sm">
           {error}

@@ -29,7 +29,7 @@ import {
 import { AI_MODELS, type AIProvider } from "@/lib/constants/ai"
 import { testAIConnection } from "@/lib/actions/ai"
 
-export default function AISettingsPage() {
+export function AISettings() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isTesting, setIsTesting] = useState(false)
@@ -80,7 +80,6 @@ export default function AISettingsPage() {
   // Update model when provider changes
   const prevProviderRef = useRef(provider)
   useEffect(() => {
-    // Only update model if provider actually changed
     if (prevProviderRef.current !== provider) {
       prevProviderRef.current = provider
       if (provider && AI_MODELS[provider]) {
@@ -99,7 +98,6 @@ export default function AISettingsPage() {
     setTestResult(null)
 
     try {
-      // Save provider and model
       const settingsResult = await saveAISettings({
         ai_provider: provider,
         ai_model_preference: model,
@@ -111,7 +109,6 @@ export default function AISettingsPage() {
         return
       }
 
-      // Save API key if provided
       if (apiKey.trim()) {
         const keyResult = await saveAIApiKey(apiKey.trim())
         if (keyResult.error) {
@@ -119,7 +116,6 @@ export default function AISettingsPage() {
           setIsSaving(false)
           return
         }
-        // Clear the input and update masked key
         setApiKey("")
         const maskedResult = await getMaskedApiKey()
         if (maskedResult.data) {
@@ -182,17 +178,7 @@ export default function AISettingsPage() {
   const models = provider ? AI_MODELS[provider] || [] : []
 
   return (
-    <div className="container max-w-2xl py-8 space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Sparkles className="h-6 w-6 text-primary" />
-          AI Settings
-        </h1>
-        <p className="text-muted-foreground">
-          Configure your AI provider to enable smart features like task generation and note summaries.
-        </p>
-      </div>
-
+    <div className="space-y-6">
       {error && (
         <div className="rounded-lg bg-destructive/10 p-4 text-destructive text-sm">
           {error}
