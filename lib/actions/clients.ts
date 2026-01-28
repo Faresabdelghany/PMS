@@ -5,6 +5,7 @@ import { revalidatePath, revalidateTag } from "next/cache"
 import { after } from "next/server"
 import { z } from "zod"
 import { CacheTags } from "@/lib/cache-tags"
+import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
 import { requireOrgMember } from "./auth-helpers"
 import { uuidSchema, validate } from "@/lib/validations"
 import type { Client, ClientInsert, ClientUpdate, ClientStatus } from "@/lib/supabase/types"
@@ -97,9 +98,11 @@ export async function createClientAction(
     return { error: error.message }
   }
 
-  after(() => {
+  after(async () => {
     revalidatePath("/clients")
     revalidateTag(CacheTags.clients(orgId))
+    // KV cache invalidation
+    await invalidate.client(orgId)
   })
 
   return { data: client }
@@ -122,6 +125,37 @@ export async function getClients(
 
   const supabase = await createClient()
 
+  // Check if any filters are applied
+  const hasFilters = Object.values(validatedFilters).some(
+    (v) => v !== undefined && v !== ""
+  )
+
+  // Only cache unfiltered queries
+  if (!hasFilters) {
+    try {
+      const clients = await cacheGet(
+        CacheKeys.clients(orgId),
+        async () => {
+          const { data, error } = await supabase
+            .from("clients")
+            .select("*, owner:profiles(id, full_name, email, avatar_url)")
+            .eq("organization_id", orgId)
+            .order("name")
+
+          if (error) throw error
+          return data ?? []
+        },
+        CacheTTL.CLIENTS
+      )
+      return { data: clients as Client[] }
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : "Failed to fetch clients",
+      }
+    }
+  }
+
+  // Filtered query - don't cache
   let query = supabase
     .from("clients")
     .select("*, owner:profiles(id, full_name, email, avatar_url)")
@@ -239,11 +273,13 @@ export async function updateClient(
     return { error: error.message }
   }
 
-  after(() => {
+  after(async () => {
     revalidatePath("/clients")
     revalidateTag(CacheTags.client(id))
     if (client.organization_id) {
       revalidateTag(CacheTags.clients(client.organization_id))
+      // KV cache invalidation
+      await invalidate.client(client.organization_id)
     }
   })
 
@@ -288,10 +324,12 @@ export async function deleteClient(id: string): Promise<ActionResult> {
     return { error: error.message }
   }
 
-  after(() => {
+  after(async () => {
     revalidatePath("/clients")
     revalidateTag(CacheTags.client(id))
     revalidateTag(CacheTags.clients(client.organization_id))
+    // KV cache invalidation
+    await invalidate.client(client.organization_id)
   })
 
   return {}
