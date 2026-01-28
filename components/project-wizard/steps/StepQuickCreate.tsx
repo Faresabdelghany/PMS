@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { AnimatePresence } from "@/components/ui/motion-lazy";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Calendar } from "../../ui/calendar";

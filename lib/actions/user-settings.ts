@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import type { ActionResult } from "./types"
 import type { AIProvider } from "@/lib/constants/ai"
+import { encrypt, decrypt, isEncryptedFormat, migrateFromBase64 } from "@/lib/crypto"
 
 // Note: user_settings table exists in DB but not in generated types
 // Using explicit any for the table queries
@@ -114,8 +115,7 @@ export async function saveAISettings(
 }
 
 // Save API key (separate function for security)
-// Note: In production, you'd want to encrypt this key server-side
-// For now, we'll store it with basic obfuscation (not true encryption)
+// Uses AES-256-GCM encryption for secure storage
 export async function saveAIApiKey(
   apiKey: string
 ): Promise<ActionResult<{ success: boolean }>> {
@@ -131,9 +131,14 @@ export async function saveAIApiKey(
     return { error: "Not authenticated" }
   }
 
-  // Basic obfuscation - in production use proper encryption
-  // This just makes it slightly harder to read in the database
-  const obfuscatedKey = Buffer.from(apiKey).toString("base64")
+  // Encrypt the API key using AES-256-GCM
+  let encryptedKey: string
+  try {
+    encryptedKey = encrypt(apiKey)
+  } catch (err) {
+    console.error("Encryption error:", err)
+    return { error: "Failed to encrypt API key. Check server configuration." }
+  }
 
   // Check if settings already exist
   const { data: existing } = await (supabase as any)
@@ -148,7 +153,7 @@ export async function saveAIApiKey(
     const result = await (supabase as any)
       .from("user_settings")
       .update({
-        ai_api_key_encrypted: obfuscatedKey,
+        ai_api_key_encrypted: encryptedKey,
         updated_at: new Date().toISOString(),
       })
       .eq("user_id", user.id)
@@ -157,7 +162,7 @@ export async function saveAIApiKey(
   } else {
     const result = await (supabase as any).from("user_settings").insert({
       user_id: user.id,
-      ai_api_key_encrypted: obfuscatedKey,
+      ai_api_key_encrypted: encryptedKey,
     })
 
     error = result.error
@@ -202,10 +207,48 @@ export async function getDecryptedApiKey(): Promise<ActionResult<string | null>>
     return { data: null }
   }
 
-  // Decode the obfuscated key
-  const apiKey = Buffer.from(data.ai_api_key_encrypted, "base64").toString("utf-8")
+  const storedValue = data.ai_api_key_encrypted
 
-  return { data: apiKey }
+  // Check if this is already using the new encryption format
+  if (isEncryptedFormat(storedValue)) {
+    try {
+      const apiKey = decrypt(storedValue)
+      return { data: apiKey }
+    } catch (err) {
+      console.error("Decryption error:", err)
+      return { error: "Failed to decrypt API key" }
+    }
+  }
+
+  // Legacy BASE64 format - migrate to proper encryption
+  const migratedValue = migrateFromBase64(storedValue)
+  if (migratedValue) {
+    // Re-encrypt and save with new format
+    await (supabase as any)
+      .from("user_settings")
+      .update({
+        ai_api_key_encrypted: migratedValue,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", user.id)
+
+    // Decrypt the newly encrypted value
+    try {
+      const apiKey = decrypt(migratedValue)
+      return { data: apiKey }
+    } catch (err) {
+      console.error("Decryption error after migration:", err)
+      return { error: "Failed to decrypt API key" }
+    }
+  }
+
+  // Fallback: try BASE64 decode (for very old data)
+  try {
+    const apiKey = Buffer.from(storedValue, "base64").toString("utf-8")
+    return { data: apiKey }
+  } catch {
+    return { error: "Failed to decode API key" }
+  }
 }
 
 // Delete API key
@@ -272,37 +315,19 @@ export async function hasAIConfigured(): Promise<ActionResult<boolean>> {
 
 // Get masked API key for display (shows only last 4 characters)
 export async function getMaskedApiKey(): Promise<ActionResult<string | null>> {
-  const supabase = await createClient()
+  // Use getDecryptedApiKey to handle decryption and migration
+  const result = await getDecryptedApiKey()
 
-  // Get current user
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return { error: "Not authenticated" }
+  if (result.error) {
+    return { error: result.error }
   }
 
-  const { data, error } = await (supabase as any)
-    .from("user_settings")
-    .select("ai_api_key_encrypted")
-    .eq("user_id", user.id)
-    .single()
-
-  if (error) {
-    if (error.code === "PGRST116") {
-      return { data: null }
-    }
-    return { error: error.message }
-  }
-
-  if (!data.ai_api_key_encrypted) {
+  if (!result.data) {
     return { data: null }
   }
 
-  // Decode and mask
-  const apiKey = Buffer.from(data.ai_api_key_encrypted, "base64").toString("utf-8")
+  // Mask the API key, showing only last 4 characters
+  const apiKey = result.data
   const masked = "•".repeat(Math.max(0, apiKey.length - 4)) + apiKey.slice(-4)
 
   return { data: masked }

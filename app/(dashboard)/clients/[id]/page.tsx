@@ -10,13 +10,15 @@ type PageProps = {
 export default async function Page({ params }: PageProps) {
   const { id } = await params
 
-  const orgsResult = await getUserOrganizations()
+  // Parallel fetch - both requests are independent
+  const [orgsResult, result] = await Promise.all([
+    getUserOrganizations(),
+    getClientWithProjects(id),
+  ])
 
   if (orgsResult.error || !orgsResult.data?.length) {
     redirect("/login")
   }
-
-  const result = await getClientWithProjects(id)
 
   if (result.error || !result.data) {
     notFound()

@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { motion } from "motion/react"
+import { MotionDiv } from "@/components/ui/motion-lazy"
 
 import { cn } from "@/lib/utils"
 
@@ -37,7 +37,7 @@ export function QuickCreateModalLayout({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-            <motion.div
+            <MotionDiv
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{
                     opacity: 1,
@@ -52,7 +52,7 @@ export function QuickCreateModalLayout({
                 onKeyDown={handleKeyDown}
             >
                 <div className={cn("flex flex-1 flex-col p-4 gap-3.5", contentClassName)}>{children}</div>
-            </motion.div>
+            </MotionDiv>
         </div>
     )
 }

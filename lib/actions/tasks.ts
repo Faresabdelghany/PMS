@@ -3,9 +3,35 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath, revalidateTag } from "next/cache"
 import { after } from "next/server"
+import { z } from "zod"
 import { CacheTags } from "@/lib/cache-tags"
+import { uuidSchema, validate } from "@/lib/validations"
 import type { Task, TaskInsert, TaskUpdate, TaskStatus, TaskPriority } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
+
+// Task validation schemas
+const createTaskSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Task name is required")
+    .max(500, "Task name must be less than 500 characters"),
+  description: z.string().max(10000).optional().nullable(),
+  status: z.enum(["todo", "in-progress", "done"]).default("todo"),
+  priority: z.enum(["low", "medium", "high", "critical"]).default("medium"),
+  workstream_id: z.string().uuid().optional().nullable(),
+  assignee_id: z.string().uuid().optional().nullable(),
+  start_date: z.string().optional().nullable(),
+  end_date: z.string().optional().nullable(),
+  tag: z.string().max(50).optional().nullable(),
+})
+
+const updateTaskSchema = createTaskSchema.partial()
+
+const reorderTasksSchema = z.object({
+  taskIds: z.array(z.string().uuid()).min(1, "At least one task ID is required"),
+  workstreamId: z.string().uuid().optional().nullable(),
+})
 
 
 export type TaskFilters = {
@@ -38,15 +64,28 @@ export async function createTask(
   projectId: string,
   data: Omit<TaskInsert, "project_id">
 ): Promise<ActionResult<Task>> {
+  // Validate project ID
+  const projectValidation = validate(uuidSchema, projectId)
+  if (!projectValidation.success) {
+    return { error: "Invalid project ID" }
+  }
+
+  // Validate task data
+  const validation = validate(createTaskSchema, data)
+  if (!validation.success) {
+    return { error: validation.error }
+  }
+
+  const validatedData = validation.data
   const supabase = await createClient()
 
   // Get max sort_order for the workstream (or project if no workstream)
   let sortOrder = 0
-  if (data.workstream_id) {
+  if (validatedData.workstream_id) {
     const { data: existing } = await supabase
       .from("tasks")
       .select("sort_order")
-      .eq("workstream_id", data.workstream_id)
+      .eq("workstream_id", validatedData.workstream_id)
       .order("sort_order", { ascending: false })
       .limit(1)
       .single()
@@ -66,7 +105,7 @@ export async function createTask(
   const { data: task, error } = await supabase
     .from("tasks")
     .insert({
-      ...data,
+      ...validatedData,
       project_id: projectId,
       sort_order: sortOrder,
     })

@@ -3,11 +3,53 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath, revalidateTag } from "next/cache"
 import { after } from "next/server"
+import { z } from "zod"
 import { CacheTags } from "@/lib/cache-tags"
 import { requireOrgMember } from "./auth-helpers"
+import { uuidSchema, validate } from "@/lib/validations"
 import type { Client, ClientInsert, ClientUpdate, ClientStatus } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
+// Client validation schemas
+const createClientSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Client name is required")
+    .max(200, "Client name must be less than 200 characters"),
+  industry: z.string().max(100).optional().nullable(),
+  website: z
+    .string()
+    .url("Invalid website URL")
+    .optional()
+    .nullable()
+    .or(z.literal(""))
+    .transform((val) => (val === "" ? null : val)),
+  location: z.string().max(200).optional().nullable(),
+  status: z.enum(["active", "inactive", "prospect"]).default("active"),
+  primary_contact_name: z.string().max(100).optional().nullable(),
+  primary_contact_email: z
+    .string()
+    .email("Invalid email format")
+    .optional()
+    .nullable()
+    .or(z.literal(""))
+    .transform((val) => (val === "" ? null : val)),
+  owner_id: z.string().uuid().optional().nullable(),
+})
+
+const updateClientSchema = createClientSchema.partial()
+
+// Search filter validation (prevent injection via search)
+const clientFiltersSchema = z.object({
+  status: z.enum(["active", "inactive", "prospect"]).optional(),
+  search: z
+    .string()
+    .max(200, "Search query too long")
+    .optional()
+    .transform((val) => val?.replace(/[%_]/g, "")), // Escape SQL wildcards
+  ownerId: z.string().uuid().optional(),
+})
 
 export type ClientFilters = {
   status?: ClientStatus
@@ -20,6 +62,18 @@ export async function createClientAction(
   orgId: string,
   data: Omit<ClientInsert, "organization_id">
 ): Promise<ActionResult<Client>> {
+  // Validate organization ID
+  const orgValidation = validate(uuidSchema, orgId)
+  if (!orgValidation.success) {
+    return { error: "Invalid organization ID" }
+  }
+
+  // Validate client data
+  const validation = validate(createClientSchema, data)
+  if (!validation.success) {
+    return { error: validation.error }
+  }
+
   // Require org membership
   try {
     await requireOrgMember(orgId)
@@ -27,12 +81,13 @@ export async function createClientAction(
     return { error: "You must be an organization member to create clients" }
   }
 
+  const validatedData = validation.data
   const supabase = await createClient()
 
   const { data: client, error } = await supabase
     .from("clients")
     .insert({
-      ...data,
+      ...validatedData,
       organization_id: orgId,
     })
     .select()
@@ -55,6 +110,16 @@ export async function getClients(
   orgId: string,
   filters?: ClientFilters
 ): Promise<ActionResult<Client[]>> {
+  // Validate organization ID
+  const orgValidation = validate(uuidSchema, orgId)
+  if (!orgValidation.success) {
+    return { error: "Invalid organization ID" }
+  }
+
+  // Validate and sanitize filters
+  const filtersValidation = validate(clientFiltersSchema, filters || {})
+  const validatedFilters = filtersValidation.success ? filtersValidation.data : {}
+
   const supabase = await createClient()
 
   let query = supabase
@@ -62,17 +127,18 @@ export async function getClients(
     .select("*, owner:profiles(id, full_name, email, avatar_url)")
     .eq("organization_id", orgId)
 
-  if (filters?.status) {
-    query = query.eq("status", filters.status)
+  if (validatedFilters.status) {
+    query = query.eq("status", validatedFilters.status)
   }
 
-  if (filters?.ownerId) {
-    query = query.eq("owner_id", filters.ownerId)
+  if (validatedFilters.ownerId) {
+    query = query.eq("owner_id", validatedFilters.ownerId)
   }
 
-  if (filters?.search) {
+  if (validatedFilters.search) {
+    // Search is already sanitized by the schema
     query = query.or(
-      `name.ilike.%${filters.search}%,primary_contact_name.ilike.%${filters.search}%,primary_contact_email.ilike.%${filters.search}%`
+      `name.ilike.%${validatedFilters.search}%,primary_contact_name.ilike.%${validatedFilters.search}%,primary_contact_email.ilike.%${validatedFilters.search}%`
     )
   }
 

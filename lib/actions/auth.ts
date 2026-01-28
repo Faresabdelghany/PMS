@@ -5,6 +5,15 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
 import { headers } from "next/headers"
+import {
+  signUpSchema,
+  signInSchema,
+  resetPasswordSchema,
+  updatePasswordSchema,
+  updateProfileSchema,
+  validate,
+  formDataToObject,
+} from "@/lib/validations"
 
 export type AuthResult = {
   error?: string
@@ -74,15 +83,14 @@ export async function createPersonalOrganization(userId: string, fullName: strin
 
 // Sign up with email and password
 export async function signUp(formData: FormData): Promise<AuthResult> {
-  const supabase = await createClient()
-
-  const email = formData.get("email") as string
-  const password = formData.get("password") as string
-  const fullName = formData.get("fullName") as string
-
-  if (!email || !password) {
-    return { error: "Email and password are required" }
+  // Validate input
+  const validation = validate(signUpSchema, formDataToObject(formData))
+  if (!validation.success) {
+    return { error: validation.error }
   }
+
+  const { email, password, fullName } = validation.data
+  const supabase = await createClient()
 
   // Sign up with email confirmation disabled (auto-confirm)
   const { data, error } = await supabase.auth.signUp({
@@ -139,14 +147,14 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
 
 // Sign in with email and password
 export async function signIn(formData: FormData): Promise<AuthResult> {
-  const supabase = await createClient()
-
-  const email = formData.get("email") as string
-  const password = formData.get("password") as string
-
-  if (!email || !password) {
-    return { error: "Email and password are required" }
+  // Validate input
+  const validation = validate(signInSchema, formDataToObject(formData))
+  if (!validation.success) {
+    return { error: validation.error }
   }
+
+  const { email, password } = validation.data
+  const supabase = await createClient()
 
   const { error } = await supabase.auth.signInWithPassword({
     email,
@@ -228,6 +236,13 @@ export async function getUserWithProfile() {
 
 // Update user profile
 export async function updateProfile(formData: FormData): Promise<AuthResult> {
+  // Validate input
+  const validation = validate(updateProfileSchema, formDataToObject(formData))
+  if (!validation.success) {
+    return { error: validation.error }
+  }
+
+  const { fullName, avatarUrl } = validation.data
   const supabase = await createClient()
 
   const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -236,14 +251,11 @@ export async function updateProfile(formData: FormData): Promise<AuthResult> {
     return { error: "Not authenticated" }
   }
 
-  const fullName = formData.get("fullName") as string
-  const avatarUrl = formData.get("avatarUrl") as string | null
-
   const { error } = await supabase
     .from("profiles")
     .update({
       full_name: fullName,
-      avatar_url: avatarUrl,
+      avatar_url: avatarUrl ?? null,
     })
     .eq("id", user.id)
 
@@ -257,13 +269,14 @@ export async function updateProfile(formData: FormData): Promise<AuthResult> {
 
 // Reset password (send reset email)
 export async function resetPassword(formData: FormData): Promise<AuthResult> {
-  const supabase = await createClient()
-
-  const email = formData.get("email") as string
-
-  if (!email) {
-    return { error: "Email is required" }
+  // Validate input
+  const validation = validate(resetPasswordSchema, formDataToObject(formData))
+  if (!validation.success) {
+    return { error: validation.error }
   }
+
+  const { email } = validation.data
+  const supabase = await createClient()
 
   const headersList = await headers()
   const origin = headersList.get("origin") || process.env.NEXT_PUBLIC_SITE_URL
@@ -281,13 +294,14 @@ export async function resetPassword(formData: FormData): Promise<AuthResult> {
 
 // Update password (after reset)
 export async function updatePassword(formData: FormData): Promise<AuthResult> {
-  const supabase = await createClient()
-
-  const password = formData.get("password") as string
-
-  if (!password) {
-    return { error: "Password is required" }
+  // Validate input
+  const validation = validate(updatePasswordSchema, formDataToObject(formData))
+  if (!validation.success) {
+    return { error: validation.error }
   }
+
+  const { password } = validation.data
+  const supabase = await createClient()
 
   const { error } = await supabase.auth.updateUser({
     password,

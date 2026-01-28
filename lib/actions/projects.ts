@@ -3,8 +3,10 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath, revalidateTag } from "next/cache"
 import { after } from "next/server"
+import { z } from "zod"
 import { CacheTags } from "@/lib/cache-tags"
 import { requireProjectMember, requireProjectOwnerOrPIC, requireOrgMember } from "./auth-helpers"
+import { uuidSchema, validate } from "@/lib/validations"
 import type {
   Project,
   ProjectInsert,
@@ -67,11 +69,57 @@ export type ProjectWithRelations = Project & {
   })[]
 }
 
+// Validation schema for project creation
+const createProjectSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Project name is required")
+    .max(200, "Project name must be less than 200 characters"),
+  description: z.string().max(5000).optional().nullable(),
+  status: z.enum(["active", "completed", "on-hold", "cancelled"]).optional(),
+  priority: z.enum(["low", "medium", "high", "critical"]).optional(),
+  start_date: z.string().optional().nullable(),
+  end_date: z.string().optional().nullable(),
+  client_id: z.string().uuid().optional().nullable(),
+  type_label: z.string().max(100).optional().nullable(),
+  tags: z.array(z.string().max(50)).optional(),
+  intent: z.enum(["build", "learn", "explore", "fix"]).optional().nullable(),
+  success_type: z.enum(["deliverable", "milestone", "metric", "ongoing"]).optional().nullable(),
+  deadline_type: z.enum(["fixed", "flexible", "none"]).optional().nullable(),
+  deadline_date: z.string().optional().nullable(),
+  work_structure: z.enum(["solo", "team", "mixed"]).optional().nullable(),
+  deliverables: z.array(z.object({
+    title: z.string().max(500),
+    due_date: z.string().optional().nullable(),
+  })).optional(),
+  metrics: z.array(z.object({
+    name: z.string().max(200),
+    target: z.string().max(100).optional().nullable(),
+  })).optional(),
+  owner_id: z.string().uuid().optional(),
+  contributor_ids: z.array(z.string().uuid()).optional(),
+  stakeholder_ids: z.array(z.string().uuid()).optional(),
+})
+
 // Create project (supports both quick create and guided wizard)
 export async function createProject(
   orgId: string,
   data: GuidedProjectInput
 ): Promise<ActionResult<Project>> {
+  // Validate organization ID
+  const orgValidation = validate(uuidSchema, orgId)
+  if (!orgValidation.success) {
+    return { error: "Invalid organization ID" }
+  }
+
+  // Validate project data
+  const validation = validate(createProjectSchema, data)
+  if (!validation.success) {
+    return { error: validation.error }
+  }
+
+  const validatedData = validation.data
   const supabase = await createClient()
 
   const {
@@ -83,13 +131,8 @@ export async function createProject(
     return { error: "Not authenticated" }
   }
 
-  // Input validation
-  if (!data.name || data.name.trim().length === 0) {
-    return { error: "Project name is required" }
-  }
-
-  // Extract related data from input
-  const { deliverables, metrics, owner_id, contributor_ids, stakeholder_ids, ...projectData } = data
+  // Extract related data from validated input
+  const { deliverables, metrics, owner_id, contributor_ids, stakeholder_ids, ...projectData } = validatedData
 
   // Filter out empty deliverables and metrics
   const validDeliverables = deliverables?.filter((d) => d.title?.trim()) ?? []
@@ -119,7 +162,7 @@ export async function createProject(
     .from("projects")
     .insert({
       ...projectData,
-      name: data.name.trim(),
+      name: validatedData.name.trim(),
       organization_id: orgId,
     })
     .select()

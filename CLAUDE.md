@@ -192,6 +192,10 @@ NEXT_PUBLIC_SUPABASE_URL=https://lazhmdyajdqbnxxwyxun.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
 SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+# Required for AI API key encryption (AES-256-GCM)
+# Generate with: openssl rand -hex 32
+ENCRYPTION_KEY=<64-hex-character-key>
 ```
 
 ## Tech Stack

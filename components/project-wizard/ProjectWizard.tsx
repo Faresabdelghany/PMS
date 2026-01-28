@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { MotionDiv, AnimatePresence } from "@/components/ui/motion-lazy";
 import { toast } from "sonner";
 import { Button } from "../ui/button";
 import { Stepper } from "./Stepper";
@@ -147,7 +147,7 @@ export function ProjectWizard({ onClose, onCreate, organizationId, clients = EMP
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <motion.div 
+      <MotionDiv 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ 
             opacity: 1, 
@@ -249,7 +249,7 @@ export function ProjectWizard({ onClose, onCreate, organizationId, clients = EMP
                     {/* Scrollable Content Area */}
                     <div className="flex-1 overflow-y-auto px-8 pb-8 pt-0">
                         <AnimatePresence mode="wait">
-                            <motion.div
+                            <MotionDiv
                                 key={step}
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
@@ -278,7 +278,7 @@ export function ProjectWizard({ onClose, onCreate, organizationId, clients = EMP
                                 {step === 5 && (
                                     <StepReview data={data} updateData={updateData} onEditStep={handleEditStepFromReview} />
                                 )}
-                            </motion.div>
+                            </MotionDiv>
                         </AnimatePresence>
                     </div>
 
@@ -363,7 +363,7 @@ export function ProjectWizard({ onClose, onCreate, organizationId, clients = EMP
                 </div>
             </>
         )}
-      </motion.div>
+      </MotionDiv>
     </div>
   );
 }

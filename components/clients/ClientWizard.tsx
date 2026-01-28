@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, type ChangeEvent } from "react"
-import { motion } from "motion/react"
+import { MotionDiv } from "@/components/ui/motion-lazy"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -94,7 +94,7 @@ export function ClientWizard({ mode, initialClient, organizationId, onClose, onS
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <motion.div
+      <MotionDiv
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.2, ease: "easeInOut" }}
@@ -220,7 +220,7 @@ export function ClientWizard({ mode, initialClient, organizationId, onClose, onS
             {isEdit ? "Save changes" : "Create client"}
           </Button>
         </div>
-      </motion.div>
+      </MotionDiv>
     </div>
   )
 }

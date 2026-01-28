@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react"
 import { LinkSimple, SquareHalf } from "@phosphor-icons/react/dist/ssr"
 import { toast } from "sonner"
-import { AnimatePresence, motion } from "motion/react"
+import { AnimatePresence, MotionDiv } from "@/components/ui/motion-lazy"
 
 import type { ProjectFullDetails } from "@/lib/actions/projects"
 import type { TaskWithRelations } from "@/lib/actions/tasks"
@@ -466,7 +466,7 @@ export function ProjectDetailsPage({
 
               <AnimatePresence initial={false}>
                 {showMeta && (
-                  <motion.div
+                  <MotionDiv
                     key="meta-panel"
                     initial={{ x: 80, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
@@ -480,7 +480,7 @@ export function ProjectDetailsPage({
                       quickLinks={project.quickLinks}
                       client={supabaseProject.client}
                     />
-                  </motion.div>
+                  </MotionDiv>
                 )}
               </AnimatePresence>
             </div>
