@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import { requireProjectMember } from "./auth-helpers"
+import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
 import type { Workstream, WorkstreamInsert, WorkstreamUpdate } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
@@ -98,8 +99,10 @@ export async function createWorkstream(
     }
   }
 
-  after(() => {
+  after(async () => {
     revalidatePath(`/projects/${projectId}`)
+    // KV cache invalidation
+    await invalidate.workstream(projectId)
   })
 
   return { data }
@@ -109,19 +112,26 @@ export async function createWorkstream(
 export async function getWorkstreams(
   projectId: string
 ): Promise<ActionResult<Workstream[]>> {
-  const supabase = await createClient()
+  try {
+    const workstreams = await cacheGet(
+      CacheKeys.workstreams(projectId),
+      async () => {
+        const supabase = await createClient()
+        const { data, error } = await supabase
+          .from("workstreams")
+          .select("*")
+          .eq("project_id", projectId)
+          .order("sort_order")
 
-  const { data, error } = await supabase
-    .from("workstreams")
-    .select("*")
-    .eq("project_id", projectId)
-    .order("sort_order")
-
-  if (error) {
-    return { error: error.message }
+        if (error) throw error
+        return data ?? []
+      },
+      CacheTTL.WORKSTREAMS
+    )
+    return { data: workstreams }
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Failed to fetch workstreams" }
   }
-
-  return { data }
 }
 
 // Get workstreams with tasks
@@ -239,8 +249,10 @@ export async function updateWorkstream(
     return { error: error.message }
   }
 
-  after(() => {
+  after(async () => {
     revalidatePath(`/projects/${current.project_id}`)
+    // KV cache invalidation
+    await invalidate.workstream(current.project_id)
   })
 
   return { data: workstream }
@@ -274,8 +286,10 @@ export async function deleteWorkstream(id: string): Promise<ActionResult> {
     return { error: error.message }
   }
 
-  after(() => {
+  after(async () => {
     revalidatePath(`/projects/${ws.project_id}`)
+    // KV cache invalidation
+    await invalidate.workstream(ws.project_id)
   })
 
   return {}
@@ -311,8 +325,10 @@ export async function reorderWorkstreams(
     return { error: error.message }
   }
 
-  after(() => {
+  after(async () => {
     revalidatePath(`/projects/${projectId}`)
+    // KV cache invalidation
+    await invalidate.workstream(projectId)
   })
 
   return {}
