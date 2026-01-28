@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, type ReactNode } from "react"
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { UserContext, type UserContextType } from "@/hooks/use-user"
 import type { Profile } from "@/lib/supabase/types"
@@ -12,11 +12,24 @@ type UserProviderProps = {
 }
 
 export function UserProvider({ children, initialUser = null, initialProfile = null }: UserProviderProps) {
-  const [state, setState] = useState<UserContextType>({
-    user: initialUser,
-    profile: initialProfile,
-    isLoading: !initialUser,
-  })
+  const [user, setUser] = useState<{ id: string; email: string } | null>(initialUser)
+  const [profile, setProfile] = useState<Profile | null>(initialProfile)
+  const [isLoading, setIsLoading] = useState(!initialUser)
+
+  const refreshProfile = useCallback(async () => {
+    if (!user) return
+
+    const supabase = createClient()
+    const { data: newProfile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single()
+
+    if (newProfile) {
+      setProfile(newProfile)
+    }
+  }, [user])
 
   useEffect(() => {
     // If we have initial user data, don't fetch again
@@ -30,23 +43,23 @@ export function UserProvider({ children, initialUser = null, initialProfile = nu
 
     async function fetchUser() {
       const {
-        data: { user },
+        data: { user: authUser },
       } = await supabase.auth.getUser()
 
-      if (user) {
-        const { data: profile } = await supabase
+      if (authUser) {
+        const { data: profileData } = await supabase
           .from("profiles")
           .select("*")
-          .eq("id", user.id)
+          .eq("id", authUser.id)
           .single()
 
-        setState({
-          user: { id: user.id, email: user.email || "" },
-          profile: profile || null,
-          isLoading: false,
-        })
+        setUser({ id: authUser.id, email: authUser.email || "" })
+        setProfile(profileData || null)
+        setIsLoading(false)
       } else {
-        setState({ user: null, profile: null, isLoading: false })
+        setUser(null)
+        setProfile(null)
+        setIsLoading(false)
       }
     }
 
@@ -57,7 +70,7 @@ export function UserProvider({ children, initialUser = null, initialProfile = nu
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_IN" && session?.user) {
-        const { data: profile, error } = await supabase
+        const { data: profileData, error } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", session.user.id)
@@ -67,13 +80,13 @@ export function UserProvider({ children, initialUser = null, initialProfile = nu
           console.error("Error fetching profile on auth change:", error)
         }
 
-        setState({
-          user: { id: session.user.id, email: session.user.email || "" },
-          profile: profile || null,
-          isLoading: false,
-        })
+        setUser({ id: session.user.id, email: session.user.email || "" })
+        setProfile(profileData || null)
+        setIsLoading(false)
       } else if (event === "SIGNED_OUT") {
-        setState({ user: null, profile: null, isLoading: false })
+        setUser(null)
+        setProfile(null)
+        setIsLoading(false)
       }
     })
 
@@ -82,5 +95,15 @@ export function UserProvider({ children, initialUser = null, initialProfile = nu
     }
   }, [initialUser, initialProfile])
 
-  return <UserContext.Provider value={state}>{children}</UserContext.Provider>
+  const value = useMemo<UserContextType>(
+    () => ({
+      user,
+      profile,
+      isLoading,
+      refreshProfile,
+    }),
+    [user, profile, isLoading, refreshProfile]
+  )
+
+  return <UserContext.Provider value={value}>{children}</UserContext.Provider>
 }

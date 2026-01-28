@@ -10,6 +10,7 @@ export type UserContextType = {
   } | null
   profile: Profile | null
   isLoading: boolean
+  refreshProfile?: () => Promise<void>
 }
 
 export const UserContext = createContext<UserContextType | null>(null)

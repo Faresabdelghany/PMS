@@ -332,3 +332,130 @@ export async function getMaskedApiKey(): Promise<ActionResult<string | null>> {
 
   return { data: masked }
 }
+
+// Upload avatar image
+export async function uploadAvatar(
+  formData: FormData
+): Promise<ActionResult<{ avatarUrl: string }>> {
+  const supabase = await createClient()
+
+  // Get current user
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return { error: "Not authenticated" }
+  }
+
+  // Get file from FormData
+  const file = formData.get("avatar") as File | null
+  if (!file) {
+    return { error: "No file provided" }
+  }
+
+  // Validate file type
+  if (!file.type.startsWith("image/")) {
+    return { error: "File must be an image" }
+  }
+
+  // Validate file size (max 5MB)
+  const maxSize = 5 * 1024 * 1024
+  if (file.size > maxSize) {
+    return { error: "Image must be less than 5MB" }
+  }
+
+  // Generate unique filename
+  const timestamp = Date.now()
+  const ext = file.name.split(".").pop() || "jpg"
+  const filename = `${user.id}/${timestamp}.${ext}`
+
+  // Convert file to buffer
+  const arrayBuffer = await file.arrayBuffer()
+  const fileData = new Uint8Array(arrayBuffer)
+
+  // Upload to avatars bucket
+  const { error: uploadError } = await supabase.storage
+    .from("avatars")
+    .upload(filename, fileData, {
+      contentType: file.type,
+      cacheControl: "3600",
+      upsert: true,
+    })
+
+  if (uploadError) {
+    console.error("Avatar upload error:", uploadError)
+    return { error: `Failed to upload avatar: ${uploadError.message}` }
+  }
+
+  // Get public URL
+  const { data: urlData } = supabase.storage
+    .from("avatars")
+    .getPublicUrl(filename)
+
+  const avatarUrl = urlData.publicUrl
+
+  // Update profile with new avatar URL
+  const { error: updateError } = await supabase
+    .from("profiles")
+    .update({ avatar_url: avatarUrl })
+    .eq("id", user.id)
+
+  if (updateError) {
+    return { error: `Failed to update profile: ${updateError.message}` }
+  }
+
+  revalidatePath("/settings")
+  return { data: { avatarUrl } }
+}
+
+// Delete avatar image
+export async function deleteAvatar(): Promise<ActionResult<{ success: boolean }>> {
+  const supabase = await createClient()
+
+  // Get current user
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return { error: "Not authenticated" }
+  }
+
+  // Get current avatar URL to find the storage path
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("avatar_url")
+    .eq("id", user.id)
+    .single()
+
+  if (profile?.avatar_url) {
+    // Extract filename from URL and delete from storage
+    try {
+      const url = new URL(profile.avatar_url)
+      const pathParts = url.pathname.split("/")
+      const bucketIndex = pathParts.indexOf("avatars")
+      if (bucketIndex !== -1) {
+        const storagePath = pathParts.slice(bucketIndex + 1).join("/")
+        await supabase.storage.from("avatars").remove([storagePath])
+      }
+    } catch {
+      // Ignore URL parsing errors
+    }
+  }
+
+  // Clear avatar URL from profile
+  const { error: updateError } = await supabase
+    .from("profiles")
+    .update({ avatar_url: null })
+    .eq("id", user.id)
+
+  if (updateError) {
+    return { error: `Failed to update profile: ${updateError.message}` }
+  }
+
+  revalidatePath("/settings")
+  return { data: { success: true } }
+}
