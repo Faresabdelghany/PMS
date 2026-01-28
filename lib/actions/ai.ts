@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { getDecryptedApiKey, getAISettings } from "./user-settings"
+import { rateLimiters, checkRateLimit, rateLimitError } from "@/lib/rate-limit/limiter"
 import type { ActionResult } from "./types"
 
 
@@ -215,6 +216,24 @@ export async function generateText(
   const configResult = await verifyAIConfig()
   if (configResult.error) {
     return { error: configResult.error }
+  }
+
+  // Get user ID for rate limiting
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (user) {
+    // Check daily AI rate limit
+    const dailyLimit = await checkRateLimit(rateLimiters.ai, user.id)
+    if (!dailyLimit.success) {
+      return rateLimitError(dailyLimit.reset)
+    }
+
+    // Check concurrent AI rate limit
+    const concurrentLimit = await checkRateLimit(rateLimiters.aiConcurrent, user.id)
+    if (!concurrentLimit.success) {
+      return rateLimitError(concurrentLimit.reset)
+    }
   }
 
   const { apiKey, provider, model } = configResult.data!
