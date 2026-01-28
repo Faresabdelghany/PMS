@@ -1,3 +1,5 @@
 export { ProfileSettings } from "./profile-settings"
 export { AISettings } from "./ai-settings"
 export { OrganizationSettings } from "./organization-settings"
+export { TagsSettings } from "./tags-settings"
+export { LabelsSettings } from "./labels-settings"

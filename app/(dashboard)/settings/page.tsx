@@ -3,8 +3,8 @@
 import { useState } from "react"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ProfileSettings, AISettings, OrganizationSettings } from "@/components/settings"
-import { User, Sparkles, Building2 } from "lucide-react"
+import { ProfileSettings, AISettings, OrganizationSettings, TagsSettings, LabelsSettings } from "@/components/settings"
+import { User, Sparkles, Building2, Tag, Tags } from "lucide-react"
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile")
@@ -43,6 +43,20 @@ export default function SettingsPage() {
                 <Building2 className="h-3.5 w-3.5" />
                 Organization
               </TabsTrigger>
+              <TabsTrigger
+                value="tags"
+                className="h-7 px-3 rounded-full text-xs data-[state=active]:bg-background data-[state=active]:text-foreground gap-1.5"
+              >
+                <Tag className="h-3.5 w-3.5" />
+                Tags
+              </TabsTrigger>
+              <TabsTrigger
+                value="labels"
+                className="h-7 px-3 rounded-full text-xs data-[state=active]:bg-background data-[state=active]:text-foreground gap-1.5"
+              >
+                <Tags className="h-3.5 w-3.5" />
+                Labels
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -58,6 +72,14 @@ export default function SettingsPage() {
 
               <TabsContent value="organization" className="mt-4 focus-visible:outline-none focus-visible:ring-0">
                 <OrganizationSettings />
+              </TabsContent>
+
+              <TabsContent value="tags" className="mt-4 focus-visible:outline-none focus-visible:ring-0">
+                <TagsSettings />
+              </TabsContent>
+
+              <TabsContent value="labels" className="mt-4 focus-visible:outline-none focus-visible:ring-0">
+                <LabelsSettings />
               </TabsContent>
             </div>
           </div>
