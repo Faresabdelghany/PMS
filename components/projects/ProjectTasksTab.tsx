@@ -50,6 +50,7 @@ import { FilterPopover, type MemberOption, type TagOption } from "@/components/f
 import { ChipOverflow } from "@/components/chip-overflow"
 import { TaskRowBase } from "@/components/tasks/TaskRowBase"
 import { TaskQuickCreateModal, type TaskData } from "@/components/tasks/TaskQuickCreateModal"
+import type { OrganizationTag } from "@/lib/supabase/types"
 import { formatDueLabel } from "@/lib/date-utils"
 import { cn } from "@/lib/utils"
 import { usePooledTasksRealtime } from "@/hooks/realtime-context"
@@ -93,6 +94,7 @@ type ProjectTasksTabProps = {
   initialTasks?: TaskWithRelations[]
   workstreams?: { id: string; name: string }[]
   organizationMembers?: OrganizationMember[]
+  organizationTags?: OrganizationTag[]
 }
 
 export function ProjectTasksTab({
@@ -101,6 +103,7 @@ export function ProjectTasksTab({
   initialTasks = [],
   workstreams = [],
   organizationMembers = [],
+  organizationTags = [],
 }: ProjectTasksTabProps) {
   const [tasks, setTasks] = useState<TaskWithRelations[]>(initialTasks)
   const [filters, setFilters] = useState<FilterChipType[]>([])
@@ -321,6 +324,7 @@ export function ProjectTasksTab({
           onTaskUpdated={handleTaskUpdated}
           projects={projectsForModal}
           organizationMembers={organizationMembers}
+          tags={organizationTags}
         />
       </>
     )
@@ -389,6 +393,7 @@ export function ProjectTasksTab({
         onTaskUpdated={handleTaskUpdated}
         projects={projectsForModal}
         organizationMembers={organizationMembers}
+        tags={organizationTags}
       />
 
       <AlertDialog open={!!taskToDelete} onOpenChange={(open) => !open && setTaskToDelete(null)}>

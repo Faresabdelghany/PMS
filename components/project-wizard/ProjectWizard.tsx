@@ -17,6 +17,8 @@ import { CaretLeft, CaretRight, X } from "@phosphor-icons/react/dist/ssr";
 import { cn } from "@/lib/utils";
 import { createProject } from "@/lib/actions/projects";
 import { getOrganizationMembers } from "@/lib/actions/organizations";
+import { getTags } from "@/lib/actions/tags";
+import type { OrganizationTag } from "@/lib/supabase/types";
 import { useUser } from "@/hooks/use-user";
 
 const QUICK_CREATE_STEP = 100;
@@ -51,18 +53,27 @@ export function ProjectWizard({ onClose, onCreate, organizationId, clients = EMP
   const [maxStepReached, setMaxStepReached] = useState(0);
   const [isQuickCreateExpanded, setIsQuickCreateExpanded] = useState(false);
   const [organizationMembers, setOrganizationMembers] = useState<OrganizationMember[]>([]);
+  const [organizationTags, setOrganizationTags] = useState<OrganizationTag[]>([]);
   const [data, setData] = useState<ProjectData>(() => ({ ...DEFAULT_PROJECT_DATA }));
 
-  // Fetch organization members on mount
+  // Fetch organization members and tags on mount
   useEffect(() => {
-    async function fetchMembers() {
+    async function fetchData() {
       if (!organizationId) return;
-      const result = await getOrganizationMembers(organizationId);
-      if (result.data) {
-        setOrganizationMembers(result.data as OrganizationMember[]);
+
+      const [membersResult, tagsResult] = await Promise.all([
+        getOrganizationMembers(organizationId),
+        getTags(organizationId),
+      ]);
+
+      if (membersResult.data) {
+        setOrganizationMembers(membersResult.data as OrganizationMember[]);
+      }
+      if (tagsResult.data) {
+        setOrganizationTags(tagsResult.data);
       }
     }
-    fetchMembers();
+    fetchData();
   }, [organizationId]);
 
   // Keyboard navigation: Escape to close wizard
@@ -174,6 +185,7 @@ export function ProjectWizard({ onClose, onCreate, organizationId, clients = EMP
                 onClose={handleClose}
                 clients={clients}
                 organizationMembers={organizationMembers}
+                tags={organizationTags}
                 onCreate={async (projectData: QuickCreateProjectData) => {
                   if (!organizationId) {
                     toast.error("Organization not found. Please log in again.");

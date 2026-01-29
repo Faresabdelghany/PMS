@@ -32,7 +32,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Loader2, Plus, MoreHorizontal, Pencil, Trash2, Search } from "lucide-react"
 import { useOrganization } from "@/hooks/use-organization"
-import { getTags, createTag, updateTag, deleteTag, TAG_COLORS } from "@/lib/actions/tags"
+import { getTags, createTag, updateTag, deleteTag } from "@/lib/actions/tags"
+import { TAG_COLORS } from "@/lib/constants/tag-colors"
 import { ColorPicker } from "@/components/ui/color-picker"
 import type { OrganizationTag } from "@/lib/supabase/types"
 

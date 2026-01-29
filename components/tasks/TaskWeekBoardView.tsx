@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button"
 import type { ProjectTask } from "@/lib/data/project-details"
 import { TaskBoardCard } from "@/components/tasks/TaskBoardCard"
 import type { CreateTaskContext } from "@/components/tasks/TaskQuickCreateModal"
+import type { OrganizationTag } from "@/lib/supabase/types"
 import { cn } from "@/lib/utils"
 
 type DayColumn = {
@@ -42,9 +43,11 @@ type TaskWeekBoardViewProps = {
   onChangeTag?: (taskId: string, tagLabel?: string) => void
   onMoveTaskDate?: (taskId: string, newDate: Date) => void
   onOpenTask?: (task: ProjectTask) => void
+  /** Organization tags for tag dropdowns */
+  tags?: OrganizationTag[]
 }
 
-export function TaskWeekBoardView({ tasks, onAddTask, onToggleTask, onChangeTag, onMoveTaskDate, onOpenTask }: TaskWeekBoardViewProps) {
+export function TaskWeekBoardView({ tasks, onAddTask, onToggleTask, onChangeTag, onMoveTaskDate, onOpenTask, tags = [] }: TaskWeekBoardViewProps) {
   const [currentWeekStart, setCurrentWeekStart] = useState(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 }) // Monday
   )
@@ -272,6 +275,7 @@ export function TaskWeekBoardView({ tasks, onAddTask, onToggleTask, onChangeTag,
                   onToggleTask={onToggleTask}
                   onOpenTask={onOpenTask}
                   onChangeTag={onChangeTag}
+                  tags={tags}
                 />
               )
             })}
@@ -286,6 +290,7 @@ export function TaskWeekBoardView({ tasks, onAddTask, onToggleTask, onChangeTag,
               onToggle={() => onToggleTask?.(activeTask.id)}
               onOpen={() => onOpenTask?.(activeTask)}
               onChangeTag={(tagLabel) => onChangeTag?.(activeTask.id, tagLabel)}
+              tags={tags}
             />
           ) : null}
         </DragOverlay>
@@ -306,6 +311,7 @@ type DayColumnDroppableProps = {
   onToggleTask?: (taskId: string) => void
   onOpenTask?: (task: ProjectTask) => void
   onChangeTag?: (taskId: string, tagLabel?: string) => void
+  tags?: OrganizationTag[]
 }
 
 function DayColumnDroppable({
@@ -320,6 +326,7 @@ function DayColumnDroppable({
   onToggleTask,
   onOpenTask,
   onChangeTag,
+  tags = [],
 }: DayColumnDroppableProps) {
   const { isOver, setNodeRef } = useDroppable({
     id: dayKey,
@@ -375,6 +382,7 @@ function DayColumnDroppable({
                 onToggle={onToggleTask}
                 onOpen={onOpenTask}
                 onChangeTag={onChangeTag}
+                tags={tags}
               />
             ))
           )}
@@ -400,9 +408,10 @@ type SortableTaskCardProps = {
   onToggle?: (taskId: string) => void
   onOpen?: (task: ProjectTask) => void
   onChangeTag?: (taskId: string, tagLabel?: string) => void
+  tags?: OrganizationTag[]
 }
 
-function SortableTaskCard({ task, dayKey, onToggle, onOpen, onChangeTag }: SortableTaskCardProps) {
+function SortableTaskCard({ task, dayKey, onToggle, onOpen, onChangeTag, tags = [] }: SortableTaskCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: task.id,
     data: { dayKey },
@@ -421,6 +430,7 @@ function SortableTaskCard({ task, dayKey, onToggle, onOpen, onChangeTag }: Sorta
         onToggle={() => onToggle?.(task.id)}
         onOpen={() => onOpen?.(task)}
         onChangeTag={(tagLabel) => onChangeTag?.(task.id, tagLabel)}
+        tags={tags}
       />
     </div>
   )

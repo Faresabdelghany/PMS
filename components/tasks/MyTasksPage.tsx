@@ -40,6 +40,7 @@ import { FilterPopover, type MemberOption, type TagOption } from "@/components/f
 import { ChipOverflow } from "@/components/chip-overflow"
 import { ViewOptionsPopover } from "@/components/view-options-popover"
 import { TaskQuickCreateModal, type CreateTaskContext } from "@/components/tasks/TaskQuickCreateModal"
+import type { OrganizationTag } from "@/lib/supabase/types"
 import { formatDueLabel } from "@/lib/date-utils"
 import { toast } from "sonner"
 
@@ -86,6 +87,7 @@ interface MyTasksPageProps {
   projects?: ProjectWithRelations[]
   organizationId?: string
   organizationMembers?: OrganizationMember[]
+  organizationTags?: OrganizationTag[]
 }
 
 export function MyTasksPage({
@@ -93,6 +95,7 @@ export function MyTasksPage({
   projects = [],
   organizationId,
   organizationMembers = [],
+  organizationTags = [],
 }: MyTasksPageProps) {
   const [tasks, setTasks] = useState<TaskWithRelations[]>(initialTasks)
   const [filters, setFilters] = useState<FilterChipType[]>([])
@@ -422,6 +425,7 @@ export function MyTasksPage({
           onTaskUpdated={handleTaskUpdated}
           projects={projectOptions}
           organizationMembers={organizationMembers}
+          tags={organizationTags}
         />
       </div>
     )
@@ -499,6 +503,7 @@ export function MyTasksPage({
             onChangeTag={changeTaskTag}
             onMoveTaskDate={moveTaskDate}
             onOpenTask={openEditTask}
+            tags={organizationTags}
           />
         )}
       </div>
@@ -516,6 +521,7 @@ export function MyTasksPage({
         onTaskUpdated={handleTaskUpdated}
         projects={projectOptions}
         organizationMembers={organizationMembers}
+        tags={organizationTags}
       />
 
       <AlertDialog open={!!taskToDelete} onOpenChange={(open) => !open && setTaskToDelete(null)}>

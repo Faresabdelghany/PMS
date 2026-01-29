@@ -1,10 +1,12 @@
 "use client"
 
-import { useState, createContext, useContext, useCallback, useMemo, type ReactNode } from "react"
+import { useState, createContext, useContext, useCallback, useMemo, useEffect, type ReactNode } from "react"
 import { CommandPalette } from "@/components/command-palette"
 import { ProjectWizardLazy } from "@/components/project-wizard/ProjectWizardLazy"
 import { TaskQuickCreateModalLazy } from "@/components/tasks/TaskQuickCreateModalLazy"
 import { useOrganization } from "@/hooks/use-organization"
+import { getTags } from "@/lib/actions/tags"
+import type { OrganizationTag } from "@/lib/supabase/types"
 
 type CommandPaletteContextValue = {
   openCreateProject: () => void
@@ -28,7 +30,22 @@ type CommandPaletteProviderProps = {
 export function CommandPaletteProvider({ children }: CommandPaletteProviderProps) {
   const [showProjectWizard, setShowProjectWizard] = useState(false)
   const [showTaskModal, setShowTaskModal] = useState(false)
+  const [organizationTags, setOrganizationTags] = useState<OrganizationTag[]>([])
   const { organization } = useOrganization()
+
+  // Fetch organization tags when organization changes
+  useEffect(() => {
+    if (!organization?.id) {
+      setOrganizationTags([])
+      return
+    }
+
+    getTags(organization.id).then((result) => {
+      if (result.data) {
+        setOrganizationTags(result.data)
+      }
+    })
+  }, [organization?.id])
 
   const openCreateProject = useCallback(() => {
     setShowProjectWizard(true)
@@ -66,10 +83,10 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
       {showTaskModal && (
         <TaskQuickCreateModalLazy
           open={showTaskModal}
-          onOpenChange={setShowTaskModal}
+          onClose={() => setShowTaskModal(false)}
           projects={[]}
-          members={[]}
-          onSuccess={() => setShowTaskModal(false)}
+          organizationMembers={[]}
+          tags={organizationTags}
         />
       )}
     </CommandPaletteContext.Provider>

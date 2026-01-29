@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { WorkstreamTask } from "@/lib/data/project-details"
+import type { OrganizationTag } from "@/lib/supabase/types"
 import { formatDueLabel, getDueTone, formatStartLabel } from "@/lib/date-utils"
 
 // Workstream with tasks type from the action
@@ -117,6 +118,7 @@ type ProjectDetailsPageProps = {
   workstreams?: WorkstreamWithTasks[]
   clients?: { id: string; name: string }[]
   organizationMembers?: OrganizationMember[]
+  organizationTags?: OrganizationTag[]
 }
 
 export function ProjectDetailsPage({
@@ -126,6 +128,7 @@ export function ProjectDetailsPage({
   workstreams = [],
   clients = [],
   organizationMembers = [],
+  organizationTags = [],
 }: ProjectDetailsPageProps) {
   const [showMeta, setShowMeta] = useState(true)
   const [isWizardOpen, setIsWizardOpen] = useState(false)
@@ -451,6 +454,7 @@ export function ProjectDetailsPage({
                       initialTasks={tasks}
                       workstreams={workstreams.map(ws => ({ id: ws.id, name: ws.name }))}
                       organizationMembers={organizationMembers}
+                      organizationTags={organizationTags}
                     />
                   </TabsContent>
 
@@ -506,6 +510,7 @@ export function ProjectDetailsPage({
           editingTask={editingWorkstreamTask}
           projects={projectsForWorkstreamModal}
           organizationMembers={organizationMembers}
+          tags={organizationTags}
         />
       </div>
     </div>

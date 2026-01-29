@@ -5,26 +5,6 @@ import { revalidatePath } from "next/cache"
 import type { OrganizationTag, OrganizationTagUpdate } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
-// Color palette for tags/labels
-export const TAG_COLORS = [
-  { name: "Red", hex: "#ef4444" },
-  { name: "Orange", hex: "#f97316" },
-  { name: "Amber", hex: "#f59e0b" },
-  { name: "Yellow", hex: "#eab308" },
-  { name: "Lime", hex: "#84cc16" },
-  { name: "Green", hex: "#22c55e" },
-  { name: "Emerald", hex: "#10b981" },
-  { name: "Teal", hex: "#14b8a6" },
-  { name: "Cyan", hex: "#06b6d4" },
-  { name: "Sky", hex: "#0ea5e9" },
-  { name: "Blue", hex: "#3b82f6" },
-  { name: "Indigo", hex: "#6366f1" },
-  { name: "Violet", hex: "#8b5cf6" },
-  { name: "Purple", hex: "#a855f7" },
-  { name: "Pink", hex: "#ec4899" },
-  { name: "Gray", hex: "#6b7280" },
-] as const
-
 // Get all tags for an organization
 export async function getTags(orgId: string): Promise<ActionResult<OrganizationTag[]>> {
   const supabase = await createClient()

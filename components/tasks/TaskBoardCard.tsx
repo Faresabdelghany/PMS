@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import type { ProjectTask } from "@/lib/data/project-details"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { TAG_OPTIONS } from "@/components/tasks/TaskQuickCreateModal"
+import type { OrganizationTag } from "@/lib/supabase/types"
 
 type TaskBoardCardVariant = "default" | "completed" | "empty"
 
@@ -24,9 +24,11 @@ type TaskBoardCardProps = {
    * The value is the tag label (e.g. "Feature") or undefined for no tag.
    */
   onChangeTag?: (tagLabel?: string) => void
+  /** Organization tags for the tag dropdown */
+  tags?: OrganizationTag[]
 }
 
-export const TaskBoardCard = memo(function TaskBoardCard({ task, variant = "default", onToggle, onOpen, onChangeTag }: TaskBoardCardProps) {
+export const TaskBoardCard = memo(function TaskBoardCard({ task, variant = "default", onToggle, onOpen, onChangeTag, tags = [] }: TaskBoardCardProps) {
   const isDefault = variant === "default" && task
   const isCompleted = variant === "completed" && task
   const isEmpty = variant === "empty"
@@ -143,9 +145,13 @@ export const TaskBoardCard = memo(function TaskBoardCard({ task, variant = "defa
             <DropdownMenuItem onClick={() => onChangeTag?.(undefined)}>
               <span className="text-xs">No tag</span>
             </DropdownMenuItem>
-            {TAG_OPTIONS.map((opt) => (
-              <DropdownMenuItem key={opt.id} onClick={() => onChangeTag?.(opt.label)}>
-                <span className="text-xs">{opt.label}</span>
+            {tags.map((tag) => (
+              <DropdownMenuItem key={tag.id} onClick={() => onChangeTag?.(tag.name)}>
+                <span
+                  className="mr-2 h-2 w-2 rounded-full"
+                  style={{ backgroundColor: tag.color }}
+                />
+                <span className="text-xs">{tag.name}</span>
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>

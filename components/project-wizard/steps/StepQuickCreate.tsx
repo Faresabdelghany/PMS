@@ -19,7 +19,7 @@ import {
 } from "../../ui/command";
 import { Check, X, CornersOut, Star, CalendarBlank, UserCircle, Spinner, List, Paperclip, Microphone, Rows, ChartBar, Tag } from "@phosphor-icons/react/dist/ssr";
 import { ProjectDescriptionEditorLazy as ProjectDescriptionEditor } from "../ProjectDescriptionEditorLazy";
-import type { ProjectStatus, ProjectPriority } from "@/lib/supabase/types";
+import type { ProjectStatus, ProjectPriority, OrganizationTag } from "@/lib/supabase/types";
 
 type Client = { id: string; name: string };
 
@@ -79,12 +79,6 @@ const WORKSTREAMS = [
   { id: "qa", label: "QA" },
 ];
 
-const TAGS = [
-  { id: "bug", label: "Bug", color: "var(--chart-5)" },
-  { id: "feature", label: "Feature", color: "var(--chart-2)" },
-  { id: "enhancement", label: "Enhancement", color: "var(--chart-4)" },
-  { id: "docs", label: "Documentation", color: "var(--chart-3)" },
-];
 
 // --- Helper Components ---
 
@@ -201,6 +195,7 @@ interface StepQuickCreateProps {
   onExpandChange?: (isExpanded: boolean) => void;
   clients?: Client[];
   organizationMembers?: OrganizationMember[];
+  tags?: OrganizationTag[];
 }
 
 export function StepQuickCreate({
@@ -209,6 +204,7 @@ export function StepQuickCreate({
   onExpandChange,
   clients = [],
   organizationMembers = [],
+  tags = [],
 }: StepQuickCreateProps) {
   const [title, setTitle] = useState("");
   // Description is now managed by Tiptap editor
@@ -240,9 +236,7 @@ export function StepQuickCreate({
   const [priority, setPriority] = useState<
     (typeof PRIORITIES)[0] | null
   >(null);
-  const [selectedTag, setSelectedTag] = useState<
-    (typeof TAGS)[0] | null
-  >(null);
+  const [selectedTag, setSelectedTag] = useState<OrganizationTag | null>(null);
   const [client, setClient] = useState<Client | null>(null);
 
   useEffect(() => {
@@ -285,7 +279,7 @@ export function StepQuickCreate({
       end_date: targetDate ? targetDate.toISOString().split('T')[0] : undefined,
       client_id: client?.id,
       type_label: sprintType?.label,
-      tags: selectedTag ? [selectedTag.label] : [],
+      tags: selectedTag ? [selectedTag.name] : [],
       owner_id: assignee?.id,
     };
 
@@ -564,46 +558,38 @@ export function StepQuickCreate({
           />
 
           {/* Tag Picker */}
-          <GenericPicker
-            items={TAGS}
-            onSelect={setSelectedTag}
-            selectedId={selectedTag?.id}
-            placeholder="Add tag..."
-            renderItem={(item, isSelected) => (
-              <div className="flex items-center gap-2 w-full">
-                <div
-                  className="size-3 rounded-full"
-                  style={{ backgroundColor: item.color }}
-                />
-                <span className="flex-1">{item.label}</span>
-                {isSelected && <Check className="size-4" />}
-              </div>
-            )}
-            trigger={
-              <button className="bg-background flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:bg-black/5 transition-colors">
-                <Wrapper>
-                  <g
-                    clipPath="url(#clip0_13_2458)"
-                    id="Icon / Tag"
-                  >
-                    <Tag className="size-4 text-muted-foreground" />
-                  </g>
-                  <defs>
-                    <clipPath id="clip0_13_2458">
-                      <rect
-                        fill="white"
-                        height="16"
-                        width="16"
-                      />
-                    </clipPath>
-                  </defs>
-                </Wrapper>
-                <span className="font-medium text-foreground text-sm leading-5">
-                  {selectedTag ? selectedTag.label : "Tag"}
-                </span>
-              </button>
-            }
-          />
+          {tags.length > 0 && (
+            <GenericPicker
+              items={tags}
+              onSelect={setSelectedTag}
+              selectedId={selectedTag?.id}
+              placeholder="Add tag..."
+              renderItem={(item, isSelected) => (
+                <div className="flex items-center gap-2 w-full">
+                  <div
+                    className="size-3 rounded-full"
+                    style={{ backgroundColor: item.color }}
+                  />
+                  <span className="flex-1">{item.name}</span>
+                  {isSelected && <Check className="size-4" />}
+                </div>
+              )}
+              trigger={
+                <button className="bg-background flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:bg-black/5 transition-colors">
+                  {selectedTag && (
+                    <div
+                      className="size-3 rounded-full"
+                      style={{ backgroundColor: selectedTag.color }}
+                    />
+                  )}
+                  {!selectedTag && <Tag className="size-4 text-muted-foreground" />}
+                  <span className="font-medium text-foreground text-sm leading-5">
+                    {selectedTag ? selectedTag.name : "Tag"}
+                  </span>
+                </button>
+              }
+            />
+          )}
         </div>
 
         {/* Footer */}

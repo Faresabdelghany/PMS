@@ -22,4 +22,4 @@ export const TaskQuickCreateModalLazy = dynamic(
 )
 
 // Re-export types for convenience
-export type { TaskData, CreateTaskContext, TagOption } from "./TaskQuickCreateModal"
+export type { TaskData, CreateTaskContext } from "./TaskQuickCreateModal"

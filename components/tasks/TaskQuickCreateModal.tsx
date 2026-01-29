@@ -11,6 +11,7 @@ import { ProjectDescriptionEditorLazy as ProjectDescriptionEditor } from '@/comp
 import { QuickCreateModalLayout } from '@/components/QuickCreateModalLayout'
 import { toast } from 'sonner'
 import { createTask, updateTask } from '@/lib/actions/tasks'
+import type { OrganizationTag } from "@/lib/supabase/types"
 
 // Types for data passed from parent
 type ProjectOption = {
@@ -70,6 +71,7 @@ interface TaskQuickCreateModalProps {
   onTaskUpdated?: (task: TaskData) => void
   projects?: ProjectOption[]
   organizationMembers?: OrganizationMember[]
+  tags?: OrganizationTag[]
 }
 
 type TaskStatusId = 'todo' | 'in-progress' | 'done'
@@ -90,11 +92,6 @@ type PriorityOption = {
   label: string
 }
 
-export type TagOption = {
-  id: string
-  label: string
-}
-
 const STATUS_OPTIONS: StatusOption[] = [
   { id: 'todo', label: 'To do' },
   { id: 'in-progress', label: 'In progress' },
@@ -106,12 +103,6 @@ const PRIORITY_OPTIONS: PriorityOption[] = [
   { id: 'low', label: 'Low' },
   { id: 'medium', label: 'Medium' },
   { id: 'high', label: 'High' },
-]
-
-export const TAG_OPTIONS: TagOption[] = [
-  { id: 'feature', label: 'Feature' },
-  { id: 'bug', label: 'Bug' },
-  { id: 'internal', label: 'Internal' },
 ]
 
 function toUser(option: AssigneeOption | undefined): User | null {
@@ -132,6 +123,7 @@ export function TaskQuickCreateModal({
   onTaskUpdated,
   projects = [],
   organizationMembers = [],
+  tags = [],
 }: TaskQuickCreateModalProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState<string | undefined>(undefined)
@@ -165,7 +157,7 @@ export function TaskQuickCreateModal({
   const [startDate, setStartDate] = useState<Date | undefined>(() => new Date())
   const [targetDate, setTargetDate] = useState<Date | undefined>(undefined)
   const [priority, setPriority] = useState<PriorityOption | undefined>(PRIORITY_OPTIONS[0])
-  const [selectedTag, setSelectedTag] = useState<TagOption | undefined>(undefined)
+  const [selectedTag, setSelectedTag] = useState<OrganizationTag | undefined>(undefined)
 
   useEffect(() => {
     if (!open) return
@@ -199,7 +191,7 @@ export function TaskQuickCreateModal({
       setPriority(priorityOption ?? PRIORITY_OPTIONS[0])
 
       const tagOption = editingTask.tag
-        ? TAG_OPTIONS.find((t) => t.label === editingTask.tag)
+        ? tags.find((t) => t.name === editingTask.tag)
         : undefined
       setSelectedTag(tagOption)
 
@@ -225,7 +217,7 @@ export function TaskQuickCreateModal({
     setTargetDate(undefined)
     setPriority(PRIORITY_OPTIONS[0])
     setSelectedTag(undefined)
-  }, [open, context?.projectId, context?.workstreamId, context?.workstreamName, editingTask, assigneeOptions, getWorkstreamsForProject])
+  }, [open, context?.projectId, context?.workstreamId, context?.workstreamName, editingTask, assigneeOptions, getWorkstreamsForProject, tags])
 
   const projectOptions = useMemo(
     () => projects.map((p) => ({ id: p.id, label: p.name })),
@@ -273,7 +265,7 @@ export function TaskQuickCreateModal({
           name: title.trim() || 'Untitled task',
           status: status.id,
           priority: priority?.id || 'no-priority',
-          tag: selectedTag?.label || null,
+          tag: selectedTag?.name || null,
           description: description || null,
           start_date: startDate?.toISOString().split('T')[0] || null,
           end_date: targetDate?.toISOString().split('T')[0] || null,
@@ -294,7 +286,7 @@ export function TaskQuickCreateModal({
           assignee: toUser(assignee),
           startDate,
           priority: priority?.id,
-          tag: selectedTag?.label,
+          tag: selectedTag?.name,
           description,
           projectId: effectiveProjectId ?? editingTask.projectId,
           projectName: project?.name ?? editingTask.projectName,
@@ -325,7 +317,7 @@ export function TaskQuickCreateModal({
         name: title.trim() || 'Untitled task',
         status: status.id,
         priority: priority?.id || 'no-priority',
-        tag: selectedTag?.label || null,
+        tag: selectedTag?.name || null,
         description: description || null,
         start_date: startDate?.toISOString().split('T')[0] || null,
         end_date: targetDate?.toISOString().split('T')[0] || null,
@@ -347,7 +339,7 @@ export function TaskQuickCreateModal({
         startDate,
         endDate: targetDate || null,
         priority: priority?.id,
-        tag: selectedTag?.label,
+        tag: selectedTag?.name,
         description,
         projectId: effectiveProjectId,
         projectName: project.name,
@@ -581,25 +573,37 @@ export function TaskQuickCreateModal({
         />
 
         {/* Tag */}
-        <GenericPicker
-          items={TAG_OPTIONS}
-          onSelect={setSelectedTag}
-          selectedId={selectedTag?.id}
-          placeholder="Add tag..."
-          renderItem={(item) => (
-            <div className="flex items-center gap-2 w-full">
-              <span className="flex-1">{item.label}</span>
-            </div>
-          )}
-          trigger={
-            <button className="bg-background flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:bg-black/5 transition-colors">
-              <TagIcon className="size-4 text-muted-foreground" />
-              <span className="font-medium text-foreground text-sm leading-5">
-                {selectedTag?.label ?? 'Tag'}
-              </span>
-            </button>
-          }
-        />
+        {tags.length > 0 && (
+          <GenericPicker
+            items={tags}
+            onSelect={setSelectedTag}
+            selectedId={selectedTag?.id}
+            placeholder="Add tag..."
+            renderItem={(item) => (
+              <div className="flex items-center gap-2 w-full">
+                <div
+                  className="size-3 rounded-full"
+                  style={{ backgroundColor: item.color }}
+                />
+                <span className="flex-1">{item.name}</span>
+              </div>
+            )}
+            trigger={
+              <button className="bg-background flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:bg-black/5 transition-colors">
+                {selectedTag && (
+                  <div
+                    className="size-3 rounded-full"
+                    style={{ backgroundColor: selectedTag.color }}
+                  />
+                )}
+                {!selectedTag && <TagIcon className="size-4 text-muted-foreground" />}
+                <span className="font-medium text-foreground text-sm leading-5">
+                  {selectedTag?.name ?? 'Tag'}
+                </span>
+              </button>
+            }
+          />
+        )}
       </div>
 
       {/* Footer */}

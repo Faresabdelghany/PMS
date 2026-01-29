@@ -34,7 +34,7 @@ import {
 import { Loader2, Plus, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import { useOrganization } from "@/hooks/use-organization"
 import { getLabels, createLabel, updateLabel, deleteLabel } from "@/lib/actions/labels"
-import { TAG_COLORS } from "@/lib/actions/tags"
+import { TAG_COLORS } from "@/lib/constants/tag-colors"
 import { ColorPicker } from "@/components/ui/color-picker"
 import type { OrganizationLabel, LabelCategory } from "@/lib/supabase/types"
 

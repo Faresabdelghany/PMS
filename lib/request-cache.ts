@@ -115,3 +115,11 @@ export const cachedGetProjectMembers = cache(async (projectId: string) => {
   const { getProjectMembers } = await import("./actions/projects")
   return getProjectMembers(projectId)
 })
+
+/**
+ * Cached version of getTags - deduplicates within a single request
+ */
+export const cachedGetTags = cache(async (orgId: string) => {
+  const { getTags } = await import("./actions/tags")
+  return getTags(orgId)
+})

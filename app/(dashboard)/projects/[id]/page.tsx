@@ -5,6 +5,7 @@ import { getTasks } from "@/lib/actions/tasks"
 import { getWorkstreamsWithTasks } from "@/lib/actions/workstreams"
 import { getClients } from "@/lib/actions/clients"
 import { getOrganizationMembers } from "@/lib/actions/organizations"
+import { getTags } from "@/lib/actions/tags"
 
 type PageProps = {
   params: Promise<{ id: string }>
@@ -27,10 +28,11 @@ export default async function Page({ params }: PageProps) {
 
   const organizationId = projectResult.data.organization_id
 
-  // Now fetch org-dependent data (clients, members) in parallel
-  const [clientsResult, membersResult] = await Promise.all([
+  // Now fetch org-dependent data (clients, members, tags) in parallel
+  const [clientsResult, membersResult, tagsResult] = await Promise.all([
     getClients(organizationId),
     getOrganizationMembers(organizationId),
+    getTags(organizationId),
   ])
 
   // Map clients to the format expected by ProjectWizard
@@ -47,6 +49,7 @@ export default async function Page({ params }: PageProps) {
       workstreams={workstreamsResult.data || []}
       clients={clients}
       organizationMembers={membersResult.data || []}
+      organizationTags={tagsResult.data || []}
     />
   )
 }

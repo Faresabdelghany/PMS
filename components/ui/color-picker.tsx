@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { TAG_COLORS } from "@/lib/actions/tags"
+import { TAG_COLORS } from "@/lib/constants/tag-colors"
 
 interface ColorPickerProps {
   value: string
