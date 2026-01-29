@@ -125,4 +125,25 @@ export const invalidate = {
       console.error(`[cache] invalidate.search error:`, error)
     }
   },
+
+  /**
+   * Invalidate all caches that include profile/avatar data.
+   * Called when a user updates their profile (avatar, name, etc.)
+   * This invalidates caches in all organizations the user belongs to.
+   */
+  async profile(userId: string, orgIds: string[]): Promise<void> {
+    const keys: string[] = [CacheKeys.user(userId)]
+
+    for (const orgId of orgIds) {
+      keys.push(
+        CacheKeys.orgMembers(orgId),
+        CacheKeys.userTasks(userId, orgId),
+        CacheKeys.sidebar(orgId),
+        CacheKeys.projects(orgId),
+        CacheKeys.clients(orgId)
+      )
+    }
+
+    await this.keys(keys)
+  },
 }

@@ -1,10 +1,12 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import type { ActionResult } from "./types"
 import type { AIProvider } from "@/lib/constants/ai"
 import { encrypt, decrypt, isEncryptedFormat, migrateFromBase64 } from "@/lib/crypto"
+import { invalidate } from "@/lib/cache"
+import { CacheTags } from "@/lib/cache-tags"
 
 // Note: user_settings table exists in DB but not in generated types
 // Using explicit any for the table queries
@@ -406,7 +408,28 @@ export async function uploadAvatar(
     return { error: `Failed to update profile: ${updateError.message}` }
   }
 
+  // Get all organizations the user belongs to for cache invalidation
+  const { data: memberships } = await supabase
+    .from("organization_members")
+    .select("organization_id")
+    .eq("user_id", user.id)
+
+  const orgIds = memberships?.map((m) => m.organization_id) || []
+
+  // Invalidate KV cache for profile-related data across all orgs
+  await invalidate.profile(user.id, orgIds)
+
+  // Invalidate Next.js cache tags for organization members and tasks
+  for (const orgId of orgIds) {
+    revalidateTag(CacheTags.organizationMembers(orgId))
+  }
+  // Invalidate user's tasks cache (only needs to be done once)
+  revalidateTag(CacheTags.myTasks(user.id))
+
   revalidatePath("/settings")
+  // Revalidate dashboard to update sidebar and other profile displays
+  revalidatePath("/", "layout")
+
   return { data: { avatarUrl } }
 }
 
@@ -456,6 +479,27 @@ export async function deleteAvatar(): Promise<ActionResult<{ success: boolean }>
     return { error: `Failed to update profile: ${updateError.message}` }
   }
 
+  // Get all organizations the user belongs to for cache invalidation
+  const { data: memberships } = await supabase
+    .from("organization_members")
+    .select("organization_id")
+    .eq("user_id", user.id)
+
+  const orgIds = memberships?.map((m) => m.organization_id) || []
+
+  // Invalidate KV cache for profile-related data across all orgs
+  await invalidate.profile(user.id, orgIds)
+
+  // Invalidate Next.js cache tags for organization members and tasks
+  for (const orgId of orgIds) {
+    revalidateTag(CacheTags.organizationMembers(orgId))
+  }
+  // Invalidate user's tasks cache (only needs to be done once)
+  revalidateTag(CacheTags.myTasks(user.id))
+
   revalidatePath("/settings")
+  // Revalidate dashboard to update sidebar and other profile displays
+  revalidatePath("/", "layout")
+
   return { data: { success: true } }
 }
