@@ -74,6 +74,39 @@ const getProjectColor = (progress: number): string => {
   return "var(--chart-2)" // red-ish for just started
 }
 
+// Preload functions for navigation - triggered on hover for faster perceived navigation
+const preloadHandlers: Record<NavItemId, () => void> = {
+  inbox: () => {
+    if (typeof window !== "undefined") {
+      void import("@/components/inbox/InboxContent")
+    }
+  },
+  "my-tasks": () => {
+    if (typeof window !== "undefined") {
+      void import("@/components/tasks/MyTasksPage")
+    }
+  },
+  projects: () => {
+    if (typeof window !== "undefined") {
+      void import("@/components/projects-content")
+    }
+  },
+  clients: () => {
+    if (typeof window !== "undefined") {
+      void import("@/components/clients-content")
+    }
+  },
+  performance: () => {
+    // No preload for performance page yet
+  },
+}
+
+const preloadProjectDetails = () => {
+  if (typeof window !== "undefined") {
+    void import("@/components/projects/ProjectDetailsPage")
+  }
+}
+
 interface AppSidebarProps {
   activeProjects?: Project[]
 }
@@ -101,7 +134,11 @@ const ProjectMenuItem = memo(function ProjectMenuItem({
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild className="h-9 rounded-lg px-3 group">
-        <Link href={`/projects/${project.id}`}>
+        <Link
+          href={`/projects/${project.id}`}
+          onMouseEnter={preloadProjectDetails}
+          onFocus={preloadProjectDetails}
+        >
           <ProgressCircle
             progress={project.progress || 0}
             color={getProjectColor(project.progress || 0)}
@@ -196,7 +233,11 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
                       isActive={active}
                       className="h-9 rounded-lg px-3 font-normal text-muted-foreground"
                     >
-                      <Link href={href}>
+                      <Link
+                        href={href}
+                        onMouseEnter={preloadHandlers[item.id]}
+                        onFocus={preloadHandlers[item.id]}
+                      >
                         {(() => {
                           const Icon = navItemIcons[item.id]
                           return Icon ? <Icon className="h-[18px] w-[18px]" /> : null

@@ -9,6 +9,7 @@ import { UserProvider } from "@/components/providers/user-provider"
 import { RealtimeProvider } from "@/hooks/realtime-context"
 import { CommandPaletteProvider } from "@/components/command-palette-provider"
 import { SettingsDialogProvider } from "@/components/providers/settings-dialog-provider"
+import { PageSkeleton } from "@/components/ui/page-skeleton"
 import type { OrganizationWithRole } from "@/hooks/use-organization"
 import type { Profile, Project } from "@/lib/supabase/types"
 import type { SupabaseClient } from "@supabase/supabase-js"
@@ -128,7 +129,7 @@ export default async function DashboardLayout({
               <SidebarProvider>
                 <AppSidebar activeProjects={activeProjects} />
                 <SidebarInset>
-                  <Suspense fallback={null}>{children}</Suspense>
+                  <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
                 </SidebarInset>
               </SidebarProvider>
             </CommandPaletteProvider>
