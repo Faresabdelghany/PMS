@@ -1139,3 +1139,25 @@ export type UserPreferences = {
   notifications_in_app: boolean
   notifications_email: boolean
 }
+
+// Workflow status types
+export type WorkflowCategory = 'unstarted' | 'started' | 'finished' | 'canceled'
+export type WorkflowEntityType = 'task' | 'project' | 'workstream'
+
+export type WorkflowStatus = {
+  id: string
+  organization_id: string
+  entity_type: WorkflowEntityType
+  category: WorkflowCategory
+  name: string
+  description: string | null
+  color: string
+  is_default: boolean
+  is_locked: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export type WorkflowStatusInsert = Omit<WorkflowStatus, 'id' | 'created_at' | 'updated_at'>
+export type WorkflowStatusUpdate = Partial<Omit<WorkflowStatusInsert, 'organization_id' | 'entity_type'>>
