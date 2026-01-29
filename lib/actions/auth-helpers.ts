@@ -1,9 +1,9 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/supabase/database.types"
 import { cacheGet, CacheKeys, CacheTTL } from "@/lib/cache"
+import { cachedGetUser } from "@/lib/request-cache"
 
 type TypedSupabaseClient = SupabaseClient<Database>
 
@@ -22,14 +22,11 @@ export type ProjectMemberContext = AuthContext & {
 
 /**
  * Requires the user to be authenticated.
+ * Uses cachedGetUser() to deduplicate auth calls within a single request.
  * Returns the user and supabase client or throws an error.
  */
 export async function requireAuth(): Promise<AuthContext> {
-  const supabase = await createClient()
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
+  const { user, error, supabase } = await cachedGetUser()
 
   if (error || !user) {
     throw new Error("Not authenticated")
