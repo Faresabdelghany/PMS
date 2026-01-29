@@ -35,6 +35,7 @@ import { useUser } from "@/hooks/use-user"
 import { signOut } from "@/lib/actions/auth"
 import type { Project } from "@/lib/supabase/types"
 import { useCommandPalette } from "@/components/command-palette"
+import { useSettingsDialog } from "@/components/providers/settings-dialog-provider"
 
 // Navigation items defined inline (no mock data dependency)
 type NavItemId = "inbox" | "my-tasks" | "projects" | "clients" | "performance"
@@ -120,6 +121,7 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
   const pathname = usePathname()
   const { profile, user } = useUser()
   const { open: openCommandPalette } = useCommandPalette()
+  const { openSettings } = useSettingsDialog()
 
   const getHrefForNavItem = (id: NavItemId): string => {
     if (id === "my-tasks") return "/tasks"
@@ -238,17 +240,29 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
         <SidebarMenu>
           {footerItems.map((item) => {
             const Icon = footerItemIcons[item.id]
-            const href = item.id === "settings" ? "/settings" : "#"
-            const isActive = item.id === "settings" && pathname.startsWith("/settings")
+
+            // Settings opens dialog instead of navigating
+            if (item.id === "settings") {
+              return (
+                <SidebarMenuItem key={item.label}>
+                  <SidebarMenuButton
+                    onClick={() => openSettings()}
+                    className="h-9 rounded-lg px-3 text-muted-foreground"
+                  >
+                    {Icon && <Icon className="h-[18px] w-[18px]" />}
+                    <span>{item.label}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )
+            }
 
             return (
               <SidebarMenuItem key={item.label}>
                 <SidebarMenuButton
                   asChild
-                  isActive={isActive}
                   className="h-9 rounded-lg px-3 text-muted-foreground"
                 >
-                  <Link href={href}>
+                  <Link href="#">
                     {Icon && <Icon className="h-[18px] w-[18px]" />}
                     <span>{item.label}</span>
                   </Link>

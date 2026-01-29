@@ -6,6 +6,7 @@ import { ProjectWizardLazy } from "@/components/project-wizard/ProjectWizardLazy
 import { TaskQuickCreateModalLazy } from "@/components/tasks/TaskQuickCreateModalLazy"
 import { useOrganization } from "@/hooks/use-organization"
 import { getTags } from "@/lib/actions/tags"
+import { useSettingsDialog } from "@/components/providers/settings-dialog-provider"
 import type { OrganizationTag } from "@/lib/supabase/types"
 
 type CommandPaletteContextValue = {
@@ -32,6 +33,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [organizationTags, setOrganizationTags] = useState<OrganizationTag[]>([])
   const { organization } = useOrganization()
+  const { openSettings } = useSettingsDialog()
 
   // Fetch organization tags when organization changes
   useEffect(() => {
@@ -69,6 +71,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
       <CommandPalette
         onCreateProject={openCreateProject}
         onCreateTask={openCreateTask}
+        onOpenSettings={openSettings}
       />
 
       {/* Project Creation Wizard */}

@@ -28,9 +28,10 @@ import { useOrganization } from "@/hooks/use-organization"
 type CommandPaletteProps = {
   onCreateProject?: () => void
   onCreateTask?: () => void
+  onOpenSettings?: () => void
 }
 
-export function CommandPalette({ onCreateProject, onCreateTask }: CommandPaletteProps) {
+export function CommandPalette({ onCreateProject, onCreateTask, onOpenSettings }: CommandPaletteProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<{
@@ -208,11 +209,13 @@ export function CommandPalette({ onCreateProject, onCreateTask }: CommandPalette
             <span>Go to Clients</span>
             <CommandShortcut>G C</CommandShortcut>
           </CommandItem>
-          <CommandItem onSelect={() => navigate("/settings/profile")}>
-            <Gear className="size-4" />
-            <span>Go to Settings</span>
-            <CommandShortcut>G S</CommandShortcut>
-          </CommandItem>
+          {onOpenSettings && (
+            <CommandItem onSelect={() => runCommand(onOpenSettings)}>
+              <Gear className="size-4" />
+              <span>Go to Settings</span>
+              <CommandShortcut>G S</CommandShortcut>
+            </CommandItem>
+          )}
         </CommandGroup>
       </CommandList>
     </CommandDialog>

@@ -1,90 +1,40 @@
 "use client"
 
-import { useState } from "react"
-import { SidebarTrigger } from "@/components/ui/sidebar"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ProfileSettings, AISettings, OrganizationSettings, TagsSettings, LabelsSettings } from "@/components/settings"
-import { User, Sparkles, Building2, Tag, Tags } from "lucide-react"
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useSettingsDialog } from "@/components/providers/settings-dialog-provider"
+import { Loader2 } from "lucide-react"
+
+// Map URL paths to settings dialog sections
+const pathToSection: Record<string, string> = {
+  "/settings": "account",
+  "/settings/profile": "account",
+  "/settings/ai": "agents",
+  "/settings/organization": "teammates",
+  "/settings/tags": "tags",
+  "/settings/labels": "types",
+}
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState("profile")
+  const router = useRouter()
+  const { openSettings } = useSettingsDialog()
 
+  useEffect(() => {
+    // Determine which section to open based on the path
+    const path = window.location.pathname
+    const section = pathToSection[path] || "account"
+
+    // Open the settings dialog with the appropriate section
+    openSettings(section as Parameters<typeof openSettings>[0])
+
+    // Redirect to the projects page (home)
+    router.replace("/")
+  }, [openSettings, router])
+
+  // Show a brief loading state while redirecting
   return (
-    <div className="flex flex-1 flex-col min-h-0 bg-background mx-2 my-2 border border-border rounded-lg min-w-0">
-      <header className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <div className="flex items-center gap-3">
-          <SidebarTrigger className="h-8 w-8 rounded-lg hover:bg-accent text-muted-foreground" />
-          <p className="text-base font-medium text-foreground">Settings</p>
-        </div>
-      </header>
-
-      <div className="flex-1 overflow-auto">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
-          <div className="px-4 pt-4 pb-2">
-            <TabsList className="inline-flex bg-muted rounded-full px-1 py-0.5 text-xs border border-border/50 h-8">
-              <TabsTrigger
-                value="profile"
-                className="h-7 px-3 rounded-full text-xs data-[state=active]:bg-background data-[state=active]:text-foreground gap-1.5"
-              >
-                <User className="h-3.5 w-3.5" />
-                Profile
-              </TabsTrigger>
-              <TabsTrigger
-                value="ai"
-                className="h-7 px-3 rounded-full text-xs data-[state=active]:bg-background data-[state=active]:text-foreground gap-1.5"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                AI
-              </TabsTrigger>
-              <TabsTrigger
-                value="organization"
-                className="h-7 px-3 rounded-full text-xs data-[state=active]:bg-background data-[state=active]:text-foreground gap-1.5"
-              >
-                <Building2 className="h-3.5 w-3.5" />
-                Organization
-              </TabsTrigger>
-              <TabsTrigger
-                value="tags"
-                className="h-7 px-3 rounded-full text-xs data-[state=active]:bg-background data-[state=active]:text-foreground gap-1.5"
-              >
-                <Tag className="h-3.5 w-3.5" />
-                Tags
-              </TabsTrigger>
-              <TabsTrigger
-                value="labels"
-                className="h-7 px-3 rounded-full text-xs data-[state=active]:bg-background data-[state=active]:text-foreground gap-1.5"
-              >
-                <Tags className="h-3.5 w-3.5" />
-                Labels
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
-          <div className="flex-1 overflow-auto px-4 pb-4">
-            <div className="max-w-2xl">
-              <TabsContent value="profile" className="mt-4 focus-visible:outline-none focus-visible:ring-0">
-                <ProfileSettings />
-              </TabsContent>
-
-              <TabsContent value="ai" className="mt-4 focus-visible:outline-none focus-visible:ring-0">
-                <AISettings />
-              </TabsContent>
-
-              <TabsContent value="organization" className="mt-4 focus-visible:outline-none focus-visible:ring-0">
-                <OrganizationSettings />
-              </TabsContent>
-
-              <TabsContent value="tags" className="mt-4 focus-visible:outline-none focus-visible:ring-0">
-                <TagsSettings />
-              </TabsContent>
-
-              <TabsContent value="labels" className="mt-4 focus-visible:outline-none focus-visible:ring-0">
-                <LabelsSettings />
-              </TabsContent>
-            </div>
-          </div>
-        </Tabs>
-      </div>
+    <div className="flex flex-1 items-center justify-center min-h-0">
+      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
     </div>
   )
 }

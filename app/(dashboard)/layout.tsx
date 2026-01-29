@@ -8,6 +8,7 @@ import { OrganizationProvider } from "@/components/providers/organization-provid
 import { UserProvider } from "@/components/providers/user-provider"
 import { RealtimeProvider } from "@/hooks/realtime-context"
 import { CommandPaletteProvider } from "@/components/command-palette-provider"
+import { SettingsDialogProvider } from "@/components/providers/settings-dialog-provider"
 import type { OrganizationWithRole } from "@/hooks/use-organization"
 import type { Profile, Project } from "@/lib/supabase/types"
 import type { SupabaseClient } from "@supabase/supabase-js"
@@ -122,14 +123,16 @@ export default async function DashboardLayout({
     >
       <OrganizationProvider initialOrganizations={organizations}>
         <RealtimeProvider>
-          <CommandPaletteProvider>
-            <SidebarProvider>
-              <AppSidebar activeProjects={activeProjects} />
-              <SidebarInset>
-                <Suspense fallback={null}>{children}</Suspense>
-              </SidebarInset>
-            </SidebarProvider>
-          </CommandPaletteProvider>
+          <SettingsDialogProvider>
+            <CommandPaletteProvider>
+              <SidebarProvider>
+                <AppSidebar activeProjects={activeProjects} />
+                <SidebarInset>
+                  <Suspense fallback={null}>{children}</Suspense>
+                </SidebarInset>
+              </SidebarProvider>
+            </CommandPaletteProvider>
+          </SettingsDialogProvider>
         </RealtimeProvider>
       </OrganizationProvider>
     </UserProvider>
