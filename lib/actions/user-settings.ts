@@ -1,13 +1,13 @@
 "use server"
 
 import { z } from "zod"
-import { createClient } from "@/lib/supabase/server"
 import { revalidatePath, revalidateTag } from "next/cache"
 import type { ActionResult } from "./types"
 import type { AIProvider } from "@/lib/constants/ai"
 import { encrypt, decrypt, isEncryptedFormat, migrateFromBase64 } from "@/lib/crypto"
 import { invalidate } from "@/lib/cache"
 import { CacheTags } from "@/lib/cache-tags"
+import { requireAuth } from "./auth-helpers"
 
 // Note: user_settings table exists in DB but not in generated types
 // Using explicit any for the table queries
@@ -54,19 +54,10 @@ export type UserSettingsWithPreferences = UserSettings & {
 
 // Get user AI settings
 export async function getAISettings(): Promise<ActionResult<UserSettings | null>> {
-  const supabase = await createClient()
+  try {
+    const { user, supabase } = await requireAuth()
 
-  // Get current user
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return { error: "Not authenticated" }
-  }
-
-  const { data, error } = await (supabase as any)
+    const { data, error } = await (supabase as any)
     .from("user_settings")
     .select("*")
     .eq("user_id", user.id)
@@ -81,6 +72,9 @@ export async function getAISettings(): Promise<ActionResult<UserSettings | null>
   }
 
   return { data: data as UserSettings }
+  } catch {
+    return { error: "Not authenticated" }
+  }
 }
 
 // Save AI settings (provider and model preference)
