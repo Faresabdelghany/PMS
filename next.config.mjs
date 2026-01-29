@@ -4,7 +4,23 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    unoptimized: true,
+    // Enable Next.js image optimization for better performance
+    // Supports automatic sizing, format conversion (WebP/AVIF), and caching
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'lazhmdyajdqbnxxwyxun.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.googleusercontent.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'avatars.githubusercontent.com',
+      },
+    ],
   },
   experimental: {
     // Optimize barrel imports for commonly used icon/utility libraries
