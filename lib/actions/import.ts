@@ -1,0 +1,265 @@
+"use server"
+
+import { createClient } from "@/lib/supabase/server"
+import { revalidatePath } from "next/cache"
+import type { ActionResult } from "./types"
+import type { TaskInsert, TaskPriority, TaskStatus } from "@/lib/supabase/types"
+
+// Column mapping type
+export type ColumnMapping = {
+  title: number // Required - column index
+  description?: number
+  status?: number
+  priority?: number
+  assignee_email?: number
+  tags?: number
+  start_date?: number
+  end_date?: number
+}
+
+// Import result
+export type ImportResult = {
+  total: number
+  imported: number
+  skipped: number
+  errors: string[]
+}
+
+// Parse CSV content
+function parseCSV(content: string): string[][] {
+  const lines: string[][] = []
+  let currentLine: string[] = []
+  let currentField = ""
+  let inQuotes = false
+
+  for (let i = 0; i < content.length; i++) {
+    const char = content[i]
+    const nextChar = content[i + 1]
+
+    if (inQuotes) {
+      if (char === '"' && nextChar === '"') {
+        currentField += '"'
+        i++ // Skip next quote
+      } else if (char === '"') {
+        inQuotes = false
+      } else {
+        currentField += char
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true
+      } else if (char === ',') {
+        currentLine.push(currentField.trim())
+        currentField = ""
+      } else if (char === '\n' || (char === '\r' && nextChar === '\n')) {
+        currentLine.push(currentField.trim())
+        if (currentLine.some(f => f !== "")) {
+          lines.push(currentLine)
+        }
+        currentLine = []
+        currentField = ""
+        if (char === '\r') i++ // Skip \n after \r
+      } else if (char !== '\r') {
+        currentField += char
+      }
+    }
+  }
+
+  // Handle last field/line
+  if (currentField || currentLine.length > 0) {
+    currentLine.push(currentField.trim())
+    if (currentLine.some(f => f !== "")) {
+      lines.push(currentLine)
+    }
+  }
+
+  return lines
+}
+
+// Map status string to TaskStatus enum
+function mapStatus(value: string): TaskStatus {
+  const normalized = value.toLowerCase().trim()
+  if (normalized === "done" || normalized === "completed" || normalized === "complete") {
+    return "done"
+  }
+  if (normalized === "in-progress" || normalized === "in progress" || normalized === "doing" || normalized === "started") {
+    return "in-progress"
+  }
+  return "todo"
+}
+
+// Map priority string to TaskPriority enum
+function mapPriority(value: string): TaskPriority {
+  const normalized = value.toLowerCase().trim()
+  if (normalized === "urgent" || normalized === "critical") return "urgent"
+  if (normalized === "high") return "high"
+  if (normalized === "medium" || normalized === "normal") return "medium"
+  if (normalized === "low") return "low"
+  return "no-priority"
+}
+
+// Import tasks from CSV
+export async function importTasksFromCSV(
+  projectId: string,
+  csvContent: string,
+  mapping: ColumnMapping,
+  hasHeader: boolean = true
+): Promise<ActionResult<ImportResult>> {
+  const supabase = await createClient()
+
+  // Verify user has access to project
+  const { data: project, error: projectError } = await supabase
+    .from("projects")
+    .select("id, organization_id")
+    .eq("id", projectId)
+    .single()
+
+  if (projectError || !project) {
+    return { error: "Project not found or access denied" }
+  }
+
+  // Parse CSV
+  const rows = parseCSV(csvContent)
+  if (rows.length === 0) {
+    return { error: "No data found in CSV" }
+  }
+
+  // Skip header if present
+  const dataRows = hasHeader ? rows.slice(1) : rows
+
+  if (dataRows.length === 0) {
+    return { error: "No data rows found (only header)" }
+  }
+
+  // Get organization members for email mapping
+  const { data: members } = await supabase
+    .from("organization_members")
+    .select("user_id, profiles(email)")
+    .eq("organization_id", project.organization_id)
+
+  const emailToUserId = new Map<string, string>()
+  members?.forEach((m: any) => {
+    if (m.profiles?.email) {
+      emailToUserId.set(m.profiles.email.toLowerCase(), m.user_id)
+    }
+  })
+
+  // Get current max sort_order
+  const { data: maxOrderData } = await supabase
+    .from("tasks")
+    .select("sort_order")
+    .eq("project_id", projectId)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .single()
+
+  let sortOrder = maxOrderData ? maxOrderData.sort_order + 1 : 0
+
+  // Process rows
+  const result: ImportResult = {
+    total: dataRows.length,
+    imported: 0,
+    skipped: 0,
+    errors: [],
+  }
+
+  const tasksToInsert: TaskInsert[] = []
+
+  for (let i = 0; i < dataRows.length; i++) {
+    const row = dataRows[i]
+    const rowNum = hasHeader ? i + 2 : i + 1 // 1-indexed, accounting for header
+
+    // Get title (required)
+    const title = row[mapping.title]?.trim()
+    if (!title) {
+      result.skipped++
+      result.errors.push(`Row ${rowNum}: Missing title`)
+      continue
+    }
+
+    // Build task
+    const task: TaskInsert = {
+      project_id: projectId,
+      name: title,
+      sort_order: sortOrder++,
+    }
+
+    // Optional fields
+    if (mapping.description !== undefined && row[mapping.description]) {
+      task.description = row[mapping.description].trim()
+    }
+
+    if (mapping.status !== undefined && row[mapping.status]) {
+      task.status = mapStatus(row[mapping.status])
+    }
+
+    if (mapping.priority !== undefined && row[mapping.priority]) {
+      task.priority = mapPriority(row[mapping.priority])
+    }
+
+    if (mapping.assignee_email !== undefined && row[mapping.assignee_email]) {
+      const email = row[mapping.assignee_email].trim().toLowerCase()
+      const userId = emailToUserId.get(email)
+      if (userId) {
+        task.assignee_id = userId
+      }
+    }
+
+    if (mapping.tags !== undefined && row[mapping.tags]) {
+      task.tag = row[mapping.tags].trim()
+    }
+
+    if (mapping.start_date !== undefined && row[mapping.start_date]) {
+      const date = row[mapping.start_date].trim()
+      if (date && !isNaN(Date.parse(date))) {
+        task.start_date = new Date(date).toISOString().split("T")[0]
+      }
+    }
+
+    if (mapping.end_date !== undefined && row[mapping.end_date]) {
+      const date = row[mapping.end_date].trim()
+      if (date && !isNaN(Date.parse(date))) {
+        task.end_date = new Date(date).toISOString().split("T")[0]
+      }
+    }
+
+    tasksToInsert.push(task)
+  }
+
+  // Batch insert tasks
+  if (tasksToInsert.length > 0) {
+    const { error: insertError } = await supabase
+      .from("tasks")
+      .insert(tasksToInsert)
+
+    if (insertError) {
+      return { error: `Failed to import tasks: ${insertError.message}` }
+    }
+
+    result.imported = tasksToInsert.length
+  }
+
+  revalidatePath(`/projects/${projectId}`)
+  revalidatePath("/tasks")
+
+  return { data: result }
+}
+
+// Preview CSV content (returns headers and first few rows)
+export async function previewCSV(
+  csvContent: string
+): Promise<ActionResult<{ headers: string[]; rows: string[][]; totalRows: number }>> {
+  const rows = parseCSV(csvContent)
+
+  if (rows.length === 0) {
+    return { error: "No data found in CSV" }
+  }
+
+  return {
+    data: {
+      headers: rows[0] || [],
+      rows: rows.slice(1, 6), // First 5 data rows
+      totalRows: rows.length - 1,
+    },
+  }
+}
