@@ -1,5 +1,6 @@
 "use server"
 
+import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath, revalidateTag } from "next/cache"
 import type { ActionResult } from "./types"
@@ -27,6 +28,28 @@ export type UserSettings = {
 export type UserSettingsUpdate = {
   ai_provider?: AIProvider
   ai_model_preference?: string | null
+}
+
+// Preference validation schema
+const preferencesSchema = z.object({
+  timezone: z.string().optional(),
+  week_start_day: z.enum(['monday', 'sunday', 'saturday']).optional(),
+  open_links_in_app: z.boolean().optional(),
+})
+
+// Notification settings schema
+const notificationSettingsSchema = z.object({
+  notifications_in_app: z.boolean().optional(),
+  notifications_email: z.boolean().optional(),
+})
+
+// Extended type with preferences
+export type UserSettingsWithPreferences = UserSettings & {
+  timezone: string
+  week_start_day: 'monday' | 'sunday' | 'saturday'
+  open_links_in_app: boolean
+  notifications_in_app: boolean
+  notifications_email: boolean
 }
 
 // Get user AI settings
@@ -501,5 +524,164 @@ export async function deleteAvatar(): Promise<ActionResult<{ success: boolean }>
   // Revalidate dashboard to update sidebar and other profile displays
   revalidatePath("/", "layout")
 
+  return { data: { success: true } }
+}
+
+// Get user preferences
+export async function getPreferences(): Promise<ActionResult<UserSettingsWithPreferences | null>> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return { error: "Not authenticated" }
+  }
+
+  const { data, error } = await (supabase as any)
+    .from("user_settings")
+    .select("*")
+    .eq("user_id", user.id)
+    .single()
+
+  if (error) {
+    if (error.code === "PGRST116") {
+      // Return defaults if no settings exist
+      return {
+        data: {
+          id: "",
+          user_id: user.id,
+          ai_provider: "openai",
+          ai_api_key_encrypted: null,
+          ai_model_preference: null,
+          timezone: "auto",
+          week_start_day: "monday",
+          open_links_in_app: true,
+          notifications_in_app: true,
+          notifications_email: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as UserSettingsWithPreferences,
+      }
+    }
+    return { error: error.message }
+  }
+
+  return { data: data as UserSettingsWithPreferences }
+}
+
+// Save user preferences
+export async function savePreferences(
+  data: z.infer<typeof preferencesSchema>
+): Promise<ActionResult<{ success: boolean }>> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return { error: "Not authenticated" }
+  }
+
+  // Validate input
+  const validation = preferencesSchema.safeParse(data)
+  if (!validation.success) {
+    return { error: validation.error.errors[0]?.message || "Invalid input" }
+  }
+
+  // Check if settings exist
+  const { data: existing } = await (supabase as any)
+    .from("user_settings")
+    .select("id")
+    .eq("user_id", user.id)
+    .single()
+
+  let error
+
+  if (existing) {
+    const result = await (supabase as any)
+      .from("user_settings")
+      .update({
+        ...validation.data,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", user.id)
+    error = result.error
+  } else {
+    const result = await (supabase as any)
+      .from("user_settings")
+      .insert({
+        user_id: user.id,
+        ...validation.data,
+      })
+    error = result.error
+  }
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  revalidatePath("/settings")
+  return { data: { success: true } }
+}
+
+// Save notification settings
+export async function saveNotificationSettings(
+  data: z.infer<typeof notificationSettingsSchema>
+): Promise<ActionResult<{ success: boolean }>> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return { error: "Not authenticated" }
+  }
+
+  // Validate input
+  const validation = notificationSettingsSchema.safeParse(data)
+  if (!validation.success) {
+    return { error: validation.error.errors[0]?.message || "Invalid input" }
+  }
+
+  // Check if settings exist
+  const { data: existing } = await (supabase as any)
+    .from("user_settings")
+    .select("id")
+    .eq("user_id", user.id)
+    .single()
+
+  let error
+
+  if (existing) {
+    const result = await (supabase as any)
+      .from("user_settings")
+      .update({
+        ...validation.data,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", user.id)
+    error = result.error
+  } else {
+    const result = await (supabase as any)
+      .from("user_settings")
+      .insert({
+        user_id: user.id,
+        ...validation.data,
+      })
+    error = result.error
+  }
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  revalidatePath("/settings")
   return { data: { success: true } }
 }
