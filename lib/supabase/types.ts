@@ -1130,3 +1130,12 @@ export type OrganizationTagUpdate = Database["public"]["Tables"]["organization_t
 export type OrganizationLabel = Database["public"]["Tables"]["organization_labels"]["Row"]
 export type OrganizationLabelInsert = Database["public"]["Tables"]["organization_labels"]["Insert"]
 export type OrganizationLabelUpdate = Database["public"]["Tables"]["organization_labels"]["Update"]
+
+// User Preferences (extended user_settings fields)
+export type UserPreferences = {
+  timezone: string
+  week_start_day: 'monday' | 'sunday' | 'saturday'
+  open_links_in_app: boolean
+  notifications_in_app: boolean
+  notifications_email: boolean
+}
