@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useTransition } from "react"
 import { useTheme } from "next-themes"
 import { Copy, Check } from "@phosphor-icons/react/dist/ssr"
 import { Input } from "@/components/ui/input"
@@ -16,16 +16,48 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { SettingsPaneHeader, SettingSection, SettingRow } from "../setting-primitives"
 import { useOrganization } from "@/hooks/use-organization"
+import { getPreferences, savePreferences, type UserSettingsWithPreferences } from "@/lib/actions/user-settings"
+import { toast } from "sonner"
+
+const TIMEZONES = [
+  { value: "auto", label: "Auto-detect" },
+  { value: "UTC", label: "UTC" },
+  { value: "America/New_York", label: "New York, America" },
+  { value: "America/Los_Angeles", label: "Los Angeles, America" },
+  { value: "America/Chicago", label: "Chicago, America" },
+  { value: "Europe/London", label: "London, Europe" },
+  { value: "Europe/Paris", label: "Paris, Europe" },
+  { value: "Europe/Berlin", label: "Berlin, Europe" },
+  { value: "Asia/Tokyo", label: "Tokyo, Asia" },
+  { value: "Asia/Shanghai", label: "Shanghai, Asia" },
+  { value: "Asia/Dubai", label: "Dubai, Asia" },
+  { value: "Australia/Sydney", label: "Sydney, Australia" },
+]
 
 export function PreferencesPane() {
   const { organization } = useOrganization()
-  const { theme, setTheme, resolvedTheme } = useTheme()
+  const { theme, setTheme } = useTheme()
   const [isMounted, setIsMounted] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [isPending, startTransition] = useTransition()
 
+  // Preference state
+  const [preferences, setPreferences] = useState<UserSettingsWithPreferences | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Load preferences on mount
   useEffect(() => {
     setIsMounted(true)
+    loadPreferences()
   }, [])
+
+  const loadPreferences = async () => {
+    const result = await getPreferences()
+    if (result.data) {
+      setPreferences(result.data)
+    }
+    setIsLoading(false)
+  }
 
   useEffect(() => {
     if (!copied) return
@@ -41,6 +73,22 @@ export function PreferencesPane() {
     } catch (err) {
       console.error(err)
     }
+  }
+
+  const handlePreferenceChange = (key: keyof UserSettingsWithPreferences, value: any) => {
+    if (!preferences) return
+
+    const updated = { ...preferences, [key]: value }
+    setPreferences(updated)
+
+    startTransition(async () => {
+      const result = await savePreferences({ [key]: value })
+      if (result.error) {
+        toast.error(result.error)
+        // Revert on error
+        setPreferences(preferences)
+      }
+    })
   }
 
   const workspaceName = organization?.name || "My Workspace"
@@ -100,7 +148,11 @@ export function PreferencesPane() {
           label="Open links in app"
           description="When you click a link to the app, open it in the app if possible."
         >
-          <Switch defaultChecked />
+          <Switch
+            checked={preferences?.open_links_in_app ?? true}
+            onCheckedChange={(checked) => handlePreferenceChange("open_links_in_app", checked)}
+            disabled={isLoading || isPending}
+          />
         </SettingRow>
       </SettingSection>
 
@@ -108,22 +160,27 @@ export function PreferencesPane() {
 
       <SettingSection title="Location and time">
         <SettingRow label="Timezone">
-          <Select defaultValue="auto">
+          <Select
+            value={preferences?.timezone ?? "auto"}
+            onValueChange={(value) => handlePreferenceChange("timezone", value)}
+            disabled={isLoading || isPending}
+          >
             <SelectTrigger className="h-9 text-sm">
               <SelectValue placeholder="Select timezone" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="auto">Auto-detect</SelectItem>
-              <SelectItem value="utc">UTC</SelectItem>
-              <SelectItem value="america-new_york">New York, America</SelectItem>
-              <SelectItem value="america-los_angeles">Los Angeles, America</SelectItem>
-              <SelectItem value="europe-london">London, Europe</SelectItem>
-              <SelectItem value="asia-tokyo">Tokyo, Asia</SelectItem>
+              {TIMEZONES.map((tz) => (
+                <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </SettingRow>
         <SettingRow label="Start weeks on" description="The first day of the week in your calendars.">
-          <Select defaultValue="monday">
+          <Select
+            value={preferences?.week_start_day ?? "monday"}
+            onValueChange={(value) => handlePreferenceChange("week_start_day", value)}
+            disabled={isLoading || isPending}
+          >
             <SelectTrigger className="h-9 text-sm">
               <SelectValue placeholder="Select day" />
             </SelectTrigger>
