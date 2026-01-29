@@ -1,26 +1,13 @@
 "use client"
 
-import { useState } from "react"
-import { Bell, Star, PencilSimple } from "@phosphor-icons/react/dist/ssr"
+import { useState, useEffect, useTransition } from "react"
+import { Star, PencilSimple } from "@phosphor-icons/react/dist/ssr"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { SettingsPaneHeader } from "../setting-primitives"
 import { cn } from "@/lib/utils"
-
-const methodItems = [
-  {
-    id: "in-app",
-    title: "In-app",
-    description: "Notifications will go into your Inbox",
-    enabled: true,
-  },
-  {
-    id: "email",
-    title: "Email",
-    description: "You will receive emails about project events",
-    enabled: true,
-  },
-] as const
+import { getPreferences, saveNotificationSettings, type UserSettingsWithPreferences } from "@/lib/actions/user-settings"
+import { toast } from "sonner"
 
 const detailCards = [
   {
@@ -40,9 +27,53 @@ const detailCards = [
 ] as const
 
 export function NotificationsPane() {
-  const [methods, setMethods] = useState(
-    methodItems.reduce((acc, item) => ({ ...acc, [item.id]: item.enabled }), {} as Record<string, boolean>)
-  )
+  const [preferences, setPreferences] = useState<UserSettingsWithPreferences | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isPending, startTransition] = useTransition()
+
+  useEffect(() => {
+    loadPreferences()
+  }, [])
+
+  const loadPreferences = async () => {
+    const result = await getPreferences()
+    if (result.data) {
+      setPreferences(result.data)
+    }
+    setIsLoading(false)
+  }
+
+  const handleToggle = (key: "notifications_in_app" | "notifications_email", checked: boolean) => {
+    if (!preferences) return
+
+    const updated = { ...preferences, [key]: checked }
+    setPreferences(updated)
+
+    startTransition(async () => {
+      const result = await saveNotificationSettings({ [key]: checked })
+      if (result.error) {
+        toast.error(result.error)
+        setPreferences(preferences)
+      }
+    })
+  }
+
+  const methodItems = [
+    {
+      id: "in-app" as const,
+      key: "notifications_in_app" as const,
+      title: "In-app",
+      description: "Notifications will go into your Inbox",
+      enabled: preferences?.notifications_in_app ?? true,
+    },
+    {
+      id: "email" as const,
+      key: "notifications_email" as const,
+      title: "Email",
+      description: "You will receive emails about project events",
+      enabled: preferences?.notifications_email ?? true,
+    },
+  ]
 
   return (
     <div className="space-y-8">
@@ -64,8 +95,9 @@ export function NotificationsPane() {
                 <span className="text-xs text-muted-foreground">{item.description}</span>
               </div>
               <Switch
-                checked={methods[item.id]}
-                onCheckedChange={(checked) => setMethods((prev) => ({ ...prev, [item.id]: checked }))}
+                checked={item.enabled}
+                onCheckedChange={(checked) => handleToggle(item.key, checked)}
+                disabled={isLoading || isPending}
               />
             </div>
           ))}
