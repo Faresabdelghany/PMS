@@ -2,11 +2,13 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Add a contextual AI chat assistant with file attachment support to Projects and Tasks pages.
+**Goal:** Add a full-application AI chat assistant with complete data access, file attachment support, and write capabilities across all pages.
 
-**Architecture:** Right-side sheet chat panel using existing AI infrastructure. Client-side file text extraction. Action confirmation flow for write operations.
+**Architecture:** Right-side sheet chat panel using existing AI infrastructure. Server-side context fetching for full application data. Client-side file text extraction. Action confirmation flow for write operations.
 
 **Tech Stack:** React 19, shadcn/ui Sheet, react-markdown, pdfjs-dist, mammoth
+
+**Data Access:** Full read access to all application data (projects, tasks, clients, teams, settings, inbox, organization). Write access to create/update any entity with confirmation.
 
 ---
 
@@ -27,27 +29,51 @@ export interface ChatMessage {
 }
 
 export interface ChatContext {
-  pageType: 'projects_list' | 'project_detail' | 'my_tasks';
+  pageType: 'projects_list' | 'project_detail' | 'my_tasks' | 'clients_list' | 'client_detail' | 'settings' | 'inbox' | 'other';
   projectId?: string;
+  clientId?: string;
   filters?: Record<string, unknown>;
-  data?: {
-    projects?: { id: string; name: string; status: string; dueDate?: string }[];
-    project?: {
+  // Full application data
+  appData: {
+    organization: { id: string; name: string };
+    projects: { id: string; name: string; status: string; clientName?: string; dueDate?: string }[];
+    clients: { id: string; name: string; status: string; projectCount: number }[];
+    teams: { id: string; name: string; memberCount: number }[];
+    members: { id: string; name: string; email: string; role: string }[];
+    userTasks: { id: string; title: string; projectName: string; status: string; priority: string; dueDate?: string }[];
+    inbox: { id: string; title: string; type: string; read: boolean; createdAt: string }[];
+    // Detail data when on specific pages
+    currentProject?: {
       id: string;
       name: string;
       description?: string;
       status: string;
       workstreams: { id: string; name: string }[];
-      tasks: { id: string; title: string; status: string; priority: string }[];
-      notes: { id: string; title: string }[];
+      tasks: { id: string; title: string; status: string; priority: string; assignee?: string }[];
+      notes: { id: string; title: string; content?: string }[];
+      files: { id: string; name: string; type: string }[];
+      members: { id: string; name: string; role: string }[];
     };
-    tasks?: { id: string; title: string; projectName: string; status: string; priority: string }[];
+    currentClient?: {
+      id: string;
+      name: string;
+      email?: string;
+      phone?: string;
+      status: string;
+      projects: { id: string; name: string; status: string }[];
+    };
   };
   attachments?: { name: string; content: string }[];
 }
 
 export interface ProposedAction {
-  type: 'create_task' | 'update_task' | 'create_workstream' | 'create_note' | 'update_project_status';
+  type:
+    | 'create_task' | 'update_task' | 'delete_task' | 'assign_task'
+    | 'create_project' | 'update_project'
+    | 'create_workstream' | 'update_workstream'
+    | 'create_client' | 'update_client'
+    | 'create_note' | 'update_note'
+    | 'add_project_member' | 'add_team_member';
   data: Record<string, unknown>;
 }
 
@@ -112,65 +138,105 @@ export async function sendChatMessage(
 }
 
 function buildChatSystemPrompt(context: ChatContext): string {
-  let prompt = `You are a helpful project management AI assistant. You help users understand their projects, find information, and take actions.
+  const { appData } = context
 
-Current page: ${context.pageType.replace('_', ' ')}
-`
+  let prompt = `You are a project management AI assistant with FULL ACCESS to the user's application data.
 
-  if (context.filters && Object.keys(context.filters).length > 0) {
-    prompt += `\nActive filters: ${JSON.stringify(context.filters)}`
-  }
+## Current Context
+- Page: ${context.pageType.replace('_', ' ')}
+${context.filters ? `- Filters: ${JSON.stringify(context.filters)}` : ''}
 
-  if (context.data?.projects) {
-    prompt += `\n\nAvailable projects:\n${context.data.projects.map(p =>
-      `- ${p.name} (${p.status})${p.dueDate ? ` - Due: ${p.dueDate}` : ''}`
-    ).join('\n')}`
-  }
+## Organization
+- Name: ${appData.organization.name}
+- Members (${appData.members.length}): ${appData.members.slice(0, 10).map(m => `${m.name} (${m.role})`).join(', ')}${appData.members.length > 10 ? '...' : ''}
+- Teams (${appData.teams.length}): ${appData.teams.map(t => t.name).join(', ') || 'None'}
 
-  if (context.data?.project) {
-    const p = context.data.project
-    prompt += `\n\nCurrent project: ${p.name}
+## Projects (${appData.projects.length})
+${appData.projects.slice(0, 20).map(p =>
+  `- ${p.name} [${p.status}]${p.clientName ? ` - Client: ${p.clientName}` : ''}${p.dueDate ? ` - Due: ${p.dueDate}` : ''}`
+).join('\n')}
+${appData.projects.length > 20 ? `\n...and ${appData.projects.length - 20} more projects` : ''}
+
+## Clients (${appData.clients.length})
+${appData.clients.map(c => `- ${c.name} [${c.status}] (${c.projectCount} projects)`).join('\n') || 'None'}
+
+## Your Tasks (${appData.userTasks.length})
+${appData.userTasks.slice(0, 15).map(t =>
+  `- ${t.title} [${t.status}] (${t.priority}) - ${t.projectName}${t.dueDate ? ` - Due: ${t.dueDate}` : ''}`
+).join('\n')}
+${appData.userTasks.length > 15 ? `\n...and ${appData.userTasks.length - 15} more tasks` : ''}
+
+## Inbox (${appData.inbox.filter(i => !i.read).length} unread)
+${appData.inbox.slice(0, 5).map(i => `- ${i.title} [${i.type}]${i.read ? '' : ' *NEW*'}`).join('\n') || 'No notifications'}`
+
+  // Add current project detail if on project page
+  if (appData.currentProject) {
+    const p = appData.currentProject
+    prompt += `
+
+## Current Project Detail: ${p.name}
 Status: ${p.status}
 ${p.description ? `Description: ${p.description}` : ''}
-
+Members: ${p.members.map(m => `${m.name} (${m.role})`).join(', ') || 'None'}
 Workstreams: ${p.workstreams.map(w => w.name).join(', ') || 'None'}
+Files: ${p.files.map(f => f.name).join(', ') || 'None'}
+Notes: ${p.notes.map(n => n.title).join(', ') || 'None'}
 
 Tasks (${p.tasks.length}):
-${p.tasks.slice(0, 20).map(t => `- ${t.title} [${t.status}] (${t.priority})`).join('\n')}
-${p.tasks.length > 20 ? `\n...and ${p.tasks.length - 20} more tasks` : ''}
-
-Notes: ${p.notes.map(n => n.title).join(', ') || 'None'}`
+${p.tasks.map(t => `- ${t.title} [${t.status}] (${t.priority})${t.assignee ? ` - ${t.assignee}` : ''}`).join('\n')}`
   }
 
-  if (context.data?.tasks) {
-    prompt += `\n\nYour tasks:\n${context.data.tasks.map(t =>
-      `- ${t.title} [${t.status}] (${t.priority}) - Project: ${t.projectName}`
-    ).join('\n')}`
+  // Add current client detail if on client page
+  if (appData.currentClient) {
+    const c = appData.currentClient
+    prompt += `
+
+## Current Client Detail: ${c.name}
+Status: ${c.status}
+${c.email ? `Email: ${c.email}` : ''}
+${c.phone ? `Phone: ${c.phone}` : ''}
+Projects: ${c.projects.map(p => `${p.name} [${p.status}]`).join(', ') || 'None'}`
   }
 
+  // Add attachments
   if (context.attachments && context.attachments.length > 0) {
-    prompt += `\n\nAttached documents:\n${context.attachments.map(a =>
+    prompt += `
+
+## Attached Documents
+${context.attachments.map(a =>
       `--- ${a.name} ---\n${a.content.slice(0, 5000)}${a.content.length > 5000 ? '\n[truncated]' : ''}`
     ).join('\n\n')}`
   }
 
   prompt += `
 
+---
+
 You can:
-1. Answer questions about projects, tasks, and data
-2. Provide summaries and insights
-3. Propose actions when asked
+1. Answer questions about ANY data in the application
+2. Provide insights, summaries, and analysis across projects, tasks, clients
+3. Help find information, compare data, identify patterns
+4. Propose actions when the user asks to do something
 
-When proposing an action, include at the END of your response (after your explanation):
-ACTION_JSON: {"type": "create_task" | "update_task" | "create_workstream" | "create_note" | "update_project_status", "data": {...}}
+When proposing an action, include at the END of your response:
+ACTION_JSON: {"type": "...", "data": {...}}
 
-For create_task, data should have: title, description (optional), priority ("low"|"medium"|"high"), projectId, workstreamId (optional)
-For update_task, data should have: taskId, and fields to update
-For create_workstream, data should have: name, projectId
-For create_note, data should have: title, content, projectId
-For update_project_status, data should have: projectId, status
+Available actions:
+- create_task: {title, projectId, priority?, description?, workstreamId?}
+- update_task: {taskId, title?, status?, priority?, assigneeId?}
+- delete_task: {taskId}
+- assign_task: {taskId, assigneeId}
+- create_project: {name, clientId?, description?}
+- update_project: {projectId, name?, status?, description?}
+- create_workstream: {name, projectId}
+- update_workstream: {workstreamId, name?}
+- create_client: {name, email?, phone?}
+- update_client: {clientId, name?, email?, phone?, status?}
+- create_note: {title, content, projectId}
+- add_project_member: {projectId, userId, role}
+- add_team_member: {teamId, userId}
 
-Keep responses concise and helpful. Only propose actions when the user asks to do something.`
+Keep responses concise and helpful. Only propose actions when the user explicitly asks to do something.`
 
   return prompt
 }
@@ -355,10 +421,12 @@ git commit -m "feat(ai): add chat completion with multi-turn support"
 
 import { useState, useCallback } from 'react'
 import { sendChatMessage, type ChatContext, type ProposedAction } from '@/lib/actions/ai'
-import { createTask, updateTask } from '@/lib/actions/tasks'
-import { createWorkstream } from '@/lib/actions/workstreams'
-import { createNote } from '@/lib/actions/notes'
-import { updateProject } from '@/lib/actions/projects'
+import { createTask, updateTask, deleteTask, assignTask } from '@/lib/actions/tasks'
+import { createWorkstream, updateWorkstream } from '@/lib/actions/workstreams'
+import { createNote, updateNote } from '@/lib/actions/notes'
+import { createProject, updateProject, addProjectMember } from '@/lib/actions/projects'
+import { createClient, updateClient } from '@/lib/actions/clients'
+import { addTeamMember } from '@/lib/actions/teams'
 
 export interface Message {
   id: string
@@ -475,10 +543,57 @@ export function useAIChat(context: ChatContext): UseAIChatReturn {
           })
           break
 
+        case 'delete_task':
+          result = await deleteTask(data.taskId as string)
+          break
+
+        case 'assign_task':
+          result = await assignTask(data.taskId as string, data.assigneeId as string)
+          break
+
+        case 'create_project':
+          result = await createProject({
+            name: data.name as string,
+            client_id: data.clientId as string | undefined,
+            description: data.description as string | undefined,
+          })
+          break
+
+        case 'update_project':
+          result = await updateProject(data.projectId as string, {
+            name: data.name as string | undefined,
+            status: data.status as string | undefined,
+            description: data.description as string | undefined,
+          })
+          break
+
         case 'create_workstream':
           result = await createWorkstream({
             name: data.name as string,
             project_id: data.projectId as string,
+          })
+          break
+
+        case 'update_workstream':
+          result = await updateWorkstream(data.workstreamId as string, {
+            name: data.name as string | undefined,
+          })
+          break
+
+        case 'create_client':
+          result = await createClient({
+            name: data.name as string,
+            email: data.email as string | undefined,
+            phone: data.phone as string | undefined,
+          })
+          break
+
+        case 'update_client':
+          result = await updateClient(data.clientId as string, {
+            name: data.name as string | undefined,
+            email: data.email as string | undefined,
+            phone: data.phone as string | undefined,
+            status: data.status as string | undefined,
           })
           break
 
@@ -490,10 +605,23 @@ export function useAIChat(context: ChatContext): UseAIChatReturn {
           })
           break
 
-        case 'update_project_status':
-          result = await updateProject(data.projectId as string, {
-            status: data.status as string,
+        case 'update_note':
+          result = await updateNote(data.noteId as string, {
+            title: data.title as string | undefined,
+            content: data.content as string | undefined,
           })
+          break
+
+        case 'add_project_member':
+          result = await addProjectMember(
+            data.projectId as string,
+            data.userId as string,
+            data.role as string
+          )
+          break
+
+        case 'add_team_member':
+          result = await addTeamMember(data.teamId as string, data.userId as string)
           break
 
         default:
@@ -629,9 +757,18 @@ function ActionConfirmation({ action, onConfirm }: ActionConfirmationProps) {
   const actionLabels: Record<string, string> = {
     create_task: 'Create Task',
     update_task: 'Update Task',
+    delete_task: 'Delete Task',
+    assign_task: 'Assign Task',
+    create_project: 'Create Project',
+    update_project: 'Update Project',
     create_workstream: 'Create Workstream',
+    update_workstream: 'Update Workstream',
+    create_client: 'Create Client',
+    update_client: 'Update Client',
     create_note: 'Create Note',
-    update_project_status: 'Update Project Status',
+    update_note: 'Update Note',
+    add_project_member: 'Add Project Member',
+    add_team_member: 'Add Team Member',
   }
 
   if (action.status === 'pending') {
@@ -1149,7 +1286,65 @@ git commit -m "feat(ai): add Ask AI button to project detail page"
 
 ---
 
-## Task 9: Test Full Flow
+## Task 9: Add Ask AI to Clients Page
+
+**Files:**
+- Modify: `components/clients/ClientsPage.tsx` or `components/clients/ClientsPageHeader.tsx`
+
+**Step 1: Find clients page header**
+
+Locate the component that renders the clients page header.
+
+**Step 2: Add Ask AI button**
+
+- Add Ask AI button similar to other pages
+- Build context including all clients data
+- Wire up AIChatSheet
+
+**Step 3: Verify changes compile**
+
+Run: `pnpm build`
+Expected: Build succeeds
+
+**Step 4: Commit**
+
+```bash
+git add <files>
+git commit -m "feat(ai): add Ask AI button to clients page"
+```
+
+---
+
+## Task 10: Add Ask AI to Client Detail Page
+
+**Files:**
+- Modify: `components/clients/ClientDetailsHeader.tsx` or similar
+
+**Step 1: Find client detail header**
+
+Locate the component that renders the client detail page header.
+
+**Step 2: Add Ask AI button**
+
+- Add Ask AI button similar to other pages
+- Build context with full client data (projects, contacts)
+- Wire up AIChatSheet
+
+**Step 3: Verify changes compile**
+
+Run: `pnpm build`
+Expected: Build succeeds
+
+**Step 4: Commit**
+
+```bash
+git add <files>
+git commit -m "feat(ai): add Ask AI button to client detail page"
+```
+
+---
+
+## Task 11: Test Full Flow
 
 **Step 1: Start dev server**
 
@@ -1191,7 +1386,7 @@ git commit -m "fix(ai): polish chat assistant flow"
 
 ---
 
-## Task 10: Final Build Verification
+## Task 12: Final Build Verification
 
 **Step 1: Run production build**
 

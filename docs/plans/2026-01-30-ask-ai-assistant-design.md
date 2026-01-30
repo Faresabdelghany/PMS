@@ -21,12 +21,56 @@ Add a contextual AI chat assistant accessible via the "Ask AI" button on Project
 | UI pattern | Right-side sheet | Standard assistant pattern, doesn't block main content |
 | Conversation persistence | Session only | Keeps things simple and focused |
 | Interaction style | Free-form chat | Natural language, AI interprets intent |
-| Data access | Full read access | Projects, workstreams, tasks, notes, files metadata |
-| Write capabilities | Full CRUD | Create/update tasks, workstreams, notes, status |
+| Data access | **Full application access** | Everything: projects, tasks, clients, teams, settings, inbox, org data |
+| Write capabilities | Full CRUD | Create/update any entity (tasks, projects, clients, workstreams, notes, etc.) |
 | Write confirmation | Always confirm | User reviews before any data changes |
 | File attachments | All file types | Text extraction client-side, supports PDFs, docs, images, code |
 | File storage | Temporary only | Processed in-memory, deleted after session |
-| Context scope | Page-aware | Knows current page, filters, visible items |
+| Context scope | Application-wide | Access to all user data, plus current page context |
+
+## Full Data Access
+
+The AI assistant has **complete read access** to all application data:
+
+### Core Data
+| Data Type | Access | Details |
+|-----------|--------|---------|
+| Projects | Full | All projects, members, status, dates, description, deliverables, metrics |
+| Workstreams | Full | All workstreams across projects with tasks |
+| Tasks | Full | All tasks with subtasks, comments, assignments, history |
+| Notes | Full | All project notes content |
+| Files | Metadata | File names, types, sizes (not binary content) |
+
+### Organization Data
+| Data Type | Access | Details |
+|-----------|--------|---------|
+| Organization | Full | Name, settings, subscription info |
+| Members | Full | All org members, roles, profiles |
+| Teams | Full | Team structure, members |
+| Invitations | Full | Pending invitations |
+
+### Client Data
+| Data Type | Access | Details |
+|-----------|--------|---------|
+| Clients | Full | All clients with contacts, projects, status |
+
+### User Data
+| Data Type | Access | Details |
+|-----------|--------|---------|
+| Profile | Full | User's profile, preferences |
+| Settings | Full | AI settings, notification preferences |
+| Inbox | Full | All inbox items, notifications |
+
+### Write Capabilities (with confirmation)
+| Action | Scope |
+|--------|-------|
+| Create/update tasks | Any project user has access to |
+| Create/update workstreams | Any project |
+| Create/update projects | Within organization |
+| Create/update clients | Within organization |
+| Create/update notes | Any project |
+| Update project status | Any project |
+| Manage team assignments | Within organization |
 
 ## Architecture
 
@@ -52,16 +96,36 @@ interface Attachment {
 }
 
 interface PendingAction {
-  type: 'create_task' | 'update_task' | 'create_workstream' | 'create_note' | 'update_status';
+  type:
+    | 'create_task' | 'update_task' | 'delete_task'
+    | 'create_project' | 'update_project'
+    | 'create_workstream' | 'update_workstream'
+    | 'create_client' | 'update_client'
+    | 'create_note' | 'update_note'
+    | 'assign_task' | 'update_task_status'
+    | 'add_project_member' | 'add_team_member';
   data: Record<string, unknown>;
   confirmed: boolean;
 }
 
 interface ChatContext {
-  pageType: 'projects_list' | 'project_detail' | 'my_tasks';
+  pageType: 'projects_list' | 'project_detail' | 'my_tasks' | 'clients' | 'settings' | 'inbox' | 'other';
   projectId?: string;
+  clientId?: string;
   filters?: Record<string, unknown>;
-  visibleItems?: { type: string; id: string; title: string }[];
+  // Full application data - fetched server-side
+  appData: {
+    organization: { id: string; name: string };
+    projects: ProjectSummary[];
+    clients: ClientSummary[];
+    teams: TeamSummary[];
+    members: MemberSummary[];
+    currentProject?: ProjectDetail;  // When on project detail page
+    currentClient?: ClientDetail;    // When on client detail page
+    userTasks?: TaskSummary[];       // User's assigned tasks
+    inbox?: InboxItem[];             // User's notifications
+    userSettings?: UserSettings;     // User preferences
+  };
 }
 
 export function useAIChat(context: ChatContext): {
@@ -129,7 +193,24 @@ export async function sendChatMessage(request: ChatRequest): Promise<ActionResul
 | `components/project-header.tsx` | Add onClick to "Ask AI" button, render AIChatSheet |
 | `components/tasks/MyTasksPage.tsx` | Add onClick to "Ask AI" button, render AIChatSheet |
 | `components/projects/ProjectPageHeader.tsx` | Add "Ask AI" button for project detail pages |
+| `components/clients/ClientsPageHeader.tsx` | Add "Ask AI" button for clients page |
+| `components/clients/ClientDetailsHeader.tsx` | Add "Ask AI" button for client detail |
 | `lib/actions/ai.ts` | Add chat completion function |
+| `lib/actions/ai-context.ts` | NEW: Fetch full application context for AI |
+
+### New Server Action: `lib/actions/ai-context.ts`
+
+Fetches all application data for AI context:
+```typescript
+export async function getAIContext(pageType: string, options?: {
+  projectId?: string;
+  clientId?: string;
+}): Promise<ActionResult<ChatContext['appData']>> {
+  // Fetch organization, projects, clients, teams, members, tasks, inbox
+  // Fetch additional detail if on project/client detail page
+  // Return structured data for AI prompt
+}
+```
 
 ## UI Design
 
@@ -213,30 +294,74 @@ Error:      [✗ Failed] - Could not create task. [Retry]
 
 ### Context by Page Type
 
-| Page | Context Data |
-|------|--------------|
-| Projects list | User's projects (id, name, status, due date), current filters |
-| Project detail | Full project, workstreams, tasks, notes, files metadata |
-| My Tasks | User's tasks with project names, current filters |
+**Base context (always included):**
+- Organization info (name, members, teams)
+- All projects summary (id, name, status, client)
+- All clients summary (id, name, status)
+- User's tasks across all projects
+- User's inbox items
+
+**Additional context per page:**
+
+| Page | Additional Context |
+|------|-------------------|
+| Projects list | Current filters, visible projects |
+| Project detail | Full project data: workstreams, all tasks, notes, files, members |
+| My Tasks | Current filters, task grouping |
+| Clients list | Current filters, visible clients |
+| Client detail | Full client data: projects, contacts, history |
+| Settings | User settings, AI configuration |
+| Inbox | All notifications, read/unread status |
 
 ### System Prompt Structure
 ```
-You are a project management AI assistant. You have access to the user's data:
+You are a project management AI assistant with full access to the user's application data.
 
-Current page: {pageType}
-Active filters: {filters}
+## Current Context
+- Page: {pageType}
+- Filters: {filters}
 
-Available data:
-{contextualData}
+## Organization
+{organizationData}
+
+## Projects ({count})
+{projectsSummary}
+
+## Clients ({count})
+{clientsSummary}
+
+## Teams & Members
+{teamsAndMembers}
+
+## User's Tasks ({count})
+{userTasks}
+
+## Inbox ({unreadCount} unread)
+{inboxSummary}
+
+{additionalPageContext}
+
+## Attached Documents
+{attachedFiles}
+
+---
 
 You can:
-1. Answer questions about projects, tasks, workstreams, notes
-2. Provide insights and summaries
-3. Propose actions (create task, update status, etc.)
+1. Answer questions about ANY data in the application
+2. Provide insights, summaries, and analysis
+3. Help find information across projects, tasks, clients
+4. Propose actions (create/update tasks, projects, clients, workstreams, notes)
 
-When proposing an action, respond with:
-- A brief explanation of what you'll do
-- ACTION: {type} {JSON data}
+When proposing an action, include at the END of your response:
+ACTION_JSON: {"type": "...", "data": {...}}
+
+Available actions:
+- create_task, update_task, delete_task, assign_task, update_task_status
+- create_project, update_project
+- create_workstream, update_workstream
+- create_client, update_client
+- create_note, update_note
+- add_project_member, add_team_member
 
 Keep responses concise and helpful.
 ```
