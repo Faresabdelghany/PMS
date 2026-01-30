@@ -6,7 +6,11 @@ import Placeholder from "@tiptap/extension-placeholder";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import "@/styles/tiptap.css";
-import { Plus, StarFour, ArrowsOutSimple } from "@phosphor-icons/react/dist/ssr";
+import { Plus, ArrowsOutSimple } from "@phosphor-icons/react/dist/ssr";
+import { useAIStatus } from "@/hooks/use-ai-status";
+import { AIGenerateButton } from "@/components/ai/ai-generate-button";
+import { AISetupPrompt } from "@/components/ai/ai-setup-prompt";
+import { generateProjectDescription, type ProjectContext } from "@/lib/actions/ai";
 
 type TemplateType = "goal" | "scope" | "inScope" | "outScope" | "outcomes" | "feature";
 
@@ -18,9 +22,16 @@ export interface ProjectDescriptionEditorProps {
   placeholder?: string;
   className?: string;
   showTemplates?: boolean;
- }
+  // AI generation context
+  projectContext?: {
+    name?: string;
+    intent?: string;
+    deliverables?: { title: string }[];
+    metrics?: { name: string; target?: string }[];
+  };
+}
 
- export function ProjectDescriptionEditor({
+export function ProjectDescriptionEditor({
   value,
   onChange,
   onExpandChange,
@@ -28,7 +39,8 @@ export interface ProjectDescriptionEditorProps {
   placeholder,
   className,
   showTemplates = true,
- }: ProjectDescriptionEditorProps) {
+  projectContext,
+}: ProjectDescriptionEditorProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -39,6 +51,62 @@ export interface ProjectDescriptionEditorProps {
     outcomes: false,
     feature: false,
   });
+
+  const { isConfigured, refetch: refetchAIStatus } = useAIStatus();
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleGenerateWithAI = async () => {
+    if (!editor) return;
+
+    setIsGenerating(true);
+    try {
+      const context: ProjectContext = {
+        name: projectContext?.name || "Untitled Project",
+        description: projectContext?.intent
+          ? `Project intent: ${projectContext.intent}`
+          : undefined,
+      };
+
+      // Add deliverables context if available
+      if (projectContext?.deliverables?.length) {
+        context.description = `${context.description || ''}\nDeliverables: ${projectContext.deliverables.map(d => d.title).join(', ')}`;
+      }
+
+      // Add metrics context if available
+      if (projectContext?.metrics?.length) {
+        context.description = `${context.description || ''}\nMetrics: ${projectContext.metrics.map(m => `${m.name}${m.target ? `: ${m.target}` : ''}`).join(', ')}`;
+      }
+
+      const result = await generateProjectDescription(context);
+
+      if (result.error) {
+        console.error("AI generation error:", result.error);
+        return;
+      }
+
+      if (result.data) {
+        // Convert plain text to HTML paragraphs
+        const htmlContent = result.data
+          .split('\n\n')
+          .map(para => `<p>${para}</p>`)
+          .join('');
+        editor.commands.setContent(htmlContent);
+        onChange?.(editor.getHTML());
+      }
+    } catch (error) {
+      console.error("AI generation failed:", error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleAISetupComplete = () => {
+    refetchAIStatus();
+    // Automatically trigger generation after setup
+    setTimeout(() => {
+      handleGenerateWithAI();
+    }, 100);
+  };
 
   useEffect(() => {
     onFocusChange?.(isFocused);
@@ -408,22 +476,23 @@ export interface ProjectDescriptionEditorProps {
 
               <div className="flex-1" />
 
-              <div className="flex flex-col items-center justify-center ml-2">
-                <button
-                  type="button"
-                  className="bg-muted-foreground/8 flex gap-1.5 h-7 items-center px-3 py-0.5 rounded-full hover:bg-muted-foreground/20 transition-colors cursor-pointer"
-                >
-                  <div className="size-3.5">
-                    <StarFour
-                      weight="fill"
-                      className="size-3.5 text-primary"
-                    />
-                  </div>
-                  <span className="font-medium text-foreground text-xs tracking-wide">
-                    Write with AI
-                  </span>
-                </button>
-              </div>
+              {isConfigured ? (
+                <AIGenerateButton
+                  onClick={handleGenerateWithAI}
+                  isLoading={isGenerating}
+                  label="Write with AI"
+                  loadingLabel="Writing..."
+                  size="sm"
+                />
+              ) : (
+                <AISetupPrompt onSetupComplete={handleAISetupComplete}>
+                  <AIGenerateButton
+                    onClick={() => {}}
+                    label="Write with AI"
+                    size="sm"
+                  />
+                </AISetupPrompt>
+              )}
             </div>
           </div>
         )}
