@@ -32,6 +32,21 @@ export interface ActionState {
   data: Record<string, unknown>
   status: ActionStatus
   error?: string
+  createdEntity?: { type: string; id: string; name: string }
+}
+
+// For tracking multiple actions
+export interface MultiActionState {
+  actions: ActionState[]
+  currentIndex: number
+  isExecuting: boolean
+  createdIds: {
+    projectId?: string
+    workstreamId?: string
+    taskId?: string
+    clientId?: string
+    noteId?: string
+  }
 }
 
 export interface Message {
@@ -39,7 +54,8 @@ export interface Message {
   role: "user" | "assistant"
   content: string
   attachments?: Attachment[]
-  action?: ActionState
+  action?: ActionState           // Single action (legacy)
+  multiAction?: MultiActionState // Multiple actions
   timestamp: Date
 }
 
@@ -49,6 +65,7 @@ export interface UseAIChatReturn {
   error: string | null
   sendMessage: (content: string, attachments?: Attachment[]) => Promise<void>
   confirmAction: (messageId: string) => Promise<void>
+  confirmAllActions: (messageId: string) => Promise<void>
   clearChat: () => void
 }
 
@@ -60,8 +77,8 @@ function generateId(): string {
   return crypto.randomUUID()
 }
 
-// Execute an action based on its type
-async function executeAction(action: ProposedAction): Promise<{ success: boolean; error?: string }> {
+// Execute an action based on its type - returns success, error, and optionally created entity info
+async function executeAction(action: ProposedAction): Promise<{ success: boolean; error?: string; createdEntity?: { type: string; id: string; name: string } }> {
   const { type, data } = action
 
   try {
@@ -75,9 +92,13 @@ async function executeAction(action: ProposedAction): Promise<{ success: boolean
           description: data.description as string | undefined,
           priority: data.priority as "no-priority" | "low" | "medium" | "high" | "urgent" | undefined,
           workstream_id: data.workstreamId as string | undefined,
+          assignee_id: data.assigneeId as string | undefined,
         })
         if (result.error) return { success: false, error: result.error }
-        return { success: true }
+        return {
+          success: true,
+          createdEntity: result.data ? { type: "task", id: result.data.id, name: result.data.name } : undefined
+        }
       }
 
       case "update_task": {
@@ -120,7 +141,10 @@ async function executeAction(action: ProposedAction): Promise<{ success: boolean
           client_id: data.clientId as string | undefined,
         })
         if (result.error) return { success: false, error: result.error }
-        return { success: true }
+        return {
+          success: true,
+          createdEntity: result.data ? { type: "project", id: result.data.id, name: result.data.name } : undefined
+        }
       }
 
       case "update_project": {
@@ -160,7 +184,10 @@ async function executeAction(action: ProposedAction): Promise<{ success: boolean
           description: data.description as string | undefined,
         })
         if (result.error) return { success: false, error: result.error }
-        return { success: true }
+        return {
+          success: true,
+          createdEntity: result.data ? { type: "workstream", id: result.data.id, name: result.data.name } : undefined
+        }
       }
 
       case "update_workstream": {
@@ -184,7 +211,10 @@ async function executeAction(action: ProposedAction): Promise<{ success: boolean
           // Note: phone is not a direct field, using primary_contact_name for now
         })
         if (result.error) return { success: false, error: result.error }
-        return { success: true }
+        return {
+          success: true,
+          createdEntity: result.data ? { type: "client", id: result.data.id, name: result.data.name } : undefined
+        }
       }
 
       case "update_client": {
@@ -208,7 +238,10 @@ async function executeAction(action: ProposedAction): Promise<{ success: boolean
           content: data.content as string | undefined,
         })
         if (result.error) return { success: false, error: result.error }
-        return { success: true }
+        return {
+          success: true,
+          createdEntity: result.data ? { type: "note", id: result.data.id, name: result.data.title } : undefined
+        }
       }
 
       case "update_note": {
@@ -299,8 +332,21 @@ export function useAIChat(context: ChatContext): UseAIChatReturn {
           timestamp: new Date(),
         }
 
-        // If there's a proposed action, add it to the message
-        if (response.action) {
+        // Handle multiple actions
+        if (response.actions && response.actions.length > 0) {
+          assistantMessage.multiAction = {
+            actions: response.actions.map(a => ({
+              type: a.type,
+              data: a.data,
+              status: "pending" as ActionStatus,
+            })),
+            currentIndex: 0,
+            isExecuting: false,
+            createdIds: {},
+          }
+        }
+        // Handle single action (legacy support)
+        else if (response.action) {
           assistantMessage.action = {
             type: response.action.type,
             data: response.action.data,
@@ -340,19 +386,22 @@ export function useAIChat(context: ChatContext): UseAIChatReturn {
 
     if (!actionToExecute) return
 
+    // Cast to non-null since we checked above (TypeScript doesn't track closure mutations)
+    const actionData = actionToExecute as { type: ProposedAction["type"]; data: Record<string, unknown> }
+
     // Auto-inject orgId from context for actions that need it
     const orgId = context.appData?.organization?.id
-    if (orgId && !actionToExecute.data.orgId) {
+    if (orgId && !actionData.data.orgId) {
       const actionsNeedingOrgId = ["create_project", "create_client"]
-      if (actionsNeedingOrgId.includes(actionToExecute.type)) {
-        actionToExecute.data.orgId = orgId
+      if (actionsNeedingOrgId.includes(actionData.type)) {
+        actionData.data.orgId = orgId
       }
     }
 
     try {
-      const actionResult = await executeAction(actionToExecute)
+      const actionResult = await executeAction(actionData)
 
-      // Update status based on result
+      // Update status based on result, including created entity info if available
       setMessages((prev) =>
         prev.map((m) =>
           m.id === messageId && m.action
@@ -362,6 +411,7 @@ export function useAIChat(context: ChatContext): UseAIChatReturn {
                   ...m.action,
                   status: actionResult.success ? ("success" as ActionStatus) : ("error" as ActionStatus),
                   error: actionResult.error,
+                  createdEntity: actionResult.createdEntity,
                 },
               }
             : m
@@ -386,6 +436,169 @@ export function useAIChat(context: ChatContext): UseAIChatReturn {
     }
   }, [context]) // context needed for orgId injection
 
+  // Execute all actions sequentially with automatic ID injection
+  const confirmAllActions = useCallback(async (messageId: string) => {
+    const orgId = context.appData?.organization?.id
+
+    // Get the message and start execution
+    let multiAction: MultiActionState | undefined
+    setMessages((prev) => {
+      const message = prev.find((m) => m.id === messageId)
+      if (message?.multiAction && !message.multiAction.isExecuting) {
+        multiAction = { ...message.multiAction }
+        return prev.map((m) =>
+          m.id === messageId && m.multiAction
+            ? { ...m, multiAction: { ...m.multiAction, isExecuting: true } }
+            : m
+        )
+      }
+      return prev
+    })
+
+    if (!multiAction) return
+
+    const createdIds: MultiActionState["createdIds"] = {}
+
+    // Execute each action sequentially
+    for (let i = 0; i < multiAction.actions.length; i++) {
+      const action = multiAction.actions[i]
+
+      // Update current index and set action to executing
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId && m.multiAction
+            ? {
+                ...m,
+                multiAction: {
+                  ...m.multiAction,
+                  currentIndex: i,
+                  actions: m.multiAction.actions.map((a, idx) =>
+                    idx === i ? { ...a, status: "executing" as ActionStatus } : a
+                  ),
+                },
+              }
+            : m
+        )
+      )
+
+      // Replace placeholder IDs with actual created IDs
+      const actionData = { ...action.data }
+
+      // Replace $NEW_PROJECT_ID
+      if (actionData.projectId === "$NEW_PROJECT_ID" && createdIds.projectId) {
+        actionData.projectId = createdIds.projectId
+      }
+      // Replace $NEW_WORKSTREAM_ID
+      if (actionData.workstreamId === "$NEW_WORKSTREAM_ID" && createdIds.workstreamId) {
+        actionData.workstreamId = createdIds.workstreamId
+      }
+      // Replace $NEW_TASK_ID
+      if (actionData.taskId === "$NEW_TASK_ID" && createdIds.taskId) {
+        actionData.taskId = createdIds.taskId
+      }
+      // Replace $NEW_CLIENT_ID
+      if (actionData.clientId === "$NEW_CLIENT_ID" && createdIds.clientId) {
+        actionData.clientId = createdIds.clientId
+      }
+
+      // Auto-inject orgId for actions that need it
+      if (orgId && !actionData.orgId) {
+        const actionsNeedingOrgId = ["create_project", "create_client"]
+        if (actionsNeedingOrgId.includes(action.type)) {
+          actionData.orgId = orgId
+        }
+      }
+
+      try {
+        const result = await executeAction({ type: action.type, data: actionData })
+
+        // Track created entity IDs for subsequent actions
+        if (result.success && result.createdEntity) {
+          switch (result.createdEntity.type) {
+            case "project":
+              createdIds.projectId = result.createdEntity.id
+              break
+            case "workstream":
+              createdIds.workstreamId = result.createdEntity.id
+              break
+            case "task":
+              createdIds.taskId = result.createdEntity.id
+              break
+            case "client":
+              createdIds.clientId = result.createdEntity.id
+              break
+            case "note":
+              createdIds.noteId = result.createdEntity.id
+              break
+          }
+        }
+
+        // Update action status
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === messageId && m.multiAction
+              ? {
+                  ...m,
+                  multiAction: {
+                    ...m.multiAction,
+                    createdIds: { ...createdIds },
+                    actions: m.multiAction.actions.map((a, idx) =>
+                      idx === i
+                        ? {
+                            ...a,
+                            status: result.success ? ("success" as ActionStatus) : ("error" as ActionStatus),
+                            error: result.error,
+                            createdEntity: result.createdEntity,
+                          }
+                        : a
+                    ),
+                  },
+                }
+              : m
+          )
+        )
+
+        // Stop execution if an action fails
+        if (!result.success) {
+          break
+        }
+      } catch (err) {
+        // Update action with error
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === messageId && m.multiAction
+              ? {
+                  ...m,
+                  multiAction: {
+                    ...m.multiAction,
+                    actions: m.multiAction.actions.map((a, idx) =>
+                      idx === i
+                        ? {
+                            ...a,
+                            status: "error" as ActionStatus,
+                            error: err instanceof Error ? err.message : "An unexpected error occurred",
+                          }
+                        : a
+                    ),
+                  },
+                }
+              : m
+          )
+        )
+        break
+      }
+    }
+
+    // Mark execution as complete
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId && m.multiAction
+          ? { ...m, multiAction: { ...m.multiAction, isExecuting: false } }
+          : m
+      )
+    )
+  }, [context])
+
   const clearChat = useCallback(() => {
     setMessages([])
     setError(null)
@@ -397,6 +610,7 @@ export function useAIChat(context: ChatContext): UseAIChatReturn {
     error,
     sendMessage,
     confirmAction,
+    confirmAllActions,
     clearChat,
   }
 }

@@ -785,6 +785,7 @@ export interface ProposedAction {
 export interface ChatResponse {
   content: string
   action?: ProposedAction
+  actions?: ProposedAction[]  // Multiple actions support
 }
 
 // Chat completion function
@@ -947,46 +948,115 @@ ${context.attachments.map(a =>
 
 ---
 
-You can:
+## Your Capabilities
 1. Answer questions about ANY data in the application
 2. Provide insights, summaries, and analysis across projects, tasks, clients
 3. Help find information, compare data, identify patterns
-4. Propose actions when the user asks to do something
+4. Propose and execute multiple actions when the user asks to do something
 
-When proposing an action, include at the END of your response:
-ACTION_JSON: {"type": "...", "data": {...}}
+## Action Rules
 
-Available actions (IMPORTANT: always use UUIDs from context, never use names as IDs):
-- create_task: {title, projectId, priority?, description?, workstreamId?} - projectId must be a UUID from the projects list
-- update_task: {taskId, title?, status?, priority?, assigneeId?}
-- delete_task: {taskId}
-- assign_task: {taskId, assigneeId}
-- create_project: {orgId, name, clientId?, description?} - orgId is REQUIRED
-- update_project: {projectId, name?, status?, description?}
-- create_workstream: {name, projectId, description?} - projectId must be a UUID from the projects list
-- update_workstream: {workstreamId, name?, description?}
-- create_client: {orgId, name, email?, phone?} - orgId is REQUIRED
-- update_client: {clientId, name?, email?, phone?, status?}
-- create_note: {title, content, projectId} - projectId must be a UUID from the projects list
-- add_project_member: {projectId, userId, role}
-- add_team_member: {teamId, userId}
+**MULTIPLE ACTIONS SUPPORTED**: You can propose multiple actions at once. The system will execute them in order.
 
-CRITICAL: For projectId, clientId, userId, etc. - ALWAYS use the actual UUID from the context data, NEVER use the name.
-The organization ID is: ${context.appData.organization.id}
-Project IDs reference: ${context.appData.projects.map(p => `"${p.name}": "${p.id}"`).join(", ")}
+**PLACEHOLDER REFERENCES**: When creating entities and then using them in subsequent actions, use these placeholders:
+- \`$NEW_PROJECT_ID\` - References the ID of a project created in the same request
+- \`$NEW_WORKSTREAM_ID\` - References the ID of a workstream created in the same request
+- \`$NEW_TASK_ID\` - References the ID of a task created in the same request
+- \`$NEW_CLIENT_ID\` - References the ID of a client created in the same request
 
-Keep responses concise and helpful. Only propose actions when the user explicitly asks to do something.`
+The system will automatically replace these placeholders with the actual IDs after each action completes.
+
+**Example multi-action request**: "Create a project, add a workstream, and add tasks"
+Your response should include multiple actions:
+ACTIONS_JSON: [
+  {"type": "create_project", "data": {"name": "Project Name"}},
+  {"type": "create_workstream", "data": {"name": "Phase 1", "projectId": "$NEW_PROJECT_ID"}},
+  {"type": "create_task", "data": {"title": "Task 1", "projectId": "$NEW_PROJECT_ID", "workstreamId": "$NEW_WORKSTREAM_ID"}},
+  {"type": "create_task", "data": {"title": "Task 2", "projectId": "$NEW_PROJECT_ID", "workstreamId": "$NEW_WORKSTREAM_ID"}}
+]
+
+For existing entities, ALWAYS use real UUIDs from the reference data below.
+
+When proposing actions, include at the END of your response:
+- For single action: ACTION_JSON: {"type": "...", "data": {...}}
+- For multiple actions: ACTIONS_JSON: [{"type": "...", "data": {...}}, ...]
+
+## Available Actions
+
+| Action | Required Fields | Optional Fields | Notes |
+|--------|----------------|-----------------|-------|
+| create_task | title, projectId | workstreamId, assigneeId, priority, description | **IMPORTANT: Include assigneeId here to assign at creation** |
+| update_task | taskId | title, status, priority, assigneeId | |
+| delete_task | taskId | | |
+| assign_task | taskId, assigneeId | | Only for existing tasks. assigneeId can be null to unassign |
+| create_project | name | description, clientId | orgId auto-injected by system |
+| update_project | projectId | name, status, description | |
+| create_workstream | name, projectId | description | Use $NEW_PROJECT_ID or real UUID |
+| update_workstream | workstreamId | name, description | |
+| create_client | name | email, phone | orgId auto-injected by system |
+| update_client | clientId | name, email, phone, status | |
+| create_note | title, projectId | content | Use $NEW_PROJECT_ID or real UUID |
+| add_project_member | projectId, userId, role | | |
+| add_team_member | teamId, userId | | |
+
+## CRITICAL: Task Assignment Best Practice
+When creating multiple tasks that need to be assigned, **ALWAYS include the assigneeId directly in create_task**.
+Do NOT use separate assign_task actions for newly created tasks because $NEW_TASK_ID only holds the LAST created task ID.
+
+**CORRECT** - assign during creation:
+\`\`\`json
+ACTIONS_JSON: [
+  {"type": "create_task", "data": {"title": "Task 1", "projectId": "$NEW_PROJECT_ID", "assigneeId": "user-uuid"}},
+  {"type": "create_task", "data": {"title": "Task 2", "projectId": "$NEW_PROJECT_ID", "assigneeId": "user-uuid"}}
+]
+\`\`\`
+
+**WRONG** - separate assign actions will only assign the last task:
+\`\`\`json
+ACTIONS_JSON: [
+  {"type": "create_task", "data": {"title": "Task 1", "projectId": "$NEW_PROJECT_ID"}},
+  {"type": "create_task", "data": {"title": "Task 2", "projectId": "$NEW_PROJECT_ID"}},
+  {"type": "assign_task", "data": {"taskId": "$NEW_TASK_ID", "assigneeId": "user-uuid"}},
+  {"type": "assign_task", "data": {"taskId": "$NEW_TASK_ID", "assigneeId": "user-uuid"}}
+]
+\`\`\`
+
+## Reference Data
+Organization ID: ${organization.id}
+Current User ID: ${members.find(m => m.role === "admin")?.id || members[0]?.id || "unknown"}
+
+Project IDs (use these exact UUIDs for existing projects):
+${projects.length > 0 ? projects.map(p => `- "${p.name}": ${p.id}`).join("\n") : "No projects yet"}
+
+Team Member IDs (for task assignment):
+${members.length > 0 ? members.map(m => `- "${m.name}": ${m.id}`).join("\n") : "No members"}
+
+Keep responses concise. Only propose actions when explicitly asked. NEVER guess or make up IDs.`
 
   return prompt
 }
 
 function parseChatResponse(text: string): ActionResult<ChatResponse> {
-  const actionMatch = text.match(/ACTION_JSON:\s*(\{[\s\S]*\})/)
+  // Try to match multiple actions first (ACTIONS_JSON: [...])
+  const actionsMatch = text.match(/ACTIONS_JSON:\s*(\[[\s\S]*?\])(?=\s*$|\s*\n|$)/m)
+
+  if (actionsMatch) {
+    try {
+      const actions = JSON.parse(actionsMatch[1]) as ProposedAction[]
+      const content = text.replace(/ACTIONS_JSON:\s*\[[\s\S]*?\](?=\s*$|\s*\n|$)/m, "").trim()
+      return { data: { content, actions } }
+    } catch {
+      // Fall through to single action check
+    }
+  }
+
+  // Try to match single action (ACTION_JSON: {...})
+  const actionMatch = text.match(/ACTION_JSON:\s*(\{[\s\S]*?\})(?=\s*$|\s*\n|$)/m)
 
   if (actionMatch) {
     try {
       const action = JSON.parse(actionMatch[1]) as ProposedAction
-      const content = text.replace(/ACTION_JSON:\s*\{[\s\S]*\}/, "").trim()
+      const content = text.replace(/ACTION_JSON:\s*\{[\s\S]*?\}(?=\s*$|\s*\n|$)/m, "").trim()
       return { data: { content, action } }
     } catch {
       return { data: { content: text } }

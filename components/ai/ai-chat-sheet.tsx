@@ -39,6 +39,7 @@ export function AIChatSheet({ open, onOpenChange, context, isLoadingContext }: A
     error,
     sendMessage,
     confirmAction,
+    confirmAllActions,
     clearChat,
   } = useAIChat(context)
 
@@ -137,6 +138,11 @@ export function AIChatSheet({ open, onOpenChange, context, isLoadingContext }: A
                     onConfirmAction={
                       message.action
                         ? () => confirmAction(message.id)
+                        : undefined
+                    }
+                    onConfirmAllActions={
+                      message.multiAction
+                        ? () => confirmAllActions(message.id)
                         : undefined
                     }
                   />
