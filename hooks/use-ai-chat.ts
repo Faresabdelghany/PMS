@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useRef } from "react"
 import { sendChatMessage, type ChatContext, type ChatResponse, type ProposedAction } from "@/lib/actions/ai"
 
 // Task actions
@@ -302,6 +302,10 @@ export function useAIChat(context: ChatContext, callbacks?: ClientSideCallbacks)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Ref to access current messages synchronously (React 18 batching workaround)
+  const messagesRef = useRef<Message[]>([])
+  messagesRef.current = messages
+
   const sendMessage = useCallback(
     async (content: string, attachments?: Attachment[]) => {
       setError(null)
@@ -462,22 +466,24 @@ export function useAIChat(context: ChatContext, callbacks?: ClientSideCallbacks)
   const confirmAllActions = useCallback(async (messageId: string) => {
     const orgId = context.appData?.organization?.id
 
-    // Get the message and start execution
-    let multiAction: MultiActionState | undefined
-    setMessages((prev) => {
-      const message = prev.find((m) => m.id === messageId)
-      if (message?.multiAction && !message.multiAction.isExecuting) {
-        multiAction = { ...message.multiAction }
-        return prev.map((m) =>
-          m.id === messageId && m.multiAction
-            ? { ...m, multiAction: { ...m.multiAction, isExecuting: true } }
-            : m
-        )
-      }
-      return prev
-    })
+    // Get the message directly from ref (React 18 batching workaround)
+    const message = messagesRef.current.find((m) => m.id === messageId)
 
-    if (!multiAction) return
+    if (!message?.multiAction || message.multiAction.isExecuting) {
+      return
+    }
+
+    // Copy the multiAction data before updating state
+    const multiAction = { ...message.multiAction }
+
+    // Mark as executing
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId && m.multiAction
+          ? { ...m, multiAction: { ...m.multiAction, isExecuting: true } }
+          : m
+      )
+    )
 
     const createdIds: MultiActionState["createdIds"] = {}
 
