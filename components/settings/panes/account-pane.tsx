@@ -65,6 +65,9 @@ export function AccountPane() {
         setError(updateError.message)
       } else {
         setSuccess("Profile updated successfully")
+        if (refreshProfile) {
+          await refreshProfile()
+        }
         setTimeout(() => setSuccess(null), 3000)
       }
     } catch {
