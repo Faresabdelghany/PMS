@@ -36,7 +36,8 @@ const DEFAULT_PROJECT_DATA: ProjectData = {
   deadlineType: 'none',
   contributorIds: [],
   stakeholderIds: [],
-  addStarterTasks: false,
+  workstreams: [],
+  generatedTasks: [],
 };
 
 interface ProjectWizardProps {
