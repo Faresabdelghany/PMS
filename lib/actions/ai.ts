@@ -487,12 +487,12 @@ export async function testAIConnection(): Promise<ActionResult<{ success: boolea
 
 // Chat message types
 export interface ChatMessage {
-  role: 'user' | 'assistant'
+  role: "user" | "assistant"
   content: string
 }
 
 export interface ChatContext {
-  pageType: 'projects_list' | 'project_detail' | 'my_tasks' | 'clients_list' | 'client_detail' | 'settings' | 'inbox' | 'other'
+  pageType: "projects_list" | "project_detail" | "my_tasks" | "clients_list" | "client_detail" | "settings" | "inbox" | "other"
   projectId?: string
   clientId?: string
   filters?: Record<string, unknown>
@@ -531,12 +531,12 @@ export interface ChatContext {
 
 export interface ProposedAction {
   type:
-    | 'create_task' | 'update_task' | 'delete_task' | 'assign_task'
-    | 'create_project' | 'update_project'
-    | 'create_workstream' | 'update_workstream'
-    | 'create_client' | 'update_client'
-    | 'create_note' | 'update_note'
-    | 'add_project_member' | 'add_team_member'
+    | "create_task" | "update_task" | "delete_task" | "assign_task"
+    | "create_project" | "update_project"
+    | "create_workstream" | "update_workstream"
+    | "create_client" | "update_client"
+    | "create_note" | "update_note"
+    | "add_project_member" | "add_team_member"
   data: Record<string, unknown>
 }
 
@@ -571,7 +571,7 @@ export async function sendChatMessage(
 
   const systemPrompt = buildChatSystemPrompt(context)
   const userMessages = messages.map(m => ({
-    role: m.role as 'user' | 'assistant',
+    role: m.role as "user" | "assistant",
     content: m.content
   }))
 
@@ -580,13 +580,13 @@ export async function sendChatMessage(
   let result: ActionResult<AIGenerationResult>
 
   switch (provider) {
-    case 'openai':
+    case "openai":
       result = await callOpenAIChat(apiKey, model, systemPrompt, userMessages)
       break
-    case 'anthropic':
+    case "anthropic":
       result = await callAnthropicChat(apiKey, model, systemPrompt, userMessages)
       break
-    case 'google':
+    case "google":
       result = await callGeminiChat(apiKey, model, systemPrompt, userMessages)
       break
     default:
@@ -603,62 +603,77 @@ export async function sendChatMessage(
 function buildChatSystemPrompt(context: ChatContext): string {
   const { appData } = context
 
+  // Add defaults for appData properties to prevent "undefined" in prompts
+  const organization = appData.organization || { id: "", name: "Unknown" }
+  const members = appData.members || []
+  const teams = appData.teams || []
+  const projects = appData.projects || []
+  const clients = appData.clients || []
+  const userTasks = appData.userTasks || []
+  const inbox = appData.inbox || []
+
   let prompt = `You are a project management AI assistant with FULL ACCESS to the user's application data.
 
 ## Current Context
-- Page: ${context.pageType.replace('_', ' ')}
-${context.filters ? `- Filters: ${JSON.stringify(context.filters)}` : ''}
+- Page: ${context.pageType.replace("_", " ")}
+${context.filters ? `- Filters: ${JSON.stringify(context.filters)}` : ""}
 
 ## Organization
-- Name: ${appData.organization.name}
-- Members (${appData.members.length}): ${appData.members.slice(0, 10).map(m => `${m.name} (${m.role})`).join(', ')}${appData.members.length > 10 ? '...' : ''}
-- Teams (${appData.teams.length}): ${appData.teams.map(t => t.name).join(', ') || 'None'}
+- Name: ${organization.name}
+- Members (${members.length}): ${members.slice(0, 10).map(m => `${m.name} (${m.role})`).join(", ")}${members.length > 10 ? "..." : ""}
+- Teams (${teams.length}): ${teams.map(t => t.name).join(", ") || "None"}
 
-## Projects (${appData.projects.length})
-${appData.projects.slice(0, 20).map(p =>
-  `- ${p.name} [${p.status}]${p.clientName ? ` - Client: ${p.clientName}` : ''}${p.dueDate ? ` - Due: ${p.dueDate}` : ''}`
-).join('\n')}
-${appData.projects.length > 20 ? `\n...and ${appData.projects.length - 20} more projects` : ''}
+## Projects (${projects.length})
+${projects.slice(0, 20).map(p =>
+  `- ${p.name} [${p.status}]${p.clientName ? ` - Client: ${p.clientName}` : ""}${p.dueDate ? ` - Due: ${p.dueDate}` : ""}`
+).join("\n")}
+${projects.length > 20 ? `\n...and ${projects.length - 20} more projects` : ""}
 
-## Clients (${appData.clients.length})
-${appData.clients.map(c => `- ${c.name} [${c.status}] (${c.projectCount} projects)`).join('\n') || 'None'}
+## Clients (${clients.length})
+${clients.map(c => `- ${c.name} [${c.status}] (${c.projectCount} projects)`).join("\n") || "None"}
 
-## Your Tasks (${appData.userTasks.length})
-${appData.userTasks.slice(0, 15).map(t =>
-  `- ${t.title} [${t.status}] (${t.priority}) - ${t.projectName}${t.dueDate ? ` - Due: ${t.dueDate}` : ''}`
-).join('\n')}
-${appData.userTasks.length > 15 ? `\n...and ${appData.userTasks.length - 15} more tasks` : ''}
+## Your Tasks (${userTasks.length})
+${userTasks.slice(0, 15).map(t =>
+  `- ${t.title} [${t.status}] (${t.priority}) - ${t.projectName}${t.dueDate ? ` - Due: ${t.dueDate}` : ""}`
+).join("\n")}
+${userTasks.length > 15 ? `\n...and ${userTasks.length - 15} more tasks` : ""}
 
-## Inbox (${appData.inbox.filter(i => !i.read).length} unread)
-${appData.inbox.slice(0, 5).map(i => `- ${i.title} [${i.type}]${i.read ? '' : ' *NEW*'}`).join('\n') || 'No notifications'}`
+## Inbox (${inbox.filter(i => !i.read).length} unread)
+${inbox.slice(0, 5).map(i => `- ${i.title} [${i.type}]${i.read ? "" : " *NEW*"}`).join("\n") || "No notifications"}`
 
   // Add current project detail if on project page
   if (appData.currentProject) {
     const p = appData.currentProject
+    const pMembers = p.members || []
+    const pWorkstreams = p.workstreams || []
+    const pFiles = p.files || []
+    const pNotes = p.notes || []
+    const pTasks = p.tasks || []
     prompt += `
 
 ## Current Project Detail: ${p.name}
 Status: ${p.status}
-${p.description ? `Description: ${p.description}` : ''}
-Members: ${p.members.map(m => `${m.name} (${m.role})`).join(', ') || 'None'}
-Workstreams: ${p.workstreams.map(w => w.name).join(', ') || 'None'}
-Files: ${p.files.map(f => f.name).join(', ') || 'None'}
-Notes: ${p.notes.map(n => n.title).join(', ') || 'None'}
+${p.description ? `Description: ${p.description}` : ""}
+Members: ${pMembers.map(m => `${m.name} (${m.role})`).join(", ") || "None"}
+Workstreams: ${pWorkstreams.map(w => w.name).join(", ") || "None"}
+Files: ${pFiles.map(f => f.name).join(", ") || "None"}
+Notes: ${pNotes.map(n => n.title).join(", ") || "None"}
 
-Tasks (${p.tasks.length}):
-${p.tasks.map(t => `- ${t.title} [${t.status}] (${t.priority})${t.assignee ? ` - ${t.assignee}` : ''}`).join('\n')}`
+Tasks (${pTasks.length}):
+${pTasks.map(t => `- ${t.title} [${t.status}] (${t.priority})${t.assignee ? ` - ${t.assignee}` : ""}`).join("\n")}`
   }
 
   // Add current client detail if on client page
   if (appData.currentClient) {
     const c = appData.currentClient
+    const cProjects = c.projects || []
     prompt += `
 
 ## Current Client Detail: ${c.name}
 Status: ${c.status}
-${c.email ? `Email: ${c.email}` : ''}
-${c.phone ? `Phone: ${c.phone}` : ''}
-Projects: ${c.projects.map(p => `${p.name} [${p.status}]`).join(', ') || 'None'}`
+${c.email ? `Email: ${c.email}` : ""}
+${c.phone ? `Phone: ${c.phone}` : ""}
+Projects: ${cProjects.map(p => `${p.name} [${p.status}]`).join(", ") || "None"}`
   }
 
   // Add attachments
@@ -667,8 +682,8 @@ Projects: ${c.projects.map(p => `${p.name} [${p.status}]`).join(', ') || 'None'}
 
 ## Attached Documents
 ${context.attachments.map(a =>
-      `--- ${a.name} ---\n${a.content.slice(0, 5000)}${a.content.length > 5000 ? '\n[truncated]' : ''}`
-    ).join('\n\n')}`
+      `--- ${a.name} ---\n${a.content.slice(0, 5000)}${a.content.length > 5000 ? "\n[truncated]" : ""}`
+    ).join("\n\n")}`
   }
 
   prompt += `
@@ -710,7 +725,7 @@ function parseChatResponse(text: string): ActionResult<ChatResponse> {
   if (actionMatch) {
     try {
       const action = JSON.parse(actionMatch[1]) as ProposedAction
-      const content = text.replace(/ACTION_JSON:\s*\{[\s\S]*\}/, '').trim()
+      const content = text.replace(/ACTION_JSON:\s*\{[\s\S]*\}/, "").trim()
       return { data: { content, action } }
     } catch {
       return { data: { content: text } }
@@ -725,42 +740,41 @@ async function callOpenAIChat(
   apiKey: string,
   model: string,
   systemPrompt: string,
-  messages: { role: 'user' | 'assistant'; content: string }[],
-  options: GenerationOptions = {}
+  messages: { role: "user" | "assistant"; content: string }[]
 ): Promise<ActionResult<AIGenerationResult>> {
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model,
         messages: [
-          { role: 'system', content: systemPrompt },
+          { role: "system", content: systemPrompt },
           ...messages
         ],
-        max_tokens: options.maxTokens || 2000,
-        temperature: options.temperature || 0.7,
+        max_tokens: 2000,
+        temperature: 0.7,
       }),
     })
 
     if (!response.ok) {
       const error = await response.json()
-      return { error: error.error?.message || 'OpenAI API error' }
+      return { error: error.error?.message || "OpenAI API error" }
     }
 
     const data = await response.json()
     return {
       data: {
-        text: data.choices[0]?.message?.content || '',
+        text: data.choices[0]?.message?.content || "",
         model,
         tokensUsed: data.usage?.total_tokens,
       },
     }
   } catch (error) {
-    return { error: `Failed to call OpenAI: ${error instanceof Error ? error.message : 'Unknown error'}` }
+    return { error: `Failed to call OpenAI: ${error instanceof Error ? error.message : "Unknown error"}` }
   }
 }
 
@@ -769,20 +783,19 @@ async function callAnthropicChat(
   apiKey: string,
   model: string,
   systemPrompt: string,
-  messages: { role: 'user' | 'assistant'; content: string }[],
-  options: GenerationOptions = {}
+  messages: { role: "user" | "assistant"; content: string }[]
 ): Promise<ActionResult<AIGenerationResult>> {
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
         model,
-        max_tokens: options.maxTokens || 2000,
+        max_tokens: 2000,
         system: systemPrompt,
         messages,
       }),
@@ -790,19 +803,19 @@ async function callAnthropicChat(
 
     if (!response.ok) {
       const error = await response.json()
-      return { error: error.error?.message || 'Anthropic API error' }
+      return { error: error.error?.message || "Anthropic API error" }
     }
 
     const data = await response.json()
     return {
       data: {
-        text: data.content[0]?.text || '',
+        text: data.content[0]?.text || "",
         model,
         tokensUsed: data.usage?.input_tokens + data.usage?.output_tokens,
       },
     }
   } catch (error) {
-    return { error: `Failed to call Anthropic: ${error instanceof Error ? error.message : 'Unknown error'}` }
+    return { error: `Failed to call Anthropic: ${error instanceof Error ? error.message : "Unknown error"}` }
   }
 }
 
@@ -811,26 +824,25 @@ async function callGeminiChat(
   apiKey: string,
   model: string,
   systemPrompt: string,
-  messages: { role: 'user' | 'assistant'; content: string }[],
-  options: GenerationOptions = {}
+  messages: { role: "user" | "assistant"; content: string }[]
 ): Promise<ActionResult<AIGenerationResult>> {
   try {
     const geminiMessages = messages.map(m => ({
-      role: m.role === 'user' ? 'user' : 'model',
+      role: m.role === "user" ? "user" : "model",
       parts: [{ text: m.content }]
     }))
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
       {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: systemPrompt }] },
           contents: geminiMessages,
           generationConfig: {
-            maxOutputTokens: options.maxTokens || 2000,
-            temperature: options.temperature || 0.7,
+            maxOutputTokens: 2000,
+            temperature: 0.7,
           },
         }),
       }
@@ -838,18 +850,18 @@ async function callGeminiChat(
 
     if (!response.ok) {
       const error = await response.json()
-      return { error: error.error?.message || 'Gemini API error' }
+      return { error: error.error?.message || "Gemini API error" }
     }
 
     const data = await response.json()
     return {
       data: {
-        text: data.candidates?.[0]?.content?.parts?.[0]?.text || '',
+        text: data.candidates?.[0]?.content?.parts?.[0]?.text || "",
         model,
         tokensUsed: data.usageMetadata?.totalTokenCount,
       },
     }
   } catch (error) {
-    return { error: `Failed to call Gemini: ${error instanceof Error ? error.message : 'Unknown error'}` }
+    return { error: `Failed to call Gemini: ${error instanceof Error ? error.message : "Unknown error"}` }
   }
 }
