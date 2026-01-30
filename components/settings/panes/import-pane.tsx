@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useEffect } from "react"
 import {
   UploadSimple,
   CheckCircle,
@@ -23,8 +23,10 @@ import {
 import { SettingsPaneHeader } from "../setting-primitives"
 import { cn } from "@/lib/utils"
 import { previewCSV, importTasksFromCSV, type ColumnMapping, type ImportResult } from "@/lib/actions/import"
+import { getProjects } from "@/lib/actions/projects"
 import { useOrganization } from "@/hooks/use-organization"
 import { toast } from "sonner"
+import type { Project } from "@/lib/supabase/types"
 
 const steps = [
   { id: 1, label: "Upload" },
@@ -46,7 +48,8 @@ const mappableFields = [
 type MappableFieldKey = typeof mappableFields[number]["key"]
 
 export function ImportPane() {
-  const { organization, projects } = useOrganization()
+  const { organization } = useOrganization()
+  const [projects, setProjects] = useState<Project[]>([])
   const [currentStep, setCurrentStep] = useState(1)
   const [isPending, startTransition] = useTransition()
 
@@ -74,6 +77,18 @@ export function ImportPane() {
 
   // Result state
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
+
+  // Load projects when organization changes
+  useEffect(() => {
+    if (!organization?.id) return
+    const loadProjects = async () => {
+      const result = await getProjects(organization.id)
+      if (result.data) {
+        setProjects(result.data)
+      }
+    }
+    loadProjects()
+  }, [organization?.id])
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

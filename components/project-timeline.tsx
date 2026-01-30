@@ -24,7 +24,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import { DraggableBar } from "@/components/project-timeline-draggable-bar"
-import { PriorityGlyphIcon } from "@/components/priority-badge"
+import { PriorityGlyphIcon, type PriorityLevel } from "@/components/priority-badge"
+import type { TaskStatus } from "@/lib/supabase/types"
 
 // Timeline project type with tasks
 type TimelineTask = {
@@ -32,7 +33,7 @@ type TimelineTask = {
   name: string
   startDate: Date
   endDate: Date
-  status: string
+  status: TaskStatus
   assignee?: string
 }
 
@@ -42,7 +43,7 @@ type TimelineProject = {
   startDate: Date
   endDate: Date
   progress: number
-  priority: string
+  priority: PriorityLevel
   taskCount: number
   tasks: TimelineTask[]
 }

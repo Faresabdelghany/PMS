@@ -91,12 +91,6 @@ export function ClientDetailsContent({ client }: ClientDetailsContentProps) {
                         <p className="text-sm">{client.primary_contact_email}</p>
                       </div>
                     )}
-                    {client.primary_contact_phone && (
-                      <div>
-                        <p className="text-xs text-muted-foreground">Phone</p>
-                        <p className="text-sm">{client.primary_contact_phone}</p>
-                      </div>
-                    )}
                   </>
                 ) : (
                   <p className="text-sm text-muted-foreground">No primary contact set.</p>

@@ -9,11 +9,12 @@ interface SettingSectionProps {
   description?: string
   children: ReactNode
   className?: string
+  id?: string
 }
 
-export function SettingSection({ title, description, children, className }: SettingSectionProps) {
+export function SettingSection({ title, description, children, className, id }: SettingSectionProps) {
   return (
-    <section className={cn("space-y-4", className)}>
+    <section id={id} className={cn("space-y-4", className)}>
       <div>
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         {description && (
@@ -53,7 +54,7 @@ export function SettingRow({ label, description, children, className }: SettingR
 
 interface SettingsPaneHeaderProps {
   title: string
-  description?: string
+  description?: React.ReactNode
 }
 
 export function SettingsPaneHeader({ title, description }: SettingsPaneHeaderProps) {

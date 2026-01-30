@@ -53,7 +53,7 @@ export function TagsPane() {
   // Form states
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
-  const [color, setColor] = useState(TAG_COLORS[10].hex)
+  const [color, setColor] = useState<string>(TAG_COLORS[10].hex)
   const [isSaving, setIsSaving] = useState(false)
 
   const loadTags = useCallback(async () => {

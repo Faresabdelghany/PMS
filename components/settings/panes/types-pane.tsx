@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useTransition } from "react"
+import { useState, useEffect, useTransition, useCallback } from "react"
 import {
   Plus,
   DotsThree,
@@ -95,33 +95,32 @@ export function TypesPane() {
   const [formName, setFormName] = useState("")
   const [formDescription, setFormDescription] = useState("")
 
-  useEffect(() => {
+  const loadStatuses = useCallback(async () => {
     if (!organization?.id) return
-
-    const loadStatuses = async () => {
-      setIsLoading(true)
-      const result = await getWorkflowStatuses(organization.id, activeType)
-      if (result.data) {
-        // If no statuses exist, initialize defaults
-        if (result.data.length === 0) {
-          const initResult = await initializeWorkflowStatuses(organization.id)
-          if (!initResult.error) {
-            const reloadResult = await getWorkflowStatuses(organization.id, activeType)
-            if (reloadResult.data) {
-              setStatuses(reloadResult.data)
-            }
+    setIsLoading(true)
+    const result = await getWorkflowStatuses(organization.id, activeType)
+    if (result.data) {
+      // If no statuses exist, initialize defaults
+      if (result.data.length === 0) {
+        const initResult = await initializeWorkflowStatuses(organization.id)
+        if (!initResult.error) {
+          const reloadResult = await getWorkflowStatuses(organization.id, activeType)
+          if (reloadResult.data) {
+            setStatuses(reloadResult.data)
           }
-        } else {
-          setStatuses(result.data)
         }
-      } else if (result.error) {
-        toast.error(result.error)
+      } else {
+        setStatuses(result.data)
       }
-      setIsLoading(false)
+    } else if (result.error) {
+      toast.error(result.error)
     }
-
-    loadStatuses()
+    setIsLoading(false)
   }, [organization?.id, activeType])
+
+  useEffect(() => {
+    loadStatuses()
+  }, [loadStatuses])
 
   const handleCreate = () => {
     startTransition(async () => {

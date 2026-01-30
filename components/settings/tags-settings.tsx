@@ -53,7 +53,7 @@ export function TagsSettings() {
   // Form states
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
-  const [color, setColor] = useState(TAG_COLORS[10].hex) // Default to blue
+  const [color, setColor] = useState<string>(TAG_COLORS[10].hex) // Default to blue
   const [isSaving, setIsSaving] = useState(false)
 
   const loadTags = useCallback(async () => {
