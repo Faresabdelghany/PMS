@@ -71,6 +71,16 @@ function getDefaultModel(provider: string): string {
       return "claude-3-5-haiku-20241022"
     case "google":
       return "gemini-1.5-flash"
+    case "groq":
+      return "llama-3.3-70b-versatile"
+    case "mistral":
+      return "mistral-small-latest"
+    case "xai":
+      return "grok-2-latest"
+    case "deepseek":
+      return "deepseek-chat"
+    case "openrouter":
+      return "openrouter/auto"
     default:
       return "gpt-4o-mini"
   }
@@ -207,6 +217,228 @@ async function callGemini(
   }
 }
 
+// Make API call to Groq (OpenAI-compatible API)
+async function callGroq(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  userPrompt: string,
+  options: GenerationOptions = {}
+): Promise<ActionResult<AIGenerationResult>> {
+  try {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: options.maxTokens || 2000,
+        temperature: options.temperature || 0.7,
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      return { error: error.error?.message || "Groq API error" }
+    }
+
+    const data = await response.json()
+    return {
+      data: {
+        text: data.choices[0]?.message?.content || "",
+        model,
+        tokensUsed: data.usage?.total_tokens,
+      },
+    }
+  } catch (error) {
+    return { error: `Failed to call Groq: ${error instanceof Error ? error.message : "Unknown error"}` }
+  }
+}
+
+// Make API call to Mistral
+async function callMistral(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  userPrompt: string,
+  options: GenerationOptions = {}
+): Promise<ActionResult<AIGenerationResult>> {
+  try {
+    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: options.maxTokens || 2000,
+        temperature: options.temperature || 0.7,
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      return { error: error.error?.message || "Mistral API error" }
+    }
+
+    const data = await response.json()
+    return {
+      data: {
+        text: data.choices[0]?.message?.content || "",
+        model,
+        tokensUsed: data.usage?.total_tokens,
+      },
+    }
+  } catch (error) {
+    return { error: `Failed to call Mistral: ${error instanceof Error ? error.message : "Unknown error"}` }
+  }
+}
+
+// Make API call to xAI (Grok) - OpenAI-compatible API
+async function callXAI(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  userPrompt: string,
+  options: GenerationOptions = {}
+): Promise<ActionResult<AIGenerationResult>> {
+  try {
+    const response = await fetch("https://api.x.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: options.maxTokens || 2000,
+        temperature: options.temperature || 0.7,
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      return { error: error.error?.message || "xAI API error" }
+    }
+
+    const data = await response.json()
+    return {
+      data: {
+        text: data.choices[0]?.message?.content || "",
+        model,
+        tokensUsed: data.usage?.total_tokens,
+      },
+    }
+  } catch (error) {
+    return { error: `Failed to call xAI: ${error instanceof Error ? error.message : "Unknown error"}` }
+  }
+}
+
+// Make API call to DeepSeek - OpenAI-compatible API
+async function callDeepSeek(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  userPrompt: string,
+  options: GenerationOptions = {}
+): Promise<ActionResult<AIGenerationResult>> {
+  try {
+    const response = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: options.maxTokens || 2000,
+        temperature: options.temperature || 0.7,
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      return { error: error.error?.message || "DeepSeek API error" }
+    }
+
+    const data = await response.json()
+    return {
+      data: {
+        text: data.choices[0]?.message?.content || "",
+        model,
+        tokensUsed: data.usage?.total_tokens,
+      },
+    }
+  } catch (error) {
+    return { error: `Failed to call DeepSeek: ${error instanceof Error ? error.message : "Unknown error"}` }
+  }
+}
+
+// Make API call to OpenRouter - OpenAI-compatible API with many models
+async function callOpenRouter(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  userPrompt: string,
+  options: GenerationOptions = {}
+): Promise<ActionResult<AIGenerationResult>> {
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
+        "X-Title": "Project Dashboard",
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: options.maxTokens || 2000,
+        temperature: options.temperature || 0.7,
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      return { error: error.error?.message || "OpenRouter API error" }
+    }
+
+    const data = await response.json()
+    return {
+      data: {
+        text: data.choices[0]?.message?.content || "",
+        model,
+        tokensUsed: data.usage?.total_tokens,
+      },
+    }
+  } catch (error) {
+    return { error: `Failed to call OpenRouter: ${error instanceof Error ? error.message : "Unknown error"}` }
+  }
+}
+
 // Generic text generation
 export async function generateText(
   prompt: string,
@@ -245,6 +477,16 @@ export async function generateText(
       return callAnthropic(apiKey, model, systemPrompt, prompt, options)
     case "google":
       return callGemini(apiKey, model, systemPrompt, prompt, options)
+    case "groq":
+      return callGroq(apiKey, model, systemPrompt, prompt, options)
+    case "mistral":
+      return callMistral(apiKey, model, systemPrompt, prompt, options)
+    case "xai":
+      return callXAI(apiKey, model, systemPrompt, prompt, options)
+    case "deepseek":
+      return callDeepSeek(apiKey, model, systemPrompt, prompt, options)
+    case "openrouter":
+      return callOpenRouter(apiKey, model, systemPrompt, prompt, options)
     default:
       return { error: `Unsupported AI provider: ${provider}` }
   }
@@ -589,6 +831,21 @@ export async function sendChatMessage(
     case "google":
       result = await callGeminiChat(apiKey, model, systemPrompt, userMessages)
       break
+    case "groq":
+      result = await callGroqChat(apiKey, model, systemPrompt, userMessages)
+      break
+    case "mistral":
+      result = await callMistralChat(apiKey, model, systemPrompt, userMessages)
+      break
+    case "xai":
+      result = await callXAIChat(apiKey, model, systemPrompt, userMessages)
+      break
+    case "deepseek":
+      result = await callDeepSeekChat(apiKey, model, systemPrompt, userMessages)
+      break
+    case "openrouter":
+      result = await callOpenRouterChat(apiKey, model, systemPrompt, userMessages)
+      break
     default:
       return { error: `Unsupported AI provider: ${provider}` }
   }
@@ -863,5 +1120,222 @@ async function callGeminiChat(
     }
   } catch (error) {
     return { error: `Failed to call Gemini: ${error instanceof Error ? error.message : "Unknown error"}` }
+  }
+}
+
+// Multi-turn chat function for Groq (OpenAI-compatible)
+async function callGroqChat(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  messages: { role: "user" | "assistant"; content: string }[]
+): Promise<ActionResult<AIGenerationResult>> {
+  try {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messages
+        ],
+        max_tokens: 2000,
+        temperature: 0.7,
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      return { error: error.error?.message || "Groq API error" }
+    }
+
+    const data = await response.json()
+    return {
+      data: {
+        text: data.choices[0]?.message?.content || "",
+        model,
+        tokensUsed: data.usage?.total_tokens,
+      },
+    }
+  } catch (error) {
+    return { error: `Failed to call Groq: ${error instanceof Error ? error.message : "Unknown error"}` }
+  }
+}
+
+// Multi-turn chat function for Mistral
+async function callMistralChat(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  messages: { role: "user" | "assistant"; content: string }[]
+): Promise<ActionResult<AIGenerationResult>> {
+  try {
+    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messages
+        ],
+        max_tokens: 2000,
+        temperature: 0.7,
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      return { error: error.error?.message || "Mistral API error" }
+    }
+
+    const data = await response.json()
+    return {
+      data: {
+        text: data.choices[0]?.message?.content || "",
+        model,
+        tokensUsed: data.usage?.total_tokens,
+      },
+    }
+  } catch (error) {
+    return { error: `Failed to call Mistral: ${error instanceof Error ? error.message : "Unknown error"}` }
+  }
+}
+
+// Multi-turn chat function for xAI (Grok)
+async function callXAIChat(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  messages: { role: "user" | "assistant"; content: string }[]
+): Promise<ActionResult<AIGenerationResult>> {
+  try {
+    const response = await fetch("https://api.x.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messages
+        ],
+        max_tokens: 2000,
+        temperature: 0.7,
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      return { error: error.error?.message || "xAI API error" }
+    }
+
+    const data = await response.json()
+    return {
+      data: {
+        text: data.choices[0]?.message?.content || "",
+        model,
+        tokensUsed: data.usage?.total_tokens,
+      },
+    }
+  } catch (error) {
+    return { error: `Failed to call xAI: ${error instanceof Error ? error.message : "Unknown error"}` }
+  }
+}
+
+// Multi-turn chat function for DeepSeek
+async function callDeepSeekChat(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  messages: { role: "user" | "assistant"; content: string }[]
+): Promise<ActionResult<AIGenerationResult>> {
+  try {
+    const response = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messages
+        ],
+        max_tokens: 2000,
+        temperature: 0.7,
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      return { error: error.error?.message || "DeepSeek API error" }
+    }
+
+    const data = await response.json()
+    return {
+      data: {
+        text: data.choices[0]?.message?.content || "",
+        model,
+        tokensUsed: data.usage?.total_tokens,
+      },
+    }
+  } catch (error) {
+    return { error: `Failed to call DeepSeek: ${error instanceof Error ? error.message : "Unknown error"}` }
+  }
+}
+
+// Multi-turn chat function for OpenRouter
+async function callOpenRouterChat(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  messages: { role: "user" | "assistant"; content: string }[]
+): Promise<ActionResult<AIGenerationResult>> {
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
+        "X-Title": "Project Dashboard",
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messages
+        ],
+        max_tokens: 2000,
+        temperature: 0.7,
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      return { error: error.error?.message || "OpenRouter API error" }
+    }
+
+    const data = await response.json()
+    return {
+      data: {
+        text: data.choices[0]?.message?.content || "",
+        model,
+        tokensUsed: data.usage?.total_tokens,
+      },
+    }
+  } catch (error) {
+    return { error: `Failed to call OpenRouter: ${error instanceof Error ? error.message : "Unknown error"}` }
   }
 }

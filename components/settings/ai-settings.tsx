@@ -26,7 +26,7 @@ import {
   deleteAIApiKey,
   getMaskedApiKey,
 } from "@/lib/actions/user-settings"
-import { AI_MODELS, type AIProvider } from "@/lib/constants/ai"
+import { AI_MODELS, AI_PROVIDERS, type AIProvider } from "@/lib/constants/ai"
 import { testAIConnection } from "@/lib/actions/ai"
 
 export function AISettings() {
@@ -212,9 +212,11 @@ export function AISettings() {
                   <SelectValue placeholder="Select a provider" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="openai">OpenAI (GPT-4)</SelectItem>
-                  <SelectItem value="anthropic">Anthropic (Claude)</SelectItem>
-                  <SelectItem value="google">Google (Gemini)</SelectItem>
+                  {Object.entries(AI_PROVIDERS).map(([key, { name }]) => (
+                    <SelectItem key={key} value={key}>
+                      {name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
@@ -299,36 +301,18 @@ export function AISettings() {
             <div className="rounded-lg bg-muted p-4 text-sm space-y-2">
               <p className="font-medium">Where to get API keys:</p>
               <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>
-                  <a
-                    href="https://platform.openai.com/api-keys"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline"
-                  >
-                    OpenAI API Keys
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://console.anthropic.com/settings/keys"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline"
-                  >
-                    Anthropic API Keys
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://aistudio.google.com/app/apikey"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline"
-                  >
-                    Google AI Studio API Keys
-                  </a>
-                </li>
+                {Object.entries(AI_PROVIDERS).map(([key, { name, keyUrl }]) => (
+                  <li key={key}>
+                    <a
+                      href={keyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      {name} API Keys
+                    </a>
+                  </li>
+                ))}
               </ul>
             </div>
 
