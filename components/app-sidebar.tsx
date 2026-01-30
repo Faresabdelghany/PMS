@@ -36,6 +36,7 @@ import { signOut } from "@/lib/actions/auth"
 import type { Project } from "@/lib/supabase/types"
 import { useCommandPalette } from "@/components/command-palette"
 import { useSettingsDialog } from "@/components/providers/settings-dialog-provider"
+import { AIChatTrigger } from "@/components/ai/ai-chat-trigger"
 
 // Navigation items defined inline (no mock data dependency)
 type NavItemId = "inbox" | "my-tasks" | "projects" | "clients" | "performance"
@@ -279,6 +280,11 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
 
       <SidebarFooter className="border-t border-border/40 p-2">
         <SidebarMenu>
+          {/* Ask AI Button */}
+          <SidebarMenuItem>
+            <AIChatTrigger />
+          </SidebarMenuItem>
+
           {footerItems.map((item) => {
             const Icon = footerItemIcons[item.id]
 

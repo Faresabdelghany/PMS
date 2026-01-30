@@ -24,13 +24,14 @@ interface AIChatSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   context: ChatContext
+  isLoadingContext?: boolean
 }
 
 // =============================================================================
 // Component
 // =============================================================================
 
-export function AIChatSheet({ open, onOpenChange, context }: AIChatSheetProps) {
+export function AIChatSheet({ open, onOpenChange, context, isLoadingContext }: AIChatSheetProps) {
   const { isConfigured, isLoading: isCheckingAI, refetch } = useAIStatus()
   const {
     messages,
@@ -85,15 +86,15 @@ export function AIChatSheet({ open, onOpenChange, context }: AIChatSheetProps) {
 
         {/* Content */}
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          {/* Loading AI status */}
-          {isCheckingAI && (
+          {/* Loading AI status or context */}
+          {(isCheckingAI || isLoadingContext) && (
             <div className="flex-1 flex items-center justify-center">
               <SpinnerGap className="size-8 animate-spin text-muted-foreground" />
             </div>
           )}
 
           {/* AI not configured - show setup prompt */}
-          {!isCheckingAI && !isConfigured && (
+          {!isCheckingAI && !isLoadingContext && !isConfigured && (
             <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6 text-center">
               <StarFour weight="fill" className="size-12 text-violet-500/40" />
               <div className="space-y-2">
@@ -109,7 +110,7 @@ export function AIChatSheet({ open, onOpenChange, context }: AIChatSheetProps) {
           )}
 
           {/* AI configured - show chat interface */}
-          {!isCheckingAI && isConfigured && (
+          {!isCheckingAI && !isLoadingContext && isConfigured && (
             <>
               {/* Messages Area */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
