@@ -70,7 +70,7 @@ function getDefaultModel(provider: string): string {
     case "anthropic":
       return "claude-3-5-haiku-20241022"
     case "google":
-      return "gemini-1.5-flash"
+      return "gemini-2.5-flash"
     case "groq":
       return "llama-3.3-70b-versatile"
     case "mistral":
