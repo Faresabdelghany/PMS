@@ -204,6 +204,18 @@ export function ProjectsContent({
   // Memoize filter counts to prevent recomputation on every render
   const filterCounts = useMemo(() => computeFilterCounts(filteredProjects), [filteredProjects])
 
+  // Memoize project summaries for AI context
+  const projectSummaries = useMemo(() =>
+    supabaseProjects.map(p => ({
+      id: p.id,
+      name: p.name,
+      status: p.status,
+      clientName: p.client?.name,
+      dueDate: p.end_date || undefined,
+    })),
+    [supabaseProjects]
+  )
+
   return (
     <div className="flex flex-1 flex-col bg-background mx-2 my-2 border border-border rounded-lg min-w-0">
       <ProjectHeader
@@ -214,6 +226,7 @@ export function ProjectsContent({
         viewOptions={viewOptions}
         onViewOptionsChange={setViewOptions}
         onAddProject={openWizard}
+        projects={projectSummaries}
       />
       {viewOptions.viewType === "timeline" && (
         <ProjectTimeline initialProjects={timelineProjects} />
