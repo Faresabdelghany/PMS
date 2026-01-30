@@ -164,9 +164,13 @@ export function AIChatInput({
     setMessage("")
     setAttachments([])
 
-    // Reset textarea height
+    // Reset textarea height and keep focus
     if (textareaRef.current) {
       textareaRef.current.style.height = "44px"
+      // Keep focus on textarea after sending
+      requestAnimationFrame(() => {
+        textareaRef.current?.focus()
+      })
     }
   }, [message, attachments, disabled, isProcessing, onSend])
 
@@ -277,6 +281,7 @@ export function AIChatInput({
           disabled={disabled || isProcessing}
           className="min-h-[44px] max-h-[200px] resize-none py-2.5"
           rows={1}
+          autoFocus
         />
 
         {/* Send Button */}

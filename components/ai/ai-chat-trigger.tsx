@@ -3,22 +3,28 @@
 import { useState, useCallback } from "react"
 import { Sparkle } from "@phosphor-icons/react/dist/ssr"
 import { SidebarMenuButton } from "@/components/ui/sidebar"
-import { AIChatSheet } from "./ai-chat-sheet"
+import { AnimatePresence } from "@/components/ui/motion-lazy"
+import { AIChatModal } from "./ai-chat-modal"
+import { AIChatBubble } from "./ai-chat-bubble"
 import { getAIContext } from "@/lib/actions/ai-context"
 import type { ChatContext } from "@/lib/actions/ai"
 
+type ChatState = "closed" | "open" | "minimized"
+
 /**
- * Ask AI button for the sidebar that opens the AI chat sheet.
+ * Ask AI button for the sidebar that opens the AI chat modal.
+ * Supports minimizing to a floating bubble.
  * Fetches full application context when opened.
  */
 export function AIChatTrigger() {
-  const [isOpen, setIsOpen] = useState(false)
+  const [chatState, setChatState] = useState<ChatState>("closed")
   const [context, setContext] = useState<ChatContext | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [messageCount, setMessageCount] = useState(0)
 
   const handleOpen = useCallback(async () => {
     setIsLoading(true)
-    setIsOpen(true)
+    setChatState("open")
 
     // Fetch context when opening
     const result = await getAIContext()
@@ -28,12 +34,25 @@ export function AIChatTrigger() {
     setIsLoading(false)
   }, [])
 
+  const handleMinimize = useCallback(() => {
+    setChatState("minimized")
+  }, [])
+
+  const handleExpand = useCallback(() => {
+    setChatState("open")
+  }, [])
+
   const handleOpenChange = useCallback((open: boolean) => {
-    setIsOpen(open)
     if (!open) {
-      // Clear context when closing to free memory
-      setContext(null)
+      // Minimize instead of close when clicking backdrop
+      setChatState("minimized")
     }
+  }, [])
+
+  const handleClose = useCallback(() => {
+    setChatState("closed")
+    setContext(null)
+    setMessageCount(0)
   }, [])
 
   // Default empty context while loading
@@ -58,12 +77,28 @@ export function AIChatTrigger() {
         <span>Ask AI</span>
       </SidebarMenuButton>
 
-      <AIChatSheet
-        open={isOpen}
-        onOpenChange={handleOpenChange}
-        context={chatContext}
-        isLoadingContext={isLoading}
-      />
+      <AnimatePresence mode="wait">
+        {/* Full modal view */}
+        {chatState === "open" && (
+          <AIChatModal
+            key="ai-modal"
+            open={true}
+            onOpenChange={handleOpenChange}
+            onMinimize={handleMinimize}
+            context={chatContext}
+            isLoadingContext={isLoading}
+          />
+        )}
+
+        {/* Minimized bubble view */}
+        {chatState === "minimized" && (
+          <AIChatBubble
+            key="ai-bubble"
+            onClick={handleExpand}
+            messageCount={messageCount}
+          />
+        )}
+      </AnimatePresence>
     </>
   )
 }
