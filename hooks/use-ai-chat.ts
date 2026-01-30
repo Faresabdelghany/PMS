@@ -57,7 +57,7 @@ export interface UseAIChatReturn {
 // =============================================================================
 
 function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+  return crypto.randomUUID()
 }
 
 // Execute an action based on its type
@@ -321,43 +321,61 @@ export function useAIChat(context: ChatContext): UseAIChatReturn {
   )
 
   const confirmAction = useCallback(async (messageId: string) => {
-    // Find the message with the action
-    const message = messages.find((m) => m.id === messageId)
-    if (!message?.action || message.action.status !== "pending") {
-      return
-    }
+    let actionToExecute: { type: ProposedAction["type"]; data: Record<string, unknown> } | null = null
 
-    // Update status to executing
-    setMessages((prev) =>
-      prev.map((m) =>
-        m.id === messageId && m.action
-          ? { ...m, action: { ...m.action, status: "executing" as ActionStatus } }
-          : m
-      )
-    )
-
-    // Execute the action
-    const actionResult = await executeAction({
-      type: message.action.type,
-      data: message.action.data,
+    // Use functional update to atomically read current state AND set executing
+    // This avoids stale closure issues with the messages array
+    setMessages((prev) => {
+      const message = prev.find((m) => m.id === messageId)
+      if (message?.action && message.action.status === "pending") {
+        actionToExecute = { type: message.action.type, data: message.action.data }
+        return prev.map((m) =>
+          m.id === messageId && m.action
+            ? { ...m, action: { ...m.action, status: "executing" as ActionStatus } }
+            : m
+        )
+      }
+      return prev
     })
 
-    // Update status based on result
-    setMessages((prev) =>
-      prev.map((m) =>
-        m.id === messageId && m.action
-          ? {
-              ...m,
-              action: {
-                ...m.action,
-                status: actionResult.success ? ("success" as ActionStatus) : ("error" as ActionStatus),
-                error: actionResult.error,
-              },
-            }
-          : m
+    if (!actionToExecute) return
+
+    try {
+      const actionResult = await executeAction(actionToExecute)
+
+      // Update status based on result
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId && m.action
+            ? {
+                ...m,
+                action: {
+                  ...m.action,
+                  status: actionResult.success ? ("success" as ActionStatus) : ("error" as ActionStatus),
+                  error: actionResult.error,
+                },
+              }
+            : m
+        )
       )
-    )
-  }, [messages])
+    } catch (err) {
+      // Defensive error handling for unexpected exceptions
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId && m.action
+            ? {
+                ...m,
+                action: {
+                  ...m.action,
+                  status: "error" as ActionStatus,
+                  error: err instanceof Error ? err.message : "An unexpected error occurred",
+                },
+              }
+            : m
+        )
+      )
+    }
+  }, []) // No dependencies needed - uses functional updates
 
   const clearChat = useCallback(() => {
     setMessages([])
