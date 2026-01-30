@@ -6,7 +6,7 @@ import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar";
 import { getAvatarUrl } from "@/lib/assets/avatars";
-import { Rocket, Flask, Briefcase, User, Users, Layout, Target, CheckCircle, Question, PencilSimpleLine, FolderSimple } from "@phosphor-icons/react/dist/ssr";
+import { Rocket, Flask, Briefcase, User, Users, Layout, Target, CheckCircle, Question, PencilSimpleLine, FolderSimple, GitMerge } from "@phosphor-icons/react/dist/ssr";
 
 interface StepReviewProps {
   data: ProjectData;
@@ -224,6 +224,67 @@ export function StepReview({ data, updateData, onEditStep }: StepReviewProps) {
               <PencilSimpleLine className="h-4 w-4" />
             </Button>
           </div>
+
+          {/* Workstreams */}
+          {data.workstreams && data.workstreams.length > 0 && (
+            <>
+              <Separator className="opacity-0" />
+              <div className="flex items-center gap-4 rounded-3xl bg-background p-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border text-muted-foreground">
+                  <GitMerge className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground pb-1">Workstreams</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {data.workstreams.map((ws) => (
+                      <span
+                        key={ws}
+                        className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium"
+                      >
+                        {ws}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="rounded-full"
+                  type="button"
+                  onClick={() => onEditStep?.(4)}
+                >
+                  <PencilSimpleLine className="h-4 w-4" />
+                </Button>
+              </div>
+            </>
+          )}
+
+          {/* Generated Tasks */}
+          {data.generatedTasks && data.generatedTasks.filter(t => t.included).length > 0 && (
+            <>
+              <Separator className="opacity-0" />
+              <div className="flex items-center gap-4 rounded-3xl bg-background p-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border text-muted-foreground">
+                  <CheckCircle className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground pb-1">Starter Tasks</p>
+                  <p className="text-sm font-semibold">
+                    {data.generatedTasks.filter(t => t.included).length} tasks will be created
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="rounded-full"
+                  type="button"
+                  onClick={() => onEditStep?.(4)}
+                >
+                  <PencilSimpleLine className="h-4 w-4" />
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
