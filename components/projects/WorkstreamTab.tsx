@@ -593,13 +593,17 @@ export function WorkstreamTab({
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
-                            type="button"
+                            asChild
                             size="icon-sm"
                             variant="ghost"
                             className="size-6 rounded-md"
-                            onClick={(e) => e.stopPropagation()}
                           >
-                            <DotsThreeVertical className="h-4 w-4" weight="bold" />
+                            <span
+                              role="button"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <DotsThreeVertical className="h-4 w-4" weight="bold" />
+                            </span>
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-40">
