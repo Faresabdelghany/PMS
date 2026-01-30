@@ -342,6 +342,15 @@ export function ProjectWizard({ onClose, onCreate, organizationId, clients = EMP
                                             owner_id: data.ownerId,
                                             contributor_ids: data.contributorIds,
                                             stakeholder_ids: data.stakeholderIds,
+                                            workstreams: data.workstreams,
+                                            starter_tasks: data.generatedTasks
+                                              .filter((t) => t.included)
+                                              .map((t) => ({
+                                                title: t.title,
+                                                description: t.description,
+                                                priority: t.priority,
+                                                workstream: t.workstream,
+                                              })),
                                           });
 
                                           if (result.error) {
