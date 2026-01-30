@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useMemo } from "react"
+import { useTheme } from "next-themes"
 import {
   Sheet,
   SheetContent,
@@ -10,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { StarFour, Trash, SpinnerGap } from "@phosphor-icons/react"
 import { useAIStatus } from "@/hooks/use-ai-status"
-import { useAIChat, type Attachment } from "@/hooks/use-ai-chat"
+import { useAIChat, type Attachment, type ClientSideCallbacks } from "@/hooks/use-ai-chat"
 import type { ChatContext } from "@/lib/actions/ai"
 import { AIChatMessage } from "./ai-chat-message"
 import { AIChatInput } from "./ai-chat-input"
@@ -33,6 +34,13 @@ interface AIChatSheetProps {
 
 export function AIChatSheet({ open, onOpenChange, context, isLoadingContext }: AIChatSheetProps) {
   const { isConfigured, isLoading: isCheckingAI, refetch } = useAIStatus()
+  const { setTheme } = useTheme()
+
+  // Memoize callbacks to prevent unnecessary re-renders
+  const clientSideCallbacks = useMemo<ClientSideCallbacks>(() => ({
+    setTheme,
+  }), [setTheme])
+
   const {
     messages,
     isLoading,
@@ -41,7 +49,7 @@ export function AIChatSheet({ open, onOpenChange, context, isLoadingContext }: A
     confirmAction,
     confirmAllActions,
     clearChat,
-  } = useAIChat(context)
+  } = useAIChat(context, clientSideCallbacks)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 

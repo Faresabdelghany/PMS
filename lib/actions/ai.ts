@@ -779,6 +779,7 @@ export interface ProposedAction {
     | "create_client" | "update_client"
     | "create_note" | "update_note"
     | "add_project_member" | "add_team_member"
+    | "change_theme"
   data: Record<string, unknown>
 }
 
@@ -998,6 +999,7 @@ When proposing actions, include at the END of your response:
 | create_note | title, projectId | content | Use $NEW_PROJECT_ID or real UUID |
 | add_project_member | projectId, userId, role | | |
 | add_team_member | teamId, userId | | |
+| change_theme | theme | | theme must be "light", "dark", or "system" |
 
 ## CRITICAL: Task Assignment Best Practice
 When creating multiple tasks that need to be assigned, **ALWAYS include the assigneeId directly in create_task**.

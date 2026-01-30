@@ -1,9 +1,11 @@
 "use client"
 
 import { useCallback, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { LinkSimple, SquareHalf } from "@phosphor-icons/react/dist/ssr"
 import { toast } from "sonner"
 import { AnimatePresence, MotionDiv } from "@/components/ui/motion-lazy"
+import { useProjectRealtime } from "@/hooks/use-realtime"
 
 import type { ProjectFullDetails } from "@/lib/actions/projects"
 import type { TaskWithRelations } from "@/lib/actions/tasks"
@@ -78,8 +80,16 @@ export function ProjectDetailsPage({
   organizationMembers = [],
   organizationTags = [],
 }: ProjectDetailsPageProps) {
+  const router = useRouter()
   const [showMeta, setShowMeta] = useState(true)
   const [isWizardOpen, setIsWizardOpen] = useState(false)
+
+  // Real-time subscription for project updates (e.g., from AI chat)
+  useProjectRealtime(projectId, {
+    onUpdate: useCallback(() => {
+      router.refresh()
+    }, [router]),
+  })
 
   // Workstream tab state
   const [isWorkstreamTaskModalOpen, setIsWorkstreamTaskModalOpen] = useState(false)

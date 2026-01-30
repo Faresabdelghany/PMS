@@ -14,6 +14,11 @@ import { createClientAction, updateClient } from "@/lib/actions/clients"
 // Note actions
 import { createNote, updateNote } from "@/lib/actions/notes"
 
+// Client-side action callbacks
+export interface ClientSideCallbacks {
+  setTheme?: (theme: string) => void
+}
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -78,11 +83,28 @@ function generateId(): string {
 }
 
 // Execute an action based on its type - returns success, error, and optionally created entity info
-async function executeAction(action: ProposedAction): Promise<{ success: boolean; error?: string; createdEntity?: { type: string; id: string; name: string } }> {
+async function executeAction(
+  action: ProposedAction,
+  callbacks?: ClientSideCallbacks
+): Promise<{ success: boolean; error?: string; createdEntity?: { type: string; id: string; name: string } }> {
   const { type, data } = action
 
   try {
     switch (type) {
+      // Client-side actions
+      case "change_theme": {
+        const theme = data.theme as string
+        if (!theme) return { success: false, error: "Theme value is required" }
+        const validThemes = ["light", "dark", "system"]
+        if (!validThemes.includes(theme)) {
+          return { success: false, error: `Invalid theme. Must be one of: ${validThemes.join(", ")}` }
+        }
+        if (!callbacks?.setTheme) {
+          return { success: false, error: "Theme change is not available" }
+        }
+        callbacks.setTheme(theme)
+        return { success: true }
+      }
       // Task actions
       case "create_task": {
         const projectId = data.projectId as string
@@ -275,7 +297,7 @@ async function executeAction(action: ProposedAction): Promise<{ success: boolean
 // Hook
 // =============================================================================
 
-export function useAIChat(context: ChatContext): UseAIChatReturn {
+export function useAIChat(context: ChatContext, callbacks?: ClientSideCallbacks): UseAIChatReturn {
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -399,7 +421,7 @@ export function useAIChat(context: ChatContext): UseAIChatReturn {
     }
 
     try {
-      const actionResult = await executeAction(actionData)
+      const actionResult = await executeAction(actionData, callbacks)
 
       // Update status based on result, including created entity info if available
       setMessages((prev) =>
@@ -434,7 +456,7 @@ export function useAIChat(context: ChatContext): UseAIChatReturn {
         )
       )
     }
-  }, [context]) // context needed for orgId injection
+  }, [context, callbacks]) // context needed for orgId injection, callbacks for client-side actions
 
   // Execute all actions sequentially with automatic ID injection
   const confirmAllActions = useCallback(async (messageId: string) => {
@@ -510,7 +532,7 @@ export function useAIChat(context: ChatContext): UseAIChatReturn {
       }
 
       try {
-        const result = await executeAction({ type: action.type, data: actionData })
+        const result = await executeAction({ type: action.type, data: actionData }, callbacks)
 
         // Track created entity IDs for subsequent actions
         if (result.success && result.createdEntity) {
@@ -597,7 +619,7 @@ export function useAIChat(context: ChatContext): UseAIChatReturn {
           : m
       )
     )
-  }, [context])
+  }, [context, callbacks])
 
   const clearChat = useCallback(() => {
     setMessages([])
