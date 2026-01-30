@@ -28,6 +28,15 @@ export interface OwnershipEntry {
   access: Exclude<OwnershipAccessLevel, 'full_access'>;
 }
 
+export interface GeneratedTask {
+  id: string;
+  title: string;
+  description?: string;
+  priority: 'low' | 'medium' | 'high';
+  workstream?: string;
+  included: boolean;
+}
+
 export interface ProjectData {
   mode?: ProjectMode;
   name?: string;
@@ -46,6 +55,7 @@ export interface ProjectData {
   contributorOwnerships?: OwnershipEntry[];
   stakeholderOwnerships?: OwnershipEntry[];
   structure?: WorkStructure;
-  addStarterTasks: boolean;
+  workstreams: string[];
+  generatedTasks: GeneratedTask[];
   clientId?: string;
 }
