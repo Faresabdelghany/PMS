@@ -32,16 +32,15 @@ export function NotificationsPane() {
   const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
+    const loadPreferences = async () => {
+      const result = await getPreferences()
+      if (result.data) {
+        setPreferences(result.data)
+      }
+      setIsLoading(false)
+    }
     loadPreferences()
   }, [])
-
-  const loadPreferences = async () => {
-    const result = await getPreferences()
-    if (result.data) {
-      setPreferences(result.data)
-    }
-    setIsLoading(false)
-  }
 
   const handleToggle = (key: "notifications_in_app" | "notifications_email", checked: boolean) => {
     if (!preferences) return

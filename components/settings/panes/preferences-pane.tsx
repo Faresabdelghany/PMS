@@ -48,16 +48,15 @@ export function PreferencesPane() {
   // Load preferences on mount
   useEffect(() => {
     setIsMounted(true)
+    const loadPreferences = async () => {
+      const result = await getPreferences()
+      if (result.data) {
+        setPreferences(result.data)
+      }
+      setIsLoading(false)
+    }
     loadPreferences()
   }, [])
-
-  const loadPreferences = async () => {
-    const result = await getPreferences()
-    if (result.data) {
-      setPreferences(result.data)
-    }
-    setIsLoading(false)
-  }
 
   useEffect(() => {
     if (!copied) return

@@ -96,33 +96,32 @@ export function TypesPane() {
   const [formDescription, setFormDescription] = useState("")
 
   useEffect(() => {
-    if (organization?.id) {
-      loadStatuses()
-    }
-  }, [organization?.id, activeType])
-
-  const loadStatuses = async () => {
     if (!organization?.id) return
-    setIsLoading(true)
-    const result = await getWorkflowStatuses(organization.id, activeType)
-    if (result.data) {
-      // If no statuses exist, initialize defaults
-      if (result.data.length === 0) {
-        const initResult = await initializeWorkflowStatuses(organization.id)
-        if (!initResult.error) {
-          const reloadResult = await getWorkflowStatuses(organization.id, activeType)
-          if (reloadResult.data) {
-            setStatuses(reloadResult.data)
+
+    const loadStatuses = async () => {
+      setIsLoading(true)
+      const result = await getWorkflowStatuses(organization.id, activeType)
+      if (result.data) {
+        // If no statuses exist, initialize defaults
+        if (result.data.length === 0) {
+          const initResult = await initializeWorkflowStatuses(organization.id)
+          if (!initResult.error) {
+            const reloadResult = await getWorkflowStatuses(organization.id, activeType)
+            if (reloadResult.data) {
+              setStatuses(reloadResult.data)
+            }
           }
+        } else {
+          setStatuses(result.data)
         }
-      } else {
-        setStatuses(result.data)
+      } else if (result.error) {
+        toast.error(result.error)
       }
-    } else if (result.error) {
-      toast.error(result.error)
+      setIsLoading(false)
     }
-    setIsLoading(false)
-  }
+
+    loadStatuses()
+  }, [organization?.id, activeType])
 
   const handleCreate = () => {
     startTransition(async () => {
@@ -439,7 +438,7 @@ export function TypesPane() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Status</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{selectedStatus?.name}"? This action cannot be undone.
+              Are you sure you want to delete &quot;{selectedStatus?.name}&quot;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

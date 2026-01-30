@@ -6,7 +6,7 @@ import { revalidatePath, revalidateTag } from "next/cache"
 import { after } from "next/server"
 import { cookies } from "next/headers"
 import { CacheTags } from "@/lib/cache-tags"
-import { requireOrgMember } from "./auth-helpers"
+import { requireAuth, requireOrgMember } from "./auth-helpers"
 import type { Organization, OrganizationInsert, OrganizationUpdate, OrgMemberRole } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
@@ -36,99 +36,89 @@ function generateSlug(name: string, addSuffix = false): string {
 export async function createOrganization(
   formData: FormData
 ): Promise<ActionResult<Organization>> {
-  const supabase = await createClient()
+  try {
+    const { user, supabase } = await requireAuth()
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
+    const name = formData.get("name") as string
 
-  if (authError || !user) {
+    if (!name || name.trim().length < 2) {
+      return { error: "Organization name must be at least 2 characters" }
+    }
+
+    // Generate a unique slug - try base slug first, add suffix if it exists
+    const baseSlug = generateSlug(name)
+    const { data: existing } = await supabase
+      .from("organizations")
+      .select("id")
+      .eq("slug", baseSlug)
+      .single()
+
+    // If base slug exists, generate a unique one with random suffix
+    const slug = existing ? generateSlug(name, true) : baseSlug
+
+    // Create organization
+    const { data: org, error: orgError } = await supabase
+      .from("organizations")
+      .insert({
+        name: name.trim(),
+        slug,
+      })
+      .select()
+      .single()
+
+    if (orgError) {
+      return { error: orgError.message }
+    }
+
+    // Add current user as admin
+    const { error: memberError } = await supabase.from("organization_members").insert({
+      organization_id: org.id,
+      user_id: user.id,
+      role: "admin",
+    })
+
+    if (memberError) {
+      // Rollback: delete the organization
+      await supabase.from("organizations").delete().eq("id", org.id)
+      return { error: memberError.message }
+    }
+
+    // Clear the membership cache to reflect the new organization
+    await clearOrgMembershipCache()
+
+    after(() => {
+      revalidatePath("/", "layout")
+      revalidateTag(CacheTags.organizations(user.id))
+    })
+
+    return { data: org }
+  } catch {
     return { error: "Not authenticated" }
   }
-
-  const name = formData.get("name") as string
-
-  if (!name || name.trim().length < 2) {
-    return { error: "Organization name must be at least 2 characters" }
-  }
-
-  // Generate a unique slug - try base slug first, add suffix if it exists
-  const baseSlug = generateSlug(name)
-  const { data: existing } = await supabase
-    .from("organizations")
-    .select("id")
-    .eq("slug", baseSlug)
-    .single()
-
-  // If base slug exists, generate a unique one with random suffix
-  const slug = existing ? generateSlug(name, true) : baseSlug
-
-  // Create organization
-  const { data: org, error: orgError } = await supabase
-    .from("organizations")
-    .insert({
-      name: name.trim(),
-      slug,
-    })
-    .select()
-    .single()
-
-  if (orgError) {
-    return { error: orgError.message }
-  }
-
-  // Add current user as admin
-  const { error: memberError } = await supabase.from("organization_members").insert({
-    organization_id: org.id,
-    user_id: user.id,
-    role: "admin",
-  })
-
-  if (memberError) {
-    // Rollback: delete the organization
-    await supabase.from("organizations").delete().eq("id", org.id)
-    return { error: memberError.message }
-  }
-
-  // Clear the membership cache to reflect the new organization
-  await clearOrgMembershipCache()
-
-  after(() => {
-    revalidatePath("/", "layout")
-    revalidateTag(CacheTags.organizations(user.id))
-  })
-
-  return { data: org }
 }
 
 // Get user's organizations
 export async function getUserOrganizations(): Promise<ActionResult<Organization[]>> {
-  const supabase = await createClient()
+  try {
+    const { user, supabase } = await requireAuth()
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
+    const { data: memberships, error } = await supabase
+      .from("organization_members")
+      .select("organization:organizations(*)")
+      .eq("user_id", user.id)
 
-  if (authError || !user) {
+    if (error) {
+      return { error: error.message }
+    }
+
+    const organizations = memberships
+      .map((m) => m.organization)
+      .filter((org): org is Organization => org !== null)
+
+    return { data: organizations }
+  } catch {
     return { error: "Not authenticated" }
   }
-
-  const { data: memberships, error } = await supabase
-    .from("organization_members")
-    .select("organization:organizations(*)")
-    .eq("user_id", user.id)
-
-  if (error) {
-    return { error: error.message }
-  }
-
-  const organizations = memberships
-    .map((m) => m.organization)
-    .filter((org): org is Organization => org !== null)
-
-  return { data: organizations }
 }
 
 // Get single organization
