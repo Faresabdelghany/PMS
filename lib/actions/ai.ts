@@ -1095,7 +1095,7 @@ async function callOpenAIChat(
           { role: "system", content: systemPrompt },
           ...messages
         ],
-        max_tokens: 2000,
+        max_tokens: 8192,
         temperature: 0.7,
       }),
     })
@@ -1135,7 +1135,7 @@ async function callAnthropicChat(
       },
       body: JSON.stringify({
         model,
-        max_tokens: 2000,
+        max_tokens: 8192,
         system: systemPrompt,
         messages,
       }),
@@ -1181,7 +1181,7 @@ async function callGeminiChat(
           systemInstruction: { parts: [{ text: systemPrompt }] },
           contents: geminiMessages,
           generationConfig: {
-            maxOutputTokens: 2000,
+            maxOutputTokens: 8192,
             temperature: 0.7,
           },
         }),
@@ -1226,7 +1226,7 @@ async function callGroqChat(
           { role: "system", content: systemPrompt },
           ...messages
         ],
-        max_tokens: 2000,
+        max_tokens: 8192,
         temperature: 0.7,
       }),
     })
@@ -1269,7 +1269,7 @@ async function callMistralChat(
           { role: "system", content: systemPrompt },
           ...messages
         ],
-        max_tokens: 2000,
+        max_tokens: 8192,
         temperature: 0.7,
       }),
     })
@@ -1312,7 +1312,7 @@ async function callXAIChat(
           { role: "system", content: systemPrompt },
           ...messages
         ],
-        max_tokens: 2000,
+        max_tokens: 8192,
         temperature: 0.7,
       }),
     })
@@ -1355,7 +1355,7 @@ async function callDeepSeekChat(
           { role: "system", content: systemPrompt },
           ...messages
         ],
-        max_tokens: 2000,
+        max_tokens: 8192,
         temperature: 0.7,
       }),
     })
@@ -1400,7 +1400,7 @@ async function callOpenRouterChat(
           { role: "system", content: systemPrompt },
           ...messages
         ],
-        max_tokens: 2000,
+        max_tokens: 8192,
         temperature: 0.7,
       }),
     })
