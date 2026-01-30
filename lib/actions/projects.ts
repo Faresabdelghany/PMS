@@ -52,6 +52,15 @@ export type GuidedProjectInput = {
   owner_id?: string
   contributor_ids?: string[]
   stakeholder_ids?: string[]
+
+  // AI-generated starter content
+  workstreams?: string[]
+  starter_tasks?: {
+    title: string
+    description?: string
+    priority: string
+    workstream?: string
+  }[]
 }
 
 export type ProjectFilters = {
@@ -101,6 +110,13 @@ const createProjectSchema = z.object({
   owner_id: z.string().uuid().optional(),
   contributor_ids: z.array(z.string().uuid()).optional(),
   stakeholder_ids: z.array(z.string().uuid()).optional(),
+  workstreams: z.array(z.string().max(200)).optional(),
+  starter_tasks: z.array(z.object({
+    title: z.string().max(500),
+    description: z.string().max(5000).optional(),
+    priority: z.string().max(50),
+    workstream: z.string().max(200).optional(),
+  })).optional(),
 })
 
 // Create project (supports both quick create and guided wizard)
@@ -269,6 +285,48 @@ export async function createProject(
     const firstError = results.find((r) => r.error)
     if (firstError?.error) {
       throw firstError.error
+    }
+
+    // Create workstreams if provided
+    if (data.workstreams && data.workstreams.length > 0) {
+      for (let i = 0; i < data.workstreams.length; i++) {
+        await supabase.from("workstreams").insert({
+          project_id: project.id,
+          name: data.workstreams[i],
+          position: i,
+        })
+      }
+    }
+
+    // Create starter tasks if provided
+    if (data.starter_tasks && data.starter_tasks.length > 0) {
+      // Get workstream IDs if we created any
+      let workstreamMap: Record<string, string> = {}
+      if (data.workstreams && data.workstreams.length > 0) {
+        const { data: workstreamsData } = await supabase
+          .from("workstreams")
+          .select("id, name")
+          .eq("project_id", project.id)
+
+        if (workstreamsData) {
+          workstreamMap = Object.fromEntries(
+            workstreamsData.map((ws) => [ws.name, ws.id])
+          )
+        }
+      }
+
+      for (let i = 0; i < data.starter_tasks.length; i++) {
+        const task = data.starter_tasks[i]
+        await supabase.from("tasks").insert({
+          project_id: project.id,
+          title: task.title,
+          description: task.description || null,
+          priority: task.priority,
+          status: "todo",
+          position: i,
+          workstream_id: task.workstream ? workstreamMap[task.workstream] || null : null,
+        })
+      }
     }
   } catch (relatedError) {
     // Cleanup: delete project if any related insert fails
