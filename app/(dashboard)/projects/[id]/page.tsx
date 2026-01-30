@@ -6,8 +6,6 @@ import { getWorkstreamsWithTasks } from "@/lib/actions/workstreams"
 import { getClients } from "@/lib/actions/clients"
 import { getOrganizationMembers } from "@/lib/actions/organizations"
 import { getTags } from "@/lib/actions/tags"
-import { getProjectNotes } from "@/lib/actions/notes"
-import { getProjectFiles } from "@/lib/actions/files"
 
 type PageProps = {
   params: Promise<{ id: string }>
@@ -18,12 +16,10 @@ export default async function Page({ params }: PageProps) {
 
   // Start all project-id-dependent queries in parallel immediately
   // This eliminates the waterfall where tasks/workstreams waited for project
-  const [projectResult, tasksResult, workstreamsResult, notesResult, filesResult] = await Promise.all([
+  const [projectResult, tasksResult, workstreamsResult] = await Promise.all([
     getProjectWithDetails(id),
     getTasks(id),
     getWorkstreamsWithTasks(id),
-    getProjectNotes(id),
-    getProjectFiles(id),
   ])
 
   if (projectResult.error || !projectResult.data) {
@@ -54,8 +50,6 @@ export default async function Page({ params }: PageProps) {
       clients={clients}
       organizationMembers={membersResult.data || []}
       organizationTags={tagsResult.data || []}
-      notes={notesResult.data || []}
-      files={filesResult.data || []}
     />
   )
 }

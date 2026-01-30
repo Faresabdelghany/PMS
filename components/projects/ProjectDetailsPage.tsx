@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useMemo, useState } from "react"
-import { LinkSimple, SquareHalf, Sparkle } from "@phosphor-icons/react/dist/ssr"
+import { LinkSimple, SquareHalf } from "@phosphor-icons/react/dist/ssr"
 import { toast } from "sonner"
 import { AnimatePresence, MotionDiv } from "@/components/ui/motion-lazy"
 
@@ -22,15 +22,11 @@ import { AssetsFilesTab } from "@/components/projects/AssetsFilesTab"
 import { ProjectWizardLazy } from "@/components/project-wizard/ProjectWizardLazy"
 import { TaskQuickCreateModal, type TaskData, type CreateTaskContext } from "@/components/tasks/TaskQuickCreateModal"
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import { AIChatSheet } from "@/components/ai/ai-chat-sheet"
-import type { ChatContext } from "@/lib/actions/ai"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { WorkstreamTask, WorkstreamTaskStatus, TimelineTask, WorkstreamGroup, ProjectDetails } from "@/lib/data/project-details"
 import type { OrganizationTag } from "@/lib/supabase/types"
-import type { ProjectNoteWithAuthor } from "@/lib/actions/notes"
-import type { ProjectFileWithUploader } from "@/lib/actions/files"
 import { formatDueLabel, getDueTone, formatStartLabel } from "@/lib/date-utils"
 
 // Workstream with tasks type from the action
@@ -71,8 +67,6 @@ type ProjectDetailsPageProps = {
   clients?: { id: string; name: string }[]
   organizationMembers?: OrganizationMember[]
   organizationTags?: OrganizationTag[]
-  notes?: ProjectNoteWithAuthor[]
-  files?: ProjectFileWithUploader[]
 }
 
 export function ProjectDetailsPage({
@@ -83,12 +77,9 @@ export function ProjectDetailsPage({
   clients = [],
   organizationMembers = [],
   organizationTags = [],
-  notes = [],
-  files = [],
 }: ProjectDetailsPageProps) {
   const [showMeta, setShowMeta] = useState(true)
   const [isWizardOpen, setIsWizardOpen] = useState(false)
-  const [isAIChatOpen, setIsAIChatOpen] = useState(false)
 
   // Workstream tab state
   const [isWorkstreamTaskModalOpen, setIsWorkstreamTaskModalOpen] = useState(false)
@@ -355,88 +346,6 @@ export function ProjectDetailsPage({
     workstreams: workstreams.map(ws => ({ id: ws.id, name: ws.name })),
   }], [projectId, supabaseProject.name, workstreams])
 
-  // AI Chat context with full project details
-  const chatContext = useMemo<ChatContext>(() => ({
-    pageType: "project_detail",
-    projectId,
-    appData: {
-      organization: {
-        id: supabaseProject.organization_id,
-        name: "",
-      },
-      projects: [{
-        id: supabaseProject.id,
-        name: supabaseProject.name,
-        status: supabaseProject.status,
-        clientName: supabaseProject.client?.name,
-        dueDate: supabaseProject.end_date || undefined,
-      }],
-      clients: supabaseProject.client ? [{
-        id: supabaseProject.client.id,
-        name: supabaseProject.client.name,
-        status: "active",
-      }] : [],
-      teams: [],
-      members: organizationMembers.map(m => ({
-        id: m.user_id,
-        name: m.profile.full_name || m.profile.email,
-        email: m.profile.email,
-        role: m.role,
-      })),
-      currentProject: {
-        id: supabaseProject.id,
-        name: supabaseProject.name,
-        description: supabaseProject.description || undefined,
-        status: supabaseProject.status,
-        priority: supabaseProject.priority,
-        startDate: supabaseProject.start_date || undefined,
-        endDate: supabaseProject.end_date || undefined,
-        workstreams: workstreams.map(ws => ({
-          id: ws.id,
-          name: ws.name,
-          taskCount: ws.tasks.length,
-        })),
-        tasks: tasks.map(t => ({
-          id: t.id,
-          name: t.name,
-          status: t.status,
-          priority: t.priority,
-          assigneeId: t.assignee_id || undefined,
-          dueDate: t.end_date || undefined,
-        })),
-        members: (supabaseProject.members || []).map(m => ({
-          id: m.profile.id,
-          name: m.profile.full_name || m.profile.email,
-          role: m.role,
-        })),
-        notes: notes.map(n => ({
-          id: n.id,
-          title: n.title,
-          type: n.type,
-          contentPreview: n.content?.substring(0, 200),
-          createdAt: n.created_at,
-        })),
-        files: files.map(f => ({
-          id: f.id,
-          name: f.name,
-          type: f.file_type,
-          size: f.file_size,
-        })),
-      },
-      userTasks: tasks
-        .filter(t => t.assignee_id)
-        .map(t => ({
-          id: t.id,
-          name: t.name,
-          status: t.status,
-          priority: t.priority,
-          projectId: projectId,
-          projectName: supabaseProject.name,
-          dueDate: t.end_date || undefined,
-        })),
-    },
-  }), [projectId, supabaseProject, workstreams, tasks, organizationMembers, notes, files])
-
   return (
     <div className="flex flex-1 flex-col min-w-0 m-2 border border-border rounded-lg">
       <div className="flex items-center justify-between gap-4 px-4 py-4">
@@ -448,15 +357,6 @@ export function ProjectDetailsPage({
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1.5 text-muted-foreground hover:text-foreground"
-            onClick={() => setIsAIChatOpen(true)}
-          >
-            <Sparkle className="h-4 w-4" />
-            <span className="hidden sm:inline">Ask AI</span>
-          </Button>
           <Button variant="ghost" size="icon-sm" aria-label="Copy link" onClick={copyLink}>
             <LinkSimple className="h-4 w-4" />
           </Button>
@@ -584,13 +484,6 @@ export function ProjectDetailsPage({
           projects={projectsForWorkstreamModal}
           organizationMembers={organizationMembers}
           tags={organizationTags}
-        />
-
-        {/* AI Chat Sheet */}
-        <AIChatSheet
-          open={isAIChatOpen}
-          onOpenChange={setIsAIChatOpen}
-          context={chatContext}
         />
       </div>
     </div>
