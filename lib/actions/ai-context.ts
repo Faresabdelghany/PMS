@@ -83,11 +83,11 @@ export async function getAIContext(): Promise<ActionResult<ChatContext>> {
         })),
         userTasks: (userTasksResult.data || []).map(t => ({
           id: t.id,
-          name: t.name,
+          title: t.name,
           status: t.status,
           priority: t.priority,
           projectId: t.project_id || undefined,
-          projectName: t.project?.name,
+          projectName: t.project?.name || "Unknown",
           dueDate: t.end_date || undefined,
         })),
         inbox: (inboxResult.data || []).map(i => ({

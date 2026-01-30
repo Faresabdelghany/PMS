@@ -1033,6 +1033,13 @@ ${projects.length > 0 ? projects.map(p => `- "${p.name}": ${p.id}`).join("\n") :
 Team Member IDs (for task assignment):
 ${members.length > 0 ? members.map(m => `- "${m.name}": ${m.id}`).join("\n") : "No members"}
 
+Task IDs (use these exact UUIDs for existing tasks):
+${userTasks.length > 0 ? userTasks.slice(0, 30).map(t => `- "${t.title}" [${t.status}]: ${t.id}`).join("\n") : "No tasks yet"}
+${appData.currentProject?.tasks?.length ? `\nCurrent Project Tasks:\n${appData.currentProject.tasks.map(t => `- "${t.title}" [${t.status}]: ${t.id}`).join("\n")}` : ""}
+
+Workstream IDs (use these exact UUIDs for existing workstreams):
+${appData.currentProject?.workstreams?.length ? appData.currentProject.workstreams.map(w => `- "${w.name}": ${w.id}`).join("\n") : "No workstreams"}
+
 Keep responses concise. Only propose actions when explicitly asked. NEVER guess or make up IDs.`
 
   return prompt
