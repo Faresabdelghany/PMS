@@ -11,6 +11,7 @@ import type {
   Json,
 } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
+import { requireAuth } from "./auth-helpers"
 
 
 // Extended note type with author info
@@ -47,46 +48,40 @@ export async function createNote(
     audio_data?: AudioData
   }
 ): Promise<ActionResult<ProjectNote>> {
-  const supabase = await createClient()
+  try {
+    const { user, supabase } = await requireAuth()
 
-  // Get current user
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
+    // Validate title
+    if (!data.title.trim()) {
+      return { error: "Note title is required" }
+    }
 
-  if (authError || !user) {
+    // Create note record
+    const noteRecord: ProjectNoteInsert = {
+      project_id: projectId,
+      title: data.title.trim(),
+      content: data.content || null,
+      note_type: data.note_type || "general",
+      status: data.note_type === "audio" ? "processing" : "completed",
+      added_by_id: user.id,
+      audio_data: data.audio_data ? (data.audio_data as unknown as Json) : null,
+    }
+
+    const { data: note, error } = await supabase
+      .from("project_notes")
+      .insert(noteRecord)
+      .select()
+      .single()
+
+    if (error) {
+      return { error: `Failed to create note: ${error.message}` }
+    }
+
+    revalidatePath(`/projects/${projectId}`)
+    return { data: note }
+  } catch {
     return { error: "Not authenticated" }
   }
-
-  // Validate title
-  if (!data.title.trim()) {
-    return { error: "Note title is required" }
-  }
-
-  // Create note record
-  const noteRecord: ProjectNoteInsert = {
-    project_id: projectId,
-    title: data.title.trim(),
-    content: data.content || null,
-    note_type: data.note_type || "general",
-    status: data.note_type === "audio" ? "processing" : "completed",
-    added_by_id: user.id,
-    audio_data: data.audio_data ? (data.audio_data as unknown as Json) : null,
-  }
-
-  const { data: note, error } = await supabase
-    .from("project_notes")
-    .insert(noteRecord)
-    .select()
-    .single()
-
-  if (error) {
-    return { error: `Failed to create note: ${error.message}` }
-  }
-
-  revalidatePath(`/projects/${projectId}`)
-  return { data: note }
 }
 
 // Update an existing note
@@ -335,88 +330,76 @@ export async function completeAudioNote(
 export async function duplicateNote(
   noteId: string
 ): Promise<ActionResult<ProjectNote>> {
-  const supabase = await createClient()
+  try {
+    const { user, supabase } = await requireAuth()
 
-  // Get current user
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
+    // Get original note
+    const { data: original, error: fetchError } = await supabase
+      .from("project_notes")
+      .select("*")
+      .eq("id", noteId)
+      .single()
 
-  if (authError || !user) {
+    if (fetchError || !original) {
+      return { error: "Note not found" }
+    }
+
+    // Create duplicate
+    const duplicateRecord: ProjectNoteInsert = {
+      project_id: original.project_id,
+      title: `${original.title} (Copy)`,
+      content: original.content,
+      note_type: original.note_type,
+      status: "completed", // Don't copy processing status
+      added_by_id: user.id,
+      audio_data: null, // Don't duplicate audio data
+    }
+
+    const { data: duplicate, error } = await supabase
+      .from("project_notes")
+      .insert(duplicateRecord)
+      .select()
+      .single()
+
+    if (error) {
+      return { error: `Failed to duplicate note: ${error.message}` }
+    }
+
+    revalidatePath(`/projects/${original.project_id}`)
+    return { data: duplicate }
+  } catch {
     return { error: "Not authenticated" }
   }
-
-  // Get original note
-  const { data: original, error: fetchError } = await supabase
-    .from("project_notes")
-    .select("*")
-    .eq("id", noteId)
-    .single()
-
-  if (fetchError || !original) {
-    return { error: "Note not found" }
-  }
-
-  // Create duplicate
-  const duplicateRecord: ProjectNoteInsert = {
-    project_id: original.project_id,
-    title: `${original.title} (Copy)`,
-    content: original.content,
-    note_type: original.note_type,
-    status: "completed", // Don't copy processing status
-    added_by_id: user.id,
-    audio_data: null, // Don't duplicate audio data
-  }
-
-  const { data: duplicate, error } = await supabase
-    .from("project_notes")
-    .insert(duplicateRecord)
-    .select()
-    .single()
-
-  if (error) {
-    return { error: `Failed to duplicate note: ${error.message}` }
-  }
-
-  revalidatePath(`/projects/${original.project_id}`)
-  return { data: duplicate }
 }
 
 // Get recent notes across all projects for a user
 export async function getRecentNotes(
   limit: number = 10
 ): Promise<ActionResult<ProjectNoteWithAuthor[]>> {
-  const supabase = await createClient()
+  try {
+    const { user, supabase } = await requireAuth()
 
-  // Get current user
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
+    const { data, error } = await supabase
+      .from("project_notes")
+      .select(`
+        *,
+        author:profiles!project_notes_added_by_id_fkey(
+          id,
+          full_name,
+          email,
+          avatar_url
+        )
+      `)
+      .eq("added_by_id", user.id)
+      .order("updated_at", { ascending: false })
+      .limit(limit)
 
-  if (authError || !user) {
+    if (error) {
+      return { error: error.message }
+    }
+
+    return { data: data as ProjectNoteWithAuthor[] }
+  } catch {
     return { error: "Not authenticated" }
   }
-
-  const { data, error } = await supabase
-    .from("project_notes")
-    .select(`
-      *,
-      author:profiles!project_notes_added_by_id_fkey(
-        id,
-        full_name,
-        email,
-        avatar_url
-      )
-    `)
-    .eq("added_by_id", user.id)
-    .order("updated_at", { ascending: false })
-    .limit(limit)
-
-  if (error) {
-    return { error: error.message }
-  }
-
-  return { data: data as ProjectNoteWithAuthor[] }
 }

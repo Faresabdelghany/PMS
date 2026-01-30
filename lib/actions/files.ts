@@ -8,6 +8,7 @@ import type {
   FileType,
 } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
+import { requireAuth } from "./auth-helpers"
 
 
 // Extended file type with uploader info
@@ -128,114 +129,108 @@ export async function uploadFile(
   formData: FormData,
   metadata?: FileMetadata
 ): Promise<ActionResult<ProjectFile>> {
-  const supabase = await createClient()
+  try {
+    const { user, supabase } = await requireAuth()
 
-  // Get current user
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
+    // Get file from FormData
+    const file = formData.get("file") as File | null
+    if (!file) {
+      return { error: "No file provided" }
+    }
 
-  if (authError || !user) {
+    // Get project to verify access and get org_id
+    const { data: project, error: projectError } = await supabase
+      .from("projects")
+      .select("id, organization_id")
+      .eq("id", projectId)
+      .single()
+
+    if (projectError || !project) {
+      return { error: "Project not found or access denied" }
+    }
+
+    // Determine file type
+    const fileType =
+      metadata?.fileType ||
+      getFileTypeFromMime(file.type) ||
+      getFileTypeFromExtension(file.name)
+
+    // Get bucket configuration
+    const bucket = getBucketForFileType(fileType)
+    const config = BUCKET_CONFIG[fileType] || BUCKET_CONFIG.file
+
+    // Validate file size
+    if (file.size > config.maxSize) {
+      const maxMB = Math.round(config.maxSize / (1024 * 1024))
+      return { error: `File size exceeds maximum allowed (${maxMB}MB)` }
+    }
+
+    // Generate storage path: {org_id}/{project_id}/{unique_filename}
+    const uniqueFilename = generateUniqueFilename(file.name)
+    const storagePath = `${project.organization_id}/${projectId}/${uniqueFilename}`
+
+    // Convert File to ArrayBuffer then to Uint8Array for upload
+    const arrayBuffer = await file.arrayBuffer()
+    const fileData = new Uint8Array(arrayBuffer)
+
+    // Upload to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(storagePath, fileData, {
+        contentType: file.type,
+        cacheControl: "3600",
+        upsert: false,
+      })
+
+    if (uploadError) {
+      console.error("Storage upload error:", uploadError)
+      return { error: `Failed to upload file: ${uploadError.message}` }
+    }
+
+    // Get public URL for the file
+    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(storagePath)
+
+    // For private buckets, create a signed URL instead
+    let fileUrl = urlData.publicUrl
+    if (!urlData.publicUrl || bucket !== "avatars") {
+      const { data: signedData } = await supabase.storage
+        .from(bucket)
+        .createSignedUrl(storagePath, 60 * 60 * 24 * 365) // 1 year
+
+      if (signedData?.signedUrl) {
+        fileUrl = signedData.signedUrl
+      }
+    }
+
+    // Create database record
+    const fileRecord: ProjectFileInsert = {
+      project_id: projectId,
+      name: metadata?.name || file.name,
+      file_type: fileType,
+      size_bytes: file.size,
+      storage_path: storagePath,
+      url: fileUrl,
+      description: metadata?.description || null,
+      added_by_id: user.id,
+    }
+
+    const { data: dbFile, error: dbError } = await supabase
+      .from("project_files")
+      .insert(fileRecord)
+      .select()
+      .single()
+
+    if (dbError) {
+      // If database insert fails, try to clean up the storage file
+      await supabase.storage.from(bucket).remove([storagePath])
+      return { error: `Failed to save file record: ${dbError.message}` }
+    }
+
+    revalidatePath(`/projects/${projectId}`)
+    return { data: dbFile }
+  } catch {
     return { error: "Not authenticated" }
   }
-
-  // Get file from FormData
-  const file = formData.get("file") as File | null
-  if (!file) {
-    return { error: "No file provided" }
-  }
-
-  // Get project to verify access and get org_id
-  const { data: project, error: projectError } = await supabase
-    .from("projects")
-    .select("id, organization_id")
-    .eq("id", projectId)
-    .single()
-
-  if (projectError || !project) {
-    return { error: "Project not found or access denied" }
-  }
-
-  // Determine file type
-  const fileType =
-    metadata?.fileType ||
-    getFileTypeFromMime(file.type) ||
-    getFileTypeFromExtension(file.name)
-
-  // Get bucket configuration
-  const bucket = getBucketForFileType(fileType)
-  const config = BUCKET_CONFIG[fileType] || BUCKET_CONFIG.file
-
-  // Validate file size
-  if (file.size > config.maxSize) {
-    const maxMB = Math.round(config.maxSize / (1024 * 1024))
-    return { error: `File size exceeds maximum allowed (${maxMB}MB)` }
-  }
-
-  // Generate storage path: {org_id}/{project_id}/{unique_filename}
-  const uniqueFilename = generateUniqueFilename(file.name)
-  const storagePath = `${project.organization_id}/${projectId}/${uniqueFilename}`
-
-  // Convert File to ArrayBuffer then to Uint8Array for upload
-  const arrayBuffer = await file.arrayBuffer()
-  const fileData = new Uint8Array(arrayBuffer)
-
-  // Upload to Supabase Storage
-  const { data: uploadData, error: uploadError } = await supabase.storage
-    .from(bucket)
-    .upload(storagePath, fileData, {
-      contentType: file.type,
-      cacheControl: "3600",
-      upsert: false,
-    })
-
-  if (uploadError) {
-    console.error("Storage upload error:", uploadError)
-    return { error: `Failed to upload file: ${uploadError.message}` }
-  }
-
-  // Get public URL for the file
-  const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(storagePath)
-
-  // For private buckets, create a signed URL instead
-  let fileUrl = urlData.publicUrl
-  if (!urlData.publicUrl || bucket !== "avatars") {
-    const { data: signedData } = await supabase.storage
-      .from(bucket)
-      .createSignedUrl(storagePath, 60 * 60 * 24 * 365) // 1 year
-
-    if (signedData?.signedUrl) {
-      fileUrl = signedData.signedUrl
-    }
-  }
-
-  // Create database record
-  const fileRecord: ProjectFileInsert = {
-    project_id: projectId,
-    name: metadata?.name || file.name,
-    file_type: fileType,
-    size_bytes: file.size,
-    storage_path: storagePath,
-    url: fileUrl,
-    description: metadata?.description || null,
-    added_by_id: user.id,
-  }
-
-  const { data: dbFile, error: dbError } = await supabase
-    .from("project_files")
-    .insert(fileRecord)
-    .select()
-    .single()
-
-  if (dbError) {
-    // If database insert fails, try to clean up the storage file
-    await supabase.storage.from(bucket).remove([storagePath])
-    return { error: `Failed to save file record: ${dbError.message}` }
-  }
-
-  revalidatePath(`/projects/${projectId}`)
-  return { data: dbFile }
 }
 
 // Upload a link-based asset (no file upload, just URL)
@@ -248,52 +243,46 @@ export async function createLinkAsset(
     fileType?: FileType
   }
 ): Promise<ActionResult<ProjectFile>> {
-  const supabase = await createClient()
+  try {
+    const { user, supabase } = await requireAuth()
 
-  // Get current user
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
+    // Validate URL
+    try {
+      new URL(data.url)
+    } catch {
+      return { error: "Invalid URL provided" }
+    }
 
-  if (authError || !user) {
+    // Determine file type from URL if not provided
+    const fileType = data.fileType || detectFileTypeFromUrl(data.url)
+
+    // Create database record
+    const fileRecord: ProjectFileInsert = {
+      project_id: projectId,
+      name: data.name,
+      file_type: fileType,
+      size_bytes: 0, // Links don't have size
+      storage_path: "", // No storage path for links
+      url: data.url,
+      description: data.description || null,
+      added_by_id: user.id,
+    }
+
+    const { data: dbFile, error: dbError } = await supabase
+      .from("project_files")
+      .insert(fileRecord)
+      .select()
+      .single()
+
+    if (dbError) {
+      return { error: `Failed to save link: ${dbError.message}` }
+    }
+
+    revalidatePath(`/projects/${projectId}`)
+    return { data: dbFile }
+  } catch {
     return { error: "Not authenticated" }
   }
-
-  // Validate URL
-  try {
-    new URL(data.url)
-  } catch {
-    return { error: "Invalid URL provided" }
-  }
-
-  // Determine file type from URL if not provided
-  const fileType = data.fileType || detectFileTypeFromUrl(data.url)
-
-  // Create database record
-  const fileRecord: ProjectFileInsert = {
-    project_id: projectId,
-    name: data.name,
-    file_type: fileType,
-    size_bytes: 0, // Links don't have size
-    storage_path: "", // No storage path for links
-    url: data.url,
-    description: data.description || null,
-    added_by_id: user.id,
-  }
-
-  const { data: dbFile, error: dbError } = await supabase
-    .from("project_files")
-    .insert(fileRecord)
-    .select()
-    .single()
-
-  if (dbError) {
-    return { error: `Failed to save link: ${dbError.message}` }
-  }
-
-  revalidatePath(`/projects/${projectId}`)
-  return { data: dbFile }
 }
 
 // Detect file type from URL
