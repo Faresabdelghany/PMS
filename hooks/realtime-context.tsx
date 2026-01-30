@@ -122,7 +122,11 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       const channelName = `pooled:${key}`
       const channel = supabase.channel(channelName)
 
-       
+      // Log auth state for debugging
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        console.log(`[Realtime] Auth state for ${key}:`, session ? `User: ${session.user.id}` : 'No session')
+      })
+
       const config: any = {
         event: "*",
         schema: "public",
@@ -133,11 +137,16 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         config.filter = filter
       }
 
+      console.log(`[Realtime] Creating subscription for ${key} with config:`, config)
+
       channel
         .on(
           "postgres_changes",
           config,
           (payload: RealtimePostgresChangesPayload<TableRow<T>>) => {
+            // Debug logging
+            console.log(`[Realtime] ${key} received ${payload.eventType}:`, payload.new || payload.old)
+
             // Get current listeners for this subscription
             const sub = subscriptionsRef.current.get(key)
             if (!sub) return
@@ -161,7 +170,12 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
             })
           }
         )
-        .subscribe()
+        .subscribe((status, err) => {
+          console.log(`[Realtime] ${key} subscription status:`, status)
+          if (err) {
+            console.error(`[Realtime] ${key} subscription error:`, err)
+          }
+        })
 
       subscription = {
         channel,
@@ -171,6 +185,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       }
       subscriptionsRef.current.set(key, subscription)
       setIsConnected(true)
+      console.log(`[Realtime] Created subscription for ${key}`)
     }
 
     // Add listener to subscription

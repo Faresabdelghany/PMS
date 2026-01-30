@@ -11,7 +11,10 @@ import { computeFilterCounts, type Project as MockProject } from "@/lib/data/pro
 import { DEFAULT_VIEW_OPTIONS, type FilterChip, type ViewOptions } from "@/lib/view-options"
 import { chipsToParams, paramsToChips } from "@/lib/url/filters"
 import { getProjects, type ProjectWithRelations } from "@/lib/actions/projects"
-import { usePooledProjectsRealtime } from "@/hooks/realtime-context"
+import { usePooledRealtime } from "@/hooks/realtime-context"
+import type { Database } from "@/lib/supabase/types"
+
+type ProjectRow = Database["public"]["Tables"]["projects"]["Row"]
 
 // Convert Supabase project to mock project format for compatibility with existing views
 // Note: Use a stable fallback date to avoid hydration mismatch (server vs client time diff)
@@ -69,17 +72,47 @@ export function ProjectsContent({
     }
   }, [organizationId])
 
-  // Real-time updates
-  usePooledProjectsRealtime(organizationId, {
-    onInsert: (project) => {
-      setSupabaseProjects(prev => [project as ProjectWithRelations, ...prev])
+  // Real-time updates for projects
+  // No filter - listen to all projects and filter client-side
+  // This is because Supabase realtime filters may have issues with non-JWT columns
+  usePooledRealtime({
+    table: "projects",
+    filter: undefined,
+    enabled: !!organizationId,
+    onInsert: (project: ProjectRow) => {
+      console.log("[Projects Realtime] INSERT received:", project)
+      console.log("[Projects Realtime] organizationId:", organizationId, "project.organization_id:", project.organization_id)
+
+      // Client-side filter by organization since we're not using server-side filter
+      if (project.organization_id !== organizationId) {
+        console.log("[Projects Realtime] Skipping - org mismatch")
+        return
+      }
+
+      setSupabaseProjects(prev => {
+        // Avoid duplicates
+        if (prev.some(p => p.id === project.id)) {
+          console.log("[Projects Realtime] Skipping - duplicate")
+          return prev
+        }
+        // Add new project with empty relations (will be hydrated on next fetch if needed)
+        const newProject: ProjectWithRelations = {
+          ...project,
+          members: [],
+          client: null,
+        }
+        console.log("[Projects Realtime] Adding new project to state")
+        return [newProject, ...prev]
+      })
     },
-    onUpdate: (project) => {
+    onUpdate: (project: ProjectRow) => {
+      console.log("[Projects Realtime] UPDATE received:", project)
       setSupabaseProjects(prev =>
         prev.map(p => p.id === project.id ? { ...p, ...project } : p)
       )
     },
-    onDelete: (project) => {
+    onDelete: (project: ProjectRow) => {
+      console.log("[Projects Realtime] DELETE received:", project)
       setSupabaseProjects(prev => prev.filter(p => p.id !== project.id))
     },
   })

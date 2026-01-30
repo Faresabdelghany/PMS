@@ -34,6 +34,7 @@ export default async function Page() {
       initialTasks={(tasksResult.data || []) as TaskWithRelations[]}
       projects={(projectsResult.data || []) as ProjectWithRelations[]}
       organizationId={orgId}
+      userId={user.id}
       organizationMembers={membersResult.data || []}
       organizationTags={tagsResult.data || []}
     />

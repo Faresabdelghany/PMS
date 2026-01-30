@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useCallback } from "react"
+import { useMemo, useState, useCallback, useRef } from "react"
 import { Plus, Sparkle } from "@phosphor-icons/react/dist/ssr"
 import {
   DndContext,
@@ -101,6 +101,10 @@ import { TaskQuickCreateModal, type CreateTaskContext } from "@/components/tasks
 import type { OrganizationTag } from "@/lib/supabase/types"
 import { formatDueLabel } from "@/lib/date-utils"
 import { toast } from "sonner"
+import { usePooledRealtime } from "@/hooks/realtime-context"
+import type { Database } from "@/lib/supabase/types"
+
+type TaskRow = Database["public"]["Tables"]["tasks"]["Row"]
 
 // Re-export TaskLike as UITask for backward compatibility
 export type UITask = TaskLike
@@ -144,6 +148,7 @@ interface MyTasksPageProps {
   initialTasks?: TaskWithRelations[]
   projects?: ProjectWithWorkstreams[]
   organizationId?: string
+  userId?: string
   organizationMembers?: OrganizationMember[]
   organizationTags?: OrganizationTag[]
 }
@@ -152,6 +157,7 @@ export function MyTasksPage({
   initialTasks = [],
   projects = [],
   organizationId,
+  userId,
   organizationMembers = [],
   organizationTags = [],
 }: MyTasksPageProps) {
@@ -164,6 +170,71 @@ export function MyTasksPage({
   const [editingTask, setEditingTask] = useState<UITask | undefined>(undefined)
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // Store refs to projects and members for use in realtime callbacks
+  const projectsRef = useRef(projects)
+  projectsRef.current = projects
+  const membersRef = useRef(organizationMembers)
+  membersRef.current = organizationMembers
+
+  // Helper to build TaskWithRelations from raw task data
+  const buildTaskWithRelations = useCallback((task: TaskRow): TaskWithRelations | null => {
+    // Only include tasks assigned to current user
+    if (task.assignee_id !== userId) return null
+
+    const project = projectsRef.current.find(p => p.id === task.project_id)
+    if (!project) return null // Task must belong to a known project
+
+    const workstream = project.workstreams?.find(w => w.id === task.workstream_id)
+    const assignee = membersRef.current.find(m => m.user_id === task.assignee_id)
+
+    return {
+      ...task,
+      project: { id: project.id, name: project.name },
+      workstream: workstream ? { id: workstream.id, name: workstream.name } : null,
+      assignee: assignee ? {
+        id: assignee.user_id,
+        full_name: assignee.profile.full_name,
+        email: assignee.profile.email,
+        avatar_url: assignee.profile.avatar_url,
+      } : null,
+    }
+  }, [userId])
+
+  // Real-time subscription for tasks assigned to current user
+  usePooledRealtime({
+    table: "tasks",
+    filter: userId ? `assignee_id=eq.${userId}` : undefined,
+    enabled: !!organizationId && !!userId,
+    onInsert: (task: TaskRow) => {
+      const fullTask = buildTaskWithRelations(task)
+      if (fullTask) {
+        setTasks(prev => {
+          // Avoid duplicates
+          if (prev.some(t => t.id === fullTask.id)) return prev
+          return [fullTask, ...prev]
+        })
+      }
+    },
+    onUpdate: (task: TaskRow) => {
+      setTasks(prev => {
+        const fullTask = buildTaskWithRelations(task)
+        if (!fullTask) return prev
+
+        const existingIndex = prev.findIndex(t => t.id === task.id)
+        if (existingIndex >= 0) {
+          // Update existing task
+          return prev.map(t => t.id === task.id ? fullTask : t)
+        } else {
+          // Task was newly assigned to user, add it
+          return [fullTask, ...prev]
+        }
+      })
+    },
+    onDelete: (task: TaskRow) => {
+      setTasks(prev => prev.filter(t => t.id !== task.id))
+    },
+  })
 
   // Group tasks by project
   const groups = useMemo<ProjectTaskGroup[]>(() => {
