@@ -51,7 +51,35 @@ interface FilterPopoverProps {
   tags?: TagOption[]
 }
 
-export function FilterPopover({ initialChips, onApply, onClear, counts, members = [], tags = [] }: FilterPopoverProps) {
+// Stable empty arrays to prevent infinite re-renders from default prop references
+const EMPTY_MEMBERS: MemberOption[] = []
+const EMPTY_TAGS: TagOption[] = []
+
+// Static filter categories - defined outside component to maintain stable reference
+const FILTER_CATEGORIES = [
+  { id: "status", label: "Status", icon: Spinner },
+  { id: "priority", label: "Priority", icon: ChartBar },
+  { id: "tags", label: "Tags", icon: Tag },
+  { id: "members", label: "Members", icon: User },
+] as const
+
+const STATUS_OPTIONS = [
+  { id: "todo", label: "To Do", color: "var(--chart-2)" },
+  { id: "in-progress", label: "In Progress", color: "var(--chart-3)" },
+  { id: "done", label: "Done", color: "var(--chart-1)" },
+] as const
+
+const PRIORITY_OPTIONS = [
+  { id: "urgent", label: "Urgent" },
+  { id: "high", label: "High" },
+  { id: "medium", label: "Medium" },
+  { id: "low", label: "Low" },
+] as const
+
+export function FilterPopover({ initialChips, onApply, onClear, counts, members, tags }: FilterPopoverProps) {
+  // Use stable references for default values
+  const stableMembers = members ?? EMPTY_MEMBERS
+  const stableTags = tags ?? EMPTY_TAGS
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [active, setActive] = useState<
@@ -72,7 +100,7 @@ export function FilterPopover({ initialChips, onApply, onClear, counts, members 
     const options: Array<{ id: string; label: string; avatar?: string | null }> = [
       { id: "unassigned", label: "Unassigned", avatar: undefined },
     ]
-    for (const member of members) {
+    for (const member of stableMembers) {
       options.push({
         id: member.id,
         label: member.label,
@@ -80,15 +108,15 @@ export function FilterPopover({ initialChips, onApply, onClear, counts, members 
       })
     }
     return options
-  }, [members])
+  }, [stableMembers])
 
   // Build tag options from props
   const tagOptions = useMemo(() => {
-    return tags.map((tag) => ({
+    return stableTags.map((tag) => ({
       id: tag.id,
       label: tag.label,
     }))
-  }, [tags])
+  }, [stableTags])
 
   // Preselect from chips when opening
   useEffect(() => {
@@ -113,31 +141,11 @@ export function FilterPopover({ initialChips, onApply, onClear, counts, members 
     setTemp(next)
   }, [open, initialChips, memberOptions])
 
-  const categories = [
-    { id: "status", label: "Status", icon: Spinner },
-    { id: "priority", label: "Priority", icon: ChartBar },
-    { id: "tags", label: "Tags", icon: Tag },
-    { id: "members", label: "Members", icon: User },
-  ] as const
-
-  const statusOptions = [
-    { id: "todo", label: "To Do", color: "var(--chart-2)" },
-    { id: "in-progress", label: "In Progress", color: "var(--chart-3)" },
-    { id: "done", label: "Done", color: "var(--chart-1)" },
-  ]
-
-  const priorityOptions = [
-    { id: "urgent", label: "Urgent" },
-    { id: "high", label: "High" },
-    { id: "medium", label: "Medium" },
-    { id: "low", label: "Low" },
-  ]
-
   const filteredCategories = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return categories
-    return categories.filter((c) => c.label.toLowerCase().includes(q))
-  }, [categories, query])
+    if (!q) return FILTER_CATEGORIES
+    return FILTER_CATEGORIES.filter((c) => c.label.toLowerCase().includes(q))
+  }, [query])
 
   const toggleSet = (set: Set<string>, v: string) => {
     const n = new Set(set)
@@ -213,7 +221,7 @@ export function FilterPopover({ initialChips, onApply, onClear, counts, members 
           <div className="p-3">
             {active === "priority" && (
               <div className="grid grid-cols-2 gap-2">
-                {priorityOptions.map((opt) => (
+                {PRIORITY_OPTIONS.map((opt) => (
                   <label key={opt.id} className="flex items-center gap-2 rounded-lg border p-2 hover:bg-accent cursor-pointer">
                     <Checkbox
                       checked={temp.priority.has(opt.id)}
@@ -230,7 +238,7 @@ export function FilterPopover({ initialChips, onApply, onClear, counts, members 
 
             {active === "status" && (
               <div className="grid grid-cols-2 gap-2">
-                {statusOptions.map((opt) => (
+                {STATUS_OPTIONS.map((opt) => (
                   <label key={opt.id} className="flex items-center gap-2 rounded-lg border p-2 hover:bg-accent cursor-pointer">
                     <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: opt.color }} />
                     <Checkbox
