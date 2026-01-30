@@ -326,9 +326,6 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
             <span className="text-sm font-medium">
               {profile?.full_name || user?.email?.split("@")[0] || "User"}
             </span>
-            <span className="text-xs text-muted-foreground">
-              {user?.email || "No email"}
-            </span>
           </div>
           <button
             onClick={async () => {
