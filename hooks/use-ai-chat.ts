@@ -340,6 +340,15 @@ export function useAIChat(context: ChatContext): UseAIChatReturn {
 
     if (!actionToExecute) return
 
+    // Auto-inject orgId from context for actions that need it
+    const orgId = context.appData?.organization?.id
+    if (orgId && !actionToExecute.data.orgId) {
+      const actionsNeedingOrgId = ["create_project", "create_client"]
+      if (actionsNeedingOrgId.includes(actionToExecute.type)) {
+        actionToExecute.data.orgId = orgId
+      }
+    }
+
     try {
       const actionResult = await executeAction(actionToExecute)
 
@@ -375,7 +384,7 @@ export function useAIChat(context: ChatContext): UseAIChatReturn {
         )
       )
     }
-  }, []) // No dependencies needed - uses functional updates
+  }, [context]) // context needed for orgId injection
 
   const clearChat = useCallback(() => {
     setMessages([])

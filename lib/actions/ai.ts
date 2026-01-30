@@ -956,20 +956,24 @@ You can:
 When proposing an action, include at the END of your response:
 ACTION_JSON: {"type": "...", "data": {...}}
 
-Available actions:
-- create_task: {title, projectId, priority?, description?, workstreamId?}
+Available actions (IMPORTANT: always use UUIDs from context, never use names as IDs):
+- create_task: {title, projectId, priority?, description?, workstreamId?} - projectId must be a UUID from the projects list
 - update_task: {taskId, title?, status?, priority?, assigneeId?}
 - delete_task: {taskId}
 - assign_task: {taskId, assigneeId}
-- create_project: {name, clientId?, description?}
+- create_project: {orgId, name, clientId?, description?} - orgId is REQUIRED
 - update_project: {projectId, name?, status?, description?}
-- create_workstream: {name, projectId}
-- update_workstream: {workstreamId, name?}
-- create_client: {name, email?, phone?}
+- create_workstream: {name, projectId, description?} - projectId must be a UUID from the projects list
+- update_workstream: {workstreamId, name?, description?}
+- create_client: {orgId, name, email?, phone?} - orgId is REQUIRED
 - update_client: {clientId, name?, email?, phone?, status?}
-- create_note: {title, content, projectId}
+- create_note: {title, content, projectId} - projectId must be a UUID from the projects list
 - add_project_member: {projectId, userId, role}
 - add_team_member: {teamId, userId}
+
+CRITICAL: For projectId, clientId, userId, etc. - ALWAYS use the actual UUID from the context data, NEVER use the name.
+The organization ID is: ${context.appData.organization.id}
+Project IDs reference: ${context.appData.projects.map(p => `"${p.name}": "${p.id}"`).join(", ")}
 
 Keep responses concise and helpful. Only propose actions when the user explicitly asks to do something.`
 
