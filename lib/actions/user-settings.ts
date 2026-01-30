@@ -1,12 +1,12 @@
 "use server"
 
 import { z } from "zod"
-import { revalidatePath, revalidateTag } from "next/cache"
+import { revalidatePath } from "next/cache"
 import type { ActionResult } from "./types"
 import type { AIProvider } from "@/lib/constants/ai"
 import { encrypt, decrypt, isEncryptedFormat, migrateFromBase64 } from "@/lib/crypto"
 import { invalidate } from "@/lib/cache"
-import { CacheTags } from "@/lib/cache-tags"
+import { CacheTags, revalidateTag } from "@/lib/cache-tags"
 import { requireAuth } from "./auth-helpers"
 
 // Note: user_settings table exists in DB but not in generated types

@@ -1,10 +1,10 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { revalidatePath, revalidateTag } from "next/cache"
+import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import { z } from "zod"
-import { CacheTags } from "@/lib/cache-tags"
+import { CacheTags, revalidateTag } from "@/lib/cache-tags"
 import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
 import { requireProjectMember, requireProjectOwnerOrPIC, requireOrgMember } from "./auth-helpers"
 import { uuidSchema, validate } from "@/lib/validations"
@@ -78,18 +78,18 @@ const createProjectSchema = z.object({
     .min(1, "Project name is required")
     .max(200, "Project name must be less than 200 characters"),
   description: z.string().max(5000).optional().nullable(),
-  status: z.enum(["active", "completed", "on-hold", "cancelled"]).optional(),
-  priority: z.enum(["low", "medium", "high", "critical"]).optional(),
+  status: z.enum(["backlog", "planned", "active", "cancelled", "completed"]).optional(),
+  priority: z.enum(["urgent", "high", "medium", "low"]).optional(),
   start_date: z.string().optional().nullable(),
   end_date: z.string().optional().nullable(),
   client_id: z.string().uuid().optional().nullable(),
   type_label: z.string().max(100).optional().nullable(),
   tags: z.array(z.string().max(50)).optional(),
-  intent: z.enum(["build", "learn", "explore", "fix"]).optional().nullable(),
-  success_type: z.enum(["deliverable", "milestone", "metric", "ongoing"]).optional().nullable(),
-  deadline_type: z.enum(["fixed", "flexible", "none"]).optional().nullable(),
+  intent: z.enum(["delivery", "experiment", "internal"]).optional().nullable(),
+  success_type: z.enum(["deliverable", "metric", "undefined"]).optional().nullable(),
+  deadline_type: z.enum(["none", "target", "fixed"]).optional().nullable(),
   deadline_date: z.string().optional().nullable(),
-  work_structure: z.enum(["solo", "team", "mixed"]).optional().nullable(),
+  work_structure: z.enum(["linear", "milestones", "multistream"]).optional().nullable(),
   deliverables: z.array(z.object({
     title: z.string().max(500),
     due_date: z.string().optional().nullable(),
@@ -196,7 +196,7 @@ export async function createProject(
     )
 
     // 3. Insert deliverables, metrics, contributors, and stakeholders in parallel
-    const parallelInserts: Promise<{ error: Error | null }>[] = []
+    const parallelInserts: PromiseLike<{ error: Error | null }>[] = []
 
     // Deliverables insert
     if (validDeliverables.length > 0) {

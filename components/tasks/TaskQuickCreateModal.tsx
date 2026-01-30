@@ -11,7 +11,7 @@ import { ProjectDescriptionEditorLazy as ProjectDescriptionEditor } from '@/comp
 import { QuickCreateModalLayout } from '@/components/QuickCreateModalLayout'
 import { toast } from 'sonner'
 import { createTask, updateTask } from '@/lib/actions/tasks'
-import type { OrganizationTag } from "@/lib/supabase/types"
+import type { OrganizationTag, TaskPriority } from "@/lib/supabase/types"
 
 // Types for data passed from parent
 type ProjectOption = {
@@ -49,7 +49,7 @@ export type TaskData = {
   id: string
   name: string
   status: 'todo' | 'in-progress' | 'done'
-  priority?: string
+  priority?: TaskPriority
   tag?: string | null
   assignee?: User | null
   startDate?: Date | null
@@ -164,11 +164,11 @@ export function TaskQuickCreateModal({
 
     if (editingTask) {
       setProjectId(editingTask.projectId)
-      setWorkstreamId(editingTask.workstreamId)
-      setWorkstreamName(editingTask.workstreamName)
+      setWorkstreamId(editingTask.workstreamId ?? undefined)
+      setWorkstreamName(editingTask.workstreamName ?? undefined)
 
       setTitle(editingTask.name)
-      setDescription(editingTask.description)
+      setDescription(editingTask.description ?? undefined)
       setCreateMore(false)
       setIsDescriptionExpanded(false)
 

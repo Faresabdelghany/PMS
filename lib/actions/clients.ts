@@ -1,10 +1,10 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { revalidatePath, revalidateTag } from "next/cache"
+import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import { z } from "zod"
-import { CacheTags } from "@/lib/cache-tags"
+import { CacheTags, revalidateTag } from "@/lib/cache-tags"
 import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
 import { requireOrgMember } from "./auth-helpers"
 import { uuidSchema, validate } from "@/lib/validations"
@@ -27,7 +27,7 @@ const createClientSchema = z.object({
     .or(z.literal(""))
     .transform((val) => (val === "" ? null : val)),
   location: z.string().max(200).optional().nullable(),
-  status: z.enum(["active", "inactive", "prospect"]).default("active"),
+  status: z.enum(["prospect", "active", "on_hold", "archived"]).default("active"),
   primary_contact_name: z.string().max(100).optional().nullable(),
   primary_contact_email: z
     .string()
@@ -43,7 +43,7 @@ const updateClientSchema = createClientSchema.partial()
 
 // Search filter validation (prevent injection via search)
 const clientFiltersSchema = z.object({
-  status: z.enum(["active", "inactive", "prospect"]).optional(),
+  status: z.enum(["prospect", "active", "on_hold", "archived"]).optional(),
   search: z
     .string()
     .max(200, "Search query too long")

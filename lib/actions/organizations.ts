@@ -2,10 +2,10 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
-import { revalidatePath, revalidateTag } from "next/cache"
+import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import { cookies } from "next/headers"
-import { CacheTags } from "@/lib/cache-tags"
+import { CacheTags, revalidateTag } from "@/lib/cache-tags"
 import { requireAuth, requireOrgMember } from "./auth-helpers"
 import type { Organization, OrganizationInsert, OrganizationUpdate, OrgMemberRole } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"

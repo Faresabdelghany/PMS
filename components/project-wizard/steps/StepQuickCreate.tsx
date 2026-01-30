@@ -20,20 +20,9 @@ import {
 import { Check, X, CornersOut, Star, CalendarBlank, UserCircle, Spinner, List, Paperclip, Microphone, Rows, ChartBar, Tag } from "@phosphor-icons/react/dist/ssr";
 import { ProjectDescriptionEditorLazy as ProjectDescriptionEditor } from "../ProjectDescriptionEditorLazy";
 import type { ProjectStatus, ProjectPriority, OrganizationTag } from "@/lib/supabase/types";
+import type { OrganizationMember } from "./StepOwnership";
 
 type Client = { id: string; name: string };
-
-type OrganizationMember = {
-  id: string;
-  user_id: string;
-  role: string;
-  profile: {
-    id: string;
-    full_name: string | null;
-    email: string;
-    avatar_url: string | null;
-  };
-};
 
 export type QuickCreateProjectData = {
   name: string;
@@ -209,12 +198,14 @@ export function StepQuickCreate({
   const [title, setTitle] = useState("");
   // Description is now managed by Tiptap editor
 
-  // Convert org members to picker format
-  const memberOptions = organizationMembers.map((m) => ({
-    id: m.user_id,
-    name: m.profile.full_name || m.profile.email,
-    avatar: m.profile.avatar_url || "",
-  }));
+  // Convert org members to picker format (filter out members without profiles)
+  const memberOptions = organizationMembers
+    .filter((m) => m.profile !== null)
+    .map((m) => ({
+      id: m.user_id,
+      name: m.profile!.full_name || m.profile!.email,
+      avatar: m.profile!.avatar_url || "",
+    }));
 
   // Data State
   const [assignee, setAssignee] = useState<{ id: string; name: string; avatar: string } | null>(

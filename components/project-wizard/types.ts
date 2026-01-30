@@ -58,4 +58,5 @@ export interface ProjectData {
   workstreams: string[];
   generatedTasks: GeneratedTask[];
   clientId?: string;
+  addStarterTasks?: boolean;
 }

@@ -10,9 +10,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { Separator } from "../../ui/separator";
 import { getAvatarUrl } from "@/lib/assets/avatars";
 
-// Organization member type from Supabase
+// Organization member type from Supabase query (organization_members with nested profile)
 export interface OrganizationMember {
+  id: string;
+  organization_id: string;
   user_id: string;
+  role: string;
+  created_at: string;
   profile: {
     id: string;
     full_name: string | null;

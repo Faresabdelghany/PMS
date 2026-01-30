@@ -50,7 +50,7 @@ import { FilterPopover, type MemberOption, type TagOption } from "@/components/f
 import { ChipOverflow } from "@/components/chip-overflow"
 import { TaskRowBase } from "@/components/tasks/TaskRowBase"
 import { TaskQuickCreateModal, type TaskData } from "@/components/tasks/TaskQuickCreateModal"
-import type { OrganizationTag } from "@/lib/supabase/types"
+import type { OrganizationTag, TaskPriority as TaskPriorityType } from "@/lib/supabase/types"
 import { formatDueLabel } from "@/lib/date-utils"
 import { cn } from "@/lib/utils"
 import { usePooledTasksRealtime } from "@/hooks/realtime-context"
@@ -85,6 +85,36 @@ function toTaskLike(task: TaskWithRelations): TaskLike {
     startDate,
     endDate,
     dueLabel: endDate ? formatDueLabel(endDate) : null,
+  }
+}
+
+// Convert TaskLike to TaskData format (for TaskQuickCreateModal)
+function toTaskData(task: TaskLike, projectId: string, projectName: string): TaskData {
+  // Convert loose priority string to strict TaskPriorityType type
+  const validPriorities: TaskPriorityType[] = ["no-priority", "low", "medium", "high", "urgent"]
+  const priority = task.priority && validPriorities.includes(task.priority as TaskPriorityType)
+    ? (task.priority as TaskPriorityType)
+    : undefined
+
+  return {
+    id: task.id,
+    name: task.name,
+    status: task.status,
+    priority,
+    tag: task.tag ?? undefined,
+    assignee: task.assignee ? {
+      id: task.assignee.name, // Using name as fallback since TaskLike doesn't have id
+      name: task.assignee.name,
+      avatarUrl: task.assignee.avatarUrl ?? null,
+    } : undefined,
+    startDate: task.startDate ?? undefined,
+    endDate: task.endDate ?? undefined,
+    dueLabel: task.dueLabel ?? undefined,
+    description: task.description ?? undefined,
+    projectId,
+    projectName,
+    workstreamId: task.workstreamId ?? undefined,
+    workstreamName: task.workstreamName ?? undefined,
   }
 }
 
@@ -320,7 +350,7 @@ export function ProjectTasksTab({
           }}
           context={editingTask ? undefined : { projectId }}
           onTaskCreated={handleTaskCreated}
-          editingTask={editingTask || undefined}
+          editingTask={editingTask ? toTaskData(editingTask, projectId, projectName) : undefined}
           onTaskUpdated={handleTaskUpdated}
           projects={projectsForModal}
           organizationMembers={organizationMembers}
@@ -389,7 +419,7 @@ export function ProjectTasksTab({
         }}
         context={editingTask ? undefined : { projectId }}
         onTaskCreated={handleTaskCreated}
-        editingTask={editingTask || undefined}
+        editingTask={editingTask ? toTaskData(editingTask, projectId, projectName) : undefined}
         onTaskUpdated={handleTaskUpdated}
         projects={projectsForModal}
         organizationMembers={organizationMembers}
@@ -421,7 +451,7 @@ export function ProjectTasksTab({
 }
 
 type TaskBadgesProps = {
-  workstreamName?: string
+  workstreamName?: string | null
   className?: string
 }
 

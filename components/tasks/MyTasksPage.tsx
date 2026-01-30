@@ -13,6 +13,64 @@ import {
 
 import type { TaskWithRelations } from "@/lib/actions/tasks"
 import type { ProjectWithRelations } from "@/lib/actions/projects"
+import type { TaskPriority } from "@/lib/supabase/types"
+import type { ProjectTask } from "@/lib/data/project-details"
+import type { TaskData } from "@/components/tasks/TaskQuickCreateModal"
+
+// Extended project type that includes workstreams for task creation modal
+type ProjectWithWorkstreams = ProjectWithRelations & {
+  workstreams?: { id: string; name: string }[]
+}
+
+// Valid TaskPriority values for type checking
+const VALID_PRIORITIES: TaskPriority[] = ["no-priority", "low", "medium", "high", "urgent"]
+
+// Convert TaskLike to TaskData for the TaskQuickCreateModal
+function toTaskData(task: TaskLike): TaskData {
+  const priority = task.priority && VALID_PRIORITIES.includes(task.priority as TaskPriority)
+    ? (task.priority as TaskPriority)
+    : undefined
+
+  return {
+    id: task.id,
+    name: task.name,
+    status: task.status,
+    priority,
+    tag: task.tag ?? undefined,
+    assignee: task.assignee ? { id: "", name: task.assignee.name, avatarUrl: task.assignee.avatarUrl ?? null } : undefined,
+    startDate: task.startDate ?? undefined,
+    endDate: task.endDate ?? undefined,
+    dueLabel: task.dueLabel ?? undefined,
+    description: task.description ?? undefined,
+    projectId: task.projectId || "",
+    projectName: task.projectName || "Unknown Project",
+    workstreamId: task.workstreamId ?? undefined,
+    workstreamName: task.workstreamName ?? undefined,
+  }
+}
+
+// Convert TaskLike to ProjectTask for the TaskWeekBoardView
+function toProjectTask(task: TaskLike): ProjectTask {
+  return {
+    id: task.id,
+    name: task.name,
+    status: task.status,
+    priority: task.priority && VALID_PRIORITIES.includes(task.priority as TaskPriority)
+      ? (task.priority as TaskPriority)
+      : undefined,
+    tag: task.tag ?? undefined,
+    assignee: task.assignee ? { id: "", name: task.assignee.name, avatarUrl: task.assignee.avatarUrl ?? undefined } : undefined,
+    startDate: task.startDate ?? undefined,
+    endDate: task.endDate ?? undefined,
+    dueLabel: task.dueLabel ?? undefined,
+    description: task.description ?? undefined,
+    projectId: task.projectId || "",
+    projectName: task.projectName || "Unknown Project",
+    workstreamId: task.workstreamId || "",
+    workstreamName: task.workstreamName || "",
+  }
+}
+
 import { deleteTask, updateTask, updateTaskStatus, reorderTasks } from "@/lib/actions/tasks"
 import { DEFAULT_VIEW_OPTIONS, type FilterChip as FilterChipType, type ViewOptions } from "@/lib/view-options"
 import type { FilterCounts } from "@/lib/data/projects"
@@ -84,7 +142,7 @@ type OrganizationMember = {
 
 interface MyTasksPageProps {
   initialTasks?: TaskWithRelations[]
-  projects?: ProjectWithRelations[]
+  projects?: ProjectWithWorkstreams[]
   organizationId?: string
   organizationMembers?: OrganizationMember[]
   organizationTags?: OrganizationTag[]
@@ -202,24 +260,30 @@ export function MyTasksPage({
 
   const handleTaskCreated = useCallback((task: UITask) => {
     // The task will be added via real-time subscription or we add it optimistically
+    const projectId = task.projectId || ""
+    const projectName = task.projectName || "Unknown Project"
+    const priority: TaskPriority = task.priority && VALID_PRIORITIES.includes(task.priority as TaskPriority)
+      ? (task.priority as TaskPriority)
+      : "no-priority"
+
     setTasks((prev) => {
       // Create a TaskWithRelations-like object for the new task
       const newTask: TaskWithRelations = {
         id: task.id,
         name: task.name,
         status: task.status,
-        priority: task.priority,
+        priority,
         tag: task.tag || null,
         description: task.description || null,
         start_date: task.startDate?.toISOString().split('T')[0] || null,
         end_date: task.endDate?.toISOString().split('T')[0] || null,
-        project_id: task.projectId,
+        project_id: projectId,
         workstream_id: task.workstreamId || null,
         assignee_id: null,
         sort_order: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        project: { id: task.projectId, name: task.projectName },
+        project: { id: projectId, name: projectName },
         workstream: task.workstreamId ? { id: task.workstreamId, name: task.workstreamName || "" } : null,
         assignee: task.assignee ? {
           id: "",
@@ -306,6 +370,10 @@ export function MyTasksPage({
   }, [tasks])
 
   const handleTaskUpdated = useCallback((updated: UITask) => {
+    const priority: TaskPriority = updated.priority && VALID_PRIORITIES.includes(updated.priority as TaskPriority)
+      ? (updated.priority as TaskPriority)
+      : "no-priority"
+
     setTasks((prev) =>
       prev.map((t) =>
         t.id === updated.id
@@ -313,7 +381,7 @@ export function MyTasksPage({
               ...t,
               name: updated.name,
               status: updated.status,
-              priority: updated.priority,
+              priority,
               tag: updated.tag || null,
               description: updated.description || null,
               start_date: updated.startDate?.toISOString().split('T')[0] || null,
@@ -421,7 +489,7 @@ export function MyTasksPage({
           }}
           context={editingTask ? undefined : createContext}
           onTaskCreated={handleTaskCreated}
-          editingTask={editingTask}
+          editingTask={editingTask ? toTaskData(editingTask) : undefined}
           onTaskUpdated={handleTaskUpdated}
           projects={projectOptions}
           organizationMembers={organizationMembers}
@@ -497,12 +565,12 @@ export function MyTasksPage({
         )}
         {viewOptions.viewType === "board" && (
           <TaskWeekBoardView
-            tasks={allVisibleTasks}
+            tasks={allVisibleTasks.map(toProjectTask)}
             onAddTask={(context) => openCreateTask(context)}
             onToggleTask={toggleTask}
             onChangeTag={changeTaskTag}
             onMoveTaskDate={moveTaskDate}
-            onOpenTask={openEditTask}
+            onOpenTask={(task) => openEditTask(task)}
             tags={organizationTags}
           />
         )}
@@ -517,7 +585,7 @@ export function MyTasksPage({
         }}
         context={editingTask ? undefined : createContext}
         onTaskCreated={handleTaskCreated}
-        editingTask={editingTask}
+        editingTask={editingTask ? toTaskData(editingTask) : undefined}
         onTaskUpdated={handleTaskUpdated}
         projects={projectOptions}
         organizationMembers={organizationMembers}

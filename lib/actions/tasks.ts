@@ -1,10 +1,10 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { revalidatePath, revalidateTag } from "next/cache"
+import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import { z } from "zod"
-import { CacheTags } from "@/lib/cache-tags"
+import { CacheTags, revalidateTag } from "@/lib/cache-tags"
 import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
 import { uuidSchema, validate } from "@/lib/validations"
 import type { Task, TaskInsert, TaskUpdate, TaskStatus, TaskPriority } from "@/lib/supabase/types"
@@ -19,7 +19,7 @@ const createTaskSchema = z.object({
     .max(500, "Task name must be less than 500 characters"),
   description: z.string().max(10000).optional().nullable(),
   status: z.enum(["todo", "in-progress", "done"]).default("todo"),
-  priority: z.enum(["low", "medium", "high", "critical"]).default("medium"),
+  priority: z.enum(["no-priority", "low", "medium", "high", "urgent"]).default("medium"),
   workstream_id: z.string().uuid().optional().nullable(),
   assignee_id: z.string().uuid().optional().nullable(),
   start_date: z.string().optional().nullable(),

@@ -1,3 +1,5 @@
+import { revalidateTag as nextRevalidateTag } from "next/cache"
+
 /**
  * Cache tag constants for granular revalidation
  *
@@ -10,6 +12,14 @@
  * - Organization-scoped tags (e.g., "projects-{orgId}")
  * - Item-specific tags (e.g., "project-{id}")
  */
+
+/**
+ * Wrapper for Next.js 16's revalidateTag that includes the required profile argument.
+ * Uses immediate expiration for on-demand revalidation.
+ */
+export function revalidateTag(tag: string): void {
+  nextRevalidateTag(tag, { expire: 0 })
+}
 
 export const CacheTags = {
   // Projects

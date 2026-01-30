@@ -47,6 +47,8 @@ export type WorkstreamTask = {
   assignee?: User
   /** Optional start date for the task (used in task views). */
   startDate?: Date
+  /** Optional end date for the task (used in task views). */
+  endDate?: Date
   /** Optional priority identifier for the task. */
   priority?: "no-priority" | "low" | "medium" | "high" | "urgent"
   /** Optional tag label for the task (e.g. Feature, Bug). */
@@ -78,7 +80,7 @@ export type ProjectTask = WorkstreamTask & {
 
 export type TimeSummary = {
   estimateLabel: string
-  dueDate: Date
+  dueDate: Date | null
   daysRemainingLabel: string
   progressPercent: number
 }

@@ -25,7 +25,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import type { WorkstreamTask } from "@/lib/data/project-details"
+import type { WorkstreamTask, WorkstreamTaskStatus, TimelineTask, WorkstreamGroup, ProjectDetails } from "@/lib/data/project-details"
 import type { OrganizationTag } from "@/lib/supabase/types"
 import { formatDueLabel, getDueTone, formatStartLabel } from "@/lib/date-utils"
 
@@ -44,60 +44,8 @@ type WorkstreamWithTasks = Workstream & {
   }[]
 }
 
-// Internal project details type for UI
-type ProjectDetailsUI = {
-  id: string
-  name: string
-  description: string
-  meta: {
-    priorityLabel: string
-  }
-  backlog: {
-    statusLabel: "Active" | "Backlog" | "Planned" | "Completed" | "Cancelled"
-    groupLabel: string
-    priorityLabel: string
-    labelBadge: string
-    picUsers: { id: string; name: string; avatarUrl?: string }[]
-    supportUsers?: { id: string; name: string; avatarUrl?: string }[]
-  }
-  time: {
-    estimateLabel: string
-    dueDate: Date | null
-    daysRemainingLabel: string
-    progressPercent: number
-  }
-  scope: {
-    inScope: string[]
-    outOfScope: string[]
-  }
-  outcomes: string[]
-  keyFeatures: {
-    p0: string[]
-    p1: string[]
-    p2: string[]
-  }
-  workstreams: {
-    id: string
-    name: string
-    tasks: {
-      id: string
-      name: string
-      status: string
-      priority: string
-      assignee?: { name: string; avatarUrl?: string } | null
-    }[]
-  }[]
-  timelineTasks: {
-    id: string
-    name: string
-    status: string
-    startDate?: Date
-    endDate?: Date
-  }[]
-  files: never[]
-  notes: never[]
-  quickLinks: { id: string; label: string; url: string; iconType: string }[]
-}
+// Internal project details type for UI - uses ProjectDetails from lib/data/project-details
+type ProjectDetailsUI = ProjectDetails
 
 type OrganizationMember = {
   id: string
@@ -162,15 +110,15 @@ export function ProjectDetailsPage({
       .filter((f) => f.priority === 2)
       .map((f) => f.item)
 
-    // Map workstreams to UI format
-    const uiWorkstreams = workstreams.map((ws) => ({
+    // Map workstreams to UI format with proper types
+    const uiWorkstreams: WorkstreamGroup[] = workstreams.map((ws) => ({
       id: ws.id,
       name: ws.name,
       description: ws.description,
       startDate: ws.start_date,
       endDate: ws.end_date,
       tag: ws.tag,
-      tasks: ws.tasks.map((t) => {
+      tasks: ws.tasks.map((t): WorkstreamTask => {
         // Find assignee from organization members if assignee_id is present
         const assigneeMember = t.assignee_id
           ? organizationMembers.find((m) => m.user_id === t.assignee_id)
@@ -180,12 +128,24 @@ export function ProjectDetailsPage({
         const startDate = t.start_date ? new Date(t.start_date) : undefined
         const endDate = t.end_date ? new Date(t.end_date) : undefined
 
+        // Map status to WorkstreamTaskStatus
+        const status = (t.status === "todo" || t.status === "in-progress" || t.status === "done")
+          ? t.status
+          : "todo" as WorkstreamTaskStatus
+
+        // Map priority to WorkstreamTask priority type
+        const validPriorities = ["no-priority", "low", "medium", "high", "urgent"] as const
+        const priority = validPriorities.includes(t.priority as typeof validPriorities[number])
+          ? t.priority as typeof validPriorities[number]
+          : undefined
+
         return {
           id: t.id,
           name: t.name,
-          status: t.status,
-          priority: t.priority,
+          status,
+          priority,
           startDate,
+          endDate,
           dueLabel: endDate ? formatDueLabel(endDate) : undefined,
           dueTone: endDate ? getDueTone(endDate) : undefined,
           tag: t.tag || undefined,
@@ -198,14 +158,24 @@ export function ProjectDetailsPage({
       }),
     }))
 
-    // Map tasks to timeline format
-    const timelineTasks = tasks.map((t) => ({
-      id: t.id,
-      name: t.name,
-      status: t.status,
-      startDate: t.start_date ? new Date(t.start_date) : undefined,
-      endDate: t.end_date ? new Date(t.end_date) : undefined,
-    }))
+    // Map tasks to timeline format - only include tasks with both start and end dates
+    // TaskStatus is "todo" | "in-progress" | "done", but TimelineTask needs "planned" | "in-progress" | "done"
+    const timelineTasks: TimelineTask[] = tasks
+      .filter((t) => t.start_date && t.end_date)
+      .map((t) => {
+        // Map TaskStatus to TimelineTask status: "todo" -> "planned"
+        const status: "planned" | "in-progress" | "done" =
+          t.status === "todo" ? "planned" :
+          t.status === "in-progress" ? "in-progress" :
+          "done"
+        return {
+          id: t.id,
+          name: t.name,
+          status,
+          startDate: new Date(t.start_date!),
+          endDate: new Date(t.end_date!),
+        }
+      })
 
     const statusLabel = supabaseProject.status === "active" ? "Active"
       : supabaseProject.status === "planned" ? "Planned"
@@ -254,6 +224,9 @@ export function ProjectDetailsPage({
       description: supabaseProject.description || "",
       meta: {
         priorityLabel,
+        locationLabel: "Remote", // Default value
+        sprintLabel: "—", // No sprint data in current schema
+        lastSyncLabel: "Just now", // Default value
       },
       backlog: {
         statusLabel: statusLabel as "Active" | "Backlog" | "Planned" | "Completed" | "Cancelled",
