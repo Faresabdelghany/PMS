@@ -98,7 +98,10 @@ import { FilterPopover, type MemberOption, type TagOption } from "@/components/f
 import { ChipOverflow } from "@/components/chip-overflow"
 import { ViewOptionsPopover } from "@/components/view-options-popover"
 import { TaskQuickCreateModal, type CreateTaskContext } from "@/components/tasks/TaskQuickCreateModal"
+import { AIChatSheet } from "@/components/ai/ai-chat-sheet"
 import type { OrganizationTag } from "@/lib/supabase/types"
+import type { ChatContext } from "@/lib/actions/ai"
+import { useOrganization } from "@/hooks/use-organization"
 import { formatDueLabel } from "@/lib/date-utils"
 import { toast } from "sonner"
 
@@ -164,6 +167,9 @@ export function MyTasksPage({
   const [editingTask, setEditingTask] = useState<UITask | undefined>(undefined)
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false)
+
+  const { organization } = useOrganization()
 
   // Group tasks by project
   const groups = useMemo<ProjectTaskGroup[]>(() => {
@@ -245,6 +251,41 @@ export function MyTasksPage({
     })),
     [projects]
   )
+
+  // Build ChatContext for the AI assistant
+  const chatContext = useMemo<ChatContext>(() => ({
+    pageType: "my_tasks",
+    appData: {
+      organization: {
+        id: organization?.id || organizationId || "",
+        name: organization?.name || "Unknown Organization",
+      },
+      projects: projects.map((p) => ({
+        id: p.id,
+        name: p.name,
+        status: p.status || "active",
+        clientName: p.client?.name,
+        dueDate: p.end_date || undefined,
+      })),
+      clients: [],
+      teams: [],
+      members: organizationMembers.map((m) => ({
+        id: m.user_id,
+        name: m.profile.full_name || m.profile.email,
+        email: m.profile.email,
+        role: m.role,
+      })),
+      userTasks: tasks.map((t) => ({
+        id: t.id,
+        title: t.name,
+        projectName: t.project?.name || "Unknown Project",
+        status: t.status,
+        priority: t.priority || "no-priority",
+        dueDate: t.end_date || undefined,
+      })),
+      inbox: [],
+    },
+  }), [organization, organizationId, projects, organizationMembers, tasks])
 
   const openCreateTask = (context?: CreateTaskContext) => {
     setEditingTask(undefined)
@@ -541,7 +582,10 @@ export function MyTasksPage({
             <ViewOptionsPopover options={viewOptions} onChange={setViewOptions} allowedViewTypes={["list", "board"]} />
             <div className="relative">
               <div className="relative rounded-xl border border-border bg-card/80 shadow-sm overflow-hidden">
-                <Button className="h-8 gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 relative z-10 px-3">
+                <Button
+                  className="h-8 gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 relative z-10 px-3"
+                  onClick={() => setIsAIChatOpen(true)}
+                >
                   <Sparkle className="h-4 w-4" weight="fill" />
                   Ask AI
                 </Button>
@@ -590,6 +634,12 @@ export function MyTasksPage({
         projects={projectOptions}
         organizationMembers={organizationMembers}
         tags={organizationTags}
+      />
+
+      <AIChatSheet
+        open={isAIChatOpen}
+        onOpenChange={setIsAIChatOpen}
+        context={chatContext}
       />
 
       <AlertDialog open={!!taskToDelete} onOpenChange={(open) => !open && setTaskToDelete(null)}>
