@@ -428,7 +428,7 @@ async function streamGoogle(
   }))
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${apiKey}&alt=sse`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -626,13 +626,13 @@ function createUnifiedStream(
           for (const line of lines) {
             if (!line.trim()) continue
 
-            // Handle Google's different format (JSON array streaming)
+            // Handle Google's SSE format (with alt=sse parameter)
             if (provider === "google") {
+              if (!line.startsWith("data: ")) continue
+              const data = line.slice(6)
+              if (data === "[DONE]") continue
               try {
-                // Google streams JSON objects directly
-                const cleanLine = line.replace(/^\[|\]$/g, "").replace(/^,/, "")
-                if (!cleanLine.trim()) continue
-                const json = JSON.parse(cleanLine)
+                const json = JSON.parse(data)
                 const text = json.candidates?.[0]?.content?.parts?.[0]?.text || ""
                 if (text) {
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`))

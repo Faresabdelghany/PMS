@@ -346,14 +346,18 @@ export function usePersistedAIChat({
         const reader = response.body?.getReader()
         const decoder = new TextDecoder()
         let fullContent = ""
+        let buffer = "" // Buffer for incomplete SSE lines
 
         if (reader) {
           while (true) {
             const { done, value } = await reader.read()
             if (done) break
 
-            const chunk = decoder.decode(value, { stream: true })
-            const lines = chunk.split("\n")
+            // Append chunk to buffer and split by newlines
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split("\n")
+            // Keep the last (potentially incomplete) line in the buffer
+            buffer = lines.pop() || ""
 
             for (const line of lines) {
               if (line.startsWith("data: ")) {
