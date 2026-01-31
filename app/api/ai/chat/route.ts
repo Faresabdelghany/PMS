@@ -784,14 +784,24 @@ function createUnifiedStream(
 
 export async function POST(req: NextRequest) {
   try {
+    // Debug: Log cookies being received (remove after debugging)
+    const allCookies = req.cookies.getAll()
+    console.log("[AI Chat API] Cookies received:", allCookies.map(c => c.name).join(", "))
+    console.log("[AI Chat API] Auth cookie present:", allCookies.some(c => c.name.includes("auth-token")))
+
     // Verify authentication using request cookies directly
     const supabase = createApiRouteClient(req)
     const {
       data: { user },
+      error: authError,
     } = await supabase.auth.getUser()
 
+    // Debug: Log auth result
+    console.log("[AI Chat API] Auth result - user:", user?.id || "null", "error:", authError?.message || "none")
+
     if (!user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      const errorMsg = authError?.message || "Unauthorized"
+      return new Response(JSON.stringify({ error: errorMsg }), {
         status: 401,
         headers: { "Content-Type": "application/json" },
       })
