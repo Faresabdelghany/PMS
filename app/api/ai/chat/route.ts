@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createApiRouteClient } from "@/lib/supabase/api-route"
 import { verifyAIConfig } from "@/lib/actions/ai"
 import { rateLimiters, checkRateLimit } from "@/lib/rate-limit/limiter"
 
@@ -690,8 +690,8 @@ function createUnifiedStream(
 
 export async function POST(req: NextRequest) {
   try {
-    // Verify authentication
-    const supabase = await createClient()
+    // Verify authentication using request cookies directly
+    const supabase = createApiRouteClient(req)
     const {
       data: { user },
     } = await supabase.auth.getUser()
