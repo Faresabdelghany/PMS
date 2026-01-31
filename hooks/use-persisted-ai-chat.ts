@@ -344,46 +344,48 @@ export function usePersistedAIChat({
         setIsLoading(false)
 
         const reader = response.body?.getReader()
+        if (!reader) {
+          throw new Error("Failed to read response stream")
+        }
+
         const decoder = new TextDecoder()
         let fullContent = ""
         let buffer = "" // Buffer for incomplete SSE lines
 
-        if (reader) {
-          while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
 
-            // Append chunk to buffer and split by newlines
-            buffer += decoder.decode(value, { stream: true })
-            const lines = buffer.split("\n")
-            // Keep the last (potentially incomplete) line in the buffer
-            buffer = lines.pop() || ""
+          // Append chunk to buffer and split by newlines
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split("\n")
+          // Keep the last (potentially incomplete) line in the buffer
+          buffer = lines.pop() || ""
 
-            for (const line of lines) {
-              if (line.startsWith("data: ")) {
-                const data = line.slice(6)
-                if (data === "[DONE]") continue
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const data = line.slice(6)
+              if (data === "[DONE]") continue
 
-                try {
-                  const json = JSON.parse(data)
-                  if (json.text) {
-                    fullContent += json.text
-                    // Update message content progressively
-                    setMessages((prev) =>
-                      prev.map((m) =>
-                        m.id === assistantMessageId
-                          ? { ...m, content: fullContent }
-                          : m
-                      )
+              try {
+                const json = JSON.parse(data)
+                if (json.text) {
+                  fullContent += json.text
+                  // Update message content progressively
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === assistantMessageId
+                        ? { ...m, content: fullContent }
+                        : m
                     )
-                  }
-                  if (json.error) {
-                    throw new Error(json.error)
-                  }
-                } catch (e) {
-                  if (e instanceof SyntaxError) continue
-                  throw e
+                  )
                 }
+                if (json.error) {
+                  throw new Error(json.error)
+                }
+              } catch (e) {
+                if (e instanceof SyntaxError) continue
+                throw e
               }
             }
           }

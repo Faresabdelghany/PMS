@@ -1,4 +1,4 @@
-import type { ProposedAction } from "./ai"
+import type { ProposedAction } from "./ai-types"
 
 // Task actions
 import { createTask, updateTask, deleteTask, updateTaskAssignee } from "./tasks"
