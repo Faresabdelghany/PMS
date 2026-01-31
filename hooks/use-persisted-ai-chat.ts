@@ -146,32 +146,33 @@ function parseStreamedResponse(text: string): {
   let action: ProposedAction | undefined
   let suggestedActions: SuggestedAction[] | undefined
 
-  // Extract SUGGESTED_ACTIONS
-  const suggestionsMatch = content.match(/SUGGESTED_ACTIONS:\s*(\[[\s\S]*?\])(?=\s*$|\s*\n|$)/m)
+  // Extract SUGGESTED_ACTIONS - handles multi-line formatted JSON
+  // Uses greedy match to capture entire JSON array, expects at end of content
+  const suggestionsMatch = content.match(/SUGGESTED_ACTIONS:\s*(\[[\s\S]*\])\s*$/)
   if (suggestionsMatch) {
     try {
       suggestedActions = JSON.parse(suggestionsMatch[1])
-      content = content.replace(/SUGGESTED_ACTIONS:\s*\[[\s\S]*?\](?=\s*$|\s*\n|$)/m, "").trim()
-    } catch { /* ignore */ }
+      content = content.replace(/SUGGESTED_ACTIONS:\s*\[[\s\S]*\]\s*$/, "").trim()
+    } catch { /* ignore parse errors */ }
   }
 
-  // Extract ACTIONS_JSON (multiple actions)
-  const actionsMatch = content.match(/ACTIONS_JSON:\s*(\[[\s\S]*?\])(?=\s*$|\s*\n|$)/m)
+  // Extract ACTIONS_JSON (multiple actions) - handles multi-line formatted JSON
+  const actionsMatch = content.match(/ACTIONS_JSON:\s*(\[[\s\S]*\])\s*$/)
   if (actionsMatch) {
     try {
       actions = JSON.parse(actionsMatch[1])
-      content = content.replace(/ACTIONS_JSON:\s*\[[\s\S]*?\](?=\s*$|\s*\n|$)/m, "").trim()
-    } catch { /* ignore */ }
+      content = content.replace(/ACTIONS_JSON:\s*\[[\s\S]*\]\s*$/, "").trim()
+    } catch { /* ignore parse errors */ }
   }
 
-  // Extract ACTION_JSON (single action)
+  // Extract ACTION_JSON (single action) - handles multi-line formatted JSON
   if (!actions) {
-    const actionMatch = content.match(/ACTION_JSON:\s*(\{[\s\S]*?\})(?=\s*$|\s*\n|$)/m)
+    const actionMatch = content.match(/ACTION_JSON:\s*(\{[\s\S]*\})\s*$/)
     if (actionMatch) {
       try {
         action = JSON.parse(actionMatch[1])
-        content = content.replace(/ACTION_JSON:\s*\{[\s\S]*?\}(?=\s*$|\s*\n|$)/m, "").trim()
-      } catch { /* ignore */ }
+        content = content.replace(/ACTION_JSON:\s*\{[\s\S]*\}\s*$/, "").trim()
+      } catch { /* ignore parse errors */ }
     }
   }
 
