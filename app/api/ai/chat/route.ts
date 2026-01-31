@@ -1,7 +1,101 @@
 import { NextRequest } from "next/server"
 import { createApiRouteClient } from "@/lib/supabase/api-route"
-import { verifyAIConfig } from "@/lib/actions/ai"
 import { rateLimiters, checkRateLimit } from "@/lib/rate-limit/limiter"
+import { decrypt, isEncryptedFormat, migrateFromBase64 } from "@/lib/crypto"
+import type { SupabaseClient } from "@supabase/supabase-js"
+
+// =============================================================================
+// AI Config Verification (inline to avoid using cookies() from next/headers)
+// =============================================================================
+
+async function verifyAIConfigForApiRoute(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<{ data?: { apiKey: string; provider: string; model: string }; error?: string }> {
+  // Get user settings directly from database
+  const { data: settings, error: settingsError } = await (supabase as unknown as SupabaseClient)
+    .from("user_settings")
+    .select("ai_provider, ai_api_key_encrypted, ai_model_preference")
+    .eq("user_id", userId)
+    .single()
+
+  if (settingsError) {
+    if (settingsError.code === "PGRST116") {
+      return { error: "AI provider not configured. Please configure AI settings first." }
+    }
+    return { error: settingsError.message }
+  }
+
+  if (!settings?.ai_provider) {
+    return { error: "AI provider not configured. Please configure AI settings first." }
+  }
+
+  if (!settings.ai_api_key_encrypted) {
+    return { error: "AI API key not configured. Please add your API key in settings." }
+  }
+
+  // Decrypt the API key
+  let apiKey: string
+  const storedValue = settings.ai_api_key_encrypted
+
+  if (isEncryptedFormat(storedValue)) {
+    try {
+      apiKey = decrypt(storedValue)
+    } catch (err) {
+      console.error("Decryption error:", err)
+      return { error: "Failed to decrypt API key" }
+    }
+  } else {
+    // Legacy BASE64 format - try to migrate
+    const migratedValue = migrateFromBase64(storedValue)
+    if (migratedValue) {
+      // Re-encrypt and save with new format (fire and forget)
+      void (supabase as unknown as SupabaseClient)
+        .from("user_settings")
+        .update({
+          ai_api_key_encrypted: migratedValue,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", userId)
+
+      try {
+        apiKey = decrypt(migratedValue)
+      } catch (err) {
+        console.error("Decryption error after migration:", err)
+        return { error: "Failed to decrypt API key" }
+      }
+    } else {
+      // Fallback: try BASE64 decode (for very old data)
+      try {
+        apiKey = Buffer.from(storedValue, "base64").toString("utf-8")
+      } catch {
+        return { error: "Failed to decode API key" }
+      }
+    }
+  }
+
+  // Default models by provider
+  const defaultModels: Record<string, string> = {
+    openai: "gpt-4o",
+    anthropic: "claude-sonnet-4-20250514",
+    google: "gemini-2.0-flash",
+    groq: "llama-3.3-70b-versatile",
+    mistral: "mistral-large-latest",
+    xai: "grok-2-latest",
+    deepseek: "deepseek-chat",
+    openrouter: "anthropic/claude-sonnet-4",
+  }
+
+  const model = settings.ai_model_preference || defaultModels[settings.ai_provider] || "gpt-4o"
+
+  return {
+    data: {
+      apiKey,
+      provider: settings.ai_provider,
+      model,
+    },
+  }
+}
 
 // =============================================================================
 // Types - Inlined to avoid bundler issues with type imports from other modules
@@ -720,8 +814,8 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Verify AI configuration
-    const configResult = await verifyAIConfig()
+    // Verify AI configuration using the same supabase client (no cookies() usage)
+    const configResult = await verifyAIConfigForApiRoute(supabase, user.id)
     if (configResult.error) {
       return new Response(JSON.stringify({ error: configResult.error }), {
         status: 400,
