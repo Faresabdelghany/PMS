@@ -7,7 +7,7 @@ import { AnimatePresence } from "@/components/ui/motion-lazy"
 import { AIChatModal } from "./ai-chat-modal"
 import { AIChatBubble } from "./ai-chat-bubble"
 import { getAIContext } from "@/lib/actions/ai-context"
-import type { ChatContext } from "@/lib/actions/ai"
+import type { ChatContext } from "@/lib/actions/ai-types"
 
 type ChatState = "closed" | "open" | "minimized"
 

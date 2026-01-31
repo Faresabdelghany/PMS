@@ -22,7 +22,7 @@ import {
   Briefcase,
 } from "@phosphor-icons/react/dist/ssr"
 import type { Message, ActionState, MultiActionState } from "@/hooks/use-ai-chat"
-import type { ProposedAction, SuggestedAction } from "@/lib/actions/ai"
+import type { ProposedAction, SuggestedAction } from "@/lib/actions/ai-types"
 import { MarkdownContent } from "./markdown-content"
 
 // =============================================================================

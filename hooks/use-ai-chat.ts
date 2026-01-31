@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useRef, useEffect } from "react"
-import { type ChatContext, type ProposedAction, type SuggestedAction } from "@/lib/actions/ai"
+import { type ChatContext, type ProposedAction, type SuggestedAction } from "@/lib/actions/ai-types"
 import { executeAction, type ClientSideCallbacks } from "@/lib/actions/execute-ai-action"
 
 // Re-export for consumers
@@ -569,4 +569,4 @@ export function useAIChat(context: ChatContext, callbacks?: ClientSideCallbacks)
 }
 
 // Re-export ChatContext type for convenience
-export type { ChatContext } from "@/lib/actions/ai"
+export type { ChatContext } from "@/lib/actions/ai-types"

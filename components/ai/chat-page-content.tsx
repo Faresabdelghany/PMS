@@ -14,7 +14,7 @@ import { getAIContext } from "@/lib/actions/ai-context"
 import { ChatHistorySidebar } from "./chat-history-sidebar"
 import { ChatView } from "./chat-view"
 import type { ChatConversation, ChatMessage } from "@/lib/supabase/types"
-import type { ChatContext } from "@/lib/actions/ai"
+import type { ChatContext } from "@/lib/actions/ai-types"
 
 interface ChatPageContentProps {
   organizationId: string

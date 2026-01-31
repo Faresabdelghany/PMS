@@ -6,7 +6,7 @@ import {
   type ChatContext,
   type ProposedAction,
   type SuggestedAction,
-} from "@/lib/actions/ai"
+} from "@/lib/actions/ai-types"
 import {
   executeAction,
   type ClientSideCallbacks,

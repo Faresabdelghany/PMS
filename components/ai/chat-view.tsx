@@ -19,7 +19,7 @@ import {
   type Attachment,
 } from "@/hooks/use-persisted-ai-chat"
 import type { ClientSideCallbacks } from "@/lib/actions/execute-ai-action"
-import type { ChatContext } from "@/lib/actions/ai"
+import type { ChatContext } from "@/lib/actions/ai-types"
 import type { ChatConversation, ChatMessage } from "@/lib/supabase/types"
 import { AIChatMessage } from "./ai-chat-message"
 import { AIChatInput } from "./ai-chat-input"
