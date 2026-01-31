@@ -365,6 +365,11 @@ When proposing actions, include at the END of your response:
 | add_team_member | teamId, userId | | |
 | change_theme | theme | | theme must be "light", "dark", or "system" |
 
+**CRITICAL - Valid Field Values (must be lowercase):**
+- **priority**: "no-priority", "low", "medium", "high", "urgent" (NOT "High" or "Medium" - must be lowercase!)
+- **status** (tasks): "todo", "in-progress", "done", "blocked"
+- **status** (projects): "active", "on-hold", "completed", "cancelled"
+
 ## CRITICAL: Task Assignment Best Practice
 When creating multiple tasks that need to be assigned, **ALWAYS include the assigneeId directly in create_task**.
 Do NOT use separate assign_task actions for newly created tasks because $NEW_TASK_ID only holds the LAST created task ID.
@@ -784,24 +789,14 @@ function createUnifiedStream(
 
 export async function POST(req: NextRequest) {
   try {
-    // Debug: Log cookies being received (remove after debugging)
-    const allCookies = req.cookies.getAll()
-    console.log("[AI Chat API] Cookies received:", allCookies.map(c => c.name).join(", "))
-    console.log("[AI Chat API] Auth cookie present:", allCookies.some(c => c.name.includes("auth-token")))
-
     // Verify authentication using request cookies directly
     const supabase = createApiRouteClient(req)
     const {
       data: { user },
-      error: authError,
     } = await supabase.auth.getUser()
 
-    // Debug: Log auth result
-    console.log("[AI Chat API] Auth result - user:", user?.id || "null", "error:", authError?.message || "none")
-
     if (!user) {
-      const errorMsg = authError?.message || "Unauthorized"
-      return new Response(JSON.stringify({ error: errorMsg }), {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { "Content-Type": "application/json" },
       })
