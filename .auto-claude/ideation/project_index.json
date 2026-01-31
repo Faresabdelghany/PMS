@@ -53,16 +53,18 @@
         "@radix-ui/react-progress"
       ],
       "dev_dependencies": [
+        "@eslint/eslintrc",
+        "@playwright/test",
         "@tailwindcss/postcss",
         "@types/node",
         "@types/react",
         "@types/react-dom",
+        "eslint",
+        "eslint-config-next",
         "postcss",
-        "supabase",
-        "tailwindcss",
-        "tw-animate-css",
-        "typescript"
+        "tailwindcss"
       ],
+      "e2e_testing": "Playwright",
       "environment": {
         "variables": {
           "NEXT_PUBLIC_SUPABASE_URL": {
@@ -70,33 +72,54 @@
             "source": ".env.local",
             "type": "url",
             "sensitive": false,
-            "required": false
+            "required": true
           },
           "NEXT_PUBLIC_SUPABASE_ANON_KEY": {
             "value": "<REDACTED>",
             "source": ".env.local",
             "type": "string",
             "sensitive": true,
-            "required": false
+            "required": true
           },
           "SUPABASE_SERVICE_ROLE_KEY": {
             "value": "<REDACTED>",
             "source": ".env.local",
             "type": "string",
             "sensitive": true,
-            "required": false
+            "required": true
           },
           "NEXT_PUBLIC_SITE_URL": {
             "value": "http://localhost:3000",
             "source": ".env.local",
             "type": "url",
             "sensitive": false,
-            "required": false
+            "required": true
+          },
+          "TEST_USER_EMAIL": {
+            "value": "e2e-test@example.com",
+            "source": ".env.local",
+            "type": "email",
+            "sensitive": false,
+            "required": true
+          },
+          "TEST_USER_PASSWORD": {
+            "value": "<REDACTED>",
+            "source": ".env.local",
+            "type": "string",
+            "sensitive": true,
+            "required": true
+          },
+          "ENCRYPTION_KEY": {
+            "value": "<REDACTED>",
+            "source": ".env.local",
+            "type": "string",
+            "sensitive": true,
+            "required": true
           }
         },
-        "required_count": 0,
+        "required_count": 7,
         "optional_count": 0,
-        "detected_count": 4
+        "detected_count": 7
       }
     }
   },

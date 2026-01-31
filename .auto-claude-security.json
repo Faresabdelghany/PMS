@@ -132,8 +132,12 @@
     "clang",
     "clang++",
     "cmake",
+    "composer",
+    "eslint",
     "g++",
     "gcc",
+    "ipython",
+    "jupyter",
     "ld",
     "make",
     "meson",
@@ -141,11 +145,21 @@
     "ninja",
     "nm",
     "node",
+    "notebook",
     "npm",
     "npx",
     "objdump",
+    "pdb",
+    "php",
+    "pip",
+    "pip3",
+    "pipx",
+    "playwright",
     "pnpm",
     "pnpx",
+    "pudb",
+    "python",
+    "python3",
     "react-scripts",
     "strip",
     "supabase",
@@ -164,8 +178,10 @@
   "custom_commands": [],
   "detected_stack": {
     "languages": [
+      "python",
       "javascript",
       "typescript",
+      "php",
       "c"
     ],
     "package_managers": [
@@ -173,7 +189,9 @@
     ],
     "frameworks": [
       "nextjs",
-      "react"
+      "react",
+      "playwright",
+      "eslint"
     ],
     "databases": [],
     "infrastructure": [],
@@ -189,7 +207,13 @@
       "build",
       "dev",
       "lint",
-      "start"
+      "start",
+      "test:e2e",
+      "test:e2e:headed",
+      "test:e2e:debug",
+      "test:e2e:ui",
+      "test:e2e:report",
+      "test:e2e:codegen"
     ],
     "make_targets": [],
     "poetry_scripts": [],
@@ -197,6 +221,6 @@
     "shell_scripts": []
   },
   "project_dir": "/home/fares/Downloads/project-dashboard-main",
-  "created_at": "2026-01-22T20:14:23.136265",
-  "project_hash": "5a16d3080a2abf2694978d305e1afed4"
+  "created_at": "2026-01-31T18:07:17.917218",
+  "project_hash": "9fda967e96e1d355c973caee2d386eca"
 }

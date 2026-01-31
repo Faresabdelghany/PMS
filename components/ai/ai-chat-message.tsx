@@ -2,7 +2,25 @@
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Check, SpinnerGap, Warning, Paperclip, Play } from "@phosphor-icons/react/dist/ssr"
+import {
+  Check,
+  SpinnerGap,
+  Warning,
+  Paperclip,
+  Play,
+  StarFour,
+  Folder,
+  Flag,
+  Circle,
+  User,
+  Plus,
+  CheckSquare,
+  Pencil,
+  Trash,
+  Users,
+  Note,
+  Briefcase,
+} from "@phosphor-icons/react/dist/ssr"
 import type { Message, ActionState, MultiActionState } from "@/hooks/use-ai-chat"
 import type { ProposedAction } from "@/lib/actions/ai"
 
@@ -35,6 +53,150 @@ const ACTION_LABELS: Record<ProposedAction["type"], string> = {
   update_note: "Update Note",
   add_project_member: "Add Project Member",
   add_team_member: "Add Team Member",
+  change_theme: "Change Theme",
+}
+
+const ACTION_INTROS: Record<string, string> = {
+  create_task: "I'll create this task for you:",
+  create_project: "Here's the project I'll set up:",
+  create_workstream: "I'll create this workstream:",
+  create_client: "I'll add this client:",
+  create_note: "I'll create this note:",
+  update_task: "I'll make these changes:",
+  update_project: "I'll update the project:",
+  update_workstream: "I'll update this workstream:",
+  update_client: "I'll update this client:",
+  update_note: "I'll update this note:",
+  delete_task: "I'll delete this task:",
+  assign_task: "I'll assign this task:",
+  add_project_member: "I'll add this member:",
+  add_team_member: "I'll add this team member:",
+  change_theme: "I'll change the theme:",
+}
+
+const ACTION_BUTTONS: Record<string, string> = {
+  create_task: "Create task",
+  create_project: "Create project",
+  create_workstream: "Create workstream",
+  create_client: "Add client",
+  create_note: "Create note",
+  update_task: "Update",
+  update_project: "Update",
+  update_workstream: "Update",
+  update_client: "Update",
+  update_note: "Update",
+  delete_task: "Yes, delete",
+  assign_task: "Assign",
+  add_project_member: "Add member",
+  add_team_member: "Add member",
+  change_theme: "Apply",
+}
+
+// =============================================================================
+// Action Type Icon Component
+// =============================================================================
+
+function ActionTypeIcon({ type }: { type: ProposedAction["type"] }) {
+  const iconClass = "size-4 text-muted-foreground"
+
+  switch (type) {
+    case "create_task":
+    case "update_task":
+    case "assign_task":
+      return <CheckSquare className={iconClass} />
+    case "delete_task":
+      return <Trash className={iconClass} />
+    case "create_project":
+    case "update_project":
+      return <Folder className={iconClass} />
+    case "create_workstream":
+    case "update_workstream":
+      return <Briefcase className={iconClass} />
+    case "create_client":
+    case "update_client":
+      return <User className={iconClass} />
+    case "create_note":
+    case "update_note":
+      return <Note className={iconClass} />
+    case "add_project_member":
+    case "add_team_member":
+      return <Users className={iconClass} />
+    default:
+      return <Plus className={iconClass} />
+  }
+}
+
+// =============================================================================
+// Action Preview Card Component
+// =============================================================================
+
+function ActionPreviewCard({ action }: { action: ActionState }) {
+  const data = action.data
+  const title = (data.title || data.name) as string
+  const projectName = data.projectName as string | undefined
+  const priority = data.priority as string | undefined
+  const status = data.status as string | undefined
+  const assigneeName = data.assigneeName as string | undefined
+  const description = data.description as string | undefined
+  const theme = data.theme as string | undefined
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+      {title && (
+        <div className="flex items-center gap-2">
+          <ActionTypeIcon type={action.type} />
+          <span className="font-medium text-sm">{title}</span>
+        </div>
+      )}
+      {theme && !title && (
+        <div className="flex items-center gap-2">
+          <ActionTypeIcon type={action.type} />
+          <span className="font-medium text-sm capitalize">{theme} theme</span>
+        </div>
+      )}
+      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+        {projectName && (
+          <span className="inline-flex items-center gap-1">
+            <Folder className="size-3" /> {projectName}
+          </span>
+        )}
+        {priority && (
+          <span className="inline-flex items-center gap-1 capitalize">
+            <Flag className="size-3" /> {priority}
+          </span>
+        )}
+        {status && (
+          <span className="inline-flex items-center gap-1 capitalize">
+            <Circle className="size-3" /> {status.replace("-", " ")}
+          </span>
+        )}
+        {assigneeName && (
+          <span className="inline-flex items-center gap-1">
+            <User className="size-3" /> {assigneeName}
+          </span>
+        )}
+      </div>
+      {description && (
+        <p className="text-xs text-muted-foreground line-clamp-2">{description}</p>
+      )}
+    </div>
+  )
+}
+
+// =============================================================================
+// Navigation Helper
+// =============================================================================
+
+function navigateToEntity(entity: { type: string; id: string; name: string }) {
+  const urls: Record<string, string> = {
+    task: `/tasks`,
+    project: `/projects/${entity.id}`,
+    client: `/clients`,
+    workstream: `/projects`,
+    note: `/projects`,
+  }
+  const url = urls[entity.type]
+  if (url) window.location.href = url
 }
 
 // =============================================================================
@@ -44,25 +206,36 @@ const ACTION_LABELS: Record<ProposedAction["type"], string> = {
 function ActionConfirmation({
   action,
   onConfirm,
+  onSkip,
 }: {
   action: ActionState
   onConfirm?: () => void
+  onSkip?: () => void
 }) {
-  const label = ACTION_LABELS[action.type] || action.type
+  const intro = ACTION_INTROS[action.type] || "I'll do this for you:"
+  const buttonLabel = ACTION_BUTTONS[action.type] || "Confirm"
 
   // Pending state - show preview and confirm button
   if (action.status === "pending") {
     return (
-      <div className="mt-3 rounded-lg border border-border bg-muted/30 p-3">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-sm font-medium text-foreground">{label}</span>
-          <Button size="sm" onClick={onConfirm} className="h-7 text-xs">
-            Confirm
+      <div className="mt-3 space-y-3">
+        <p className="text-sm text-muted-foreground">{intro}</p>
+        <ActionPreviewCard action={action} />
+        <div className="flex items-center gap-2">
+          {onSkip && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={onSkip}
+            >
+              Skip
+            </Button>
+          )}
+          <Button size="sm" className="h-8 text-xs" onClick={onConfirm}>
+            {buttonLabel} →
           </Button>
         </div>
-        <pre className="mt-2 max-h-32 overflow-auto rounded bg-muted p-2 text-xs text-muted-foreground">
-          {JSON.stringify(action.data, null, 2)}
-        </pre>
       </div>
     )
   }
@@ -70,48 +243,49 @@ function ActionConfirmation({
   // Executing state - show spinner
   if (action.status === "executing") {
     return (
-      <div className="mt-3 flex items-center gap-2 rounded-lg border border-border bg-muted/30 p-3">
+      <div className="mt-3 flex items-center gap-2 rounded-xl border border-border bg-muted/30 p-3">
         <SpinnerGap className="size-4 animate-spin text-primary" />
-        <span className="text-sm text-muted-foreground">Executing...</span>
+        <span className="text-sm text-muted-foreground">Working on it...</span>
       </div>
     )
   }
 
-  // Success state - show checkmark and created entity info if available
+  // Success state - show checkmark and "Open" button
   if (action.status === "success") {
     return (
-      <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-900 dark:bg-green-950/30">
-        <div className="flex items-center gap-2">
-          <Check className="size-4 text-green-600 dark:text-green-400" weight="bold" />
-          <span className="text-sm text-green-700 dark:text-green-300">
-            Action completed successfully
-          </span>
-        </div>
-        {action.createdEntity && (
-          <div className="mt-2 rounded bg-green-100 p-2 dark:bg-green-900/30">
-            <p className="text-xs text-green-700 dark:text-green-300">
-              Created {action.createdEntity.type}: <strong>{action.createdEntity.name}</strong>
-            </p>
-            <p className="mt-1 font-mono text-xs text-green-600 dark:text-green-400 select-all">
-              ID: {action.createdEntity.id}
-            </p>
-            <p className="mt-1 text-xs text-green-600/80 dark:text-green-400/80">
-              (Use this ID for subsequent actions on this {action.createdEntity.type})
-            </p>
+      <div className="mt-3 rounded-xl border border-green-200 bg-green-50 p-3 dark:border-green-900/50 dark:bg-green-950/30">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Check className="size-4 text-green-600 dark:text-green-400" weight="bold" />
+            <span className="text-sm text-green-700 dark:text-green-300">
+              {action.createdEntity
+                ? `Created "${action.createdEntity.name}"`
+                : "Done!"}
+            </span>
           </div>
-        )}
+          {action.createdEntity && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs text-green-700 hover:text-green-800 dark:text-green-400"
+              onClick={() => navigateToEntity(action.createdEntity!)}
+            >
+              Open →
+            </Button>
+          )}
+        </div>
       </div>
     )
   }
 
-  // Error state - show warning and retry button
+  // Error state - amber/softer design
   if (action.status === "error") {
     return (
-      <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950/30">
+      <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/30">
         <div className="flex items-center gap-2">
-          <Warning className="size-4 text-red-600 dark:text-red-400" weight="bold" />
-          <span className="text-sm text-red-700 dark:text-red-300">
-            {action.error || "Action failed"}
+          <Warning className="size-4 text-amber-600 dark:text-amber-400" />
+          <span className="text-sm text-amber-700 dark:text-amber-300">
+            {action.error || "Something went wrong"}
           </span>
         </div>
         {onConfirm && (
@@ -121,7 +295,7 @@ function ActionConfirmation({
             onClick={onConfirm}
             className="mt-2 h-7 text-xs"
           >
-            Retry
+            Try again
           </Button>
         )}
       </div>
@@ -150,11 +324,17 @@ function MultiActionConfirmation({
   )
   const allPending = actions.every((a) => a.status === "pending")
   const hasErrors = actions.some((a) => a.status === "error")
+  const successCount = actions.filter((a) => a.status === "success").length
+
+  // Get created entity names for summary
+  const createdEntities = actions
+    .filter((a) => a.status === "success" && a.createdEntity)
+    .map((a) => a.createdEntity!)
 
   return (
     <div className="mt-3 space-y-2">
       {/* Header with Execute All button */}
-      <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 p-3">
+      <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/30 p-3">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-foreground">
             {actions.length} Actions
@@ -194,18 +374,19 @@ function MultiActionConfirmation({
         {actions.map((action, index) => {
           const label = ACTION_LABELS[action.type] || action.type
           const isCurrent = isExecuting && index === currentIndex
+          const title = (action.data.title || action.data.name) as string | undefined
 
           return (
             <div
               key={index}
               className={cn(
-                "rounded-lg border p-2.5 transition-colors",
+                "rounded-xl border p-2.5 transition-colors",
                 action.status === "pending" && "border-border bg-muted/20",
                 action.status === "executing" && "border-primary/50 bg-primary/5",
                 action.status === "success" &&
-                  "border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30",
+                  "border-green-200 bg-green-50 dark:border-green-900/50 dark:bg-green-950/30",
                 action.status === "error" &&
-                  "border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30"
+                  "border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30"
               )}
             >
               <div className="flex items-center gap-2">
@@ -220,7 +401,7 @@ function MultiActionConfirmation({
                   <Check className="size-4 text-green-600 dark:text-green-400" weight="bold" />
                 )}
                 {action.status === "error" && (
-                  <Warning className="size-4 text-red-600 dark:text-red-400" weight="bold" />
+                  <Warning className="size-4 text-amber-600 dark:text-amber-400" />
                 )}
 
                 {/* Action Label */}
@@ -230,73 +411,77 @@ function MultiActionConfirmation({
                     action.status === "pending" && "text-muted-foreground",
                     action.status === "executing" && "text-foreground",
                     action.status === "success" && "text-green-700 dark:text-green-300",
-                    action.status === "error" && "text-red-700 dark:text-red-300"
+                    action.status === "error" && "text-amber-700 dark:text-amber-300"
                   )}
                 >
                   {index + 1}. {label}
+                  {title && <span className="font-normal text-muted-foreground"> - {title}</span>}
                 </span>
 
                 {/* Show placeholder replacement indicator */}
                 {action.status === "pending" && hasPlaceholders(action.data) && (
                   <span className="text-xs text-muted-foreground">
-                    (uses previous IDs)
+                    (uses previous)
                   </span>
                 )}
               </div>
 
-              {/* Show data preview for pending/executing */}
+              {/* Show preview card for pending/executing */}
               {(action.status === "pending" || isCurrent) && (
-                <pre className="mt-1.5 max-h-20 overflow-auto rounded bg-muted p-1.5 text-xs text-muted-foreground">
-                  {JSON.stringify(action.data, null, 2)}
-                </pre>
+                <div className="mt-2">
+                  <ActionPreviewCard action={action} />
+                </div>
               )}
 
               {/* Show error message */}
               {action.status === "error" && action.error && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
                   {action.error}
                 </p>
               )}
 
               {/* Show created entity info */}
               {action.status === "success" && action.createdEntity && (
-                <p className="mt-1 text-xs text-green-600 dark:text-green-400">
-                  Created: {action.createdEntity.name} ({action.createdEntity.id})
-                </p>
+                <div className="mt-1 flex items-center justify-between">
+                  <p className="text-xs text-green-600 dark:text-green-400">
+                    Created: {action.createdEntity.name}
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs text-green-600 hover:text-green-700 dark:text-green-400 px-2"
+                    onClick={() => navigateToEntity(action.createdEntity!)}
+                  >
+                    Open →
+                  </Button>
+                </div>
               )}
             </div>
           )
         })}
       </div>
 
-      {/* Show created IDs summary if any exist */}
-      {Object.keys(createdIds).length > 0 && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-2 dark:border-blue-900 dark:bg-blue-950/30">
-          <p className="text-xs font-medium text-blue-700 dark:text-blue-300">
-            Created Resources:
-          </p>
-          <ul className="mt-1 space-y-0.5">
-            {createdIds.projectId && (
-              <li className="text-xs text-blue-600 dark:text-blue-400">
-                Project: {createdIds.projectId}
-              </li>
-            )}
-            {createdIds.workstreamId && (
-              <li className="text-xs text-blue-600 dark:text-blue-400">
-                Workstream: {createdIds.workstreamId}
-              </li>
-            )}
-            {createdIds.taskId && (
-              <li className="text-xs text-blue-600 dark:text-blue-400">
-                Task: {createdIds.taskId}
-              </li>
-            )}
-            {createdIds.clientId && (
-              <li className="text-xs text-blue-600 dark:text-blue-400">
-                Client: {createdIds.clientId}
-              </li>
-            )}
-          </ul>
+      {/* Show created entities summary */}
+      {allCompleted && createdEntities.length > 0 && (
+        <div className="rounded-xl border border-green-200 bg-green-50 p-3 dark:border-green-900/50 dark:bg-green-950/30">
+          <div className="flex items-center gap-2">
+            <Check className="size-4 text-green-600 dark:text-green-400" weight="bold" />
+            <span className="text-sm text-green-700 dark:text-green-300">
+              Created {createdEntities.length} item{createdEntities.length > 1 ? "s" : ""}
+            </span>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {createdEntities.map((entity, idx) => (
+              <button
+                key={idx}
+                onClick={() => navigateToEntity(entity)}
+                className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-1 text-xs text-green-700 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-300 dark:hover:bg-green-900"
+              >
+                {entity.name}
+                <span className="opacity-60">→</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -326,7 +511,7 @@ function AttachmentChips({ attachments }: { attachments: Message["attachments"] 
       {attachments.map((attachment) => (
         <span
           key={attachment.id}
-          className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+          className="inline-flex items-center gap-1 rounded-full bg-primary-foreground/20 px-2 py-0.5 text-xs"
         >
           <Paperclip className="size-3" />
           {attachment.name}
@@ -347,39 +532,47 @@ export function AIChatMessage({
 }: AIChatMessageProps) {
   const isUser = message.role === "user"
 
+  // User messages - right aligned with primary background
+  if (isUser) {
+    return (
+      <div className="flex w-full justify-end">
+        <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-primary text-primary-foreground px-4 py-2.5">
+          <AttachmentChips attachments={message.attachments} />
+          <div className="whitespace-pre-wrap text-sm">{message.content}</div>
+        </div>
+      </div>
+    )
+  }
+
+  // Assistant messages - left aligned with avatar
   return (
-    <div
-      className={cn(
-        "flex w-full",
-        isUser ? "justify-end" : "justify-start"
-      )}
-    >
-      <div
-        className={cn(
-          "max-w-[85%] rounded-xl px-4 py-2.5",
-          isUser
-            ? "bg-primary text-primary-foreground"
-            : "border border-border bg-muted/50"
-        )}
-      >
-        {/* Attachments */}
-        {isUser && <AttachmentChips attachments={message.attachments} />}
+    <div className="flex w-full justify-start">
+      <div className="flex items-start gap-3 max-w-[85%]">
+        <div className="flex items-center justify-center size-8 rounded-lg bg-violet-500/10 shrink-0 mt-0.5">
+          <StarFour weight="fill" className="size-4 text-violet-500" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="rounded-2xl rounded-tl-md bg-muted/50 px-4 py-3">
+            {/* Message Content */}
+            <div className="whitespace-pre-wrap text-sm">{message.content}</div>
 
-        {/* Message Content */}
-        <div className="whitespace-pre-wrap text-sm">{message.content}</div>
+            {/* Single Action Confirmation */}
+            {message.action && !message.multiAction && (
+              <ActionConfirmation
+                action={message.action}
+                onConfirm={onConfirmAction}
+              />
+            )}
 
-        {/* Single Action Confirmation (assistant messages only) */}
-        {!isUser && message.action && !message.multiAction && (
-          <ActionConfirmation action={message.action} onConfirm={onConfirmAction} />
-        )}
-
-        {/* Multi-Action Confirmation (assistant messages only) */}
-        {!isUser && message.multiAction && (
-          <MultiActionConfirmation
-            multiAction={message.multiAction}
-            onConfirmAll={onConfirmAllActions}
-          />
-        )}
+            {/* Multi-Action Confirmation */}
+            {message.multiAction && (
+              <MultiActionConfirmation
+                multiAction={message.multiAction}
+                onConfirmAll={onConfirmAllActions}
+              />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )

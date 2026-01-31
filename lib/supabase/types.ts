@@ -985,6 +985,75 @@ export interface Database {
           }
         ]
       }
+      chat_conversations: {
+        Row: {
+          id: string
+          organization_id: string
+          user_id: string
+          title: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          user_id: string
+          title?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_conversations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      chat_messages: {
+        Row: {
+          id: string
+          conversation_id: string
+          role: 'user' | 'assistant'
+          content: string
+          attachments: Json | null
+          action_data: Json | null
+          multi_action_data: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          conversation_id: string
+          role: 'user' | 'assistant'
+          content: string
+          attachments?: Json | null
+          action_data?: Json | null
+          multi_action_data?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          content?: string
+          action_data?: Json | null
+          multi_action_data?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "chat_conversations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1161,3 +1230,7 @@ export type WorkflowStatus = {
 
 export type WorkflowStatusInsert = Omit<WorkflowStatus, 'id' | 'created_at' | 'updated_at'>
 export type WorkflowStatusUpdate = Partial<Omit<WorkflowStatusInsert, 'organization_id' | 'entity_type'>>
+
+// Chat types
+export type ChatConversation = Database['public']['Tables']['chat_conversations']['Row']
+export type ChatMessage = Database['public']['Tables']['chat_messages']['Row']

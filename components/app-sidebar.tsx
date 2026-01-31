@@ -30,16 +30,16 @@ import {
   Question,
   CaretUpDown,
   SignOut,
+  Sparkle,
 } from "@phosphor-icons/react/dist/ssr"
 import { useUser } from "@/hooks/use-user"
 import { signOut } from "@/lib/actions/auth"
 import type { Project } from "@/lib/supabase/types"
 import { useCommandPalette } from "@/components/command-palette"
 import { useSettingsDialog } from "@/components/providers/settings-dialog-provider"
-import { AIChatTrigger } from "@/components/ai/ai-chat-trigger"
 
 // Navigation items defined inline (no mock data dependency)
-type NavItemId = "inbox" | "my-tasks" | "projects" | "clients" | "performance"
+type NavItemId = "inbox" | "my-tasks" | "projects" | "clients" | "chat" | "performance"
 type SidebarFooterItemId = "settings" | "templates" | "help"
 
 type NavItem = {
@@ -58,6 +58,7 @@ const navItems: NavItem[] = [
   { id: "my-tasks", label: "My task" },
   { id: "projects", label: "Projects" },
   { id: "clients", label: "Clients" },
+  { id: "chat", label: "AI Chat" },
   { id: "performance", label: "Performance" },
 ]
 
@@ -97,6 +98,11 @@ const preloadHandlers: Record<NavItemId, () => void> = {
       void import("@/components/clients-content")
     }
   },
+  chat: () => {
+    if (typeof window !== "undefined") {
+      void import("@/components/ai/chat-page-content")
+    }
+  },
   performance: () => {
     // No preload for performance page yet
   },
@@ -117,6 +123,7 @@ const navItemIcons: Record<NavItemId, React.ComponentType<{ className?: string }
   "my-tasks": CheckSquare,
   projects: Folder,
   clients: Users,
+  chat: Sparkle,
   performance: ChartBar,
 }
 
@@ -166,6 +173,7 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
     if (id === "projects") return "/"
     if (id === "inbox") return "/inbox"
     if (id === "clients") return "/clients"
+    if (id === "chat") return "/chat"
     return "#"
   }
 
@@ -181,6 +189,9 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
     }
     if (id === "clients") {
       return pathname.startsWith("/clients")
+    }
+    if (id === "chat") {
+      return pathname.startsWith("/chat")
     }
     return false
   }
@@ -280,11 +291,6 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
 
       <SidebarFooter className="border-t border-border/40 p-2">
         <SidebarMenu>
-          {/* Ask AI Button */}
-          <SidebarMenuItem>
-            <AIChatTrigger />
-          </SidebarMenuItem>
-
           {footerItems.map((item) => {
             const Icon = footerItemIcons[item.id]
 
