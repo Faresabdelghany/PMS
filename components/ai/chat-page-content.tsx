@@ -120,7 +120,9 @@ export function ChatPageContent({
 
         {/* Right: Active Chat */}
         <div className="flex-1 flex flex-col min-h-0">
+          {/* key prop forces remount when conversation changes, ensuring fresh state */}
           <ChatView
+            key={conversationId ?? "new-chat"}
             organizationId={organizationId}
             conversationId={conversationId}
             conversation={conversation}
