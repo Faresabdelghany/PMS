@@ -2,10 +2,8 @@ import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
 export async function proxy(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
+  let supabaseResponse = NextResponse.next({
+    request,
   })
 
   const supabase = createServerClient(
@@ -17,85 +15,39 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          )
-          response = NextResponse.next({
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({
             request,
           })
           cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, options)
           )
         },
       },
     }
   )
 
-  // Refresh session if expired
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // IMPORTANT: Do not run code between createServerClient and
+  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
+  // issues with users being randomly logged out.
 
-  const isAuthPage =
-    request.nextUrl.pathname.startsWith("/login") ||
-    request.nextUrl.pathname.startsWith("/signup") ||
-    request.nextUrl.pathname.startsWith("/forgot-password") ||
-    request.nextUrl.pathname.startsWith("/reset-password")
+  // Refreshing the auth token
+  await supabase.auth.getUser()
 
-  const isPublicPage =
-    request.nextUrl.pathname.startsWith("/auth/callback") ||
-    request.nextUrl.pathname.startsWith("/invite")
+  // IMPORTANT: You *must* return the supabaseResponse object as it is.
+  // If you're creating a new response object with NextResponse.next() make sure to:
+  // 1. Pass the request in it, like so:
+  //    const myNewResponse = NextResponse.next({ request })
+  // 2. Copy over the cookies, like so:
+  //    myNewResponse.cookies.setAll(supabaseResponse.cookies.getAll())
+  // 3. Change the myNewResponse object to fit your needs, but avoid changing
+  //    the cookies!
+  // 4. Finally:
+  //    return myNewResponse
+  // If this is not done, you may be causing the browser and server to go out
+  // of sync and terminate the user's session prematurely!
 
-  const isOnboardingPage = request.nextUrl.pathname.startsWith("/onboarding")
-
-  // If user is not logged in and trying to access protected routes
-  if (!user && !isAuthPage && !isPublicPage) {
-    const url = request.nextUrl.clone()
-    url.pathname = "/login"
-    return NextResponse.redirect(url)
-  }
-
-  // If user is logged in and trying to access auth pages
-  if (user && isAuthPage) {
-    const url = request.nextUrl.clone()
-    url.pathname = "/"
-    return NextResponse.redirect(url)
-  }
-
-  // For authenticated users, check if they have an organization
-  // (Skip this check on onboarding and api routes)
-  // Use cookie cache to avoid repeated database queries
-  if (user && !isOnboardingPage && !isAuthPage && !isPublicPage) {
-    const hasOrgCookie = request.cookies.get("has_organization")
-
-    // Only query database if cookie doesn't exist
-    if (!hasOrgCookie) {
-      const { data: membership } = await supabase
-        .from("organization_members")
-        .select("organization_id")
-        .eq("user_id", user.id)
-        .limit(1)
-        .single()
-
-      // If user has no organization, redirect to onboarding
-      if (!membership) {
-        const url = request.nextUrl.clone()
-        url.pathname = "/onboarding"
-        return NextResponse.redirect(url)
-      }
-
-      // Cache the organization membership status for 5 minutes
-      response.cookies.set("has_organization", "true", {
-        path: "/",
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 300, // 5 minutes
-      })
-    }
-  }
-
-  return response
+  return supabaseResponse
 }
 
 export const config = {
@@ -105,7 +57,8 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public files (images, etc)
+     * - public folder
+     * Feel free to modify this pattern to include more paths.
      */
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
