@@ -221,14 +221,20 @@ export function usePersistedAIChat({
           attachments: attachments,
         })
 
-        // Update local message ID with DB-assigned ID
-        if (userMsgResult.data) {
-          const dbId = userMsgResult.data.id
-          setMessages((prev) =>
-            prev.map((m) => (m.id === userMessage.id ? { ...m, id: dbId } : m))
-          )
-          userMessage.id = dbId
+        // Handle message save failure
+        if (userMsgResult.error || !userMsgResult.data) {
+          setError(userMsgResult.error || "Failed to save message")
+          setMessages((prev) => prev.filter((m) => m.id !== userMessage.id))
+          setIsLoading(false)
+          return
         }
+
+        // Update local message ID with DB-assigned ID
+        const dbId = userMsgResult.data.id
+        setMessages((prev) =>
+          prev.map((m) => (m.id === userMessage.id ? { ...m, id: dbId } : m))
+        )
+        userMessage.id = dbId
 
         // 4. Call AI
         const chatMessages = [...messagesRef.current].map((m) => ({
