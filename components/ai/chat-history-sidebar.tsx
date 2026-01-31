@@ -109,7 +109,7 @@ export function ChatHistorySidebar({
     if (!searchQuery.trim()) return conversations
     const query = searchQuery.toLowerCase()
     return conversations.filter((c) =>
-      c.title.toLowerCase().includes(query)
+      c.title?.toLowerCase().includes(query)
     )
   }, [conversations, searchQuery])
 

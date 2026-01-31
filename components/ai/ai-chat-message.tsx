@@ -131,8 +131,8 @@ function ActionTypeIcon({ type }: { type: ProposedAction["type"] }) {
 // =============================================================================
 
 function ActionPreviewCard({ action }: { action: ActionState }) {
-  const data = action.data
-  const title = (data.title || data.name) as string
+  const data = action.data || {}
+  const title = (data.title || data.name) as string | undefined
   const projectName = data.projectName as string | undefined
   const priority = data.priority as string | undefined
   const status = data.status as string | undefined
@@ -374,7 +374,7 @@ function MultiActionConfirmation({
         {actions.map((action, index) => {
           const label = ACTION_LABELS[action.type] || action.type
           const isCurrent = isExecuting && index === currentIndex
-          const title = (action.data.title || action.data.name) as string | undefined
+          const title = (action.data?.title || action.data?.name) as string | undefined
 
           return (
             <div
