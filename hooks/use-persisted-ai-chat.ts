@@ -1,12 +1,11 @@
 "use client"
 
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
-  sendChatMessage,
   type ChatContext,
-  type ChatResponse,
   type ProposedAction,
+  type SuggestedAction,
 } from "@/lib/actions/ai"
 import {
   executeAction,
@@ -61,6 +60,7 @@ export interface Message {
   attachments?: Attachment[]
   action?: ActionState
   multiAction?: MultiActionState
+  suggestedActions?: SuggestedAction[]
   timestamp: Date
 }
 
@@ -75,11 +75,13 @@ export interface UsePersistedAIChatOptions {
 export interface UsePersistedAIChatReturn {
   messages: Message[]
   isLoading: boolean
+  isStreaming: boolean
   error: string | null
   currentConversationId: string | null
   sendMessage: (content: string, attachments?: Attachment[]) => Promise<void>
   confirmAction: (messageId: string) => Promise<void>
   confirmAllActions: (messageId: string) => Promise<void>
+  stopGeneration: () => void
   clearChat: () => Promise<void>
 }
 
@@ -133,6 +135,50 @@ function dbMessageToLocal(dbMsg: ChatMessage): Message {
   }
 }
 
+// Parse actions and suggestions from completed streamed text
+function parseStreamedResponse(text: string): {
+  content: string
+  actions?: ProposedAction[]
+  action?: ProposedAction
+  suggestedActions?: SuggestedAction[]
+} {
+  let content = text
+  let actions: ProposedAction[] | undefined
+  let action: ProposedAction | undefined
+  let suggestedActions: SuggestedAction[] | undefined
+
+  // Extract SUGGESTED_ACTIONS
+  const suggestionsMatch = content.match(/SUGGESTED_ACTIONS:\s*(\[[\s\S]*?\])(?=\s*$|\s*\n|$)/m)
+  if (suggestionsMatch) {
+    try {
+      suggestedActions = JSON.parse(suggestionsMatch[1])
+      content = content.replace(/SUGGESTED_ACTIONS:\s*\[[\s\S]*?\](?=\s*$|\s*\n|$)/m, "").trim()
+    } catch { /* ignore */ }
+  }
+
+  // Extract ACTIONS_JSON (multiple actions)
+  const actionsMatch = content.match(/ACTIONS_JSON:\s*(\[[\s\S]*?\])(?=\s*$|\s*\n|$)/m)
+  if (actionsMatch) {
+    try {
+      actions = JSON.parse(actionsMatch[1])
+      content = content.replace(/ACTIONS_JSON:\s*\[[\s\S]*?\](?=\s*$|\s*\n|$)/m, "").trim()
+    } catch { /* ignore */ }
+  }
+
+  // Extract ACTION_JSON (single action)
+  if (!actions) {
+    const actionMatch = content.match(/ACTION_JSON:\s*(\{[\s\S]*?\})(?=\s*$|\s*\n|$)/m)
+    if (actionMatch) {
+      try {
+        action = JSON.parse(actionMatch[1])
+        content = content.replace(/ACTION_JSON:\s*\{[\s\S]*?\}(?=\s*$|\s*\n|$)/m, "").trim()
+      } catch { /* ignore */ }
+    }
+  }
+
+  return { content, actions, action, suggestedActions }
+}
+
 function generateTitleFromContent(content: string): string {
   const maxLength = 50
   if (content.length <= maxLength) return content
@@ -159,6 +205,7 @@ export function usePersistedAIChat({
     initialMessages.map(dbMessageToLocal)
   )
   const [isLoading, setIsLoading] = useState(false)
+  const [isStreaming, setIsStreaming] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(
     conversationId
@@ -166,6 +213,22 @@ export function usePersistedAIChat({
 
   // Ref to access current messages synchronously
   const messagesRef = useRef<Message[]>(messages)
+
+  // AbortController for stopping generation
+  const abortControllerRef = useRef<AbortController | null>(null)
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort()
+    }
+  }, [])
+
+  const stopGeneration = useCallback(() => {
+    abortControllerRef.current?.abort()
+    setIsStreaming(false)
+    setIsLoading(false)
+  }, [])
   messagesRef.current = messages
 
   // Ref to track current conversation ID synchronously
@@ -234,7 +297,7 @@ export function usePersistedAIChat({
         )
         userMessage.id = dbId
 
-        // 4. Call AI
+        // 4. Prepare for streaming AI response
         const chatMessages = [...messagesRef.current].map((m) => ({
           role: m.role,
           content: m.content,
@@ -248,30 +311,95 @@ export function usePersistedAIChat({
           })),
         }
 
-        const aiResult = await sendChatMessage(chatMessages, contextWithAttachments)
+        // Create assistant message placeholder for streaming
+        const assistantMessageId = generateId()
+        const assistantMessage: Message = {
+          id: assistantMessageId,
+          role: "assistant",
+          content: "",
+          timestamp: new Date(),
+        }
+        setMessages((prev) => [...prev, assistantMessage])
 
-        if (aiResult.error) {
-          setError(aiResult.error)
-          // Remove user message on AI error
-          setMessages((prev) => prev.filter((m) => m.id !== userMessage.id))
-          setIsLoading(false)
-          return
+        // Create AbortController for this request
+        abortControllerRef.current = new AbortController()
+
+        // 5. Stream from API
+        const response = await fetch("/api/ai/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: chatMessages,
+            context: contextWithAttachments,
+          }),
+          signal: abortControllerRef.current.signal,
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Failed to get AI response")
         }
 
-        const response = aiResult.data as ChatResponse
+        setIsStreaming(true)
+        setIsLoading(false)
 
-        // 5. Create assistant message
-        const assistantMessage: Message = {
-          id: generateId(),
-          role: "assistant",
-          content: response.content,
-          timestamp: new Date(),
+        const reader = response.body?.getReader()
+        const decoder = new TextDecoder()
+        let fullContent = ""
+
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+
+            const chunk = decoder.decode(value, { stream: true })
+            const lines = chunk.split("\n")
+
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                const data = line.slice(6)
+                if (data === "[DONE]") continue
+
+                try {
+                  const json = JSON.parse(data)
+                  if (json.text) {
+                    fullContent += json.text
+                    // Update message content progressively
+                    setMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === assistantMessageId
+                          ? { ...m, content: fullContent }
+                          : m
+                      )
+                    )
+                  }
+                  if (json.error) {
+                    throw new Error(json.error)
+                  }
+                } catch (e) {
+                  if (e instanceof SyntaxError) continue
+                  throw e
+                }
+              }
+            }
+          }
+        }
+
+        setIsStreaming(false)
+
+        // Parse completed response for actions and suggestions
+        const parsed = parseStreamedResponse(fullContent)
+
+        // Update final message with parsed content and any actions
+        let finalMessage: Message = {
+          ...assistantMessage,
+          content: parsed.content,
         }
 
         // Handle multiple actions
-        if (response.actions && response.actions.length > 0) {
-          assistantMessage.multiAction = {
-            actions: response.actions.map((a) => ({
+        if (parsed.actions && parsed.actions.length > 0) {
+          finalMessage.multiAction = {
+            actions: parsed.actions.map((a) => ({
               type: a.type,
               data: a.data,
               status: "pending" as ActionStatus,
@@ -281,32 +409,40 @@ export function usePersistedAIChat({
             createdIds: {},
           }
         }
-        // Handle single action (legacy)
-        else if (response.action) {
-          assistantMessage.action = {
-            type: response.action.type,
-            data: response.action.data,
+        // Handle single action
+        else if (parsed.action) {
+          finalMessage.action = {
+            type: parsed.action.type,
+            data: parsed.action.data,
             status: "pending",
           }
         }
 
-        // Add to local state
-        setMessages((prev) => [...prev, assistantMessage])
+        // Handle suggested actions
+        if (parsed.suggestedActions && parsed.suggestedActions.length > 0) {
+          finalMessage.suggestedActions = parsed.suggestedActions
+        }
+
+        // Update local state with final parsed message
+        setMessages((prev) =>
+          prev.map((m) => (m.id === assistantMessageId ? finalMessage : m))
+        )
 
         // 6. Save assistant message to DB
         const assistantMsgResult = await addMessage(convId, {
           role: "assistant",
-          content: response.content,
-          action_data: assistantMessage.action,
-          multi_action_data: assistantMessage.multiAction,
+          content: parsed.content,
+          action_data: finalMessage.action,
+          multi_action_data: finalMessage.multiAction,
         })
 
         // Update local message ID with DB-assigned ID
         if (assistantMsgResult.data) {
-          const dbId = assistantMsgResult.data.id
+          const dbAssistantId = assistantMsgResult.data.id
           setMessages((prev) =>
-            prev.map((m) => (m.id === assistantMessage.id ? { ...m, id: dbId } : m))
+            prev.map((m) => (m.id === assistantMessageId ? { ...m, id: dbAssistantId } : m))
           )
+          finalMessage.id = dbAssistantId
         }
 
         // Update URL after messages are saved (only for new conversations)
@@ -314,9 +450,15 @@ export function usePersistedAIChat({
           router.replace(`/chat/${convId}`, { scroll: false })
         }
       } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") {
+          // User stopped generation, don't show error
+          return
+        }
         setError(err instanceof Error ? err.message : "Failed to send message")
       } finally {
+        setIsStreaming(false)
         setIsLoading(false)
+        abortControllerRef.current = null
       }
     },
     [organizationId, context, router]
@@ -586,11 +728,13 @@ export function usePersistedAIChat({
   return {
     messages,
     isLoading,
+    isStreaming,
     error,
     currentConversationId,
     sendMessage,
     confirmAction,
     confirmAllActions,
+    stopGeneration,
     clearChat,
   }
 }

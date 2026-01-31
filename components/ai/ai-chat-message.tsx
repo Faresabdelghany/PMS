@@ -22,7 +22,8 @@ import {
   Briefcase,
 } from "@phosphor-icons/react/dist/ssr"
 import type { Message, ActionState, MultiActionState } from "@/hooks/use-ai-chat"
-import type { ProposedAction } from "@/lib/actions/ai"
+import type { ProposedAction, SuggestedAction } from "@/lib/actions/ai"
+import { MarkdownContent } from "./markdown-content"
 
 // =============================================================================
 // Types
@@ -32,6 +33,7 @@ interface AIChatMessageProps {
   message: Message
   onConfirmAction?: () => void
   onConfirmAllActions?: () => void
+  onSendSuggestion?: (prompt: string) => void
 }
 
 // =============================================================================
@@ -522,6 +524,40 @@ function AttachmentChips({ attachments }: { attachments: Message["attachments"] 
 }
 
 // =============================================================================
+// Suggested Actions Component
+// =============================================================================
+
+interface SuggestedActionsProps {
+  suggestions: SuggestedAction[]
+  onSelect?: (prompt: string) => void
+}
+
+function SuggestedActions({ suggestions, onSelect }: SuggestedActionsProps) {
+  if (!onSelect) return null
+
+  return (
+    <div className="mt-3 flex flex-wrap gap-2">
+      {suggestions.slice(0, 3).map((suggestion, index) => (
+        <button
+          key={index}
+          onClick={() => onSelect(suggestion.prompt)}
+          className={cn(
+            "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full",
+            "text-xs font-medium",
+            "bg-primary/10 text-primary",
+            "hover:bg-primary/20 transition-colors",
+            "border border-primary/20"
+          )}
+        >
+          <Plus className="size-3" />
+          {suggestion.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// =============================================================================
 // Main Component
 // =============================================================================
 
@@ -529,6 +565,7 @@ export function AIChatMessage({
   message,
   onConfirmAction,
   onConfirmAllActions,
+  onSendSuggestion,
 }: AIChatMessageProps) {
   const isUser = message.role === "user"
 
@@ -553,8 +590,8 @@ export function AIChatMessage({
         </div>
         <div className="flex-1 min-w-0">
           <div className="rounded-2xl rounded-tl-md bg-muted/50 px-4 py-3">
-            {/* Message Content */}
-            <div className="whitespace-pre-wrap text-sm">{message.content}</div>
+            {/* Message Content with Markdown */}
+            <MarkdownContent content={message.content} className="text-sm" />
 
             {/* Single Action Confirmation */}
             {message.action && !message.multiAction && (
@@ -569,6 +606,14 @@ export function AIChatMessage({
               <MultiActionConfirmation
                 multiAction={message.multiAction}
                 onConfirmAll={onConfirmAllActions}
+              />
+            )}
+
+            {/* Suggested Follow-up Actions */}
+            {message.suggestedActions && message.suggestedActions.length > 0 && (
+              <SuggestedActions
+                suggestions={message.suggestedActions}
+                onSelect={onSendSuggestion}
               />
             )}
           </div>

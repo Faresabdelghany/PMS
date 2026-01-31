@@ -121,10 +121,12 @@ export function ChatView({
   const {
     messages,
     isLoading,
+    isStreaming,
     error,
     sendMessage,
     confirmAction,
     confirmAllActions,
+    stopGeneration,
     clearChat,
   } = usePersistedAIChat({
     organizationId,
@@ -267,20 +269,31 @@ export function ChatView({
                       ? () => confirmAllActions(message.id)
                       : undefined
                   }
+                  onSendSuggestion={(prompt) => handleSendMessage(prompt)}
                 />
               ))}
 
-              {/* Loading indicator - bouncing dots */}
-              {isLoading && (
-                <div className="flex items-start gap-3">
+              {/* Loading/Streaming indicator */}
+              {(isLoading || isStreaming) && (
+                <div className="flex items-center gap-3">
                   <div className="flex items-center justify-center size-8 rounded-lg bg-violet-500/10 shrink-0">
                     <StarFour weight="fill" className="size-4 text-violet-500" />
                   </div>
-                  <div className="flex items-center gap-1.5 rounded-2xl bg-muted/50 px-4 py-3">
-                    <span className="size-2 rounded-full bg-violet-400 animate-bounce [animation-delay:-0.3s]" />
-                    <span className="size-2 rounded-full bg-violet-400 animate-bounce [animation-delay:-0.15s]" />
-                    <span className="size-2 rounded-full bg-violet-400 animate-bounce" />
-                  </div>
+                  {isLoading && !isStreaming ? (
+                    <div className="flex items-center gap-1.5 rounded-2xl bg-muted/50 px-4 py-3">
+                      <span className="size-2 rounded-full bg-violet-400 animate-bounce [animation-delay:-0.3s]" />
+                      <span className="size-2 rounded-full bg-violet-400 animate-bounce [animation-delay:-0.15s]" />
+                      <span className="size-2 rounded-full bg-violet-400 animate-bounce" />
+                    </div>
+                  ) : (
+                    <button
+                      onClick={stopGeneration}
+                      className="flex items-center gap-2 rounded-full bg-muted/50 px-4 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors"
+                    >
+                      <span className="size-2 rounded-full bg-violet-400 animate-pulse" />
+                      Stop generating
+                    </button>
+                  )}
                 </div>
               )}
 

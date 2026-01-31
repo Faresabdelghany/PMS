@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useCallback, useRef } from "react"
-import { sendChatMessage, type ChatContext, type ChatResponse, type ProposedAction } from "@/lib/actions/ai"
+import { useState, useCallback, useRef, useEffect } from "react"
+import { type ChatContext, type ProposedAction, type SuggestedAction } from "@/lib/actions/ai"
 import { executeAction, type ClientSideCallbacks } from "@/lib/actions/execute-ai-action"
 
 // Re-export for consumers
@@ -49,16 +49,19 @@ export interface Message {
   attachments?: Attachment[]
   action?: ActionState           // Single action (legacy)
   multiAction?: MultiActionState // Multiple actions
+  suggestedActions?: SuggestedAction[] // Follow-up suggestions
   timestamp: Date
 }
 
 export interface UseAIChatReturn {
   messages: Message[]
   isLoading: boolean
+  isStreaming: boolean
   error: string | null
   sendMessage: (content: string, attachments?: Attachment[]) => Promise<void>
   confirmAction: (messageId: string) => Promise<void>
   confirmAllActions: (messageId: string) => Promise<void>
+  stopGeneration: () => void
   clearChat: () => void
 }
 
@@ -74,14 +77,75 @@ function generateId(): string {
 // Hook
 // =============================================================================
 
+// Parse actions and suggestions from completed text
+function parseStreamedResponse(text: string): {
+  content: string
+  actions?: ProposedAction[]
+  action?: ProposedAction
+  suggestedActions?: SuggestedAction[]
+} {
+  let content = text
+  let actions: ProposedAction[] | undefined
+  let action: ProposedAction | undefined
+  let suggestedActions: SuggestedAction[] | undefined
+
+  // Extract SUGGESTED_ACTIONS
+  const suggestionsMatch = content.match(/SUGGESTED_ACTIONS:\s*(\[[\s\S]*?\])(?=\s*$|\s*\n|$)/m)
+  if (suggestionsMatch) {
+    try {
+      suggestedActions = JSON.parse(suggestionsMatch[1])
+      content = content.replace(/SUGGESTED_ACTIONS:\s*\[[\s\S]*?\](?=\s*$|\s*\n|$)/m, "").trim()
+    } catch { /* ignore */ }
+  }
+
+  // Extract ACTIONS_JSON (multiple actions)
+  const actionsMatch = content.match(/ACTIONS_JSON:\s*(\[[\s\S]*?\])(?=\s*$|\s*\n|$)/m)
+  if (actionsMatch) {
+    try {
+      actions = JSON.parse(actionsMatch[1])
+      content = content.replace(/ACTIONS_JSON:\s*\[[\s\S]*?\](?=\s*$|\s*\n|$)/m, "").trim()
+    } catch { /* ignore */ }
+  }
+
+  // Extract ACTION_JSON (single action)
+  if (!actions) {
+    const actionMatch = content.match(/ACTION_JSON:\s*(\{[\s\S]*?\})(?=\s*$|\s*\n|$)/m)
+    if (actionMatch) {
+      try {
+        action = JSON.parse(actionMatch[1])
+        content = content.replace(/ACTION_JSON:\s*\{[\s\S]*?\}(?=\s*$|\s*\n|$)/m, "").trim()
+      } catch { /* ignore */ }
+    }
+  }
+
+  return { content, actions, action, suggestedActions }
+}
+
 export function useAIChat(context: ChatContext, callbacks?: ClientSideCallbacks): UseAIChatReturn {
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isStreaming, setIsStreaming] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Ref to access current messages synchronously (React 18 batching workaround)
   const messagesRef = useRef<Message[]>([])
   messagesRef.current = messages
+
+  // AbortController for stopping generation
+  const abortControllerRef = useRef<AbortController | null>(null)
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort()
+    }
+  }, [])
+
+  const stopGeneration = useCallback(() => {
+    abortControllerRef.current?.abort()
+    setIsStreaming(false)
+    setIsLoading(false)
+  }, [])
 
   const sendMessage = useCallback(
     async (content: string, attachments?: Attachment[]) => {
@@ -99,8 +163,18 @@ export function useAIChat(context: ChatContext, callbacks?: ClientSideCallbacks)
 
       setMessages((prev) => [...prev, userMessage])
 
+      // Create assistant message placeholder for streaming
+      const assistantMessageId = generateId()
+      const assistantMessage: Message = {
+        id: assistantMessageId,
+        role: "assistant",
+        content: "",
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, assistantMessage])
+
       try {
-        // Build chat messages for API (just content and role)
+        // Build chat messages for API
         const chatMessages = [...messages, userMessage].map((m) => ({
           role: m.role,
           content: m.content,
@@ -115,55 +189,127 @@ export function useAIChat(context: ChatContext, callbacks?: ClientSideCallbacks)
           })),
         }
 
-        // Send to AI
-        const result = await sendChatMessage(chatMessages, contextWithAttachments)
+        // Create AbortController for this request
+        abortControllerRef.current = new AbortController()
 
-        if (result.error) {
-          setError(result.error)
-          // Remove user message on error
-          setMessages((prev) => prev.filter((m) => m.id !== userMessage.id))
+        // Stream from API
+        const response = await fetch("/api/ai/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: chatMessages,
+            context: contextWithAttachments,
+          }),
+          signal: abortControllerRef.current.signal,
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Failed to get AI response")
+        }
+
+        setIsStreaming(true)
+        setIsLoading(false)
+
+        const reader = response.body?.getReader()
+        const decoder = new TextDecoder()
+        let fullContent = ""
+
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+
+            const chunk = decoder.decode(value, { stream: true })
+            const lines = chunk.split("\n")
+
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                const data = line.slice(6)
+                if (data === "[DONE]") continue
+
+                try {
+                  const json = JSON.parse(data)
+                  if (json.text) {
+                    fullContent += json.text
+                    // Update message content progressively
+                    setMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === assistantMessageId
+                          ? { ...m, content: fullContent }
+                          : m
+                      )
+                    )
+                  }
+                  if (json.error) {
+                    throw new Error(json.error)
+                  }
+                } catch (e) {
+                  if (e instanceof SyntaxError) continue // Skip malformed JSON
+                  throw e
+                }
+              }
+            }
+          }
+        }
+
+        // Parse completed response for actions and suggestions
+        const parsed = parseStreamedResponse(fullContent)
+
+        // Update final message with parsed content and any actions
+        setMessages((prev) =>
+          prev.map((m) => {
+            if (m.id !== assistantMessageId) return m
+
+            const updatedMessage: Message = {
+              ...m,
+              content: parsed.content,
+            }
+
+            // Handle multiple actions
+            if (parsed.actions && parsed.actions.length > 0) {
+              updatedMessage.multiAction = {
+                actions: parsed.actions.map((a) => ({
+                  type: a.type,
+                  data: a.data,
+                  status: "pending" as ActionStatus,
+                })),
+                currentIndex: 0,
+                isExecuting: false,
+                createdIds: {},
+              }
+            }
+            // Handle single action
+            else if (parsed.action) {
+              updatedMessage.action = {
+                type: parsed.action.type,
+                data: parsed.action.data,
+                status: "pending",
+              }
+            }
+
+            // Handle suggested actions
+            if (parsed.suggestedActions && parsed.suggestedActions.length > 0) {
+              updatedMessage.suggestedActions = parsed.suggestedActions
+            }
+
+            return updatedMessage
+          })
+        )
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") {
+          // User stopped generation, don't show error
           return
         }
-
-        const response = result.data as ChatResponse
-
-        // Create assistant message
-        const assistantMessage: Message = {
-          id: generateId(),
-          role: "assistant",
-          content: response.content,
-          timestamp: new Date(),
-        }
-
-        // Handle multiple actions
-        if (response.actions && response.actions.length > 0) {
-          assistantMessage.multiAction = {
-            actions: response.actions.map(a => ({
-              type: a.type,
-              data: a.data,
-              status: "pending" as ActionStatus,
-            })),
-            currentIndex: 0,
-            isExecuting: false,
-            createdIds: {},
-          }
-        }
-        // Handle single action (legacy support)
-        else if (response.action) {
-          assistantMessage.action = {
-            type: response.action.type,
-            data: response.action.data,
-            status: "pending",
-          }
-        }
-
-        setMessages((prev) => [...prev, assistantMessage])
-      } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to send message")
-        // Remove user message on error
-        setMessages((prev) => prev.filter((m) => m.id !== userMessage.id))
+        // Remove both messages on error
+        setMessages((prev) =>
+          prev.filter((m) => m.id !== userMessage.id && m.id !== assistantMessageId)
+        )
       } finally {
+        setIsStreaming(false)
         setIsLoading(false)
+        abortControllerRef.current = null
       }
     },
     [context, messages]
@@ -412,10 +558,12 @@ export function useAIChat(context: ChatContext, callbacks?: ClientSideCallbacks)
   return {
     messages,
     isLoading,
+    isStreaming,
     error,
     sendMessage,
     confirmAction,
     confirmAllActions,
+    stopGeneration,
     clearChat,
   }
 }

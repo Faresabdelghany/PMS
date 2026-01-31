@@ -8,7 +8,79 @@ import { getTeams } from "./teams"
 import { getInboxItems } from "./inbox"
 import { getMyTasks } from "./tasks"
 import type { ActionResult } from "./types"
-import type { ChatContext } from "./ai"
+import type { ChatContext, WorkloadInsights } from "./ai"
+
+/**
+ * Calculates workload insights from user tasks for AI context.
+ * Helps the AI understand user's current workload and suggest helpful actions.
+ */
+function calculateWorkloadInsights(
+  tasks: { status: string; priority: string; dueDate?: string }[]
+): WorkloadInsights {
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const endOfWeek = new Date(today)
+  endOfWeek.setDate(today.getDate() + (7 - today.getDay())) // End of current week (Sunday)
+
+  // Filter to only active tasks (not completed or cancelled)
+  const activeTasks = tasks.filter(
+    t => !["completed", "done", "cancelled", "archived"].includes(t.status.toLowerCase())
+  )
+
+  let overdueTasks = 0
+  let dueToday = 0
+  let dueThisWeek = 0
+  let oldestOverdueDays = 0
+
+  for (const task of activeTasks) {
+    if (task.dueDate) {
+      const dueDate = new Date(task.dueDate)
+      const dueDateOnly = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate())
+
+      if (dueDateOnly < today) {
+        overdueTasks++
+        const daysDiff = Math.floor((today.getTime() - dueDateOnly.getTime()) / (1000 * 60 * 60 * 24))
+        if (daysDiff > oldestOverdueDays) {
+          oldestOverdueDays = daysDiff
+        }
+      } else if (dueDateOnly.getTime() === today.getTime()) {
+        dueToday++
+      } else if (dueDateOnly <= endOfWeek) {
+        dueThisWeek++
+      }
+    }
+  }
+
+  const completedTasks = tasks.filter(
+    t => ["completed", "done"].includes(t.status.toLowerCase())
+  ).length
+
+  const inProgressTasks = tasks.filter(
+    t => ["in_progress", "in progress", "active"].includes(t.status.toLowerCase())
+  ).length
+
+  const highPriorityTasks = activeTasks.filter(
+    t => t.priority.toLowerCase() === "high"
+  ).length
+
+  const urgentTasks = activeTasks.filter(
+    t => t.priority.toLowerCase() === "urgent"
+  ).length
+
+  return {
+    totalTasks: tasks.length,
+    completedTasks,
+    inProgressTasks,
+    overdueTasks,
+    dueToday,
+    dueThisWeek,
+    highPriorityTasks,
+    urgentTasks,
+    hasUrgentOverdue: oldestOverdueDays > 3,
+    isOverloaded: activeTasks.length > 15,
+    oldestOverdueDays: overdueTasks > 0 ? oldestOverdueDays : undefined,
+  }
+}
 
 /**
  * Fetches all application data needed for AI chat context.
@@ -69,11 +141,12 @@ export async function getAIContext(): Promise<ActionResult<ChatContext>> {
           id: c.id,
           name: c.name,
           status: c.status || "active",
+          projectCount: 0, // Project count not fetched in basic query
         })),
         teams: (teamsResult.data || []).map(t => ({
           id: t.id,
           name: t.name,
-          memberCount: t.member_count || 0,
+          memberCount: 0, // Member count not available in basic teams query
         })),
         members: (membersResult.data || []).map(m => ({
           id: m.user_id,
@@ -92,11 +165,19 @@ export async function getAIContext(): Promise<ActionResult<ChatContext>> {
         })),
         inbox: (inboxResult.data || []).map(i => ({
           id: i.id,
-          type: i.type,
+          type: (i as { type?: string }).type || "notification",
           title: i.title,
-          isRead: i.is_read,
+          read: i.is_read,
           createdAt: i.created_at,
         })),
+        // Calculate workload insights for AI to understand user's situation
+        workloadInsights: calculateWorkloadInsights(
+          (userTasksResult.data || []).map(t => ({
+            status: t.status,
+            priority: t.priority,
+            dueDate: t.end_date || undefined,
+          }))
+        ),
       },
     }
 

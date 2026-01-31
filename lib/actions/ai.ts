@@ -31,8 +31,8 @@ export type AIGenerationResult = {
   tokensUsed?: number
 }
 
-// Verify AI is configured
-async function verifyAIConfig(): Promise<
+// Verify AI is configured (exported for streaming API route)
+export async function verifyAIConfig(): Promise<
   ActionResult<{ apiKey: string; provider: string; model: string }>
 > {
   const settingsResult = await getAISettings()
@@ -733,6 +733,20 @@ export interface ChatMessage {
   content: string
 }
 
+export interface WorkloadInsights {
+  totalTasks: number
+  completedTasks: number
+  inProgressTasks: number
+  overdueTasks: number
+  dueToday: number
+  dueThisWeek: number
+  highPriorityTasks: number
+  urgentTasks: number
+  hasUrgentOverdue: boolean  // Overdue by more than 3 days
+  isOverloaded: boolean      // More than 15 active tasks
+  oldestOverdueDays?: number // Days since oldest overdue task
+}
+
 export interface ChatContext {
   pageType: "projects_list" | "project_detail" | "my_tasks" | "clients_list" | "client_detail" | "settings" | "inbox" | "other"
   projectId?: string
@@ -747,6 +761,7 @@ export interface ChatContext {
     members: { id: string; name: string; email: string; role: string }[]
     userTasks: { id: string; title: string; projectName: string; status: string; priority: string; dueDate?: string }[]
     inbox: { id: string; title: string; type: string; read: boolean; createdAt: string }[]
+    workloadInsights?: WorkloadInsights
     // Detail data when on specific pages
     currentProject?: {
       id: string
@@ -783,10 +798,16 @@ export interface ProposedAction {
   data: Record<string, unknown>
 }
 
+export interface SuggestedAction {
+  label: string
+  prompt: string
+}
+
 export interface ChatResponse {
   content: string
   action?: ProposedAction
   actions?: ProposedAction[]  // Multiple actions support
+  suggestedActions?: SuggestedAction[]  // Follow-up suggestions
 }
 
 // Chat completion function
@@ -859,7 +880,8 @@ export async function sendChatMessage(
   return parseChatResponse(result.data!.text)
 }
 
-function buildChatSystemPrompt(context: ChatContext): string {
+// Exported for streaming API route
+export function buildChatSystemPrompt(context: ChatContext): string {
   const { appData } = context
 
   // Add defaults for appData properties to prevent "undefined" in prompts
@@ -899,6 +921,21 @@ ${userTasks.length > 15 ? `\n...and ${userTasks.length - 15} more tasks` : ""}
 
 ## Inbox (${inbox.filter(i => !i.read).length} unread)
 ${inbox.slice(0, 5).map(i => `- ${i.title} [${i.type}]${i.read ? "" : " *NEW*"}`).join("\n") || "No notifications"}`
+
+  // Add workload insights section
+  const insights = appData.workloadInsights
+  if (insights) {
+    prompt += `
+
+## User's Workload Summary
+- Total tasks: ${insights.totalTasks} (${insights.completedTasks} completed, ${insights.inProgressTasks} in progress)
+- Overdue: ${insights.overdueTasks}${insights.hasUrgentOverdue ? ` ⚠️ Some are ${insights.oldestOverdueDays}+ days overdue!` : ""}
+- Due today: ${insights.dueToday}
+- Due this week: ${insights.dueThisWeek}
+- High priority: ${insights.highPriorityTasks}${insights.urgentTasks > 0 ? ` (${insights.urgentTasks} urgent)` : ""}
+${insights.isOverloaded ? `⚠️ User appears overloaded with ${insights.totalTasks - insights.completedTasks} active tasks - consider offering to help prioritize or reschedule` : ""}
+${insights.overdueTasks > 0 ? `💡 User has overdue tasks - you might gently mention this and offer to help reschedule if they seem stressed` : ""}`
+  }
 
   // Add current project detail if on project page
   if (appData.currentProject) {
@@ -1092,6 +1129,32 @@ ${appData.currentProject?.tasks?.length ? `\nCurrent Project Tasks:\n${appData.c
 Workstream IDs (use these exact UUIDs for existing workstreams):
 ${appData.currentProject?.workstreams?.length ? appData.currentProject.workstreams.map(w => `- "${w.name}": ${w.id}`).join("\n") : "No workstreams"}
 
+## Suggesting Follow-up Actions
+
+After answering a question or providing information, you may suggest 2-3 relevant follow-up actions the user might want to take. These appear as clickable chips, making it easy to continue the conversation.
+
+**Format:** Add at the END of your response (after any ACTION_JSON/ACTIONS_JSON):
+SUGGESTED_ACTIONS: [{"label": "Short label", "prompt": "Full prompt to send"}]
+
+**Examples:**
+
+After showing overdue tasks:
+"You have 5 overdue tasks, mostly documentation-related..."
+
+SUGGESTED_ACTIONS: [{"label": "Reschedule to next week", "prompt": "Reschedule all my overdue tasks to next week"}, {"label": "Show by project", "prompt": "Group these overdue tasks by project"}]
+
+After discussing project status:
+"The project is 60% complete with 3 tasks blocked..."
+
+SUGGESTED_ACTIONS: [{"label": "Show blocked tasks", "prompt": "Tell me more about the blocked tasks"}, {"label": "Draft status update", "prompt": "Help me draft a status update for stakeholders"}]
+
+**Rules:**
+- Maximum 2-3 suggestions
+- Keep labels short (2-4 words)
+- Make suggestions relevant to what was just discussed
+- Don't suggest for simple greetings or when you're proposing actions
+- Good for: status summaries, task lists, project overviews, informational responses
+
 ## Final Reminders
 - Be conversational and helpful, not robotic
 - Proactively suggest actions when they'd genuinely help
@@ -1103,33 +1166,47 @@ ${appData.currentProject?.workstreams?.length ? appData.currentProject.workstrea
 }
 
 function parseChatResponse(text: string): ActionResult<ChatResponse> {
-  // Try to match multiple actions first (ACTIONS_JSON: [...])
-  const actionsMatch = text.match(/ACTIONS_JSON:\s*(\[[\s\S]*?\])(?=\s*$|\s*\n|$)/m)
+  let content = text
+  let actions: ProposedAction[] | undefined
+  let action: ProposedAction | undefined
+  let suggestedActions: SuggestedAction[] | undefined
 
+  // Try to match suggested actions (SUGGESTED_ACTIONS: [...])
+  const suggestionsMatch = content.match(/SUGGESTED_ACTIONS:\s*(\[[\s\S]*?\])(?=\s*$|\s*\n|$)/m)
+  if (suggestionsMatch) {
+    try {
+      suggestedActions = JSON.parse(suggestionsMatch[1]) as SuggestedAction[]
+      content = content.replace(/SUGGESTED_ACTIONS:\s*\[[\s\S]*?\](?=\s*$|\s*\n|$)/m, "").trim()
+    } catch {
+      // Ignore parse errors for suggestions
+    }
+  }
+
+  // Try to match multiple actions first (ACTIONS_JSON: [...])
+  const actionsMatch = content.match(/ACTIONS_JSON:\s*(\[[\s\S]*?\])(?=\s*$|\s*\n|$)/m)
   if (actionsMatch) {
     try {
-      const actions = JSON.parse(actionsMatch[1]) as ProposedAction[]
-      const content = text.replace(/ACTIONS_JSON:\s*\[[\s\S]*?\](?=\s*$|\s*\n|$)/m, "").trim()
-      return { data: { content, actions } }
+      actions = JSON.parse(actionsMatch[1]) as ProposedAction[]
+      content = content.replace(/ACTIONS_JSON:\s*\[[\s\S]*?\](?=\s*$|\s*\n|$)/m, "").trim()
+      return { data: { content, actions, suggestedActions } }
     } catch {
       // Fall through to single action check
     }
   }
 
   // Try to match single action (ACTION_JSON: {...})
-  const actionMatch = text.match(/ACTION_JSON:\s*(\{[\s\S]*?\})(?=\s*$|\s*\n|$)/m)
-
+  const actionMatch = content.match(/ACTION_JSON:\s*(\{[\s\S]*?\})(?=\s*$|\s*\n|$)/m)
   if (actionMatch) {
     try {
-      const action = JSON.parse(actionMatch[1]) as ProposedAction
-      const content = text.replace(/ACTION_JSON:\s*\{[\s\S]*?\}(?=\s*$|\s*\n|$)/m, "").trim()
-      return { data: { content, action } }
+      action = JSON.parse(actionMatch[1]) as ProposedAction
+      content = content.replace(/ACTION_JSON:\s*\{[\s\S]*?\}(?=\s*$|\s*\n|$)/m, "").trim()
+      return { data: { content, action, suggestedActions } }
     } catch {
-      return { data: { content: text } }
+      return { data: { content, suggestedActions } }
     }
   }
 
-  return { data: { content: text } }
+  return { data: { content, suggestedActions } }
 }
 
 // Multi-turn chat function for OpenAI

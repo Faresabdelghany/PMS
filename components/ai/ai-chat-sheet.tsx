@@ -44,10 +44,12 @@ export function AIChatSheet({ open, onOpenChange, context, isLoadingContext }: A
   const {
     messages,
     isLoading,
+    isStreaming,
     error,
     sendMessage,
     confirmAction,
     confirmAllActions,
+    stopGeneration,
     clearChat,
   } = useAIChat(context, clientSideCallbacks)
 
@@ -153,14 +155,27 @@ export function AIChatSheet({ open, onOpenChange, context, isLoadingContext }: A
                         ? () => confirmAllActions(message.id)
                         : undefined
                     }
+                    onSendSuggestion={(prompt) => handleSendMessage(prompt)}
                   />
                 ))}
 
-                {/* Loading indicator */}
-                {isLoading && (
+                {/* Loading/Streaming indicator */}
+                {(isLoading || isStreaming) && (
                   <div className="flex items-center gap-2 text-muted-foreground">
-                    <SpinnerGap className="size-4 animate-spin" />
-                    <span className="text-sm">Thinking...</span>
+                    {isLoading && !isStreaming ? (
+                      <>
+                        <SpinnerGap className="size-4 animate-spin" />
+                        <span className="text-sm">Thinking...</span>
+                      </>
+                    ) : (
+                      <button
+                        onClick={stopGeneration}
+                        className="flex items-center gap-2 text-sm hover:text-foreground transition-colors"
+                      >
+                        <span className="size-2 rounded-full bg-violet-400 animate-pulse" />
+                        Stop generating
+                      </button>
+                    )}
                   </div>
                 )}
 
