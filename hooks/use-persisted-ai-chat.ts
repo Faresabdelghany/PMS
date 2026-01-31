@@ -197,9 +197,7 @@ export function usePersistedAIChat({
           convId = result.data.id
           setCurrentConversationId(convId)
           conversationIdRef.current = convId
-
-          // Update URL without navigation
-          router.replace(`/chat/${convId}`, { scroll: false })
+          // Note: URL update moved to after messages are saved
         }
 
         // 2. Create user message
@@ -309,6 +307,11 @@ export function usePersistedAIChat({
           setMessages((prev) =>
             prev.map((m) => (m.id === assistantMessage.id ? { ...m, id: dbId } : m))
           )
+        }
+
+        // Update URL after messages are saved (only for new conversations)
+        if (!conversationId && convId) {
+          router.replace(`/chat/${convId}`, { scroll: false })
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to send message")
