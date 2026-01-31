@@ -196,6 +196,7 @@ export function useAIChat(context: ChatContext, callbacks?: ClientSideCallbacks)
         const response = await fetch("/api/ai/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include", // Ensure cookies are sent for auth
           body: JSON.stringify({
             messages: chatMessages,
             context: contextWithAttachments,

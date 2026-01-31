@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useCallback, useRef, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import {
   type ChatContext,
   type ProposedAction,
@@ -198,7 +197,6 @@ export function usePersistedAIChat({
   context,
   clientSideCallbacks,
 }: UsePersistedAIChatOptions): UsePersistedAIChatReturn {
-  const router = useRouter()
 
   // Initialize messages from DB
   const [messages, setMessages] = useState<Message[]>(() =>
@@ -328,6 +326,7 @@ export function usePersistedAIChat({
         const response = await fetch("/api/ai/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include", // Ensure cookies are sent for auth
           body: JSON.stringify({
             messages: chatMessages,
             context: contextWithAttachments,
@@ -452,8 +451,9 @@ export function usePersistedAIChat({
         }
 
         // Update URL after messages are saved (only for new conversations)
-        if (!conversationId && convId) {
-          router.replace(`/chat/${convId}`, { scroll: false })
+        // Use history.replaceState to avoid page navigation/remount
+        if (!conversationId && convId && typeof window !== "undefined") {
+          window.history.replaceState(null, "", `/chat/${convId}`)
         }
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") {
@@ -467,7 +467,7 @@ export function usePersistedAIChat({
         abortControllerRef.current = null
       }
     },
-    [organizationId, context, router]
+    [organizationId, context, conversationId]
   )
 
   // -------------------------------------------------------------------------
@@ -728,8 +728,11 @@ export function usePersistedAIChat({
     setCurrentConversationId(null)
     conversationIdRef.current = null
 
-    router.push("/chat")
-  }, [router])
+    // Navigate to /chat for a fresh start
+    if (typeof window !== "undefined") {
+      window.location.href = "/chat"
+    }
+  }, [])
 
   return {
     messages,
