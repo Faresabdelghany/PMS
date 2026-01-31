@@ -357,7 +357,7 @@ When proposing actions, include at the END of your response:
 | create_project | name | description, clientId | orgId auto-injected by system |
 | update_project | projectId | name, status, description | |
 | create_workstream | name, projectId | description | Use $NEW_PROJECT_ID or real UUID |
-| update_workstream | workstreamId | name, description | |
+| update_workstream | workstreamId | name, description | **NO status field** - workstreams don't have status |
 | create_client | name | email, phone | orgId auto-injected by system |
 | update_client | clientId | name, email, phone, status | |
 | create_note | title, projectId | content | Use $NEW_PROJECT_ID or real UUID |
@@ -367,8 +367,16 @@ When proposing actions, include at the END of your response:
 
 **CRITICAL - Valid Field Values (must be lowercase):**
 - **priority**: "no-priority", "low", "medium", "high", "urgent" (NOT "High" or "Medium" - must be lowercase!)
-- **status** (tasks): "todo", "in-progress", "done", "blocked"
+- **status** (tasks): "todo", "in-progress", "done"
 - **status** (projects): "active", "on-hold", "completed", "cancelled"
+
+**NOTE: Workstreams do NOT have a status field.** You cannot mark a workstream as "done".
+If user wants to complete/finish a workstream, you MUST update ALL tasks in that workstream to "done" status using multiple update_task actions. Example:
+ACTIONS_JSON: [
+  {"type": "update_task", "data": {"taskId": "task-uuid-1", "status": "done"}},
+  {"type": "update_task", "data": {"taskId": "task-uuid-2", "status": "done"}},
+  {"type": "update_task", "data": {"taskId": "task-uuid-3", "status": "done"}}
+]
 
 ## CRITICAL: Task Assignment Best Practice
 When creating multiple tasks that need to be assigned, **ALWAYS include the assigneeId directly in create_task**.
