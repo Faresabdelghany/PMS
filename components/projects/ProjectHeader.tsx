@@ -1,11 +1,7 @@
 import { Star, User, PencilSimpleLine } from "@phosphor-icons/react/dist/ssr"
-import { ArrowsClockwise, Globe, Timer } from "@phosphor-icons/react/dist/ssr"
 
 import type { ProjectDetails } from "@/lib/data/project-details"
-import { Separator } from "@/components/ui/separator"
-import { MetaChipsRow } from "@/components/projects/MetaChipsRow"
 import { Badge } from "@/components/ui/badge"
-import { PriorityBadge, type PriorityLevel } from "@/components/priority-badge"
 import { Button } from "@/components/ui/button"
 
 type ProjectHeaderProps = {
@@ -14,14 +10,6 @@ type ProjectHeaderProps = {
 }
 
 export function ProjectHeader({ project, onEditProject }: ProjectHeaderProps) {
-  const metaItems = [
-    { label: "ID", value: `#${project.id}`, icon: null },
-    { label: "", value: <PriorityBadge level={project.meta.priorityLabel.toLowerCase() as PriorityLevel} appearance="inline" size="sm" />, icon: null },
-    { label: "", value: project.meta.locationLabel, icon: <Globe className="h-4 w-4" /> },
-    { label: "Sprints", value: project.meta.sprintLabel, icon: <Timer className="h-4 w-4" /> },
-    { label: "Last sync", value: project.meta.lastSyncLabel, icon: <ArrowsClockwise className="h-4 w-4" /> },
-  ]
-
   return (
     <section className="mt-4 space-y-5">
       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -52,11 +40,6 @@ export function ProjectHeader({ project, onEditProject }: ProjectHeaderProps) {
           </Button>
         )}
       </div>
-
-      <div className="mt-3">
-        <MetaChipsRow items={metaItems} />
-      </div>
-
     </section>
   )
 }
