@@ -325,6 +325,19 @@ export function StepQuickCreate({
     return () => clearTimeout(timer);
   }, []);
 
+  // Update assignee when organizationMembers loads (for edit mode)
+  useEffect(() => {
+    if (isEditing && editingProject?.members && memberOptions.length > 0 && !assignee) {
+      const ownerMember = editingProject.members.find(m => m.role === "owner" || m.role === "pic");
+      if (ownerMember) {
+        const memberOption = memberOptions.find(m => m.id === ownerMember.user_id);
+        if (memberOption) {
+          setAssignee(memberOption);
+        }
+      }
+    }
+  }, [isEditing, editingProject?.members, memberOptions, assignee]);
+
   const mapStatusToSupabase = (statusId: string): ProjectStatus => {
     const mapping: Record<string, ProjectStatus> = {
       "backlog": "backlog",
