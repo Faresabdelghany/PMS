@@ -73,10 +73,17 @@ type OrganizationMember = {
   }
 }
 
+type ProjectTask = {
+  id: string
+  name: string
+  workstream_id: string | null
+}
+
 type WorkstreamTabProps = {
   projectId: string
   projectEndDate?: string | null
   workstreams: WorkstreamGroup[] | undefined
+  allProjectTasks?: ProjectTask[] // All project tasks for the modal picker
   organizationMembers?: OrganizationMember[]
   onAddTask?: (workstreamId: string, workstreamName: string) => void
   onEditTask?: (task: WorkstreamTask) => void
@@ -87,6 +94,7 @@ export function WorkstreamTab({
   projectId,
   projectEndDate,
   workstreams,
+  allProjectTasks = [],
   organizationMembers = [],
   onAddTask,
   onEditTask,
@@ -469,7 +477,24 @@ export function WorkstreamTab({
   }, [onRefresh])
 
   // Convert tasks to TaskOption format for modal
+  // Use allProjectTasks if available (includes unassigned tasks), otherwise fall back to workstream tasks
   const existingTasks = useMemo(() => {
+    if (allProjectTasks.length > 0) {
+      // Build a map of workstream id to name
+      const workstreamMap = new Map<string, string>()
+      state.forEach((group) => {
+        workstreamMap.set(group.id, group.name)
+      })
+
+      return allProjectTasks.map((task) => ({
+        id: task.id,
+        name: task.name,
+        workstreamId: task.workstream_id,
+        workstreamName: task.workstream_id ? workstreamMap.get(task.workstream_id) || null : null,
+      }))
+    }
+
+    // Fallback: iterate over workstreams (only includes assigned tasks)
     const tasks: { id: string; name: string; workstreamId: string | null; workstreamName: string | null }[] = []
     state.forEach((group) => {
       group.tasks.forEach((task) => {
@@ -482,7 +507,7 @@ export function WorkstreamTab({
       })
     })
     return tasks
-  }, [state])
+  }, [state, allProjectTasks])
 
   if (!state.length) {
     return (

@@ -182,6 +182,7 @@ export type UpdateWorkstreamInput = {
   startDate?: string | null
   endDate?: string | null
   tag?: string | null
+  taskIds?: string[] // Tasks to assign to this workstream (replaces current assignments)
 }
 
 // Update workstream
@@ -247,6 +248,25 @@ export async function updateWorkstream(
 
   if (error) {
     return { error: error.message }
+  }
+
+  // Handle task assignments if taskIds is provided
+  if (input.taskIds !== undefined) {
+    // First, remove this workstream from all tasks that had it
+    await supabase
+      .from("tasks")
+      .update({ workstream_id: null })
+      .eq("workstream_id", id)
+      .eq("project_id", current.project_id)
+
+    // Then, assign this workstream to the selected tasks
+    if (input.taskIds.length > 0) {
+      await supabase
+        .from("tasks")
+        .update({ workstream_id: id })
+        .in("id", input.taskIds)
+        .eq("project_id", current.project_id)
+    }
   }
 
   after(async () => {

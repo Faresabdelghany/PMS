@@ -459,6 +459,7 @@ export function ProjectDetailsPage({
                       projectId={projectId}
                       projectEndDate={supabaseProject.end_date}
                       workstreams={project.workstreams}
+                      allProjectTasks={tasks.map(t => ({ id: t.id, name: t.name, workstream_id: t.workstream_id }))}
                       organizationMembers={organizationMembers}
                       onAddTask={handleAddTaskFromWorkstream}
                       onEditTask={handleEditTaskFromWorkstream}

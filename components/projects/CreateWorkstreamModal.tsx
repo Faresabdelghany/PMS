@@ -92,7 +92,11 @@ export function CreateWorkstreamModal({
         ? TAG_OPTIONS.find((t) => t.label.toLowerCase() === editingWorkstream.tag?.toLowerCase())
         : undefined
       setSelectedTag(tagOption)
-      setSelectedTaskIds([])
+      // Pre-select tasks that are already in this workstream
+      const tasksInWorkstream = existingTasks
+        .filter((task) => task.workstreamId === editingWorkstream.id)
+        .map((task) => task.id)
+      setSelectedTaskIds(tasksInWorkstream)
       setCreateMore(false)
       setIsDescriptionExpanded(false)
     } else {
@@ -145,6 +149,7 @@ export function CreateWorkstreamModal({
           startDate: startDate?.toISOString().split('T')[0] || null,
           endDate: endDate?.toISOString().split('T')[0] || null,
           tag: selectedTag?.label || null,
+          taskIds: selectedTaskIds, // Include task assignments
         }
 
         const result = await updateWorkstream(editingWorkstream.id, input)
@@ -305,12 +310,14 @@ export function CreateWorkstreamModal({
         </p>
       )}
 
-      {/* Add tasks section (only for new workstreams) */}
-      {!editingWorkstream && availableTasks.length > 0 && (
+      {/* Add/manage tasks section */}
+      {availableTasks.length > 0 && (
         <div className="flex flex-col gap-2 w-full">
           <div className="flex items-center gap-2">
             <CheckSquare className="size-4 text-muted-foreground" />
-            <span className="text-sm font-medium text-foreground">Add existing tasks</span>
+            <span className="text-sm font-medium text-foreground">
+              {editingWorkstream ? 'Manage tasks' : 'Add existing tasks'}
+            </span>
             {selectedTaskIds.length > 0 && (
               <span className="text-xs text-muted-foreground">
                 ({selectedTaskIds.length} selected)

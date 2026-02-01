@@ -224,28 +224,39 @@ export function TaskQuickCreateModal({
     [projects],
   )
 
-  const workstreamOptions = useMemo(
-    () => getWorkstreamsForProject(projectId),
-    [projectId, getWorkstreamsForProject],
-  )
+  // Add "None" option to allow creating tasks without a workstream
+  const NONE_WORKSTREAM_ID = '__none__'
+  const workstreamOptions = useMemo(() => {
+    const projectWorkstreams = getWorkstreamsForProject(projectId)
+    if (projectWorkstreams.length === 0) return []
+    return [
+      { id: NONE_WORKSTREAM_ID, label: 'None (no workstream)' },
+      ...projectWorkstreams,
+    ]
+  }, [projectId, getWorkstreamsForProject])
 
   useEffect(() => {
     if (!projectId) return
 
+    // If no workstreams exist, clear the selection
     if (!workstreamOptions.length) {
       setWorkstreamId(undefined)
       setWorkstreamName(undefined)
       return
     }
 
-    const existing = workstreamOptions.find((ws) => ws.id === workstreamId)
-    const fallback = workstreamOptions[0]
-    const next = existing ?? fallback
-    setWorkstreamId(next?.id)
-    if (!workstreamName) {
-      setWorkstreamName(next?.label)
+    // If a workstream is selected, validate it exists in the current project
+    // Skip validation for "None" option or undefined (both mean no workstream)
+    if (workstreamId && workstreamId !== NONE_WORKSTREAM_ID) {
+      const existing = workstreamOptions.find((ws) => ws.id === workstreamId)
+      if (!existing) {
+        // Workstream doesn't exist in this project, clear selection
+        setWorkstreamId(undefined)
+        setWorkstreamName(undefined)
+      }
     }
-  }, [projectId, workstreamOptions, workstreamId, workstreamName])
+    // Don't auto-select a workstream - let the user choose
+  }, [projectId, workstreamOptions, workstreamId])
 
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -261,6 +272,8 @@ export function TaskQuickCreateModal({
           : undefined
 
         // Call updateTask server action
+        // Use null for workstream if "None" is selected or no workstream
+        const effectiveWorkstreamId = workstreamId === NONE_WORKSTREAM_ID ? null : (workstreamId || null)
         const result = await updateTask(editingTask.id, {
           name: title.trim() || 'Untitled task',
           status: status.id,
@@ -269,7 +282,7 @@ export function TaskQuickCreateModal({
           description: description || null,
           start_date: startDate?.toISOString().split('T')[0] || null,
           end_date: targetDate?.toISOString().split('T')[0] || null,
-          workstream_id: workstreamId || null,
+          workstream_id: effectiveWorkstreamId,
           assignee_id: assignee?.id || null,
         })
 
@@ -290,8 +303,8 @@ export function TaskQuickCreateModal({
           description,
           projectId: effectiveProjectId ?? editingTask.projectId,
           projectName: project?.name ?? editingTask.projectName,
-          workstreamId: workstreamId ?? editingTask.workstreamId,
-          workstreamName: workstreamName ?? editingTask.workstreamName,
+          workstreamId: effectiveWorkstreamId,
+          workstreamName: effectiveWorkstreamId ? workstreamName : null,
         }
 
         onTaskUpdated?.(updatedTask)
@@ -313,6 +326,8 @@ export function TaskQuickCreateModal({
       }
 
       // Call createTask server action
+      // Use null for workstream if "None" is selected or no workstream
+      const effectiveWorkstreamId = workstreamId === NONE_WORKSTREAM_ID ? null : (workstreamId || null)
       const result = await createTask(effectiveProjectId, {
         name: title.trim() || 'Untitled task',
         status: status.id,
@@ -321,7 +336,7 @@ export function TaskQuickCreateModal({
         description: description || null,
         start_date: startDate?.toISOString().split('T')[0] || null,
         end_date: targetDate?.toISOString().split('T')[0] || null,
-        workstream_id: workstreamId || null,
+        workstream_id: effectiveWorkstreamId,
         assignee_id: assignee?.id || null,
       })
 
@@ -343,8 +358,8 @@ export function TaskQuickCreateModal({
         description,
         projectId: effectiveProjectId,
         projectName: project.name,
-        workstreamId: workstreamId || null,
-        workstreamName: workstreamName || null,
+        workstreamId: effectiveWorkstreamId,
+        workstreamName: effectiveWorkstreamId ? workstreamName : null,
       }
 
       onTaskCreated?.(newTask)
@@ -403,10 +418,15 @@ export function TaskQuickCreateModal({
               <div className="w-2 h-2 bg-muted-foreground/15 rounded-full" />
               <GenericPicker
                 items={workstreamOptions}
-                selectedId={workstreamId}
+                selectedId={workstreamId ?? NONE_WORKSTREAM_ID}
                 onSelect={(item) => {
-                  setWorkstreamId(item.id)
-                  setWorkstreamName(item.label)
+                  if (item.id === NONE_WORKSTREAM_ID) {
+                    setWorkstreamId(undefined)
+                    setWorkstreamName(undefined)
+                  } else {
+                    setWorkstreamId(item.id)
+                    setWorkstreamName(item.label)
+                  }
                 }}
                 placeholder="Choose workstream..."
                 renderItem={(item) => (
@@ -420,7 +440,7 @@ export function TaskQuickCreateModal({
                   >
                     <Rows className="size-4 text-muted-foreground" />
                     <span className="truncate max-w-[160px] font-medium text-foreground">
-                      {workstreamName ?? 'Choose workstream'}
+                      {workstreamId && workstreamId !== NONE_WORKSTREAM_ID ? workstreamName : 'None'}
                     </span>
                   </button>
                 }
