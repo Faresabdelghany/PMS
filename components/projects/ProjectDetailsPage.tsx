@@ -21,6 +21,7 @@ import { WorkstreamTabLazy } from "@/components/projects/WorkstreamTabLazy"
 import { ProjectTasksTabLazy } from "@/components/projects/ProjectTasksTabLazy"
 import { NotesTab } from "@/components/projects/NotesTab"
 import { AssetsFilesTab } from "@/components/projects/AssetsFilesTab"
+import { DeliverableTab } from "@/components/projects/DeliverableTab"
 import { ProjectWizardLazy } from "@/components/project-wizard/ProjectWizardLazy"
 import { TaskQuickCreateModal, type TaskData, type CreateTaskContext } from "@/components/tasks/TaskQuickCreateModal"
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -405,6 +406,7 @@ export function ProjectDetailsPage({
                     <TabsTrigger value="tasks">Tasks</TabsTrigger>
                     <TabsTrigger value="notes">Notes</TabsTrigger>
                     <TabsTrigger value="assets">Assets &amp; Files</TabsTrigger>
+                    <TabsTrigger value="deliverables">Deliverables</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="overview">
@@ -447,6 +449,15 @@ export function ProjectDetailsPage({
 
                   <TabsContent value="assets">
                     <AssetsFilesTab files={project.files} />
+                  </TabsContent>
+
+                  <TabsContent value="deliverables">
+                    <DeliverableTab
+                      projectId={projectId}
+                      deliverables={supabaseProject.deliverables}
+                      currency={supabaseProject.currency || "USD"}
+                      onRefresh={() => router.refresh()}
+                    />
                   </TabsContent>
                 </Tabs>
               </div>

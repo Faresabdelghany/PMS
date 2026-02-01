@@ -22,6 +22,8 @@ export type InvitationStatus = "pending" | "accepted" | "cancelled" | "expired"
 export type NoteType = "general" | "meeting" | "audio"
 export type NoteStatus = "completed" | "processing"
 export type FileType = "pdf" | "zip" | "fig" | "doc" | "file" | "image" | "video" | "audio"
+export type DeliverableStatus = "pending" | "in_progress" | "completed"
+export type PaymentStatus = "unpaid" | "invoiced" | "paid"
 export type InboxItemType = "comment" | "task_update" | "client_update" | "project_milestone" | "system"
 export type LabelCategory = "type" | "duration" | "group" | "badge"
 
@@ -246,6 +248,7 @@ export interface Database {
           group_label: string | null
           label_badge: string | null
           tags: string[]
+          currency: string | null
           created_at: string
           updated_at: string
         }
@@ -272,6 +275,7 @@ export interface Database {
           group_label?: string | null
           label_badge?: string | null
           tags?: string[]
+          currency?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -298,6 +302,7 @@ export interface Database {
           group_label?: string | null
           label_badge?: string | null
           tags?: string[]
+          currency?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -751,6 +756,9 @@ export interface Database {
           project_id: string
           title: string
           due_date: string | null
+          value: number | null
+          status: DeliverableStatus
+          payment_status: PaymentStatus
           sort_order: number
           created_at: string
         }
@@ -759,6 +767,9 @@ export interface Database {
           project_id: string
           title: string
           due_date?: string | null
+          value?: number | null
+          status?: DeliverableStatus
+          payment_status?: PaymentStatus
           sort_order?: number
           created_at?: string
         }
@@ -767,6 +778,9 @@ export interface Database {
           project_id?: string
           title?: string
           due_date?: string | null
+          value?: number | null
+          status?: DeliverableStatus
+          payment_status?: PaymentStatus
           sort_order?: number
           created_at?: string
         }

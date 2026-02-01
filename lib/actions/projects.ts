@@ -493,7 +493,7 @@ export type ProjectFullDetails = ProjectWithRelations & {
   scope: { id: string; item: string; is_in_scope: boolean; sort_order: number }[]
   outcomes: { id: string; item: string; sort_order: number }[]
   features: { id: string; item: string; priority: number; sort_order: number }[]
-  deliverables: { id: string; title: string; due_date: string | null; sort_order: number }[]
+  deliverables: { id: string; title: string; due_date: string | null; value: number | null; status: string; payment_status: string; sort_order: number }[]
   metrics: { id: string; name: string; target: string | null; sort_order: number }[]
 }
 
@@ -541,7 +541,7 @@ export async function getProjectWithDetails(id: string): Promise<ActionResult<Pr
       .order("sort_order"),
     supabase
       .from("project_deliverables")
-      .select("id, title, due_date, sort_order")
+      .select("id, title, due_date, value, status, payment_status, sort_order")
       .eq("project_id", id)
       .order("sort_order"),
     supabase

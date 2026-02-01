@@ -202,6 +202,9 @@ export type ProjectDeliverable = {
   project_id: string
   title: string
   due_date: string | null
+  value: number | null
+  status: "pending" | "in_progress" | "completed"
+  payment_status: "unpaid" | "invoiced" | "paid"
   sort_order: number
   created_at: string
 }
@@ -226,7 +229,13 @@ export async function getProjectDeliverables(
 
 export async function updateProjectDeliverables(
   projectId: string,
-  deliverables: { title: string; due_date?: string | null }[]
+  deliverables: {
+    title: string
+    due_date?: string | null
+    value?: number | null
+    status?: "pending" | "in_progress" | "completed"
+    payment_status?: "unpaid" | "invoiced" | "paid"
+  }[]
 ): Promise<ActionResult> {
   const supabase = await createClient()
 
@@ -239,6 +248,9 @@ export async function updateProjectDeliverables(
       project_id: projectId,
       title: d.title,
       due_date: d.due_date || null,
+      value: d.value ?? null,
+      status: d.status ?? "pending",
+      payment_status: d.payment_status ?? "unpaid",
       sort_order: index,
     }))
 
