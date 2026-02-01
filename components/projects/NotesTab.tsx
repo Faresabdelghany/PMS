@@ -17,6 +17,7 @@ import { NotePreviewModal } from "@/components/projects/NotePreviewModal"
 
 type NotesTabProps = {
     projectId: string
+    projectName?: string
     notes: ProjectNote[]
     currentUser?: User
     onRefresh?: () => void
@@ -28,7 +29,7 @@ const defaultUser: User = {
     avatarUrl: undefined,
 }
 
-export function NotesTab({ projectId, notes, currentUser = defaultUser, onRefresh }: NotesTabProps) {
+export function NotesTab({ projectId, projectName, notes, currentUser = defaultUser, onRefresh }: NotesTabProps) {
     const router = useRouter()
     const [isPending, startTransition] = useTransition()
     const recentNotes = notes.slice(0, 8)
@@ -215,6 +216,7 @@ export function NotesTab({ projectId, notes, currentUser = defaultUser, onRefres
                 onUpdateNote={handleUpdateNote}
                 onUploadAudio={handleUploadAudio}
                 editingNote={editingNote}
+                projectName={projectName}
             />
 
             <UploadAudioModal

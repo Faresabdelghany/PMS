@@ -480,6 +480,7 @@ export function ProjectDetailsPage({
                   <TabsContent value="notes">
                     <NotesTab
                       projectId={projectId}
+                      projectName={project.name}
                       notes={project.notes || []}
                       onRefresh={() => router.refresh()}
                     />

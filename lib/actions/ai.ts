@@ -708,6 +708,74 @@ Only return the JSON object, no other text.`
   }
 }
 
+// Enhance note content - takes user's rough notes and improves them
+export async function enhanceNoteContent(
+  content: string,
+  context?: { title?: string; projectName?: string; noteType?: "general" | "meeting" }
+): Promise<ActionResult<string>> {
+  // Validate content length
+  const trimmedContent = content.trim()
+  if (trimmedContent.length < 10) {
+    return { error: "Content is too short to enhance. Please add more text." }
+  }
+  if (trimmedContent.length > 50000) {
+    return { error: "Content is too long. Please reduce the text length." }
+  }
+
+  const systemPrompt = `You are a note formatting assistant. Your ONLY job is to clean up and format the user's existing notes.
+
+CRITICAL RULES:
+1. ONLY use information that is explicitly in the original text - DO NOT invent or add any new information
+2. DO NOT generate generic content or descriptions
+3. Preserve ALL specific details: names, dates, deadlines, tasks, decisions mentioned
+4. If the note mentions "Taher", "login page", "end of week" - those exact details MUST appear in your output
+5. Keep it SHORT and focused - don't pad with filler text
+
+Your formatting improvements:
+- Fix grammar and spelling errors
+- Organize into clear sections using bullet points or numbered lists
+- Use <strong> to highlight key items like names, dates, deadlines
+- Structure meeting notes with: Discussion Points, Decisions, Action Items (if applicable)
+
+Output clean HTML only. Use: <p>, <strong>, <ul>/<li>, <ol>/<li>, <h3> tags as needed.
+Do NOT use markdown. Do NOT add any content not in the original.`
+
+  const noteTypeContext = context?.noteType === "meeting"
+    ? "Format as meeting notes with sections for key points, decisions, and action items IF that information exists in the original."
+    : ""
+
+  const userPrompt = `Format and clean up this note. ONLY use information from the original text below - do not add anything new:
+
+${context?.title ? `Title: ${context.title}` : ""}
+${noteTypeContext}
+
+ORIGINAL TEXT TO FORMAT:
+"""
+${content}
+"""
+
+Return ONLY the formatted HTML. Keep all original details (names, dates, tasks, etc).`
+
+  const result = await generateText(userPrompt, systemPrompt, { temperature: 0.4 })
+
+  if (result.error) {
+    return { error: result.error }
+  }
+
+  // Clean up the response - remove any markdown code blocks if present
+  let enhancedContent = result.data!.text.trim()
+  if (enhancedContent.startsWith("```html")) {
+    enhancedContent = enhancedContent.slice(7)
+  } else if (enhancedContent.startsWith("```")) {
+    enhancedContent = enhancedContent.slice(3)
+  }
+  if (enhancedContent.endsWith("```")) {
+    enhancedContent = enhancedContent.slice(0, -3)
+  }
+
+  return { data: enhancedContent.trim() }
+}
+
 // Test AI connection
 export async function testAIConnection(): Promise<ActionResult<{ success: boolean; model: string }>> {
   const configResult = await verifyAIConfig()
