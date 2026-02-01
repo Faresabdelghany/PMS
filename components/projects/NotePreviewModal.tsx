@@ -144,9 +144,16 @@ export function NotePreviewModal({
                                     </CollapsibleSection>
                                 </>
                             ) : (
-                                <div className="text-sm text-muted-foreground">
-                                    {note.content || "No content available for this note."}
-                                </div>
+                                note.content ? (
+                                    <div
+                                        className="prose prose-sm max-w-none text-foreground"
+                                        dangerouslySetInnerHTML={{ __html: note.content }}
+                                    />
+                                ) : (
+                                    <div className="text-sm text-muted-foreground">
+                                        No content available for this note.
+                                    </div>
+                                )
                             )}
                         </div>
                     </div>
