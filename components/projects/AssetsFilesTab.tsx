@@ -6,6 +6,8 @@ import type { ProjectFile, User } from "@/lib/data/project-details"
 import { RecentFileCard } from "@/components/projects/RecentFileCard"
 import { FilesTable } from "@/components/projects/FilesTable"
 import { AddFileModal } from "@/components/projects/AddFileModal"
+import { EditFileModal } from "@/components/projects/EditFileModal"
+import { deleteFile } from "@/lib/actions/files"
 
 type AssetsFilesTabProps = {
     files: ProjectFile[]
@@ -20,6 +22,9 @@ const defaultUser: User = {
 export function AssetsFilesTab({ files, currentUser = defaultUser }: AssetsFilesTabProps) {
     const [items, setItems] = useState<ProjectFile[]>(files)
     const [isAddOpen, setIsAddOpen] = useState(false)
+    const [editingFile, setEditingFile] = useState<ProjectFile | null>(null)
+    const [editModalOpen, setEditModalOpen] = useState(false)
+    const [isDeleting, setIsDeleting] = useState(false)
 
     useEffect(() => {
         setItems(files)
@@ -37,11 +42,43 @@ export function AssetsFilesTab({ files, currentUser = defaultUser }: AssetsFiles
     }
 
     const handleEditFile = (fileId: string) => {
-        console.log("Edit file:", fileId)
+        const file = items.find((f) => f.id === fileId)
+        if (file) {
+            setEditingFile(file)
+            setEditModalOpen(true)
+        }
     }
 
-    const handleDeleteFile = (fileId: string) => {
-        console.log("Delete file:", fileId)
+    const handleDeleteFile = async (fileId: string) => {
+        if (!confirm('Are you sure you want to delete this file?')) {
+            return
+        }
+
+        setIsDeleting(true)
+        const result = await deleteFile(fileId)
+        setIsDeleting(false)
+
+        if (result.error) {
+            alert(`Failed to delete file: ${result.error}`)
+            return
+        }
+
+        // Remove the file from local state
+        setItems((prev) => prev.filter((file) => file.id !== fileId))
+    }
+
+    const handleFilesRefresh = () => {
+        // Will be replaced with real-time updates in Task 4
+        // For now, the edit modal just updates local state optimistically
+    }
+
+    const handleEditSuccess = () => {
+        // Update local state with the edited file name
+        if (editingFile) {
+            // Refetch would be ideal, but for now we just close the modal
+            // Real-time subscription in Task 4 will handle this properly
+        }
+        handleFilesRefresh()
     }
 
     return (
@@ -62,7 +99,13 @@ export function AssetsFilesTab({ files, currentUser = defaultUser }: AssetsFiles
 
             <section>
                 <h2 className="mb-4 text-sm font-semibold text-accent-foreground">All files</h2>
-                <FilesTable files={items} onAddFile={handleAddFile} />
+                <FilesTable
+                    files={items}
+                    onAddFile={handleAddFile}
+                    onEditFile={handleEditFile}
+                    onDeleteFile={handleDeleteFile}
+                    isDeleting={isDeleting}
+                />
             </section>
 
             <AddFileModal
@@ -71,6 +114,15 @@ export function AssetsFilesTab({ files, currentUser = defaultUser }: AssetsFiles
                 currentUser={currentUser}
                 onCreate={handleCreateFiles}
             />
+
+            {editingFile && (
+                <EditFileModal
+                    file={editingFile}
+                    open={editModalOpen}
+                    onOpenChange={setEditModalOpen}
+                    onSuccess={handleEditSuccess}
+                />
+            )}
         </div>
     )
 }

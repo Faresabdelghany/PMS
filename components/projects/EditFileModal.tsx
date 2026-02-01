@@ -23,7 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { updateFile } from '@/lib/actions/files';
-import type { ProjectFile } from '@/lib/supabase/types';
+import type { ProjectFile } from '@/lib/data/project-details';
 
 const editFileSchema = z.object({
   name: z.string().min(1, 'File name is required'),

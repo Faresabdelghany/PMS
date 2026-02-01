@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { DotsThree, MagnifyingGlass, Plus } from "@phosphor-icons/react/dist/ssr"
+import { DotsThree, MagnifyingGlass, Plus, PencilSimple, Trash } from "@phosphor-icons/react/dist/ssr"
 import { format } from "date-fns"
 import Image from "next/image"
 
@@ -10,14 +10,18 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { getFileIcon } from "@/components/projects/FileLinkRow"
 
 type FilesTableProps = {
     files: ProjectFile[]
     onAddFile?: () => void
+    onEditFile?: (fileId: string) => void
+    onDeleteFile?: (fileId: string) => void
+    isDeleting?: boolean
 }
 
-export function FilesTable({ files, onAddFile }: FilesTableProps) {
+export function FilesTable({ files, onAddFile, onEditFile, onDeleteFile, isDeleting }: FilesTableProps) {
     const [searchQuery, setSearchQuery] = useState("")
     const [selectedFiles, setSelectedFiles] = useState<string[]>([])
 
@@ -121,13 +125,31 @@ export function FilesTable({ files, onAddFile }: FilesTableProps) {
                                             e.stopPropagation()
                                         }}
                                     >
-                                        <Button
-                                            variant="ghost"
-                                            size="icon-sm"
-                                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                        >
-                                            <DotsThree className="h-4 w-4" weight="bold" />
-                                        </Button>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon-sm"
+                                                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                                    disabled={isDeleting}
+                                                >
+                                                    <DotsThree className="h-4 w-4" weight="bold" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={() => onEditFile?.(file.id)}>
+                                                    <PencilSimple className="mr-2 h-4 w-4" />
+                                                    Edit
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    onClick={() => onDeleteFile?.(file.id)}
+                                                    className="text-destructive focus:text-destructive"
+                                                >
+                                                    <Trash className="mr-2 h-4 w-4" />
+                                                    Delete
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </TableCell>
                                 </TableRow>
                             )
