@@ -182,8 +182,7 @@ export async function getAIContext(): Promise<ActionResult<ChatContext>> {
     }
 
     return { data: context }
-  } catch (error) {
-    console.error("Failed to get AI context:", error)
+  } catch {
     return { error: "Failed to load context" }
   }
 }

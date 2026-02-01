@@ -3,7 +3,11 @@
 import { useEffect, useCallback, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import type { RealtimeChannel, RealtimePostgresChangesPayload } from "@supabase/supabase-js"
+import type {
+  RealtimeChannel,
+  RealtimePostgresChangesPayload,
+  RealtimePostgresChangesFilter,
+} from "@supabase/supabase-js"
 import type { Database } from "@/lib/supabase/types"
 
 type TableName = keyof Database["public"]["Tables"]
@@ -128,17 +132,10 @@ export function useRealtime<T extends TableName>({
     const channelName = `realtime:${schema}:${table}:${filter || "all"}`
     const channel = supabase.channel(channelName)
 
-    // Subscribe to changes - use type assertion for the config object
-
-    const config: any = {
-      event,
-      schema,
-      table,
-    }
-
-    if (filter) {
-      config.filter = filter
-    }
+    // Subscribe to changes with properly typed config
+    const config: RealtimePostgresChangesFilter<`${string}`> = filter
+      ? { event, schema, table, filter }
+      : { event, schema, table }
 
     channel.on(
       "postgres_changes",

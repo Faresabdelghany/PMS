@@ -122,10 +122,8 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
   if (data.user && data.session) {
     // Create personal organization in the background
     const orgResult = await createPersonalOrganization(data.user.id, fullName || "My")
-    if (orgResult.error) {
-      console.error("Failed to create personal organization:", orgResult.error)
-      // Don't fail signup, user can create org later via onboarding
-    }
+    // Don't fail signup if org creation fails, user can create org later via onboarding
+    void orgResult.error
 
     revalidatePath("/", "layout")
     redirect("/")
@@ -143,11 +141,9 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
       return { error: signInError.message }
     }
 
-    // Create personal organization
+    // Create personal organization (errors are non-fatal, user can create org later)
     const orgResult = await createPersonalOrganization(data.user.id, fullName || "My")
-    if (orgResult.error) {
-      console.error("Failed to create personal organization:", orgResult.error)
-    }
+    void orgResult.error
 
     revalidatePath("/", "layout")
     redirect("/")

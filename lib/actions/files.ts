@@ -183,7 +183,6 @@ export async function uploadFile(
       })
 
     if (uploadError) {
-      console.error("Storage upload error:", uploadError)
       return { error: `Failed to upload file: ${uploadError.message}` }
     }
 
@@ -351,10 +350,8 @@ export async function deleteFile(fileId: string): Promise<ActionResult> {
       .from(bucket)
       .remove([file.storage_path])
 
-    if (storageError) {
-      console.error("Storage delete error:", storageError)
-      // Continue to delete database record even if storage delete fails
-    }
+    // Continue to delete database record even if storage delete fails
+    void storageError
   }
 
   // Delete database record

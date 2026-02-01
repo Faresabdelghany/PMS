@@ -139,8 +139,7 @@ export async function saveAIApiKey(
     let encryptedKey: string
     try {
       encryptedKey = encrypt(apiKey)
-    } catch (err) {
-      console.error("Encryption error:", err)
+    } catch {
       return { error: "Failed to encrypt API key. Check server configuration." }
     }
 
@@ -212,8 +211,7 @@ export async function getDecryptedApiKey(): Promise<ActionResult<string | null>>
       try {
         const apiKey = decrypt(storedValue)
         return { data: apiKey }
-      } catch (err) {
-        console.error("Decryption error:", err)
+      } catch {
         return { error: "Failed to decrypt API key" }
       }
     }
@@ -234,8 +232,7 @@ export async function getDecryptedApiKey(): Promise<ActionResult<string | null>>
       try {
         const apiKey = decrypt(migratedValue)
         return { data: apiKey }
-      } catch (err) {
-        console.error("Decryption error after migration:", err)
+      } catch {
         return { error: "Failed to decrypt API key" }
       }
     }
@@ -365,7 +362,6 @@ export async function uploadAvatar(
       })
 
     if (uploadError) {
-      console.error("Avatar upload error:", uploadError)
       return { error: `Failed to upload avatar: ${uploadError.message}` }
     }
 

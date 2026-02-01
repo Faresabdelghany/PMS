@@ -95,10 +95,8 @@ export async function createWorkstream(
       .in("id", taskIds)
       .eq("project_id", projectId) // Safety: only update tasks in same project
 
-    if (taskError) {
-      console.error("Failed to assign tasks to workstream:", taskError)
-      // Don't fail the whole operation, workstream was created
-    }
+    // Don't fail the whole operation if task assignment fails, workstream was created
+    void taskError
   }
 
   after(async () => {

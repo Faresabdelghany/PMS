@@ -158,10 +158,8 @@ export async function deleteNote(noteId: string): Promise<ActionResult> {
       .from("project-media")
       .remove([audioData.storage_path])
 
-    if (storageError) {
-      console.error("Failed to delete audio file:", storageError)
-      // Continue with note deletion even if audio cleanup fails
-    }
+    // Continue with note deletion even if audio cleanup fails
+    void storageError
   }
 
   // Delete the note
