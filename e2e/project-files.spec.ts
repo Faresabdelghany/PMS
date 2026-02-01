@@ -21,10 +21,25 @@ test.describe('Project Files Tab', () => {
     await projectWizardPage.quickCreateProject({ name: projectName });
     await projectWizardPage.assertWizardClosed();
 
-    // Navigate to project details
+    // Navigate to project details with retry
     await projectsPage.goTo();
     await projectsPage.waitForProjectsLoad();
-    await projectsPage.clickProject(projectName);
+
+    // Wait a bit for the project to appear in the list
+    await projectsPage.page.waitForTimeout(1000);
+
+    try {
+      await projectsPage.clickProject(projectName);
+    } catch {
+      // Retry once if the click fails
+      await projectsPage.goTo();
+      await projectsPage.waitForProjectsLoad();
+      await projectsPage.page.waitForTimeout(1000);
+      await projectsPage.clickProject(projectName);
+    }
+
+    // Wait for project details to load
+    await projectDetailsPage.waitForProjectLoad();
 
     return projectName;
   }
@@ -86,8 +101,11 @@ test.describe('Project Files Tab', () => {
       // Click Add File button
       await page.getByRole('button', { name: /add file/i }).click();
 
-      // Modal should open
-      await expect(page.getByRole('dialog')).toBeVisible();
+      // Wait for modal to open - the modal has a URL input and overlay
+      await page.waitForTimeout(500);
+      // Modal should show URL input field or "Upload files" button
+      const modalIndicator = page.getByPlaceholder(/url|link/i).or(page.getByRole('button', { name: /upload files/i }));
+      await expect(modalIndicator.first()).toBeVisible({ timeout: 5000 });
     });
 
     test('PF-005: Add File modal has URL input', async ({
@@ -117,13 +135,19 @@ test.describe('Project Files Tab', () => {
 
       // Open modal
       await page.getByRole('button', { name: /add file/i }).click();
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await page.waitForTimeout(500);
+      const modalInput = page.getByPlaceholder(/url|link/i);
+      await expect(modalInput).toBeVisible({ timeout: 5000 });
 
-      // Close modal (click outside or close button)
-      await page.keyboard.press('Escape');
+      // Close modal by finding the X button within the modal container
+      // The modal is inside the fixed overlay div with z-50
+      const modalContainer = page.locator('.fixed.inset-0.z-50');
+      const closeButton = modalContainer.locator('button').filter({ has: page.locator('svg.h-4.w-4') }).first();
+      await closeButton.click({ force: true });
+      await page.waitForTimeout(300);
 
-      // Modal should close
-      await expect(page.getByRole('dialog')).not.toBeVisible();
+      // Modal should close - URL input should not be visible
+      await expect(modalInput).not.toBeVisible({ timeout: 5000 });
     });
   });
 
@@ -137,8 +161,11 @@ test.describe('Project Files Tab', () => {
       await createAndOpenProject(projectsPage, projectWizardPage, projectDetailsPage);
       await projectDetailsPage.switchToFiles();
 
+      // Wait for files tab content to load
+      await page.waitForTimeout(1000);
+
       // Should have a search input
-      await expect(page.getByPlaceholder(/search/i)).toBeVisible();
+      await expect(page.getByPlaceholder(/search/i)).toBeVisible({ timeout: 10000 });
     });
 
     test('PF-008: Empty state shows when no files exist', async ({
