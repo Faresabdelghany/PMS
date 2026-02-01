@@ -134,6 +134,7 @@ export function AssetsFilesTab({ projectId, currentUser = defaultUser }: AssetsF
             <AddFileModal
                 open={isAddOpen}
                 onOpenChange={setIsAddOpen}
+                projectId={projectId}
                 currentUser={currentUser}
                 onCreate={handleCreateFiles}
             />

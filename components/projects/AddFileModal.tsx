@@ -8,10 +8,12 @@ import { Button } from "@/components/ui/button"
 import { QuickCreateModalLayout } from "@/components/QuickCreateModalLayout"
 import { ProjectDescriptionEditorLazy as ProjectDescriptionEditor } from "@/components/project-wizard/ProjectDescriptionEditorLazy"
 import { UploadAssetFilesModal } from "@/components/projects/UploadAssetFilesModal"
+import { createLinkAsset, uploadFile } from "@/lib/actions/files"
 
 type AddFileModalProps = {
     open: boolean
     onOpenChange: (open: boolean) => void
+    projectId: string
     currentUser: User
     onCreate: (files: ProjectFile[]) => void
 }
@@ -25,13 +27,15 @@ function toQuickLinkType(ext: string): QuickLink["type"] {
     return "file"
 }
 
-export function AddFileModal({ open, onOpenChange, currentUser, onCreate }: AddFileModalProps) {
+export function AddFileModal({ open, onOpenChange, projectId, currentUser, onCreate }: AddFileModalProps) {
     const [title, setTitle] = useState("")
     const [description, setDescription] = useState<string | undefined>(undefined)
     const [link, setLink] = useState("")
     const [pendingFiles, setPendingFiles] = useState<File[]>([])
     const [isExpanded, setIsExpanded] = useState(false)
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [submitError, setSubmitError] = useState<string | null>(null)
 
     useEffect(() => {
         if (!open) return
@@ -42,6 +46,8 @@ export function AddFileModal({ open, onOpenChange, currentUser, onCreate }: AddF
         setPendingFiles([])
         setIsUploadModalOpen(false)
         setIsExpanded(false)
+        setIsSubmitting(false)
+        setSubmitError(null)
     }, [open])
 
     const attachmentSummaries = useMemo(
@@ -69,59 +75,72 @@ export function AddFileModal({ open, onOpenChange, currentUser, onCreate }: AddF
         }
     }
 
-    const canSubmit = Boolean(link.trim() || pendingFiles.length > 0)
+    const canSubmit = Boolean(link.trim() || pendingFiles.length > 0) && !isSubmitting
 
-    const handleCreateAsset = () => {
-        if (!canSubmit) return
+    const handleCreateAsset = async () => {
+        if (!canSubmit || isSubmitting) return
 
-        const now = Date.now()
+        setIsSubmitting(true)
+        setSubmitError(null)
+
         const trimmedLink = link.trim()
         const hasLink = Boolean(trimmedLink)
-        let mainQuickLink: QuickLink | undefined
-        const attachments: QuickLink[] = []
 
-        if (hasLink) {
-            const type = detectTypeFromUrl(trimmedLink)
-            mainQuickLink = {
-                id: `asset-link-${now}`,
-                name: title || trimmedLink,
-                type,
-                sizeMB: 0,
-                url: trimmedLink,
+        try {
+            if (hasLink) {
+                // Create a link asset using the server action
+                const result = await createLinkAsset(projectId, {
+                    name: title || trimmedLink,
+                    url: trimmedLink,
+                    description: description || undefined,
+                })
+
+                if (result.error) {
+                    setSubmitError(result.error)
+                    setIsSubmitting(false)
+                    return
+                }
+
+                // Also upload any attached files
+                for (const file of pendingFiles) {
+                    const formData = new FormData()
+                    formData.append("file", file)
+                    await uploadFile(projectId, formData, {
+                        name: file.name,
+                        description: undefined,
+                    })
+                }
+            } else {
+                // Upload files
+                if (!pendingFiles.length) {
+                    setIsSubmitting(false)
+                    return
+                }
+
+                for (let i = 0; i < pendingFiles.length; i++) {
+                    const file = pendingFiles[i]
+                    const formData = new FormData()
+                    formData.append("file", file)
+                    const result = await uploadFile(projectId, formData, {
+                        name: i === 0 && title ? title : file.name,
+                        description: i === 0 ? description || undefined : undefined,
+                    })
+
+                    if (result.error) {
+                        setSubmitError(result.error)
+                        setIsSubmitting(false)
+                        return
+                    }
+                }
             }
 
-            pendingFiles.forEach((file, idx) => {
-                attachments.push(buildQuickLinkFromFile(file, `asset-link-attachment-${now}-${idx}`))
-            })
-        } else {
-            if (!pendingFiles.length) return
-
-            pendingFiles.forEach((file, idx) => {
-                const quickLink = buildQuickLinkFromFile(file, `asset-file-${now}-${idx}`)
-                if (!mainQuickLink) {
-                    mainQuickLink = {
-                        ...quickLink,
-                        name: title || quickLink.name,
-                    }
-                } else {
-                    attachments.push(quickLink)
-                }
-            })
+            // Success - real-time subscription will update the list
+            onCreate([])
+            onOpenChange(false)
+        } catch (err) {
+            setSubmitError("An unexpected error occurred")
+            setIsSubmitting(false)
         }
-
-        if (!mainQuickLink) return
-
-        const projectFile: ProjectFile = {
-            ...mainQuickLink,
-            addedBy: currentUser,
-            addedDate: new Date(),
-            description,
-            isLinkAsset: hasLink,
-            attachments: attachments.length ? attachments : undefined,
-        }
-
-        onCreate([projectFile])
-        onOpenChange(false)
     }
 
     const handleFilesSelected = (files: File[]) => {
@@ -184,6 +203,9 @@ export function AddFileModal({ open, onOpenChange, currentUser, onCreate }: AddF
                 </div>
 
                 <div className="mt-3 w-full">
+                    {submitError && (
+                        <p className="text-sm text-destructive mb-2">{submitError}</p>
+                    )}
                     {attachmentSummaries.length > 0 ? (
                         <div className="space-y-2">
                             {attachmentSummaries.map((s) => (
@@ -221,7 +243,7 @@ export function AddFileModal({ open, onOpenChange, currentUser, onCreate }: AddF
                             Upload files
                         </Button>
                         <Button size="sm" onClick={handleCreateAsset} disabled={!canSubmit}>
-                            Create asset
+                            {isSubmitting ? "Creating..." : "Create asset"}
                         </Button>
                     </div>
                 </div>
