@@ -22,7 +22,10 @@ export interface ProjectDescriptionEditorProps {
   placeholder?: string;
   className?: string;
   showTemplates?: boolean;
-  // AI generation context
+  showAIButton?: boolean;
+  // Custom AI generation handler (overrides default project description generation)
+  onAIGenerate?: (currentContent: string) => Promise<string | null>;
+  // AI generation context (used when onAIGenerate is not provided)
   projectContext?: {
     name?: string;
     intent?: string;
@@ -39,6 +42,8 @@ export function ProjectDescriptionEditor({
   placeholder,
   className,
   showTemplates = true,
+  showAIButton = true,
+  onAIGenerate,
   projectContext,
 }: ProjectDescriptionEditorProps) {
   const [isFocused, setIsFocused] = useState(false);
@@ -60,6 +65,18 @@ export function ProjectDescriptionEditor({
 
     setIsGenerating(true);
     try {
+      // Use custom AI handler if provided
+      if (onAIGenerate) {
+        const currentContent = editor.getText();
+        const result = await onAIGenerate(currentContent);
+        if (result) {
+          editor.commands.setContent(result);
+          onChange?.(editor.getHTML());
+        }
+        return;
+      }
+
+      // Default: generate project description
       const context: ProjectContext = {
         name: projectContext?.name || "Untitled Project",
         description: projectContext?.intent
@@ -476,22 +493,24 @@ export function ProjectDescriptionEditor({
 
               <div className="flex-1" />
 
-              {isConfigured ? (
-                <AIGenerateButton
-                  onClick={handleGenerateWithAI}
-                  isLoading={isGenerating}
-                  label="Write with AI"
-                  loadingLabel="Writing..."
-                  size="sm"
-                />
-              ) : (
-                <AISetupPrompt onSetupComplete={handleAISetupComplete}>
+              {showAIButton && (
+                isConfigured ? (
                   <AIGenerateButton
-                    onClick={() => {}}
+                    onClick={handleGenerateWithAI}
+                    isLoading={isGenerating}
                     label="Write with AI"
+                    loadingLabel="Writing..."
                     size="sm"
                   />
-                </AISetupPrompt>
+                ) : (
+                  <AISetupPrompt onSetupComplete={handleAISetupComplete}>
+                    <AIGenerateButton
+                      onClick={() => {}}
+                      label="Write with AI"
+                      size="sm"
+                    />
+                  </AISetupPrompt>
+                )
               )}
             </div>
           </div>

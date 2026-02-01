@@ -722,39 +722,46 @@ export async function enhanceNoteContent(
     return { error: "Content is too long. Please reduce the text length." }
   }
 
-  const systemPrompt = `You are a note formatting assistant. Your ONLY job is to clean up and format the user's existing notes.
+  const systemPrompt = `You are a professional note-writing assistant. Your job is to transform rough notes into well-written, professional documentation while preserving all the original information.
 
 CRITICAL RULES:
-1. ONLY use information that is explicitly in the original text - DO NOT invent or add any new information
-2. DO NOT generate generic content or descriptions
-3. Preserve ALL specific details: names, dates, deadlines, tasks, decisions mentioned
-4. If the note mentions "Taher", "login page", "end of week" - those exact details MUST appear in your output
-5. Keep it SHORT and focused - don't pad with filler text
+1. Keep ALL specific details from the original: names, dates, deadlines, amounts, decisions
+2. Expand brief points into clear, complete sentences
+3. Add professional context and structure
+4. Use proper business language
 
-Your formatting improvements:
-- Fix grammar and spelling errors
-- Organize into clear sections using bullet points or numbered lists
-- Use <strong> to highlight key items like names, dates, deadlines
-- Structure meeting notes with: Discussion Points, Decisions, Action Items (if applicable)
+Your enhancements:
+- Transform bullet points into clear paragraphs or organized lists
+- Add context to make notes understandable to others
+- Structure with clear sections: Summary, Discussion Points, Decisions/Agreements, Action Items, Next Steps
+- Use <strong> to highlight key items: names, dates, deadlines, amounts
+- Write in a professional but clear tone
 
-Output clean HTML only. Use: <p>, <strong>, <ul>/<li>, <ol>/<li>, <h3> tags as needed.
-Do NOT use markdown. Do NOT add any content not in the original.`
+Output clean HTML. Use: <p>, <strong>, <ul>/<li>, <ol>/<li>, <h3> tags.
+Do NOT use markdown.`
 
   const noteTypeContext = context?.noteType === "meeting"
-    ? "Format as meeting notes with sections for key points, decisions, and action items IF that information exists in the original."
+    ? "This is a meeting note - structure with: Attendees (if mentioned), Discussion Topics, Key Decisions, Action Items, and Next Steps."
     : ""
 
-  const userPrompt = `Format and clean up this note. ONLY use information from the original text below - do not add anything new:
+  const userPrompt = `Transform these rough notes into professional, well-written documentation. Keep ALL original details but expand and improve the writing:
 
 ${context?.title ? `Title: ${context.title}` : ""}
+${context?.projectName ? `Project: ${context.projectName}` : ""}
 ${noteTypeContext}
 
-ORIGINAL TEXT TO FORMAT:
+ROUGH NOTES:
 """
 ${content}
 """
 
-Return ONLY the formatted HTML. Keep all original details (names, dates, tasks, etc).`
+Write a professional note that:
+1. Preserves every detail (names, dates, deadlines, decisions)
+2. Expands brief points into clear sentences
+3. Organizes with appropriate sections
+4. Is easy to read and understand
+
+Return the enhanced HTML content.`
 
   const result = await generateText(userPrompt, systemPrompt, { temperature: 0.4 })
 

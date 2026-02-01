@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Paperclip, Microphone, UploadSimple, Tag, X } from "@phosphor-icons/react/dist/ssr"
 import { toast } from "sonner"
 
@@ -9,9 +9,6 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { QuickCreateModalLayout } from "@/components/QuickCreateModalLayout"
 import { ProjectDescriptionEditorLazy as ProjectDescriptionEditor } from "@/components/project-wizard/ProjectDescriptionEditorLazy"
-import { useAIStatus } from "@/hooks/use-ai-status"
-import { AIGenerateButton } from "@/components/ai/ai-generate-button"
-import { AISetupPrompt } from "@/components/ai/ai-setup-prompt"
 import { enhanceNoteContent } from "@/lib/actions/ai"
 
 type CreateNoteModalProps = {
@@ -38,56 +35,34 @@ export function CreateNoteModal({
     const [title, setTitle] = useState("")
     const [description, setDescription] = useState<string | undefined>(undefined)
     const [isExpanded, setIsExpanded] = useState(false)
-    const [isEnhancing, setIsEnhancing] = useState(false)
 
-    const { isConfigured, refetch: refetchAIStatus } = useAIStatus()
     const isEditing = !!editingNote
 
-    // Check if there's content to enhance
-    const hasContent = description && description.trim().length > 0 && description !== "<p></p>"
-
-    const handleEnhanceWithAI = async () => {
-        if (!description || !hasContent) return
-
-        setIsEnhancing(true)
-        try {
-            // Strip HTML tags to get plain text for enhancement using regex (safer than innerHTML)
-            const plainText = description.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
-
-            if (!plainText) {
-                setIsEnhancing(false)
-                return
-            }
-
-            const result = await enhanceNoteContent(plainText, {
-                title: title || undefined,
-                projectName: projectName,
-                noteType: "general",
-            })
-
-            if (result.error) {
-                toast.error(result.error)
-                return
-            }
-
-            if (result.data) {
-                setDescription(result.data)
-                toast.success("Note enhanced with AI")
-            }
-        } catch {
-            toast.error("Failed to enhance note. Please try again.")
-        } finally {
-            setIsEnhancing(false)
+    // Custom AI handler for note enhancement
+    const handleNoteAIGenerate = useCallback(async (currentContent: string): Promise<string | null> => {
+        if (!currentContent.trim()) {
+            toast.error("Please write some content first")
+            return null
         }
-    }
 
-    const handleAISetupComplete = async () => {
-        await refetchAIStatus()
-        // Automatically trigger enhancement after setup if there's content
-        if (hasContent) {
-            handleEnhanceWithAI()
+        const result = await enhanceNoteContent(currentContent, {
+            title: title || undefined,
+            projectName: projectName,
+            noteType: "general",
+        })
+
+        if (result.error) {
+            toast.error(result.error)
+            return null
         }
-    }
+
+        if (result.data) {
+            toast.success("Note enhanced with AI")
+            return result.data
+        }
+
+        return null
+    }, [title, projectName])
 
     useEffect(() => {
         if (!open) return
@@ -161,6 +136,7 @@ export function CreateNoteModal({
                 onExpandChange={setIsExpanded}
                 placeholder="Write the details of this note..."
                 showTemplates={false}
+                onAIGenerate={handleNoteAIGenerate}
             />
 
             {/* Note context (author + tag) */}
@@ -190,27 +166,6 @@ export function CreateNoteModal({
                     <Button variant="ghost" size="icon-sm" className="text-muted-foreground">
                         <Microphone className="h-4 w-4" />
                     </Button>
-
-                    {/* Write with AI button */}
-                    {isConfigured ? (
-                        <AIGenerateButton
-                            onClick={handleEnhanceWithAI}
-                            isLoading={isEnhancing}
-                            disabled={!hasContent}
-                            label="Write with AI"
-                            loadingLabel="Enhancing..."
-                            size="sm"
-                        />
-                    ) : (
-                        <AISetupPrompt onSetupComplete={handleAISetupComplete}>
-                            <AIGenerateButton
-                                onClick={() => {}}
-                                disabled={!hasContent}
-                                label="Write with AI"
-                                size="sm"
-                            />
-                        </AISetupPrompt>
-                    )}
                 </div>
 
                 <div className="flex items-center gap-2">
