@@ -130,7 +130,7 @@ async function extractFileText(file: File): Promise<string> {
 export function AIChatInput({
   onSend,
   disabled = false,
-  placeholder = "Ask anything...",
+  placeholder = "Ask anything…",
 }: AIChatInputProps) {
   const [message, setMessage] = useState("")
   const [attachments, setAttachments] = useState<Attachment[]>([])
@@ -267,13 +267,16 @@ export function AIChatInput({
           type="file"
           multiple
           onChange={handleFileChange}
-          className="hidden"
+          className="sr-only"
+          aria-label="Attach files"
           accept=".txt,.md,.json,.csv,.js,.jsx,.ts,.tsx,.html,.css,.xml,.yaml,.yml,.py,.rb,.php,.java,.c,.cpp,.go,.rs,.sql,.pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp,.svg"
         />
 
         {/* Textarea */}
         <Textarea
           ref={textareaRef}
+          name="message"
+          autoComplete="off"
           value={message}
           onChange={handleMessageChange}
           onKeyDown={handleKeyDown}

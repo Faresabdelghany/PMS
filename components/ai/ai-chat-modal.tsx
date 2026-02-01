@@ -78,7 +78,7 @@ export function AIChatModal({ open, onOpenChange, onMinimize, context, isLoading
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm overscroll-contain"
       onClick={handleBackdropClick}
     >
       <MotionDiv
@@ -151,7 +151,7 @@ export function AIChatModal({ open, onOpenChange, onMinimize, context, isLoading
           {!isCheckingAI && !isLoadingContext && isConfigured && (
             <>
               {/* Messages Area */}
-              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4" aria-live="polite" aria-atomic="false">
                 {/* Empty state */}
                 {messages.length === 0 && !isLoading && (
                   <div className="flex flex-col items-center justify-center h-full gap-4 text-center py-12">
@@ -193,15 +193,15 @@ export function AIChatModal({ open, onOpenChange, onMinimize, context, isLoading
                   <div className="flex items-center gap-2.5 text-muted-foreground py-2">
                     {isLoading && !isStreaming ? (
                       <>
-                        <SpinnerGap className="size-4 animate-spin" />
-                        <span className="text-sm">Thinking...</span>
+                        <SpinnerGap className="size-4 animate-spin motion-reduce:animate-none" />
+                        <span className="text-sm">Thinking…</span>
                       </>
                     ) : (
                       <button
                         onClick={stopGeneration}
-                        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded"
                       >
-                        <span className="size-2 rounded-full bg-violet-400 animate-pulse" />
+                        <span className="size-2 rounded-full bg-violet-400 animate-pulse motion-reduce:animate-none" />
                         Stop generating
                       </button>
                     )}
@@ -224,7 +224,7 @@ export function AIChatModal({ open, onOpenChange, onMinimize, context, isLoading
                 <AIChatInput
                   onSend={handleSendMessage}
                   disabled={isLoading}
-                  placeholder="Ask anything..."
+                  placeholder="Ask anything…"
                 />
               </div>
             </>

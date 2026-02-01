@@ -163,7 +163,9 @@ export function ChatHistorySidebar({
           <MagnifyingGlass className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="Search chats..."
+            name="search"
+            autoComplete="off"
+            placeholder="Search chats…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="h-8 pl-8 text-sm rounded-lg bg-muted/50"
@@ -220,7 +222,8 @@ export function ChatHistorySidebar({
                           onClick={(e) => handleDelete(e, conversation.id)}
                           className={cn(
                             "p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-opacity",
-                            "opacity-0 group-hover:opacity-100 focus:opacity-100"
+                            "opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                           )}
                           aria-label="Delete conversation"
                         >
@@ -241,7 +244,7 @@ export function ChatHistorySidebar({
         <button
           type="button"
           onClick={() => openSettings("agents")}
-          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <Gear className="h-4 w-4" />
           AI Settings

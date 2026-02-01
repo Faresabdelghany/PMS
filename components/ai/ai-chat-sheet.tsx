@@ -124,7 +124,7 @@ export function AIChatSheet({ open, onOpenChange, context, isLoadingContext }: A
           {!isCheckingAI && !isLoadingContext && isConfigured && (
             <>
               {/* Messages Area */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4" aria-live="polite" aria-atomic="false">
                 {/* Empty state */}
                 {messages.length === 0 && !isLoading && (
                   <div className="flex flex-col items-center justify-center h-full gap-3 text-center py-12">
@@ -164,15 +164,15 @@ export function AIChatSheet({ open, onOpenChange, context, isLoadingContext }: A
                   <div className="flex items-center gap-2 text-muted-foreground">
                     {isLoading && !isStreaming ? (
                       <>
-                        <SpinnerGap className="size-4 animate-spin" />
-                        <span className="text-sm">Thinking...</span>
+                        <SpinnerGap className="size-4 animate-spin motion-reduce:animate-none" />
+                        <span className="text-sm">Thinking…</span>
                       </>
                     ) : (
                       <button
                         onClick={stopGeneration}
-                        className="flex items-center gap-2 text-sm hover:text-foreground transition-colors"
+                        className="flex items-center gap-2 text-sm hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded"
                       >
-                        <span className="size-2 rounded-full bg-violet-400 animate-pulse" />
+                        <span className="size-2 rounded-full bg-violet-400 animate-pulse motion-reduce:animate-none" />
                         Stop generating
                       </button>
                     )}
@@ -195,7 +195,7 @@ export function AIChatSheet({ open, onOpenChange, context, isLoadingContext }: A
                 <AIChatInput
                   onSend={handleSendMessage}
                   disabled={isLoading}
-                  placeholder="Ask anything..."
+                  placeholder="Ask anything…"
                 />
               </div>
             </>

@@ -223,7 +223,7 @@ export function ChatView({
         {!isCheckingAI && !isLoadingContext && isConfigured && (
           <>
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4" aria-live="polite" aria-atomic="false">
               {/* Empty state with quick actions */}
               {messages.length === 0 && !isLoading && (
                 <div className="flex flex-col items-center justify-center h-full gap-6 py-12">
@@ -246,7 +246,7 @@ export function ChatView({
                       <button
                         key={action.label}
                         onClick={() => handleSendMessage(action.prompt)}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3.5 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3.5 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       >
                         {action.icon}
                         {action.label}
@@ -288,9 +288,9 @@ export function ChatView({
                   ) : (
                     <button
                       onClick={stopGeneration}
-                      className="flex items-center gap-2 rounded-full bg-muted/50 px-4 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors"
+                      className="flex items-center gap-2 rounded-full bg-muted/50 px-4 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
-                      <span className="size-2 rounded-full bg-violet-400 animate-pulse" />
+                      <span className="size-2 rounded-full bg-violet-400 animate-pulse motion-reduce:animate-none" />
                       Stop generating
                     </button>
                   )}
@@ -333,7 +333,7 @@ export function ChatView({
               <AIChatInput
                 onSend={handleSendMessage}
                 disabled={isLoading}
-                placeholder="Ask anything..."
+                placeholder="Ask anything…"
               />
             </div>
           </>

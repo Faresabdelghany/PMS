@@ -32,15 +32,15 @@ export function AIChatBubble({ onClick, hasUnread, messageCount = 0 }: AIChatBub
         className={cn(
           "group relative flex items-center gap-2.5 rounded-2xl px-4 py-3",
           "bg-background border border-border shadow-lg",
-          "hover:shadow-xl hover:border-violet-500/30 transition-all duration-200",
-          "focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:ring-offset-2"
+          "hover:shadow-xl hover:border-violet-500/30 transition-all duration-200 motion-reduce:transition-none",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 focus-visible:ring-offset-2"
         )}
         aria-label="Open AI chat"
       >
         {/* Icon with subtle pulse animation when has unread */}
         <div className={cn(
           "relative flex items-center justify-center size-9 rounded-xl bg-violet-500/10",
-          hasUnread && "animate-pulse"
+          hasUnread && "animate-pulse motion-reduce:animate-none"
         )}>
           <StarFour weight="fill" className="size-5 text-violet-500" />
 

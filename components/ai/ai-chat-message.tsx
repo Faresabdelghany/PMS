@@ -266,8 +266,8 @@ function ActionConfirmation({
     return (
       <div className="mt-4 rounded-xl border-2 border-primary/30 bg-primary/5 p-4 dark:border-primary/40 dark:bg-primary/10">
         <div className="flex items-center gap-3">
-          <SpinnerGap className="size-5 animate-spin text-primary" />
-          <span className="text-sm font-medium text-foreground">Executing...</span>
+          <SpinnerGap className="size-5 animate-spin text-primary motion-reduce:animate-none" />
+          <span className="text-sm font-medium text-foreground">Executing…</span>
         </div>
       </div>
     )
@@ -555,7 +555,7 @@ function MultiActionConfirmation({
               <button
                 key={idx}
                 onClick={() => navigateToEntity(entity)}
-                className="inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-300 dark:hover:bg-green-900 transition-colors"
+                className="inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-300 dark:hover:bg-green-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 {entity.name}
                 <span className="opacity-60">→</span>
@@ -624,7 +624,8 @@ function SuggestedActions({ suggestions, onSelect }: SuggestedActionsProps) {
             "text-xs font-medium",
             "bg-primary/10 text-primary",
             "hover:bg-primary/20 transition-colors",
-            "border border-primary/20"
+            "border border-primary/20",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           )}
         >
           <Plus className="size-3" />
