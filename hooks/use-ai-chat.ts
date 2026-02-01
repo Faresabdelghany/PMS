@@ -77,6 +77,75 @@ function generateId(): string {
 // Hook
 // =============================================================================
 
+// Helper to extract balanced JSON from a string starting at given character
+function extractBalancedJson(str: string, openChar: '{' | '['): { json: string; endIndex: number } | null {
+  const closeChar = openChar === '{' ? '}' : ']'
+  if (!str.startsWith(openChar)) return null
+
+  let depth = 0
+  let inString = false
+  let escape = false
+
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i]
+
+    if (escape) {
+      escape = false
+      continue
+    }
+
+    if (char === '\\' && inString) {
+      escape = true
+      continue
+    }
+
+    if (char === '"') {
+      inString = !inString
+      continue
+    }
+
+    if (inString) continue
+
+    if (char === openChar) depth++
+    else if (char === closeChar) {
+      depth--
+      if (depth === 0) {
+        return { json: str.slice(0, i + 1), endIndex: i }
+      }
+    }
+  }
+
+  return null
+}
+
+// Extract a JSON keyword (like ACTION_JSON or ACTIONS_JSON) from anywhere in content
+function extractJsonKeyword(
+  content: string,
+  keyword: string
+): { json: unknown; remainingContent: string } | null {
+  const keywordIndex = content.indexOf(keyword + ':')
+  if (keywordIndex === -1) return null
+
+  const afterKeyword = content.slice(keywordIndex + keyword.length + 1).trimStart()
+  const firstChar = afterKeyword[0]
+
+  if (firstChar !== '{' && firstChar !== '[') return null
+
+  const extracted = extractBalancedJson(afterKeyword, firstChar as '{' | '[')
+  if (!extracted) return null
+
+  try {
+    const json = JSON.parse(extracted.json)
+    // Remove the keyword and JSON from content, keeping text before and after
+    const before = content.slice(0, keywordIndex).trim()
+    const after = afterKeyword.slice(extracted.endIndex + 1).trim()
+    const remainingContent = (before + (before && after ? '\n' : '') + after).trim()
+    return { json, remainingContent }
+  } catch {
+    return null
+  }
+}
+
 // Parse actions and suggestions from completed text
 function parseStreamedResponse(text: string): {
   content: string
@@ -89,45 +158,31 @@ function parseStreamedResponse(text: string): {
   let action: ProposedAction | undefined
   let suggestedActions: SuggestedAction[] | undefined
 
-  // Extract SUGGESTED_ACTIONS - handles multi-line formatted JSON
-  // Uses greedy match to capture entire JSON array, expects at end of content
-  const suggestionsMatch = content.match(/SUGGESTED_ACTIONS:\s*(\[[\s\S]*\])\s*$/)
-  if (suggestionsMatch) {
-    try {
-      suggestedActions = JSON.parse(suggestionsMatch[1])
-      content = content.replace(/SUGGESTED_ACTIONS:\s*\[[\s\S]*\]\s*$/, "").trim()
-    } catch { /* ignore parse errors */ }
+  // Extract SUGGESTED_ACTIONS from anywhere in content
+  const suggestionsResult = extractJsonKeyword(content, 'SUGGESTED_ACTIONS')
+  if (suggestionsResult && Array.isArray(suggestionsResult.json)) {
+    suggestedActions = suggestionsResult.json as SuggestedAction[]
+    content = suggestionsResult.remainingContent
   }
 
-  // Extract ACTIONS_JSON (multiple actions) - handles multi-line formatted JSON
-  const actionsMatch = content.match(/ACTIONS_JSON:\s*(\[[\s\S]*\])\s*$/)
-  if (actionsMatch) {
-    try {
-      actions = JSON.parse(actionsMatch[1])
-      content = content.replace(/ACTIONS_JSON:\s*\[[\s\S]*\]\s*$/, "").trim()
-    } catch { /* ignore parse errors */ }
+  // Extract ACTIONS_JSON (multiple actions) from anywhere in content
+  const actionsResult = extractJsonKeyword(content, 'ACTIONS_JSON')
+  if (actionsResult && Array.isArray(actionsResult.json)) {
+    actions = actionsResult.json as ProposedAction[]
+    content = actionsResult.remainingContent
   }
 
-  // Extract ACTION_JSON - handles both single object AND array (fallback for AI mistakes)
+  // Extract ACTION_JSON from anywhere in content
   if (!actions) {
-    // First try to match array format (AI mistakenly used ACTION_JSON for multiple actions)
-    const actionArrayMatch = content.match(/ACTION_JSON:\s*(\[[\s\S]*\])\s*$/)
-    if (actionArrayMatch) {
-      try {
-        actions = JSON.parse(actionArrayMatch[1])
-        content = content.replace(/ACTION_JSON:\s*\[[\s\S]*\]\s*$/, "").trim()
-      } catch { /* ignore parse errors */ }
-    }
-
-    // Then try single object format
-    if (!actions) {
-      const actionMatch = content.match(/ACTION_JSON:\s*(\{[\s\S]*\})\s*$/)
-      if (actionMatch) {
-        try {
-          action = JSON.parse(actionMatch[1])
-          content = content.replace(/ACTION_JSON:\s*\{[\s\S]*\}\s*$/, "").trim()
-        } catch { /* ignore parse errors */ }
+    const actionResult = extractJsonKeyword(content, 'ACTION_JSON')
+    if (actionResult) {
+      if (Array.isArray(actionResult.json)) {
+        // AI mistakenly used ACTION_JSON for multiple actions
+        actions = actionResult.json as ProposedAction[]
+      } else if (typeof actionResult.json === 'object') {
+        action = actionResult.json as ProposedAction
       }
+      content = actionResult.remainingContent
     }
   }
 

@@ -357,7 +357,19 @@ ACTIONS_JSON: [
 
 For existing entities, ALWAYS use real UUIDs from the reference data below.
 
-When proposing actions, include at the END of your response:
+**CRITICAL - Action JSON Placement:**
+When proposing actions, the JSON MUST be at the ABSOLUTE END of your message. NO text after the JSON.
+
+✅ CORRECT format:
+"I can create this project for you. Click Execute to confirm:
+
+ACTION_JSON: {"type": "create_project", "data": {"name": "Test"}}"
+
+❌ WRONG format (text after JSON):
+"ACTION_JSON: {"type": "create_project", "data": {"name": "Test"}}
+
+Would you like me to add tasks too?" ← NEVER put text after the JSON!
+
 - For single action: ACTION_JSON: {"type": "...", "data": {...}}
 - For multiple actions: ACTIONS_JSON: [{"type": "...", "data": {...}}, ...]
 
