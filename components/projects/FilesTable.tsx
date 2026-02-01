@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { DotsThree, MagnifyingGlass, Plus, PencilSimple, Trash } from "@phosphor-icons/react/dist/ssr"
+import { useState, useCallback } from "react"
+import { DotsThree, MagnifyingGlass, Plus, PencilSimple, Trash, ArrowSquareOut, DownloadSimple } from "@phosphor-icons/react/dist/ssr"
 import { format } from "date-fns"
 import Image from "next/image"
 
@@ -42,6 +42,12 @@ export function FilesTable({ files, onAddFile, onEditFile, onDeleteFile, isDelet
             prev.includes(fileId) ? prev.filter((id) => id !== fileId) : [...prev, fileId],
         )
     }
+
+    const handleOpenFile = useCallback((file: ProjectFile) => {
+        if (file.url) {
+            window.open(file.url, "_blank", "noopener,noreferrer")
+        }
+    }, [])
 
     return (
         <div className="space-y-4">
@@ -88,7 +94,11 @@ export function FilesTable({ files, onAddFile, onEditFile, onDeleteFile, isDelet
                             const sizeLabel = file.isLinkAsset || file.sizeMB === 0 ? "Link" : `${file.sizeMB.toFixed(1)} MB`
 
                             return (
-                                <TableRow key={file.id} className="cursor-pointer">
+                                <TableRow
+                                    key={file.id}
+                                    className="cursor-pointer hover:bg-muted/50"
+                                    onClick={() => handleOpenFile(file)}
+                                >
                                     <TableCell
                                         onClick={(e) => {
                                             e.stopPropagation()
@@ -137,6 +147,19 @@ export function FilesTable({ files, onAddFile, onEditFile, onDeleteFile, isDelet
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={() => handleOpenFile(file)}>
+                                                    {file.isLinkAsset ? (
+                                                        <>
+                                                            <ArrowSquareOut className="mr-2 h-4 w-4" />
+                                                            Open link
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <DownloadSimple className="mr-2 h-4 w-4" />
+                                                            Download
+                                                        </>
+                                                    )}
+                                                </DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => onEditFile?.(file.id)}>
                                                     <PencilSimple className="mr-2 h-4 w-4" />
                                                     Edit
