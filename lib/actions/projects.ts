@@ -495,6 +495,7 @@ export type ProjectFullDetails = ProjectWithRelations & {
   features: { id: string; item: string; priority: number; sort_order: number }[]
   deliverables: { id: string; title: string; due_date: string | null; value: number | null; status: string; payment_status: string; sort_order: number }[]
   metrics: { id: string; name: string; target: string | null; sort_order: number }[]
+  notes: { id: string; title: string; content: string | null; note_type: string; status: string; added_by_id: string | null; created_at: string; updated_at: string; author: { id: string; full_name: string | null; email: string; avatar_url: string | null } | null }[]
 }
 
 // Get single project with ALL relations including scope, outcomes, features, deliverables, metrics
@@ -523,7 +524,7 @@ export async function getProjectWithDetails(id: string): Promise<ActionResult<Pr
   }
 
   // Fetch all related data in parallel
-  const [scopeResult, outcomesResult, featuresResult, deliverablesResult, metricsResult] = await Promise.all([
+  const [scopeResult, outcomesResult, featuresResult, deliverablesResult, metricsResult, notesResult] = await Promise.all([
     supabase
       .from("project_scope")
       .select("id, item, is_in_scope, sort_order")
@@ -549,6 +550,14 @@ export async function getProjectWithDetails(id: string): Promise<ActionResult<Pr
       .select("id, name, target, sort_order")
       .eq("project_id", id)
       .order("sort_order"),
+    supabase
+      .from("project_notes")
+      .select(`
+        id, title, content, note_type, status, added_by_id, created_at, updated_at,
+        author:profiles!project_notes_added_by_id_fkey(id, full_name, email, avatar_url)
+      `)
+      .eq("project_id", id)
+      .order("updated_at", { ascending: false }),
   ])
 
   return {
@@ -559,6 +568,7 @@ export async function getProjectWithDetails(id: string): Promise<ActionResult<Pr
       features: featuresResult.data || [],
       deliverables: deliverablesResult.data || [],
       metrics: metricsResult.data || [],
+      notes: notesResult.data || [],
     } as ProjectFullDetails,
   }
 }

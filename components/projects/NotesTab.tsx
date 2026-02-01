@@ -1,10 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { Plus } from "@phosphor-icons/react/dist/ssr"
 import { toast } from "sonner"
 
 import type { ProjectNote, User } from "@/lib/data/project-details"
+import { createNote, deleteNote, updateNote } from "@/lib/actions/notes"
+import { useNotesRealtime } from "@/hooks/use-realtime"
 import { Button } from "@/components/ui/button"
 import { NoteCard } from "@/components/projects/NoteCard"
 import { NotesTable } from "@/components/projects/NotesTable"
@@ -13,8 +16,10 @@ import { UploadAudioModal } from "@/components/projects/UploadAudioModal"
 import { NotePreviewModal } from "@/components/projects/NotePreviewModal"
 
 type NotesTabProps = {
+    projectId: string
     notes: ProjectNote[]
     currentUser?: User
+    onRefresh?: () => void
 }
 
 const defaultUser: User = {
@@ -23,21 +28,60 @@ const defaultUser: User = {
     avatarUrl: undefined,
 }
 
-export function NotesTab({ notes, currentUser = defaultUser }: NotesTabProps) {
+export function NotesTab({ projectId, notes, currentUser = defaultUser, onRefresh }: NotesTabProps) {
+    const router = useRouter()
+    const [isPending, startTransition] = useTransition()
     const recentNotes = notes.slice(0, 8)
+
+    // Real-time subscription for notes
+    const handleRealtimeChange = useCallback(() => {
+        if (onRefresh) {
+            onRefresh()
+        } else {
+            router.refresh()
+        }
+    }, [onRefresh, router])
+
+    useNotesRealtime(projectId, {
+        onInsert: handleRealtimeChange,
+        onUpdate: handleRealtimeChange,
+        onDelete: handleRealtimeChange,
+    })
 
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
     const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false)
     const [selectedNote, setSelectedNote] = useState<ProjectNote | null>(null)
+    const [editingNote, setEditingNote] = useState<ProjectNote | null>(null)
 
     const handleAddNote = () => {
+        setEditingNote(null)
         setIsCreateModalOpen(true)
     }
 
-    const handleCreateNote = (title: string, content: string) => {
-        console.log("Creating note:", { title, content })
-        toast.success("Note created")
+    const handleCreateNote = async (title: string, content: string) => {
+        startTransition(async () => {
+            const result = await createNote(projectId, {
+                title,
+                content,
+                note_type: "general",
+            })
+
+            if (result.error) {
+                toast.error(result.error)
+                return
+            }
+
+            toast.success("Note created")
+            setIsCreateModalOpen(false)
+
+            // Refresh the page data
+            if (onRefresh) {
+                onRefresh()
+            } else {
+                router.refresh()
+            }
+        })
     }
 
     const handleUploadAudio = () => {
@@ -65,11 +109,56 @@ export function NotesTab({ notes, currentUser = defaultUser }: NotesTabProps) {
     }
 
     const handleEditNote = (noteId: string) => {
-        console.log("Edit note:", noteId)
+        const noteToEdit = notes.find(n => n.id === noteId)
+        if (noteToEdit) {
+            setEditingNote(noteToEdit)
+            setIsCreateModalOpen(true)
+        }
     }
 
-    const handleDeleteNote = (noteId: string) => {
-        console.log("Delete note:", noteId)
+    const handleUpdateNote = async (noteId: string, title: string, content: string) => {
+        startTransition(async () => {
+            const result = await updateNote(noteId, {
+                title,
+                content,
+            })
+
+            if (result.error) {
+                toast.error(result.error)
+                return
+            }
+
+            toast.success("Note updated")
+            setIsCreateModalOpen(false)
+            setEditingNote(null)
+
+            // Refresh the page data
+            if (onRefresh) {
+                onRefresh()
+            } else {
+                router.refresh()
+            }
+        })
+    }
+
+    const handleDeleteNote = async (noteId: string) => {
+        startTransition(async () => {
+            const result = await deleteNote(noteId)
+
+            if (result.error) {
+                toast.error(result.error)
+                return
+            }
+
+            toast.success("Note deleted")
+
+            // Refresh the page data
+            if (onRefresh) {
+                onRefresh()
+            } else {
+                router.refresh()
+            }
+        })
     }
 
     return (
@@ -117,10 +206,15 @@ export function NotesTab({ notes, currentUser = defaultUser }: NotesTabProps) {
 
             <CreateNoteModal
                 open={isCreateModalOpen}
-                onOpenChange={setIsCreateModalOpen}
+                onOpenChange={(open) => {
+                    setIsCreateModalOpen(open)
+                    if (!open) setEditingNote(null)
+                }}
                 currentUser={currentUser}
                 onCreateNote={handleCreateNote}
+                onUpdateNote={handleUpdateNote}
                 onUploadAudio={handleUploadAudio}
+                editingNote={editingNote}
             />
 
             <UploadAudioModal

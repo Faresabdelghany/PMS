@@ -28,7 +28,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import type { WorkstreamTask, WorkstreamTaskStatus, TimelineTask, WorkstreamGroup, ProjectDetails } from "@/lib/data/project-details"
+import type { WorkstreamTask, WorkstreamTaskStatus, TimelineTask, WorkstreamGroup, ProjectDetails, ProjectNote, NoteType, NoteStatus } from "@/lib/data/project-details"
 import type { OrganizationTag } from "@/lib/supabase/types"
 import { formatDueLabel, getDueTone, formatStartLabel } from "@/lib/date-utils"
 
@@ -278,7 +278,23 @@ export function ProjectDetailsPage({
       workstreams: uiWorkstreams,
       timelineTasks,
       files: [],
-      notes: [],
+      notes: (supabaseProject.notes || []).map((note): ProjectNote => ({
+        id: note.id,
+        title: note.title,
+        content: note.content || undefined,
+        noteType: note.note_type as NoteType,
+        status: note.status as NoteStatus,
+        addedDate: new Date(note.created_at),
+        addedBy: note.author ? {
+          id: note.author.id,
+          name: note.author.full_name || note.author.email,
+          avatarUrl: note.author.avatar_url || undefined,
+        } : {
+          id: note.added_by_id || "unknown",
+          name: "Unknown",
+          avatarUrl: undefined,
+        },
+      })),
       quickLinks: [],
     }
   }, [supabaseProject, tasks, workstreams, organizationMembers])
@@ -444,7 +460,11 @@ export function ProjectDetailsPage({
                   </TabsContent>
 
                   <TabsContent value="notes">
-                    <NotesTab notes={project.notes || []} />
+                    <NotesTab
+                      projectId={projectId}
+                      notes={project.notes || []}
+                      onRefresh={() => router.refresh()}
+                    />
                   </TabsContent>
 
                   <TabsContent value="assets">
