@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 import type { Invitation, OrgMemberRole } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
-import { requireAuth } from "./auth-helpers"
+import { requireAuth, requireOrgMember } from "./auth-helpers"
 
 // Helper to clear the organization membership cache cookie
 async function clearOrgMembershipCache() {
@@ -80,20 +80,25 @@ export async function inviteMember(
 export async function getPendingInvitations(
   orgId: string
 ): Promise<ActionResult<Invitation[]>> {
-  const supabase = await createClient()
+  try {
+    // Require user to be a member of the organization
+    const { supabase } = await requireOrgMember(orgId)
 
-  const { data, error } = await supabase
-    .from("invitations")
-    .select("*, invited_by:profiles(full_name, email)")
-    .eq("organization_id", orgId)
-    .eq("status", "pending")
-    .order("created_at", { ascending: false })
+    const { data, error } = await supabase
+      .from("invitations")
+      .select("*, invited_by:profiles(full_name, email)")
+      .eq("organization_id", orgId)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
 
-  if (error) {
-    return { error: error.message }
+    if (error) {
+      return { error: error.message }
+    }
+
+    return { data: data as Invitation[] }
+  } catch {
+    return { error: "Not authorized to view invitations" }
   }
-
-  return { data: data as Invitation[] }
 }
 
 // Get invitation by token
@@ -200,19 +205,37 @@ export async function acceptInvitation(token: string): Promise<ActionResult> {
 
 // Cancel invitation
 export async function cancelInvitation(id: string): Promise<ActionResult> {
-  const supabase = await createClient()
+  try {
+    const { supabase } = await requireAuth()
 
-  const { error } = await supabase
-    .from("invitations")
-    .update({ status: "cancelled" })
-    .eq("id", id)
+    // First get the invitation to know which org it belongs to
+    const { data: invitation, error: fetchError } = await supabase
+      .from("invitations")
+      .select("organization_id")
+      .eq("id", id)
+      .single()
 
-  if (error) {
-    return { error: error.message }
+    if (fetchError || !invitation) {
+      return { error: "Invitation not found" }
+    }
+
+    // Verify user is an admin of the organization
+    await requireOrgMember(invitation.organization_id, true)
+
+    const { error } = await supabase
+      .from("invitations")
+      .update({ status: "cancelled" })
+      .eq("id", id)
+
+    if (error) {
+      return { error: error.message }
+    }
+
+    revalidatePath("/", "layout")
+    return {}
+  } catch {
+    return { error: "Not authorized to cancel invitations" }
   }
-
-  revalidatePath("/", "layout")
-  return {}
 }
 
 // Resend invitation (create new token)

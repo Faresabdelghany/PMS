@@ -19,6 +19,19 @@ export type SearchResults = {
 }
 
 /**
+ * Sanitize search input to prevent PostgREST filter injection.
+ * Escapes special characters used in PostgREST filter syntax.
+ */
+function sanitizeSearchInput(input: string): string {
+  // Remove or escape characters that have special meaning in PostgREST filters
+  // These include: . , ( ) and potentially others
+  return input
+    .replace(/[%_]/g, "\\$&") // Escape SQL LIKE wildcards
+    .replace(/[.,()]/g, "") // Remove PostgREST special characters
+    .trim()
+}
+
+/**
  * Global search across projects, tasks, and clients
  * Limited to 5 results per category for performance
  * Results are cached for 30 seconds using query hash
@@ -31,7 +44,13 @@ export async function globalSearch(
     return { data: { projects: [], tasks: [], clients: [] } }
   }
 
-  const normalizedQuery = query.toLowerCase().trim()
+  const normalizedQuery = sanitizeSearchInput(query.toLowerCase())
+
+  // Return empty results if sanitized query is too short
+  if (normalizedQuery.length < 2) {
+    return { data: { projects: [], tasks: [], clients: [] } }
+  }
+
   const queryHash = hashQuery(normalizedQuery)
 
   try {
