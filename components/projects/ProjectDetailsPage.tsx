@@ -28,7 +28,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import type { WorkstreamTask, WorkstreamTaskStatus, TimelineTask, WorkstreamGroup, ProjectDetails, ProjectNote, NoteType, NoteStatus } from "@/lib/data/project-details"
+import type { WorkstreamTask, WorkstreamTaskStatus, TimelineTask, WorkstreamGroup, ProjectDetails, ProjectNote, NoteType, NoteStatus, ProjectFile } from "@/lib/data/project-details"
 import type { OrganizationTag } from "@/lib/supabase/types"
 import { formatDueLabel, getDueTone, formatStartLabel } from "@/lib/date-utils"
 
@@ -277,7 +277,24 @@ export function ProjectDetailsPage({
       },
       workstreams: uiWorkstreams,
       timelineTasks,
-      files: [],
+      files: (supabaseProject.files || []).map((file): ProjectFile => ({
+        id: file.id,
+        name: file.name,
+        type: file.file_type as any,
+        sizeMB: Math.round(file.size_bytes / 1024 / 1024 * 100) / 100,
+        url: file.url,
+        addedDate: new Date(file.created_at),
+        addedBy: file.profiles ? {
+          id: file.profiles.id,
+          name: file.profiles.full_name || file.profiles.email,
+          avatarUrl: file.profiles.avatar_url || undefined,
+        } : {
+          id: file.added_by_id,
+          name: "Unknown",
+          avatarUrl: undefined,
+        },
+        description: file.description || undefined,
+      })),
       notes: (supabaseProject.notes || []).map((note): ProjectNote => ({
         id: note.id,
         title: note.title,

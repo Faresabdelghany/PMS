@@ -7,6 +7,7 @@ import { z } from "zod"
 import { CacheTags, revalidateTag } from "@/lib/cache-tags"
 import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
 import { requireProjectMember, requireProjectOwnerOrPIC, requireOrgMember } from "./auth-helpers"
+import { getProjectFiles } from "./files"
 import { uuidSchema, validate } from "@/lib/validations"
 import type {
   Project,
@@ -496,6 +497,7 @@ export type ProjectFullDetails = ProjectWithRelations & {
   deliverables: { id: string; title: string; due_date: string | null; value: number | null; status: string; payment_status: string; sort_order: number }[]
   metrics: { id: string; name: string; target: string | null; sort_order: number }[]
   notes: { id: string; title: string; content: string | null; note_type: string; status: string; added_by_id: string | null; created_at: string; updated_at: string; author: { id: string; full_name: string | null; email: string; avatar_url: string | null } | null }[]
+  files: { id: string; name: string; file_type: string; size_bytes: number; url: string; description: string | null; created_at: string; added_by_id: string; profiles: { id: string; full_name: string | null; email: string; avatar_url: string | null } | null }[]
 }
 
 // Get single project with ALL relations including scope, outcomes, features, deliverables, metrics
@@ -524,7 +526,7 @@ export async function getProjectWithDetails(id: string): Promise<ActionResult<Pr
   }
 
   // Fetch all related data in parallel
-  const [scopeResult, outcomesResult, featuresResult, deliverablesResult, metricsResult, notesResult] = await Promise.all([
+  const [scopeResult, outcomesResult, featuresResult, deliverablesResult, metricsResult, notesResult, filesResult] = await Promise.all([
     supabase
       .from("project_scope")
       .select("id, item, is_in_scope, sort_order")
@@ -558,6 +560,7 @@ export async function getProjectWithDetails(id: string): Promise<ActionResult<Pr
       `)
       .eq("project_id", id)
       .order("updated_at", { ascending: false }),
+    getProjectFiles(id),
   ])
 
   return {
@@ -569,6 +572,10 @@ export async function getProjectWithDetails(id: string): Promise<ActionResult<Pr
       deliverables: deliverablesResult.data || [],
       metrics: metricsResult.data || [],
       notes: notesResult.data || [],
+      files: (filesResult.data || []).map((file) => ({
+        ...file,
+        profiles: file.uploader || null,
+      })),
     } as ProjectFullDetails,
   }
 }
