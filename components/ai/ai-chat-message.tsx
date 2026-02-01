@@ -20,6 +20,8 @@ import {
   Users,
   Note,
   Briefcase,
+  Lightning,
+  Clock,
 } from "@phosphor-icons/react/dist/ssr"
 import type { Message, ActionState, MultiActionState } from "@/hooks/use-ai-chat"
 import type { ProposedAction, SuggestedAction } from "@/lib/actions/ai-types"
@@ -59,21 +61,21 @@ const ACTION_LABELS: Record<ProposedAction["type"], string> = {
 }
 
 const ACTION_INTROS: Record<string, string> = {
-  create_task: "I'll create this task for you:",
-  create_project: "Here's the project I'll set up:",
-  create_workstream: "I'll create this workstream:",
-  create_client: "I'll add this client:",
-  create_note: "I'll create this note:",
-  update_task: "I'll make these changes:",
-  update_project: "I'll update the project:",
-  update_workstream: "I'll update this workstream:",
-  update_client: "I'll update this client:",
-  update_note: "I'll update this note:",
-  delete_task: "I'll delete this task:",
-  assign_task: "I'll assign this task:",
-  add_project_member: "I'll add this member:",
-  add_team_member: "I'll add this team member:",
-  change_theme: "I'll change the theme:",
+  create_task: "Ready to create this task:",
+  create_project: "Ready to set up this project:",
+  create_workstream: "Ready to create this workstream:",
+  create_client: "Ready to add this client:",
+  create_note: "Ready to create this note:",
+  update_task: "Ready to update this task:",
+  update_project: "Ready to update this project:",
+  update_workstream: "Ready to update this workstream:",
+  update_client: "Ready to update this client:",
+  update_note: "Ready to update this note:",
+  delete_task: "Ready to delete this task:",
+  assign_task: "Ready to assign this task:",
+  add_project_member: "Ready to add this member:",
+  add_team_member: "Ready to add this team member:",
+  change_theme: "Ready to change the theme:",
 }
 
 const ACTION_BUTTONS: Record<string, string> = {
@@ -214,28 +216,45 @@ function ActionConfirmation({
   onConfirm?: () => void
   onSkip?: () => void
 }) {
-  const intro = ACTION_INTROS[action.type] || "I'll do this for you:"
+  const intro = ACTION_INTROS[action.type] || "Ready to execute:"
   const buttonLabel = ACTION_BUTTONS[action.type] || "Confirm"
 
-  // Pending state - show preview and confirm button
+  // Pending state - prominent confirmation dialog style
   if (action.status === "pending") {
     return (
-      <div className="mt-3 space-y-3">
-        <p className="text-sm text-muted-foreground">{intro}</p>
+      <div className="mt-4 rounded-xl border-2 border-primary/30 bg-primary/5 p-4 dark:border-primary/40 dark:bg-primary/10">
+        {/* Header with pending indicator */}
+        <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center justify-center size-6 rounded-full bg-primary/20">
+            <Clock className="size-3.5 text-primary" weight="bold" />
+          </div>
+          <span className="text-xs font-medium text-primary uppercase tracking-wide">
+            Awaiting Confirmation
+          </span>
+        </div>
+
+        <p className="text-sm font-medium text-foreground mb-3">{intro}</p>
         <ActionPreviewCard action={action} />
-        <div className="flex items-center gap-2">
+
+        {/* Prominent action buttons */}
+        <div className="flex items-center gap-2 mt-4 pt-3 border-t border-primary/20">
           {onSkip && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 text-xs"
+              className="h-9 text-sm text-muted-foreground hover:text-foreground"
               onClick={onSkip}
             >
-              Skip
+              Cancel
             </Button>
           )}
-          <Button size="sm" className="h-8 text-xs" onClick={onConfirm}>
-            {buttonLabel} →
+          <Button
+            size="sm"
+            className="h-9 text-sm gap-1.5 bg-primary hover:bg-primary/90"
+            onClick={onConfirm}
+          >
+            <Lightning className="size-3.5" weight="fill" />
+            {buttonLabel}
           </Button>
         </div>
       </div>
@@ -245,9 +264,11 @@ function ActionConfirmation({
   // Executing state - show spinner
   if (action.status === "executing") {
     return (
-      <div className="mt-3 flex items-center gap-2 rounded-xl border border-border bg-muted/30 p-3">
-        <SpinnerGap className="size-4 animate-spin text-primary" />
-        <span className="text-sm text-muted-foreground">Working on it...</span>
+      <div className="mt-4 rounded-xl border-2 border-primary/30 bg-primary/5 p-4 dark:border-primary/40 dark:bg-primary/10">
+        <div className="flex items-center gap-3">
+          <SpinnerGap className="size-5 animate-spin text-primary" />
+          <span className="text-sm font-medium text-foreground">Executing...</span>
+        </div>
       </div>
     )
   }
@@ -255,21 +276,23 @@ function ActionConfirmation({
   // Success state - show checkmark and "Open" button
   if (action.status === "success") {
     return (
-      <div className="mt-3 rounded-xl border border-green-200 bg-green-50 p-3 dark:border-green-900/50 dark:bg-green-950/30">
+      <div className="mt-4 rounded-xl border-2 border-green-300 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950/50">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Check className="size-4 text-green-600 dark:text-green-400" weight="bold" />
-            <span className="text-sm text-green-700 dark:text-green-300">
+            <div className="flex items-center justify-center size-6 rounded-full bg-green-500">
+              <Check className="size-3.5 text-white" weight="bold" />
+            </div>
+            <span className="text-sm font-medium text-green-700 dark:text-green-300">
               {action.createdEntity
                 ? `Created "${action.createdEntity.name}"`
-                : "Done!"}
+                : "Completed successfully!"}
             </span>
           </div>
           {action.createdEntity && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 text-xs text-green-700 hover:text-green-800 dark:text-green-400"
+              className="h-8 text-sm text-green-700 hover:text-green-800 hover:bg-green-100 dark:text-green-400 dark:hover:bg-green-900/50"
               onClick={() => navigateToEntity(action.createdEntity!)}
             >
               Open →
@@ -283,10 +306,12 @@ function ActionConfirmation({
   // Error state - amber/softer design
   if (action.status === "error") {
     return (
-      <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/30">
+      <div className="mt-4 rounded-xl border-2 border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/50">
         <div className="flex items-center gap-2">
-          <Warning className="size-4 text-amber-600 dark:text-amber-400" />
-          <span className="text-sm text-amber-700 dark:text-amber-300">
+          <div className="flex items-center justify-center size-6 rounded-full bg-amber-500">
+            <Warning className="size-3.5 text-white" weight="fill" />
+          </div>
+          <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
             {action.error || "Something went wrong"}
           </span>
         </div>
@@ -295,7 +320,7 @@ function ActionConfirmation({
             variant="outline"
             size="sm"
             onClick={onConfirm}
-            className="mt-2 h-7 text-xs"
+            className="mt-3 h-8 text-sm border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-400"
           >
             Try again
           </Button>
@@ -318,7 +343,7 @@ function MultiActionConfirmation({
   multiAction: MultiActionState
   onConfirmAll?: () => void
 }) {
-  const { actions, currentIndex, isExecuting, createdIds } = multiAction
+  const { actions, currentIndex, isExecuting } = multiAction
 
   // Check if all actions are completed (success or error)
   const allCompleted = actions.every(
@@ -333,38 +358,87 @@ function MultiActionConfirmation({
     .filter((a) => a.status === "success" && a.createdEntity)
     .map((a) => a.createdEntity!)
 
+  // Determine container styling based on state
+  const containerClass = cn(
+    "mt-4 rounded-xl border-2 p-4 transition-colors",
+    allPending && "border-primary/30 bg-primary/5 dark:border-primary/40 dark:bg-primary/10",
+    isExecuting && "border-primary/50 bg-primary/10 dark:border-primary/60 dark:bg-primary/15",
+    allCompleted && !hasErrors && "border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-950/50",
+    allCompleted && hasErrors && "border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50"
+  )
+
   return (
-    <div className="mt-3 space-y-2">
-      {/* Header with Execute All button */}
-      <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/30 p-3">
+    <div className={containerClass}>
+      {/* Header with status indicator */}
+      <div className="flex items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-foreground">
-            {actions.length} Actions
-          </span>
-          {isExecuting && (
-            <span className="text-xs text-muted-foreground">
-              ({currentIndex + 1} of {actions.length})
-            </span>
+          {/* Status icon */}
+          {allPending && (
+            <div className="flex items-center justify-center size-7 rounded-full bg-primary/20">
+              <Clock className="size-4 text-primary" weight="bold" />
+            </div>
           )}
+          {isExecuting && (
+            <div className="flex items-center justify-center size-7 rounded-full bg-primary/20">
+              <SpinnerGap className="size-4 animate-spin text-primary" />
+            </div>
+          )}
+          {allCompleted && !hasErrors && (
+            <div className="flex items-center justify-center size-7 rounded-full bg-green-500">
+              <Check className="size-4 text-white" weight="bold" />
+            </div>
+          )}
+          {allCompleted && hasErrors && (
+            <div className="flex items-center justify-center size-7 rounded-full bg-amber-500">
+              <Warning className="size-4 text-white" weight="fill" />
+            </div>
+          )}
+
+          {/* Status text */}
+          <div>
+            <span className="text-sm font-semibold text-foreground">
+              {actions.length} Actions
+            </span>
+            {allPending && (
+              <span className="ml-2 text-xs font-medium text-primary uppercase tracking-wide">
+                Awaiting Confirmation
+              </span>
+            )}
+            {isExecuting && (
+              <span className="ml-2 text-xs text-muted-foreground">
+                Executing {currentIndex + 1} of {actions.length}...
+              </span>
+            )}
+            {allCompleted && !hasErrors && (
+              <span className="ml-2 text-xs font-medium text-green-600 dark:text-green-400">
+                All completed!
+              </span>
+            )}
+            {allCompleted && hasErrors && (
+              <span className="ml-2 text-xs font-medium text-amber-600 dark:text-amber-400">
+                {successCount} completed, {actions.length - successCount} failed
+              </span>
+            )}
+          </div>
         </div>
+
+        {/* Execute button */}
         {allPending && (
-          <Button size="sm" onClick={onConfirmAll} className="h-7 gap-1.5 text-xs">
-            <Play className="size-3" weight="fill" />
+          <Button
+            size="sm"
+            className="h-9 text-sm gap-1.5 bg-primary hover:bg-primary/90 shadow-sm"
+            onClick={onConfirmAll}
+          >
+            <Lightning className="size-4" weight="fill" />
             Execute All
           </Button>
-        )}
-        {allCompleted && !hasErrors && (
-          <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-            <Check className="size-3" weight="bold" />
-            All completed
-          </span>
         )}
         {allCompleted && hasErrors && (
           <Button
             variant="outline"
             size="sm"
+            className="h-9 text-sm gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-400"
             onClick={onConfirmAll}
-            className="h-7 gap-1.5 text-xs"
           >
             Retry Failed
           </Button>
@@ -372,7 +446,7 @@ function MultiActionConfirmation({
       </div>
 
       {/* Action List */}
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         {actions.map((action, index) => {
           const label = ACTION_LABELS[action.type] || action.type
           const isCurrent = isExecuting && index === currentIndex
@@ -382,71 +456,75 @@ function MultiActionConfirmation({
             <div
               key={index}
               className={cn(
-                "rounded-xl border p-2.5 transition-colors",
-                action.status === "pending" && "border-border bg-muted/20",
-                action.status === "executing" && "border-primary/50 bg-primary/5",
-                action.status === "success" &&
-                  "border-green-200 bg-green-50 dark:border-green-900/50 dark:bg-green-950/30",
-                action.status === "error" &&
-                  "border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30"
+                "rounded-lg border p-3 transition-all",
+                action.status === "pending" && "border-border/50 bg-background/50",
+                action.status === "executing" && "border-primary/50 bg-primary/5 shadow-sm",
+                action.status === "success" && "border-green-200 bg-green-50/50 dark:border-green-900/50 dark:bg-green-950/20",
+                action.status === "error" && "border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/20"
               )}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 {/* Status Icon */}
                 {action.status === "pending" && (
-                  <div className="size-4 rounded-full border-2 border-muted-foreground/30" />
+                  <div className="size-5 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center">
+                    <span className="text-xs text-muted-foreground font-medium">{index + 1}</span>
+                  </div>
                 )}
                 {action.status === "executing" && (
-                  <SpinnerGap className="size-4 animate-spin text-primary" />
+                  <SpinnerGap className="size-5 animate-spin text-primary" />
                 )}
                 {action.status === "success" && (
-                  <Check className="size-4 text-green-600 dark:text-green-400" weight="bold" />
+                  <div className="size-5 rounded-full bg-green-500 flex items-center justify-center">
+                    <Check className="size-3 text-white" weight="bold" />
+                  </div>
                 )}
                 {action.status === "error" && (
-                  <Warning className="size-4 text-amber-600 dark:text-amber-400" />
+                  <div className="size-5 rounded-full bg-amber-500 flex items-center justify-center">
+                    <Warning className="size-3 text-white" weight="fill" />
+                  </div>
                 )}
 
                 {/* Action Label */}
                 <span
                   className={cn(
-                    "text-sm font-medium",
-                    action.status === "pending" && "text-muted-foreground",
-                    action.status === "executing" && "text-foreground",
+                    "text-sm font-medium flex-1",
+                    action.status === "pending" && "text-foreground",
+                    action.status === "executing" && "text-primary",
                     action.status === "success" && "text-green-700 dark:text-green-300",
                     action.status === "error" && "text-amber-700 dark:text-amber-300"
                   )}
                 >
-                  {index + 1}. {label}
-                  {title && <span className="font-normal text-muted-foreground"> - {title}</span>}
+                  {label}
+                  {title && <span className="font-normal text-muted-foreground ml-1">· {title}</span>}
                 </span>
 
                 {/* Show placeholder replacement indicator */}
                 {action.status === "pending" && hasPlaceholders(action.data) && (
-                  <span className="text-xs text-muted-foreground">
-                    (uses previous)
+                  <span className="text-xs text-muted-foreground bg-muted/50 px-2 py-0.5 rounded">
+                    linked
                   </span>
                 )}
               </div>
 
-              {/* Show preview card for pending/executing */}
-              {(action.status === "pending" || isCurrent) && (
-                <div className="mt-2">
+              {/* Show preview card for pending/executing - collapsed by default for cleaner look */}
+              {isCurrent && (
+                <div className="mt-2.5 pt-2.5 border-t border-border/50">
                   <ActionPreviewCard action={action} />
                 </div>
               )}
 
               {/* Show error message */}
               {action.status === "error" && action.error && (
-                <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                <p className="mt-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-100/50 dark:bg-amber-900/20 px-2 py-1 rounded">
                   {action.error}
                 </p>
               )}
 
               {/* Show created entity info */}
               {action.status === "success" && action.createdEntity && (
-                <div className="mt-1 flex items-center justify-between">
+                <div className="mt-2 flex items-center justify-between">
                   <p className="text-xs text-green-600 dark:text-green-400">
-                    Created: {action.createdEntity.name}
+                    ✓ {action.createdEntity.name}
                   </p>
                   <Button
                     variant="ghost"
@@ -465,19 +543,19 @@ function MultiActionConfirmation({
 
       {/* Show created entities summary */}
       {allCompleted && createdEntities.length > 0 && (
-        <div className="rounded-xl border border-green-200 bg-green-50 p-3 dark:border-green-900/50 dark:bg-green-950/30">
-          <div className="flex items-center gap-2">
+        <div className="mt-4 pt-4 border-t border-green-200 dark:border-green-800">
+          <div className="flex items-center gap-2 mb-2">
             <Check className="size-4 text-green-600 dark:text-green-400" weight="bold" />
-            <span className="text-sm text-green-700 dark:text-green-300">
-              Created {createdEntities.length} item{createdEntities.length > 1 ? "s" : ""}
+            <span className="text-sm font-medium text-green-700 dark:text-green-300">
+              {createdEntities.length} item{createdEntities.length > 1 ? "s" : ""} created
             </span>
           </div>
-          <div className="mt-2 flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1.5">
             {createdEntities.map((entity, idx) => (
               <button
                 key={idx}
                 onClick={() => navigateToEntity(entity)}
-                className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-1 text-xs text-green-700 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-300 dark:hover:bg-green-900"
+                className="inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-300 dark:hover:bg-green-900 transition-colors"
               >
                 {entity.name}
                 <span className="opacity-60">→</span>

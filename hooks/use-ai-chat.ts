@@ -108,14 +108,26 @@ function parseStreamedResponse(text: string): {
     } catch { /* ignore parse errors */ }
   }
 
-  // Extract ACTION_JSON (single action) - handles multi-line formatted JSON
+  // Extract ACTION_JSON - handles both single object AND array (fallback for AI mistakes)
   if (!actions) {
-    const actionMatch = content.match(/ACTION_JSON:\s*(\{[\s\S]*\})\s*$/)
-    if (actionMatch) {
+    // First try to match array format (AI mistakenly used ACTION_JSON for multiple actions)
+    const actionArrayMatch = content.match(/ACTION_JSON:\s*(\[[\s\S]*\])\s*$/)
+    if (actionArrayMatch) {
       try {
-        action = JSON.parse(actionMatch[1])
-        content = content.replace(/ACTION_JSON:\s*\{[\s\S]*\}\s*$/, "").trim()
+        actions = JSON.parse(actionArrayMatch[1])
+        content = content.replace(/ACTION_JSON:\s*\[[\s\S]*\]\s*$/, "").trim()
       } catch { /* ignore parse errors */ }
+    }
+
+    // Then try single object format
+    if (!actions) {
+      const actionMatch = content.match(/ACTION_JSON:\s*(\{[\s\S]*\})\s*$/)
+      if (actionMatch) {
+        try {
+          action = JSON.parse(actionMatch[1])
+          content = content.replace(/ACTION_JSON:\s*\{[\s\S]*\}\s*$/, "").trim()
+        } catch { /* ignore parse errors */ }
+      }
     }
   }
 
