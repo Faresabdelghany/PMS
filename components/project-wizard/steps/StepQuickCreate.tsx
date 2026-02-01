@@ -17,7 +17,7 @@ import {
   CommandItem,
   CommandList,
 } from "../../ui/command";
-import { Check, X, CornersOut, Star, CalendarBlank, UserCircle, Spinner, List, Paperclip, Microphone, Rows, ChartBar, Tag } from "@phosphor-icons/react/dist/ssr";
+import { Check, X, CornersOut, Star, CalendarBlank, UserCircle, Spinner, List, Paperclip, Microphone, Rows, ChartBar, Tag, SquaresFour, Bookmark } from "@phosphor-icons/react/dist/ssr";
 import { ProjectDescriptionEditorLazy as ProjectDescriptionEditor } from "../ProjectDescriptionEditorLazy";
 import type { ProjectStatus, ProjectPriority, OrganizationTag } from "@/lib/supabase/types";
 import type { OrganizationMember } from "./StepOwnership";
@@ -35,6 +35,31 @@ export type QuickCreateProjectData = {
   type_label?: string;
   tags?: string[];
   owner_id?: string;
+  group_label?: string;
+  label_badge?: string;
+};
+
+// Type for editing an existing project
+export type EditingProjectData = {
+  id: string;
+  name: string;
+  description?: string | null;
+  status: ProjectStatus;
+  priority: ProjectPriority;
+  start_date?: string | null;
+  end_date?: string | null;
+  client_id?: string | null;
+  client?: { id: string; name: string } | null;
+  type_label?: string | null;
+  tags?: string[];
+  owner_id?: string | null;
+  group_label?: string | null;
+  label_badge?: string | null;
+  members?: Array<{
+    user_id: string;
+    role: string;
+    profile: { id: string; full_name: string | null; email: string; avatar_url: string | null };
+  }>;
 };
 
 // --- Static Options (not user data) ---
@@ -66,6 +91,24 @@ const WORKSTREAMS = [
   { id: "backend", label: "Backend" },
   { id: "design", label: "Design" },
   { id: "qa", label: "QA" },
+];
+
+const GROUPS = [
+  { id: "general", label: "General" },
+  { id: "development", label: "Development" },
+  { id: "design", label: "Design" },
+  { id: "marketing", label: "Marketing" },
+  { id: "operations", label: "Operations" },
+  { id: "research", label: "Research" },
+];
+
+const LABELS = [
+  { id: "project", label: "Project" },
+  { id: "feature", label: "Feature" },
+  { id: "bug-fix", label: "Bug Fix" },
+  { id: "improvement", label: "Improvement" },
+  { id: "maintenance", label: "Maintenance" },
+  { id: "experiment", label: "Experiment" },
 ];
 
 
@@ -181,22 +224,25 @@ export function DatePicker({
 interface StepQuickCreateProps {
   onClose: () => void;
   onCreate: (data: QuickCreateProjectData) => void;
+  onUpdate?: (projectId: string, data: QuickCreateProjectData) => void;
   onExpandChange?: (isExpanded: boolean) => void;
   clients?: Client[];
   organizationMembers?: OrganizationMember[];
   tags?: OrganizationTag[];
+  editingProject?: EditingProjectData | null;
 }
 
 export function StepQuickCreate({
   onClose,
   onCreate,
+  onUpdate,
   onExpandChange,
   clients = [],
   organizationMembers = [],
   tags = [],
+  editingProject,
 }: StepQuickCreateProps) {
-  const [title, setTitle] = useState("");
-  // Description is now managed by Tiptap editor
+  const isEditing = !!editingProject;
 
   // Convert org members to picker format (filter out members without profiles)
   const memberOptions = organizationMembers
@@ -207,28 +253,66 @@ export function StepQuickCreate({
       avatar: m.profile!.avatar_url || "",
     }));
 
-  // Data State
+  // Helper to map Supabase status to UI status
+  const mapSupabaseToUIStatus = (status: ProjectStatus) => {
+    const mapping: Record<ProjectStatus, string> = {
+      "backlog": "backlog",
+      "planned": "todo",
+      "active": "in-progress",
+      "completed": "done",
+      "cancelled": "canceled",
+    };
+    return STATUSES.find(s => s.id === mapping[status]) || STATUSES[1];
+  };
+
+  // Helper to find owner from project members
+  const findOwnerFromMembers = () => {
+    if (!editingProject?.members) return null;
+    const ownerMember = editingProject.members.find(m => m.role === "owner" || m.role === "pic");
+    if (!ownerMember) return null;
+    const memberOption = memberOptions.find(m => m.id === ownerMember.user_id);
+    return memberOption || null;
+  };
+
+  // Data State - initialize from editingProject if available
+  const [title, setTitle] = useState(editingProject?.name || "");
   const [assignee, setAssignee] = useState<{ id: string; name: string; avatar: string } | null>(
-    memberOptions[0] || null
+    isEditing ? findOwnerFromMembers() : (memberOptions[0] || null)
   );
   const [startDate, setStartDate] = useState<Date | undefined>(
-    new Date(),
+    editingProject?.start_date ? new Date(editingProject.start_date) : new Date()
   );
-  const [status, setStatus] = useState(STATUSES[1]); // Todo default
-  const [sprintType, setSprintType] = useState<
-    (typeof SPRINT_TYPES)[0] | null
-  >(null);
-  const [targetDate, setTargetDate] = useState<
-    Date | undefined
-  >();
-  const [workstream, setWorkstream] = useState<
-    (typeof WORKSTREAMS)[0] | null
-  >(null);
-  const [priority, setPriority] = useState<
-    (typeof PRIORITIES)[0] | null
-  >(null);
+  const [status, setStatus] = useState(
+    isEditing && editingProject?.status ? mapSupabaseToUIStatus(editingProject.status) : STATUSES[1]
+  );
+  const [sprintType, setSprintType] = useState<(typeof SPRINT_TYPES)[0] | null>(
+    editingProject?.type_label
+      ? SPRINT_TYPES.find(s => s.label === editingProject.type_label) || null
+      : null
+  );
+  const [targetDate, setTargetDate] = useState<Date | undefined>(
+    editingProject?.end_date ? new Date(editingProject.end_date) : undefined
+  );
+  const [workstream, setWorkstream] = useState<(typeof WORKSTREAMS)[0] | null>(null);
+  const [priority, setPriority] = useState<(typeof PRIORITIES)[0] | null>(
+    editingProject?.priority
+      ? PRIORITIES.find(p => p.id === editingProject.priority) || null
+      : null
+  );
   const [selectedTag, setSelectedTag] = useState<OrganizationTag | null>(null);
-  const [client, setClient] = useState<Client | null>(null);
+  const [client, setClient] = useState<Client | null>(
+    editingProject?.client ? { id: editingProject.client.id, name: editingProject.client.name } : null
+  );
+  const [group, setGroup] = useState<(typeof GROUPS)[0] | null>(
+    editingProject?.group_label
+      ? GROUPS.find(g => g.label === editingProject.group_label) || { id: "custom", label: editingProject.group_label }
+      : null
+  );
+  const [label, setLabel] = useState<(typeof LABELS)[0] | null>(
+    editingProject?.label_badge
+      ? LABELS.find(l => l.label === editingProject.label_badge) || { id: "custom", label: editingProject.label_badge }
+      : null
+  );
 
   useEffect(() => {
     // Focus title on mount
@@ -257,7 +341,7 @@ export function StepQuickCreate({
     return priorityId as ProjectPriority;
   };
 
-  const handleCreate = () => {
+  const handleSubmit = () => {
     if (!title.trim()) {
       return;
     }
@@ -272,14 +356,20 @@ export function StepQuickCreate({
       type_label: sprintType?.label,
       tags: selectedTag ? [selectedTag.name] : [],
       owner_id: assignee?.id,
+      group_label: group?.label,
+      label_badge: label?.label,
     };
 
-    onCreate(projectData);
+    if (isEditing && editingProject && onUpdate) {
+      onUpdate(editingProject.id, projectData);
+    } else {
+      onCreate(projectData);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-      handleCreate();
+      handleSubmit();
     }
   };
 
@@ -581,6 +671,50 @@ export function StepQuickCreate({
               }
             />
           )}
+
+          {/* Group Picker */}
+          <GenericPicker
+            items={GROUPS}
+            onSelect={setGroup}
+            selectedId={group?.id}
+            placeholder="Select group..."
+            renderItem={(item, isSelected) => (
+              <div className="flex items-center gap-2 w-full">
+                <span className="flex-1">{item.label}</span>
+                {isSelected && <Check className="size-4" />}
+              </div>
+            )}
+            trigger={
+              <button className="bg-background flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:bg-black/5 transition-colors">
+                <SquaresFour className="size-4 text-muted-foreground" />
+                <span className="font-medium text-foreground text-sm leading-5">
+                  {group ? group.label : "Group"}
+                </span>
+              </button>
+            }
+          />
+
+          {/* Label Picker */}
+          <GenericPicker
+            items={LABELS}
+            onSelect={setLabel}
+            selectedId={label?.id}
+            placeholder="Select label..."
+            renderItem={(item, isSelected) => (
+              <div className="flex items-center gap-2 w-full">
+                <span className="flex-1">{item.label}</span>
+                {isSelected && <Check className="size-4" />}
+              </div>
+            )}
+            trigger={
+              <button className="bg-background flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:bg-black/5 transition-colors">
+                <Bookmark className="size-4 text-muted-foreground" />
+                <span className="font-medium text-foreground text-sm leading-5">
+                  {label ? label.label : "Label"}
+                </span>
+              </button>
+            }
+          />
         </div>
 
         {/* Footer */}
@@ -595,12 +729,12 @@ export function StepQuickCreate({
           </div>
 
           <button
-            onClick={handleCreate}
+            onClick={handleSubmit}
             disabled={!title.trim()}
             className="bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex gap-3 h-10 items-center justify-center px-4 py-2 rounded-lg transition-colors cursor-pointer"
           >
             <span className="font-medium text-primary-foreground text-sm leading-5">
-              Create Project
+              {isEditing ? "Update Project" : "Create Project"}
             </span>
           </button>
         </div>

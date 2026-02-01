@@ -528,9 +528,28 @@ export function ProjectDetailsPage({
         {isWizardOpen && (
           <ProjectWizardLazy
             onClose={closeWizard}
-            onCreate={closeWizard}
+            onCreate={() => {
+              closeWizard()
+              router.refresh()
+            }}
             organizationId={supabaseProject.organization_id}
             clients={clients}
+            editingProject={{
+              id: supabaseProject.id,
+              name: supabaseProject.name,
+              description: supabaseProject.description,
+              status: supabaseProject.status,
+              priority: supabaseProject.priority,
+              start_date: supabaseProject.start_date,
+              end_date: supabaseProject.end_date,
+              client_id: supabaseProject.client_id,
+              client: supabaseProject.client,
+              type_label: supabaseProject.type_label,
+              tags: supabaseProject.tags,
+              group_label: supabaseProject.group_label,
+              label_badge: supabaseProject.label_badge,
+              members: supabaseProject.members,
+            }}
           />
         )}
 

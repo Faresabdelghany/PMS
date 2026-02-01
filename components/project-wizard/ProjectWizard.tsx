@@ -12,10 +12,10 @@ import { StepOutcome } from "./steps/StepOutcome";
 import { StepOwnership, type OrganizationMember } from "./steps/StepOwnership";
 import { StepStructure } from "./steps/StepStructure";
 import { StepReview } from "./steps/StepReview";
-import { StepQuickCreate, type QuickCreateProjectData } from "./steps/StepQuickCreate";
+import { StepQuickCreate, type QuickCreateProjectData, type EditingProjectData } from "./steps/StepQuickCreate";
 import { CaretLeft, CaretRight, X } from "@phosphor-icons/react/dist/ssr";
 import { cn } from "@/lib/utils";
-import { createProject } from "@/lib/actions/projects";
+import { createProject, updateProject } from "@/lib/actions/projects";
 import { getOrganizationMembers } from "@/lib/actions/organizations";
 import { getTags } from "@/lib/actions/tags";
 import type { OrganizationTag } from "@/lib/supabase/types";
@@ -45,12 +45,14 @@ interface ProjectWizardProps {
   onCreate?: () => void;
   organizationId?: string;
   clients?: { id: string; name: string }[];
+  editingProject?: EditingProjectData | null;
 }
 
-export function ProjectWizard({ onClose, onCreate, organizationId, clients = EMPTY_CLIENTS }: ProjectWizardProps) {
+export function ProjectWizard({ onClose, onCreate, organizationId, clients = EMPTY_CLIENTS, editingProject }: ProjectWizardProps) {
   const { user } = useUser();
   const [isCreating, setIsCreating] = useState(false);
-  const [step, setStep] = useState(0);
+  // If editing, skip to quick create step directly
+  const [step, setStep] = useState(editingProject ? QUICK_CREATE_STEP : 0);
   const [maxStepReached, setMaxStepReached] = useState(0);
   const [isQuickCreateExpanded, setIsQuickCreateExpanded] = useState(false);
   const [organizationMembers, setOrganizationMembers] = useState<OrganizationMember[]>([]);
@@ -187,6 +189,7 @@ export function ProjectWizard({ onClose, onCreate, organizationId, clients = EMP
                 clients={clients}
                 organizationMembers={organizationMembers}
                 tags={organizationTags}
+                editingProject={editingProject}
                 onCreate={async (projectData: QuickCreateProjectData) => {
                   if (!organizationId) {
                     toast.error("Organization not found. Please log in again.");
@@ -205,6 +208,8 @@ export function ProjectWizard({ onClose, onCreate, organizationId, clients = EMP
                       client_id: projectData.client_id || null,
                       type_label: projectData.type_label || null,
                       tags: projectData.tags || [],
+                      group_label: projectData.group_label || null,
+                      label_badge: projectData.label_badge || null,
                     });
 
                     if (result.error) {
@@ -217,6 +222,37 @@ export function ProjectWizard({ onClose, onCreate, organizationId, clients = EMP
                     onClose();
                   } catch (error) {
                     toast.error("Failed to create project");
+                  } finally {
+                    setIsCreating(false);
+                  }
+                }}
+                onUpdate={async (projectId: string, projectData: QuickCreateProjectData) => {
+                  setIsCreating(true);
+                  try {
+                    const result = await updateProject(projectId, {
+                      name: projectData.name,
+                      description: projectData.description || null,
+                      status: projectData.status,
+                      priority: projectData.priority,
+                      start_date: projectData.start_date || null,
+                      end_date: projectData.end_date || null,
+                      client_id: projectData.client_id || null,
+                      type_label: projectData.type_label || null,
+                      tags: projectData.tags || [],
+                      group_label: projectData.group_label || null,
+                      label_badge: projectData.label_badge || null,
+                    });
+
+                    if (result.error) {
+                      toast.error(result.error);
+                      return;
+                    }
+
+                    onCreate?.();
+                    toast.success("Project updated successfully");
+                    onClose();
+                  } catch (error) {
+                    toast.error("Failed to update project");
                   } finally {
                     setIsCreating(false);
                   }
