@@ -485,7 +485,7 @@ export function ProjectDetailsPage({
                   </TabsContent>
 
                   <TabsContent value="assets">
-                    <AssetsFilesTab files={project.files} />
+                    <AssetsFilesTab projectId={project.id} />
                   </TabsContent>
 
                   <TabsContent value="deliverables">
