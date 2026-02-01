@@ -167,9 +167,15 @@ function parseStreamedResponse(text: string): {
 
   // Extract ACTIONS_JSON (multiple actions) from anywhere in content
   const actionsResult = extractJsonKeyword(content, 'ACTIONS_JSON')
-  if (actionsResult && Array.isArray(actionsResult.json)) {
-    actions = actionsResult.json as ProposedAction[]
-    content = actionsResult.remainingContent
+  if (actionsResult) {
+    if (Array.isArray(actionsResult.json)) {
+      actions = actionsResult.json as ProposedAction[]
+      content = actionsResult.remainingContent
+    } else if (typeof actionsResult.json === 'object' && actionsResult.json !== null) {
+      // AI mistakenly used ACTIONS_JSON with single object - treat as single action
+      action = actionsResult.json as ProposedAction
+      content = actionsResult.remainingContent
+    }
   }
 
   // Extract ACTION_JSON from anywhere in content
