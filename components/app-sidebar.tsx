@@ -202,7 +202,7 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
       <SidebarHeader className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-800 text-primary-foreground shadow-[inset_0_-5px_6.6px_0_rgba(0,0,0,0.25)]">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[inset_0_-5px_6.6px_0_rgba(0,0,0,0.25)]">
               <Image src="/logo-wrapper.png" alt="Logo" width={16} height={16} />
             </div>
             <div className="flex flex-col">
@@ -244,7 +244,7 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
                     <SidebarMenuButton
                       asChild
                       isActive={active}
-                      className="h-9 rounded-lg px-3 font-normal text-muted-foreground"
+                      className="h-9 rounded-lg px-3 font-normal text-muted-foreground data-[active=true]:bg-accent data-[active=true]:text-foreground"
                     >
                       <Link
                         href={href}
