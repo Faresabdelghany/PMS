@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { AnimatePresence } from "@/components/ui/motion-lazy";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -19,10 +19,12 @@ import {
 } from "../../ui/command";
 import { Check, X, CornersOut, Star, CalendarBlank, UserCircle, Spinner, List, Paperclip, Microphone, Rows, ChartBar, Tag, SquaresFour, Bookmark } from "@phosphor-icons/react/dist/ssr";
 import { ProjectDescriptionEditorLazy as ProjectDescriptionEditor } from "../ProjectDescriptionEditorLazy";
-import type { ProjectStatus, ProjectPriority, OrganizationTag } from "@/lib/supabase/types";
+import type { ProjectStatus, ProjectPriority, OrganizationTag, OrganizationLabel } from "@/lib/supabase/types";
 import type { OrganizationMember } from "./StepOwnership";
 
 type Client = { id: string; name: string };
+
+type LabelOption = { id: string; label: string; color?: string };
 
 export type QuickCreateProjectData = {
   name: string;
@@ -80,37 +82,12 @@ const PRIORITIES = [
   { id: "low", label: "Low", icon: "ArrowDown" },
 ];
 
-const SPRINT_TYPES = [
-  { id: "design", label: "Design Sprint" },
-  { id: "dev", label: "Dev Sprint" },
-  { id: "planning", label: "Planning" },
-];
-
 const WORKSTREAMS = [
   { id: "frontend", label: "Frontend" },
   { id: "backend", label: "Backend" },
   { id: "design", label: "Design" },
   { id: "qa", label: "QA" },
 ];
-
-const GROUPS = [
-  { id: "general", label: "General" },
-  { id: "development", label: "Development" },
-  { id: "design", label: "Design" },
-  { id: "marketing", label: "Marketing" },
-  { id: "operations", label: "Operations" },
-  { id: "research", label: "Research" },
-];
-
-const LABELS = [
-  { id: "project", label: "Project" },
-  { id: "feature", label: "Feature" },
-  { id: "bug-fix", label: "Bug Fix" },
-  { id: "improvement", label: "Improvement" },
-  { id: "maintenance", label: "Maintenance" },
-  { id: "experiment", label: "Experiment" },
-];
-
 
 // --- Helper Components ---
 
@@ -229,6 +206,7 @@ interface StepQuickCreateProps {
   clients?: Client[];
   organizationMembers?: OrganizationMember[];
   tags?: OrganizationTag[];
+  labels?: OrganizationLabel[];
   editingProject?: EditingProjectData | null;
 }
 
@@ -240,9 +218,56 @@ export function StepQuickCreate({
   clients = [],
   organizationMembers = [],
   tags = [],
+  labels = [],
   editingProject,
 }: StepQuickCreateProps) {
   const isEditing = !!editingProject;
+
+  // Filter labels by category for pickers
+  const typeLabels = useMemo(() =>
+    labels.filter(l => l.category === 'type').map(l => ({ id: l.id, label: l.name, color: l.color })),
+    [labels]
+  );
+  const durationLabels = useMemo(() =>
+    labels.filter(l => l.category === 'duration').map(l => ({ id: l.id, label: l.name, color: l.color })),
+    [labels]
+  );
+  const groupLabels = useMemo(() =>
+    labels.filter(l => l.category === 'group').map(l => ({ id: l.id, label: l.name, color: l.color })),
+    [labels]
+  );
+  const badgeLabels = useMemo(() =>
+    labels.filter(l => l.category === 'badge').map(l => ({ id: l.id, label: l.name, color: l.color })),
+    [labels]
+  );
+
+  // Fallback to hardcoded options if no labels configured
+  const FALLBACK_TYPES: LabelOption[] = [
+    { id: "design", label: "Design Sprint" },
+    { id: "dev", label: "Dev Sprint" },
+    { id: "planning", label: "Planning" },
+  ];
+  const FALLBACK_GROUPS: LabelOption[] = [
+    { id: "general", label: "General" },
+    { id: "development", label: "Development" },
+    { id: "design", label: "Design" },
+    { id: "marketing", label: "Marketing" },
+    { id: "operations", label: "Operations" },
+    { id: "research", label: "Research" },
+  ];
+  const FALLBACK_BADGES: LabelOption[] = [
+    { id: "project", label: "Project" },
+    { id: "feature", label: "Feature" },
+    { id: "bug-fix", label: "Bug Fix" },
+    { id: "improvement", label: "Improvement" },
+    { id: "maintenance", label: "Maintenance" },
+    { id: "experiment", label: "Experiment" },
+  ];
+
+  // Use database labels if available, otherwise fallback
+  const effectiveTypeLabels = typeLabels.length > 0 ? typeLabels : FALLBACK_TYPES;
+  const effectiveGroupLabels = groupLabels.length > 0 ? groupLabels : FALLBACK_GROUPS;
+  const effectiveBadgeLabels = badgeLabels.length > 0 ? badgeLabels : FALLBACK_BADGES;
 
   // Convert org members to picker format (filter out members without profiles)
   const memberOptions = organizationMembers
@@ -285,11 +310,7 @@ export function StepQuickCreate({
   const [status, setStatus] = useState(
     isEditing && editingProject?.status ? mapSupabaseToUIStatus(editingProject.status) : STATUSES[1]
   );
-  const [sprintType, setSprintType] = useState<(typeof SPRINT_TYPES)[0] | null>(
-    editingProject?.type_label
-      ? SPRINT_TYPES.find(s => s.label === editingProject.type_label) || null
-      : null
-  );
+  const [sprintType, setSprintType] = useState<LabelOption | null>(null);
   const [targetDate, setTargetDate] = useState<Date | undefined>(
     editingProject?.end_date ? new Date(editingProject.end_date) : undefined
   );
@@ -303,16 +324,8 @@ export function StepQuickCreate({
   const [client, setClient] = useState<Client | null>(
     editingProject?.client ? { id: editingProject.client.id, name: editingProject.client.name } : null
   );
-  const [group, setGroup] = useState<(typeof GROUPS)[0] | null>(
-    editingProject?.group_label
-      ? GROUPS.find(g => g.label === editingProject.group_label) || { id: "custom", label: editingProject.group_label }
-      : null
-  );
-  const [label, setLabel] = useState<(typeof LABELS)[0] | null>(
-    editingProject?.label_badge
-      ? LABELS.find(l => l.label === editingProject.label_badge) || { id: "custom", label: editingProject.label_badge }
-      : null
-  );
+  const [group, setGroup] = useState<LabelOption | null>(null);
+  const [label, setLabel] = useState<LabelOption | null>(null);
 
   useEffect(() => {
     // Focus title on mount
@@ -337,6 +350,30 @@ export function StepQuickCreate({
       }
     }
   }, [isEditing, editingProject?.members, memberOptions, assignee]);
+
+  // Initialize label states when editing and effective labels become available
+  useEffect(() => {
+    if (isEditing && editingProject) {
+      // Initialize sprintType from type_label
+      if (editingProject.type_label && !sprintType) {
+        const found = effectiveTypeLabels.find(t => t.label === editingProject.type_label);
+        if (found) setSprintType(found);
+        else setSprintType({ id: "custom", label: editingProject.type_label });
+      }
+      // Initialize group from group_label
+      if (editingProject.group_label && !group) {
+        const found = effectiveGroupLabels.find(g => g.label === editingProject.group_label);
+        if (found) setGroup(found);
+        else setGroup({ id: "custom", label: editingProject.group_label });
+      }
+      // Initialize label from label_badge
+      if (editingProject.label_badge && !label) {
+        const found = effectiveBadgeLabels.find(l => l.label === editingProject.label_badge);
+        if (found) setLabel(found);
+        else setLabel({ id: "custom", label: editingProject.label_badge });
+      }
+    }
+  }, [isEditing, editingProject, effectiveTypeLabels, effectiveGroupLabels, effectiveBadgeLabels, sprintType, group, label]);
 
   const mapStatusToSupabase = (statusId: string): ProjectStatus => {
     const mapping: Record<string, ProjectStatus> = {
@@ -567,23 +604,34 @@ export function StepQuickCreate({
 
           {/* Sprint Type Picker */}
           <GenericPicker
-            items={SPRINT_TYPES}
+            items={effectiveTypeLabels}
             onSelect={setSprintType}
             selectedId={sprintType?.id}
             placeholder="Select sprint type..."
             renderItem={(item, isSelected) => (
               <div className="flex items-center gap-2 w-full">
+                {item.color && (
+                  <div
+                    className="size-3 rounded-full"
+                    style={{ backgroundColor: item.color }}
+                  />
+                )}
                 <span className="flex-1">{item.label}</span>
                 {isSelected && <Check className="size-4" />}
               </div>
             )}
             trigger={
               <button className="bg-background flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:bg-black/5 transition-colors">
-                <List className="size-4 text-muted-foreground" />
+                {sprintType?.color ? (
+                  <div
+                    className="size-3 rounded-full"
+                    style={{ backgroundColor: sprintType.color }}
+                  />
+                ) : (
+                  <List className="size-4 text-muted-foreground" />
+                )}
                 <span className="font-medium text-foreground text-sm leading-5">
-                  {sprintType
-                    ? sprintType.label
-                    : "Sprint Type"}
+                  {sprintType ? sprintType.label : "Sprint Type"}
                 </span>
               </button>
             }
@@ -687,19 +735,32 @@ export function StepQuickCreate({
 
           {/* Group Picker */}
           <GenericPicker
-            items={GROUPS}
+            items={effectiveGroupLabels}
             onSelect={setGroup}
             selectedId={group?.id}
             placeholder="Select group..."
             renderItem={(item, isSelected) => (
               <div className="flex items-center gap-2 w-full">
+                {item.color && (
+                  <div
+                    className="size-3 rounded-full"
+                    style={{ backgroundColor: item.color }}
+                  />
+                )}
                 <span className="flex-1">{item.label}</span>
                 {isSelected && <Check className="size-4" />}
               </div>
             )}
             trigger={
               <button className="bg-background flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:bg-black/5 transition-colors">
-                <SquaresFour className="size-4 text-muted-foreground" />
+                {group?.color ? (
+                  <div
+                    className="size-3 rounded-full"
+                    style={{ backgroundColor: group.color }}
+                  />
+                ) : (
+                  <SquaresFour className="size-4 text-muted-foreground" />
+                )}
                 <span className="font-medium text-foreground text-sm leading-5">
                   {group ? group.label : "Group"}
                 </span>
@@ -709,19 +770,32 @@ export function StepQuickCreate({
 
           {/* Label Picker */}
           <GenericPicker
-            items={LABELS}
+            items={effectiveBadgeLabels}
             onSelect={setLabel}
             selectedId={label?.id}
             placeholder="Select label..."
             renderItem={(item, isSelected) => (
               <div className="flex items-center gap-2 w-full">
+                {item.color && (
+                  <div
+                    className="size-3 rounded-full"
+                    style={{ backgroundColor: item.color }}
+                  />
+                )}
                 <span className="flex-1">{item.label}</span>
                 {isSelected && <Check className="size-4" />}
               </div>
             )}
             trigger={
               <button className="bg-background flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:bg-black/5 transition-colors">
-                <Bookmark className="size-4 text-muted-foreground" />
+                {label?.color ? (
+                  <div
+                    className="size-3 rounded-full"
+                    style={{ backgroundColor: label.color }}
+                  />
+                ) : (
+                  <Bookmark className="size-4 text-muted-foreground" />
+                )}
                 <span className="font-medium text-foreground text-sm leading-5">
                   {label ? label.label : "Label"}
                 </span>

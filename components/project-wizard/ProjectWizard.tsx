@@ -18,7 +18,8 @@ import { cn } from "@/lib/utils";
 import { createProject, updateProject } from "@/lib/actions/projects";
 import { getOrganizationMembers } from "@/lib/actions/organizations";
 import { getTags } from "@/lib/actions/tags";
-import type { OrganizationTag } from "@/lib/supabase/types";
+import { getLabels } from "@/lib/actions/labels";
+import type { OrganizationTag, OrganizationLabel } from "@/lib/supabase/types";
 import { useUser } from "@/hooks/use-user";
 
 const QUICK_CREATE_STEP = 100;
@@ -57,16 +58,18 @@ export function ProjectWizard({ onClose, onCreate, organizationId, clients = EMP
   const [isQuickCreateExpanded, setIsQuickCreateExpanded] = useState(false);
   const [organizationMembers, setOrganizationMembers] = useState<OrganizationMember[]>([]);
   const [organizationTags, setOrganizationTags] = useState<OrganizationTag[]>([]);
+  const [organizationLabels, setOrganizationLabels] = useState<OrganizationLabel[]>([]);
   const [data, setData] = useState<ProjectData>(() => ({ ...DEFAULT_PROJECT_DATA }));
 
-  // Fetch organization members and tags on mount
+  // Fetch organization members, tags, and labels on mount
   useEffect(() => {
     async function fetchData() {
       if (!organizationId) return;
 
-      const [membersResult, tagsResult] = await Promise.all([
+      const [membersResult, tagsResult, labelsResult] = await Promise.all([
         getOrganizationMembers(organizationId),
         getTags(organizationId),
+        getLabels(organizationId),
       ]);
 
       if (membersResult.data) {
@@ -74,6 +77,9 @@ export function ProjectWizard({ onClose, onCreate, organizationId, clients = EMP
       }
       if (tagsResult.data) {
         setOrganizationTags(tagsResult.data);
+      }
+      if (labelsResult.data) {
+        setOrganizationLabels(labelsResult.data);
       }
     }
     fetchData();
@@ -189,6 +195,7 @@ export function ProjectWizard({ onClose, onCreate, organizationId, clients = EMP
                 clients={clients}
                 organizationMembers={organizationMembers}
                 tags={organizationTags}
+                labels={organizationLabels}
                 editingProject={editingProject}
                 onCreate={async (projectData: QuickCreateProjectData) => {
                   if (!organizationId) {
