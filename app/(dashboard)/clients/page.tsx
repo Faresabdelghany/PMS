@@ -1,6 +1,15 @@
+import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { ClientsContent } from "@/components/clients-content"
-import { cachedGetUserOrganizations, cachedGetClientsWithProjectCounts } from "@/lib/request-cache"
+import { cachedGetUserOrganizations } from "@/lib/request-cache"
+import { getCachedClientsWithProjectCounts } from "@/lib/server-cache"
+import { ClientsListSkeleton } from "@/components/skeletons"
+
+async function ClientsList({ orgId }: { orgId: string }) {
+  const result = await getCachedClientsWithProjectCounts(orgId)
+  const clients = result.data || []
+  return <ClientsContent initialClients={clients} organizationId={orgId} />
+}
 
 export default async function Page() {
   // Use cached orgs - shared with layout (no duplicate DB hit)
@@ -11,8 +20,10 @@ export default async function Page() {
   }
 
   const organizationId = orgsResult.data[0].id
-  const result = await cachedGetClientsWithProjectCounts(organizationId)
-  const clients = result.data || []
 
-  return <ClientsContent initialClients={clients} organizationId={organizationId} />
+  return (
+    <Suspense fallback={<ClientsListSkeleton />}>
+      <ClientsList orgId={organizationId} />
+    </Suspense>
+  )
 }

@@ -1,11 +1,13 @@
 import { notFound } from "next/navigation"
 import { ProjectDetailsPage } from "@/components/projects/ProjectDetailsPage"
-import { getProjectWithDetails } from "@/lib/actions/projects"
-import { getTasks } from "@/lib/actions/tasks"
-import { getWorkstreamsWithTasks } from "@/lib/actions/workstreams"
-import { getClients } from "@/lib/actions/clients"
-import { getOrganizationMembers } from "@/lib/actions/organizations"
-import { getTags } from "@/lib/actions/tags"
+import {
+  getCachedProjectWithDetails,
+  getCachedTasks,
+  getCachedWorkstreamsWithTasks,
+  getCachedClients,
+  getCachedOrganizationMembers,
+  getCachedTags,
+} from "@/lib/server-cache"
 
 type PageProps = {
   params: Promise<{ id: string }>
@@ -15,11 +17,11 @@ export default async function Page({ params }: PageProps) {
   const { id } = await params
 
   // Start all project-id-dependent queries in parallel immediately
-  // This eliminates the waterfall where tasks/workstreams waited for project
+  // Using cached functions for request-level deduplication
   const [projectResult, tasksResult, workstreamsResult] = await Promise.all([
-    getProjectWithDetails(id),
-    getTasks(id),
-    getWorkstreamsWithTasks(id),
+    getCachedProjectWithDetails(id),
+    getCachedTasks(id),
+    getCachedWorkstreamsWithTasks(id),
   ])
 
   if (projectResult.error || !projectResult.data) {
@@ -29,10 +31,11 @@ export default async function Page({ params }: PageProps) {
   const organizationId = projectResult.data.organization_id
 
   // Now fetch org-dependent data (clients, members, tags) in parallel
+  // These are cached and may be shared with other components in the same request
   const [clientsResult, membersResult, tagsResult] = await Promise.all([
-    getClients(organizationId),
-    getOrganizationMembers(organizationId),
-    getTags(organizationId),
+    getCachedClients(organizationId),
+    getCachedOrganizationMembers(organizationId),
+    getCachedTags(organizationId),
   ])
 
   // Map clients to the format expected by ProjectWizard
