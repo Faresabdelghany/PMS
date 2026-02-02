@@ -47,6 +47,23 @@ const notificationSettingsSchema = z.object({
 // Color theme type
 export type ColorThemeType = 'default' | 'forest' | 'ocean' | 'sunset' | 'rose' | 'supabase' | 'chatgpt' | 'midnight' | 'lavender' | 'ember' | 'mint' | 'slate'
 
+// Get user color theme (fast, minimal fetch for initial load)
+export async function getUserColorTheme(): Promise<ColorThemeType> {
+  try {
+    const { user, supabase } = await requireAuth()
+
+    const { data } = await (supabase as any)
+      .from("user_settings")
+      .select("color_theme")
+      .eq("user_id", user.id)
+      .single()
+
+    return (data?.color_theme as ColorThemeType) || "default"
+  } catch {
+    return "default"
+  }
+}
+
 // Extended type with preferences
 export type UserSettingsWithPreferences = UserSettings & {
   timezone: string

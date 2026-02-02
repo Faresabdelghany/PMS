@@ -10,6 +10,8 @@ import { RealtimeProvider } from "@/hooks/realtime-context"
 import { CommandPaletteProvider } from "@/components/command-palette-provider"
 import { SettingsDialogProvider } from "@/components/providers/settings-dialog-provider"
 import { PageSkeleton } from "@/components/ui/page-skeleton"
+import { ColorThemeSyncer } from "@/components/color-theme-syncer"
+import { getUserColorTheme } from "@/lib/actions/user-settings"
 import type { OrganizationWithRole } from "@/hooks/use-organization"
 import type { Profile, Project } from "@/lib/supabase/types"
 import type { SupabaseClient } from "@supabase/supabase-js"
@@ -103,6 +105,7 @@ export default async function DashboardLayout({
   // We start activeProjects query speculatively and check org access afterward
   const orgsPromise = getOrganizations(supabase, user.id)
   const profilePromise = getUserProfile(supabase, user.id)
+  const colorThemePromise = getUserColorTheme()
 
   // Wait for orgs first to check if user has any (fast due to KV cache)
   const organizations = await orgsPromise
@@ -111,10 +114,11 @@ export default async function DashboardLayout({
     redirect("/onboarding")
   }
 
-  // Now fetch profile and activeProjects in parallel
-  const [profile, activeProjects] = await Promise.all([
+  // Now fetch profile, activeProjects, and colorTheme in parallel
+  const [profile, activeProjects, colorTheme] = await Promise.all([
     profilePromise,
     getActiveProjects(supabase, organizations[0].id),
+    colorThemePromise,
   ])
 
   return (
@@ -126,6 +130,7 @@ export default async function DashboardLayout({
         <RealtimeProvider>
           <SettingsDialogProvider>
             <CommandPaletteProvider>
+              <ColorThemeSyncer serverTheme={colorTheme} />
               <SidebarProvider>
                 <AppSidebar activeProjects={activeProjects} />
                 <SidebarInset>
