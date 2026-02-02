@@ -35,7 +35,7 @@ const preferencesSchema = z.object({
   timezone: z.string().optional(),
   week_start_day: z.enum(['monday', 'sunday', 'saturday']).optional(),
   open_links_in_app: z.boolean().optional(),
-  color_theme: z.enum(['default', 'forest', 'ocean', 'sunset', 'rose', 'supabase', 'chatgpt']).optional(),
+  color_theme: z.enum(['default', 'forest', 'ocean', 'sunset', 'rose', 'supabase', 'chatgpt', 'midnight', 'lavender', 'ember', 'mint', 'slate']).optional(),
 })
 
 // Notification settings schema
@@ -45,7 +45,7 @@ const notificationSettingsSchema = z.object({
 })
 
 // Color theme type
-export type ColorThemeType = 'default' | 'forest' | 'ocean' | 'sunset' | 'rose' | 'supabase' | 'chatgpt'
+export type ColorThemeType = 'default' | 'forest' | 'ocean' | 'sunset' | 'rose' | 'supabase' | 'chatgpt' | 'midnight' | 'lavender' | 'ember' | 'mint' | 'slate'
 
 // Extended type with preferences
 export type UserSettingsWithPreferences = UserSettings & {

@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 
-export type ColorTheme = 'default' | 'forest' | 'ocean' | 'sunset' | 'rose' | 'supabase' | 'chatgpt'
+export type ColorTheme = 'default' | 'forest' | 'ocean' | 'sunset' | 'rose' | 'supabase' | 'chatgpt' | 'midnight' | 'lavender' | 'ember' | 'mint' | 'slate'
 
 export const COLOR_THEMES: { value: ColorTheme; label: string; description: string }[] = [
   { value: 'default', label: 'Default', description: 'Blue and purple tones' },
@@ -13,6 +13,11 @@ export const COLOR_THEMES: { value: ColorTheme; label: string; description: stri
   { value: 'rose', label: 'Rose', description: 'Soft pink tones' },
   { value: 'supabase', label: 'Supabase', description: 'Supabase brand green' },
   { value: 'chatgpt', label: 'ChatGPT', description: 'OpenAI style violet & orange' },
+  { value: 'midnight', label: 'Midnight', description: 'Deep indigo and navy' },
+  { value: 'lavender', label: 'Lavender', description: 'Soft purple tones' },
+  { value: 'ember', label: 'Ember', description: 'Deep red and crimson' },
+  { value: 'mint', label: 'Mint', description: 'Fresh mint and cyan' },
+  { value: 'slate', label: 'Slate', description: 'Professional gray' },
 ]
 
 type ColorThemeProviderProps = {
