@@ -2,6 +2,10 @@
 // Converters are available in lib/utils/ for transforming Supabase data to these UI types
 
 import { getAvatarUrl } from "@/lib/assets/avatars"
+import type { TaskStatus, TaskPriority } from "@/lib/constants/status"
+
+// Re-export TaskStatus as WorkstreamTaskStatus for backwards compatibility
+export type WorkstreamTaskStatus = TaskStatus
 
 export type User = {
   id: string
@@ -28,20 +32,21 @@ export type KeyFeatures = {
   p2: string[]
 }
 
+// Timeline uses "planned" instead of "todo" for display purposes
+export type TimelineTaskStatus = "planned" | "in-progress" | "done"
+
 export type TimelineTask = {
   id: string
   name: string
   startDate: Date
   endDate: Date
-  status: "planned" | "in-progress" | "done"
+  status: TimelineTaskStatus
 }
-
-export type WorkstreamTaskStatus = "todo" | "in-progress" | "done"
 
 export type WorkstreamTask = {
   id: string
   name: string
-  status: WorkstreamTaskStatus
+  status: TaskStatus
   dueLabel?: string
   dueTone?: "danger" | "warning" | "muted"
   assignee?: User
@@ -50,7 +55,7 @@ export type WorkstreamTask = {
   /** Optional end date for the task (used in task views). */
   endDate?: Date
   /** Optional priority identifier for the task. */
-  priority?: "no-priority" | "low" | "medium" | "high" | "urgent"
+  priority?: TaskPriority
   /** Optional tag label for the task (e.g. Feature, Bug). */
   tag?: string
   /** Optional short description used in task lists. */

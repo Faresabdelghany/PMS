@@ -9,6 +9,13 @@ import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
 import { requireProjectMember, requireProjectOwnerOrPIC, requireOrgMember } from "./auth-helpers"
 import { getProjectFiles } from "./files"
 import { uuidSchema, validate } from "@/lib/validations"
+import {
+  PROJECT_STATUSES,
+  PROJECT_PRIORITIES,
+  TASK_PRIORITIES,
+  createProjectStatusCounts,
+  createProjectPriorityCounts,
+} from "@/lib/constants/status"
 import type {
   Project,
   ProjectInsert,
@@ -93,8 +100,8 @@ const createProjectSchema = z.object({
     .min(1, "Project name is required")
     .max(200, "Project name must be less than 200 characters"),
   description: z.string().max(5000).optional().nullable(),
-  status: z.enum(["backlog", "planned", "active", "cancelled", "completed"]).optional(),
-  priority: z.enum(["urgent", "high", "medium", "low"]).optional(),
+  status: z.enum(PROJECT_STATUSES).optional(),
+  priority: z.enum(PROJECT_PRIORITIES).optional(),
   start_date: z.string().optional().nullable(),
   end_date: z.string().optional().nullable(),
   client_id: z.string().uuid().optional().nullable(),
@@ -829,24 +836,16 @@ export async function getProjectStats(orgId: string): Promise<
     return { error: error.message }
   }
 
-  const byStatus: Record<ProjectStatus, number> = {
-    backlog: 0,
-    planned: 0,
-    active: 0,
-    cancelled: 0,
-    completed: 0,
-  }
-
-  const byPriority: Record<ProjectPriority, number> = {
-    urgent: 0,
-    high: 0,
-    medium: 0,
-    low: 0,
-  }
+  const byStatus = createProjectStatusCounts()
+  const byPriority = createProjectPriorityCounts()
 
   data.forEach((project) => {
-    byStatus[project.status]++
-    byPriority[project.priority]++
+    if (project.status in byStatus) {
+      byStatus[project.status as ProjectStatus]++
+    }
+    if (project.priority in byPriority) {
+      byPriority[project.priority as ProjectPriority]++
+    }
   })
 
   return {

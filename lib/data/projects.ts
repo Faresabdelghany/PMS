@@ -1,5 +1,7 @@
 // Project types - data is now fetched from Supabase via lib/actions/projects.ts
 
+import type { ProjectStatus, ProjectPriority, TaskStatus } from "@/lib/constants/status"
+
 export type Project = {
   id: string
   name: string
@@ -7,8 +9,8 @@ export type Project = {
   progress: number
   startDate: Date
   endDate: Date
-  status: "backlog" | "planned" | "active" | "cancelled" | "completed"
-  priority: "urgent" | "high" | "medium" | "low"
+  status: ProjectStatus
+  priority: ProjectPriority
   tags: string[]
   members: string[]
   // Optional subtitle fields for card/list view
@@ -19,7 +21,7 @@ export type Project = {
     id: string
     name: string
     assignee: string
-    status: "todo" | "in-progress" | "done"
+    status: TaskStatus
     startDate: Date
     endDate: Date
   }>

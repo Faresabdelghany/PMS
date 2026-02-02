@@ -7,6 +7,14 @@ import { z } from "zod"
 import { CacheTags, revalidateTag } from "@/lib/cache-tags"
 import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
 import { uuidSchema, validate } from "@/lib/validations"
+import {
+  TASK_STATUSES,
+  TASK_PRIORITIES,
+  DEFAULT_TASK_STATUS,
+  DEFAULT_TASK_PRIORITY,
+  createTaskStatusCounts,
+  createTaskPriorityCounts,
+} from "@/lib/constants/status"
 import type { Task, TaskInsert, TaskUpdate, TaskStatus, TaskPriority } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
@@ -18,8 +26,8 @@ const createTaskSchema = z.object({
     .min(1, "Task name is required")
     .max(500, "Task name must be less than 500 characters"),
   description: z.string().max(10000).optional().nullable(),
-  status: z.enum(["todo", "in-progress", "done"]).default("todo"),
-  priority: z.enum(["no-priority", "low", "medium", "high", "urgent"]).default("medium"),
+  status: z.enum(TASK_STATUSES).default(DEFAULT_TASK_STATUS),
+  priority: z.enum(TASK_PRIORITIES).default(DEFAULT_TASK_PRIORITY),
   workstream_id: z.string().uuid().optional().nullable(),
   assignee_id: z.string().uuid().optional().nullable(),
   start_date: z.string().optional().nullable(),
@@ -558,23 +566,16 @@ export async function getTaskStats(projectId: string): Promise<
     return { error: error.message }
   }
 
-  const byStatus: Record<TaskStatus, number> = {
-    todo: 0,
-    "in-progress": 0,
-    done: 0,
-  }
-
-  const byPriority: Record<TaskPriority, number> = {
-    "no-priority": 0,
-    low: 0,
-    medium: 0,
-    high: 0,
-    urgent: 0,
-  }
+  const byStatus = createTaskStatusCounts()
+  const byPriority = createTaskPriorityCounts()
 
   data.forEach((task) => {
-    byStatus[task.status]++
-    byPriority[task.priority]++
+    if (task.status in byStatus) {
+      byStatus[task.status as TaskStatus]++
+    }
+    if (task.priority in byPriority) {
+      byPriority[task.priority as TaskPriority]++
+    }
   })
 
   return {

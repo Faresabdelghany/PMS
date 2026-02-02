@@ -8,6 +8,7 @@ import { CacheTags, revalidateTag } from "@/lib/cache-tags"
 import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
 import { requireOrgMember } from "./auth-helpers"
 import { uuidSchema, validate } from "@/lib/validations"
+import { CLIENT_STATUSES, createClientStatusCounts } from "@/lib/constants/status"
 import type { Client, ClientInsert, ClientUpdate, ClientStatus } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
@@ -27,7 +28,7 @@ const createClientSchema = z.object({
     .or(z.literal(""))
     .transform((val) => (val === "" ? null : val)),
   location: z.string().max(200).optional().nullable(),
-  status: z.enum(["prospect", "active", "on_hold", "archived"]).default("active"),
+  status: z.enum(CLIENT_STATUSES).default("active"),
   primary_contact_name: z.string().max(100).optional().nullable(),
   primary_contact_email: z
     .string()
@@ -450,15 +451,12 @@ export async function getClientStats(orgId: string): Promise<
     return { error: error.message }
   }
 
-  const byStatus: Record<ClientStatus, number> = {
-    prospect: 0,
-    active: 0,
-    on_hold: 0,
-    archived: 0,
-  }
+  const byStatus = createClientStatusCounts()
 
   data.forEach((client) => {
-    byStatus[client.status]++
+    if (client.status in byStatus) {
+      byStatus[client.status as ClientStatus]++
+    }
   })
 
   return {

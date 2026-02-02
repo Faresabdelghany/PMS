@@ -6,23 +6,45 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-// Enum types
-export type ProjectStatus = "backlog" | "planned" | "active" | "cancelled" | "completed"
-export type ProjectPriority = "urgent" | "high" | "medium" | "low"
+// Import status/priority types for local use in this file
+import type {
+  ProjectStatus as ProjectStatusType,
+  ProjectPriority as ProjectPriorityType,
+  TaskStatus as TaskStatusType,
+  TaskPriority as TaskPriorityType,
+  ClientStatus as ClientStatusType,
+  DeliverableStatus as DeliverableStatusType,
+} from "@/lib/constants/status"
+
+// Re-export status/priority types from centralized constants
+export type {
+  ProjectStatus,
+  ProjectPriority,
+  TaskStatus,
+  TaskPriority,
+  ClientStatus,
+  DeliverableStatus,
+} from "@/lib/constants/status"
+
+// Local type aliases for use within this file's Database interface
+type ProjectStatus = ProjectStatusType
+type ProjectPriority = ProjectPriorityType
+type TaskStatus = TaskStatusType
+type TaskPriority = TaskPriorityType
+type ClientStatus = ClientStatusType
+type DeliverableStatus = DeliverableStatusType
+
+// Additional enum types (not status/priority related)
 export type ProjectIntent = "delivery" | "experiment" | "internal"
 export type SuccessType = "deliverable" | "metric" | "undefined"
 export type DeadlineType = "none" | "target" | "fixed"
 export type WorkStructure = "linear" | "milestones" | "multistream"
-export type TaskStatus = "todo" | "in-progress" | "done"
-export type TaskPriority = "no-priority" | "low" | "medium" | "high" | "urgent"
-export type ClientStatus = "prospect" | "active" | "on_hold" | "archived"
 export type OrgMemberRole = "admin" | "member"
 export type ProjectMemberRole = "owner" | "pic" | "member" | "viewer"
 export type InvitationStatus = "pending" | "accepted" | "cancelled" | "expired"
 export type NoteType = "general" | "meeting" | "audio"
 export type NoteStatus = "completed" | "processing"
 export type FileType = "pdf" | "zip" | "fig" | "doc" | "file" | "image" | "video" | "audio"
-export type DeliverableStatus = "pending" | "in_progress" | "completed"
 export type PaymentStatus = "unpaid" | "invoiced" | "paid"
 export type InboxItemType = "comment" | "task_update" | "client_update" | "project_milestone" | "system"
 export type LabelCategory = "type" | "duration" | "group" | "badge"

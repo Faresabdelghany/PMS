@@ -1,4 +1,11 @@
 import { z } from "zod"
+import {
+  PROJECT_STATUSES,
+  PROJECT_PRIORITIES,
+  TASK_STATUSES,
+  TASK_PRIORITIES,
+  CLIENT_STATUSES,
+} from "@/lib/constants/status"
 
 /**
  * Centralized Zod validation schemas for server actions
@@ -101,7 +108,8 @@ export const updateOrganizationSchema = z.object({
 // Project Schemas
 // ============================================================================
 
-export const projectStatusSchema = z.enum(["active", "completed", "on-hold", "cancelled"])
+export const projectStatusSchema = z.enum(PROJECT_STATUSES)
+export const projectPrioritySchema = z.enum(PROJECT_PRIORITIES)
 
 export const createProjectSchema = z.object({
   name: z
@@ -115,12 +123,12 @@ export const createProjectSchema = z.object({
     .max(5000, "Description must be less than 5000 characters")
     .optional()
     .nullable(),
-  status: projectStatusSchema.default("active"),
+  status: projectStatusSchema.default("planned"),
   client_id: uuidSchema.optional().nullable(),
   start_date: z.string().datetime().optional().nullable(),
   end_date: z.string().datetime().optional().nullable(),
   budget: z.number().min(0, "Budget cannot be negative").optional().nullable(),
-  priority: z.enum(["low", "medium", "high", "critical"]).default("medium"),
+  priority: projectPrioritySchema.default("medium"),
 })
 
 export const updateProjectSchema = createProjectSchema.partial()
@@ -129,8 +137,8 @@ export const updateProjectSchema = createProjectSchema.partial()
 // Task Schemas
 // ============================================================================
 
-export const taskStatusSchema = z.enum(["todo", "in-progress", "done"])
-export const taskPrioritySchema = z.enum(["low", "medium", "high", "critical"])
+export const taskStatusSchema = z.enum(TASK_STATUSES)
+export const taskPrioritySchema = z.enum(TASK_PRIORITIES)
 
 export const createTaskSchema = z.object({
   name: z
@@ -170,7 +178,7 @@ export const reorderTasksSchema = z.object({
 // Client Schemas
 // ============================================================================
 
-export const clientStatusSchema = z.enum(["active", "inactive", "prospect"])
+export const clientStatusSchema = z.enum(CLIENT_STATUSES)
 
 export const createClientSchema = z.object({
   name: z

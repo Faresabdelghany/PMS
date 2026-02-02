@@ -10,6 +10,13 @@ import {
 import { CSS } from "@dnd-kit/utilities"
 
 import type { FilterCounts } from "@/lib/data/projects"
+import {
+  TASK_STATUS_LABELS,
+  TASK_STATUS_COLORS,
+  TASK_PRIORITY_LABELS,
+  getProjectStatusLabel as getProjectStatusLabelFromConstants,
+  type TaskStatus,
+} from "@/lib/constants/status"
 import { TaskRowBase } from "@/components/tasks/TaskRowBase"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -35,7 +42,7 @@ const WHITESPACE_TO_DASH_REGEX = /\s+/g
 export type TaskLike = {
   id: string
   name: string
-  status: "todo" | "in-progress" | "done"
+  status: TaskStatus
   priority?: string | null
   tag?: string | null
   assignee?: {
@@ -157,12 +164,8 @@ export function computeTaskFilterCounts(tasks: TaskLike[]): FilterCounts {
 
   for (const task of tasks) {
     // Count status using actual task status values
-    if (task.status === "todo") {
-      counts.status!.todo = (counts.status!.todo || 0) + 1
-    } else if (task.status === "in-progress") {
-      counts.status!["in-progress"] = (counts.status!["in-progress"] || 0) + 1
-    } else if (task.status === "done") {
-      counts.status!.done = (counts.status!.done || 0) + 1
+    if (task.status in counts.status!) {
+      counts.status![task.status] = (counts.status![task.status] || 0) + 1
     }
 
     // Count priority
@@ -309,43 +312,18 @@ export function TaskStatus({ status }: TaskStatusProps) {
   return <span className={cn("font-medium", color)}>{label}</span>
 }
 
-function getStatusLabel(status: TaskLike["status"]): string {
-  switch (status) {
-    case "done":
-      return "Done"
-    case "in-progress":
-      return "In Progress"
-    default:
-      return "To do"
-  }
+function getStatusLabel(status: TaskStatus): string {
+  return TASK_STATUS_LABELS[status] ?? "To do"
 }
 
-function getStatusColor(status: TaskLike["status"]): string {
-  switch (status) {
-    case "done":
-      return "text-emerald-500"
-    case "in-progress":
-      return "text-amber-500"
-    default:
-      return "text-muted-foreground"
-  }
+function getStatusColor(status: TaskStatus): string {
+  return TASK_STATUS_COLORS[status] ?? "text-muted-foreground"
 }
 
 function getProjectStatusLabel(status: string): string {
-  switch (status) {
-    case "active":
-      return "In Progress"
-    case "planned":
-      return "Planned"
-    case "backlog":
-      return "Backlog"
-    case "completed":
-      return "Completed"
-    case "cancelled":
-      return "Cancelled"
-    default:
-      return capitalize(status)
-  }
+  // Use the centralized function, fallback to capitalize for unknown statuses
+  const label = getProjectStatusLabelFromConstants(status as import("@/lib/constants/status").ProjectStatus)
+  return label !== status ? label : capitalize(status)
 }
 
 function capitalize(value: string): string {
@@ -369,18 +347,7 @@ export function TaskPriority({ priority, className }: TaskPriorityProps) {
 }
 
 function getPriorityLabel(priority: string): string {
-  switch (priority) {
-    case "high":
-      return "High"
-    case "medium":
-      return "Medium"
-    case "low":
-      return "Low"
-    case "urgent":
-      return "Urgent"
-    default:
-      return "No priority"
-  }
+  return TASK_PRIORITY_LABELS[priority as keyof typeof TASK_PRIORITY_LABELS] ?? "No priority"
 }
 
 export type TaskRowDnDProps = {
