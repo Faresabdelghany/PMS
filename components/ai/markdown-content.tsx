@@ -2,8 +2,7 @@
 
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
-import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism"
+import { LazySyntaxHighlighter } from "./syntax-highlighter-lazy"
 import { CopyButton } from "./copy-button"
 import { cn } from "@/lib/utils"
 
@@ -37,22 +36,12 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
               )
             }
 
-            // Code block with syntax highlighting
+            // Code block with syntax highlighting (lazy loaded)
             return (
               <div className="relative group not-prose my-3">
-                <SyntaxHighlighter
-                  style={oneDark as { [key: string]: React.CSSProperties }}
-                  language={match?.[1] || "text"}
-                  PreTag="div"
-                  className="rounded-lg !my-0 text-sm"
-                  customStyle={{
-                    margin: 0,
-                    padding: "1rem",
-                    fontSize: "0.875rem",
-                  }}
-                >
+                <LazySyntaxHighlighter language={match?.[1] || "text"}>
                   {codeString}
-                </SyntaxHighlighter>
+                </LazySyntaxHighlighter>
                 <CopyButton text={codeString} />
               </div>
             )
