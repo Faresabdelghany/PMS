@@ -21,6 +21,9 @@ import type {
   WorkStructure,
   ProjectMember,
   ProjectMemberRole,
+  DeliverableStatus,
+  PaymentStatus,
+  TaskPriority,
 } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
@@ -37,6 +40,8 @@ export type GuidedProjectInput = {
   client_id?: string | null
   type_label?: string | null
   tags?: string[]
+  group_label?: string | null
+  label_badge?: string | null
 
   // Guided wizard fields (stored in projects table)
   intent?: ProjectIntent | null
@@ -320,11 +325,11 @@ export async function createProject(
         const task = data.starter_tasks[i]
         await supabase.from("tasks").insert({
           project_id: project.id,
-          title: task.title,
+          name: task.title,
           description: task.description || null,
-          priority: task.priority,
+          priority: task.priority as TaskPriority,
           status: "todo",
-          position: i,
+          sort_order: i,
           workstream_id: task.workstream ? workstreamMap[task.workstream] || null : null,
         })
       }
@@ -494,7 +499,7 @@ export type ProjectFullDetails = ProjectWithRelations & {
   scope: { id: string; item: string; is_in_scope: boolean; sort_order: number }[]
   outcomes: { id: string; item: string; sort_order: number }[]
   features: { id: string; item: string; priority: number; sort_order: number }[]
-  deliverables: { id: string; title: string; due_date: string | null; value: number | null; status: string; payment_status: string; sort_order: number }[]
+  deliverables: { id: string; title: string; due_date: string | null; value: number | null; status: DeliverableStatus; payment_status: PaymentStatus; sort_order: number }[]
   metrics: { id: string; name: string; target: string | null; sort_order: number }[]
   notes: { id: string; title: string; content: string | null; note_type: string; status: string; added_by_id: string | null; created_at: string; updated_at: string; author: { id: string; full_name: string | null; email: string; avatar_url: string | null } | null }[]
   files: { id: string; name: string; file_type: string; size_bytes: number; url: string; description: string | null; created_at: string; added_by_id: string; profiles: { id: string; full_name: string | null; email: string; avatar_url: string | null } | null }[]
@@ -576,7 +581,7 @@ export async function getProjectWithDetails(id: string): Promise<ActionResult<Pr
         ...file,
         profiles: file.uploader || null,
       })),
-    } as ProjectFullDetails,
+    } as unknown as ProjectFullDetails,
   }
 }
 

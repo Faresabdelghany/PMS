@@ -1248,3 +1248,4 @@ export type WorkflowStatusUpdate = Partial<Omit<WorkflowStatusInsert, 'organizat
 // Chat types
 export type ChatConversation = Database['public']['Tables']['chat_conversations']['Row']
 export type ChatMessage = Database['public']['Tables']['chat_messages']['Row']
+export type ChatMessageInsert = Database['public']['Tables']['chat_messages']['Insert']

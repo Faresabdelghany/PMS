@@ -164,32 +164,36 @@ export function ProjectsContent({
   }
 
   // Convert ProjectWithRelations to EditingProjectData format
-  const toEditingProject = (p: ProjectWithRelations): EditingProjectData => ({
-    id: p.id,
-    name: p.name,
-    description: p.description,
-    status: p.status,
-    priority: p.priority,
-    start_date: p.start_date,
-    end_date: p.end_date,
-    client_id: p.client_id,
-    client: p.client,
-    type_label: p.type_label,
-    tags: p.tags || [],
-    owner_id: p.owner_id,
-    group_label: p.group_label,
-    label_badge: p.label_badge,
-    members: p.members?.map(m => ({
-      user_id: m.user_id,
-      role: m.role,
-      profile: {
-        id: m.profile.id,
-        full_name: m.profile.full_name,
-        email: m.profile.email,
-        avatar_url: m.profile.avatar_url,
-      },
-    })),
-  })
+  const toEditingProject = (p: ProjectWithRelations): EditingProjectData => {
+    // Derive owner_id from members with role "owner"
+    const owner = p.members?.find(m => m.role === "owner")
+    return {
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      status: p.status,
+      priority: p.priority,
+      start_date: p.start_date,
+      end_date: p.end_date,
+      client_id: p.client_id,
+      client: p.client,
+      type_label: p.type_label,
+      tags: p.tags || [],
+      owner_id: owner?.user_id,
+      group_label: p.group_label,
+      label_badge: p.label_badge,
+      members: p.members?.map(m => ({
+        user_id: m.user_id,
+        role: m.role,
+        profile: {
+          id: m.profile.id,
+          full_name: m.profile.full_name,
+          email: m.profile.email,
+          avatar_url: m.profile.avatar_url,
+        },
+      })),
+    }
+  }
 
   const openEditWizard = (projectId: string) => {
     const project = supabaseProjects.find(p => p.id === projectId)

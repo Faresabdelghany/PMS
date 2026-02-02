@@ -351,7 +351,7 @@ export function usePersistedAIChat({
         const userMsgResult = await addMessage(convId, {
           role: "user",
           content,
-          attachments: attachments,
+          attachments: attachments as unknown as Parameters<typeof addMessage>[1]["attachments"],
         })
 
         // Handle message save failure
@@ -508,11 +508,12 @@ export function usePersistedAIChat({
         )
 
         // 6. Save assistant message to DB
+        type AddMessageParams = Parameters<typeof addMessage>[1]
         const assistantMsgResult = await addMessage(convId, {
           role: "assistant",
           content: parsed.content,
-          action_data: finalMessage.action,
-          multi_action_data: finalMessage.multiAction,
+          action_data: finalMessage.action as AddMessageParams["action_data"],
+          multi_action_data: finalMessage.multiAction as AddMessageParams["multi_action_data"],
         })
 
         // Update local message ID with DB-assigned ID

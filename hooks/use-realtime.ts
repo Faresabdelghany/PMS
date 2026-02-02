@@ -132,10 +132,11 @@ export function useRealtime<T extends TableName>({
     const channelName = `realtime:${schema}:${table}:${filter || "all"}`
     const channel = supabase.channel(channelName)
 
-    // Subscribe to changes with properly typed config
-    const config: RealtimePostgresChangesFilter<`${string}`> = filter
+    // Subscribe to changes - use type assertion for Supabase realtime types
+    // The Supabase types are overly strict with template literal types
+    const config = (filter
       ? { event, schema, table, filter }
-      : { event, schema, table }
+      : { event, schema, table }) as unknown as RealtimePostgresChangesFilter<"*">
 
     channel.on(
       "postgres_changes",

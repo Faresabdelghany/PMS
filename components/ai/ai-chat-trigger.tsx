@@ -64,6 +64,8 @@ export function AIChatTrigger() {
       clients: [],
       teams: [],
       members: [],
+      userTasks: [],
+      inbox: [],
     },
   }
 

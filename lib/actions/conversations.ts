@@ -1,7 +1,7 @@
 "use server"
 
 import { requireAuth } from "./auth-helpers"
-import type { ChatConversation, ChatMessage } from "@/lib/supabase/types"
+import type { ChatConversation, ChatMessage, ChatMessageInsert, Json } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
 /**
@@ -122,24 +122,26 @@ export async function addMessage(
   data: {
     role: "user" | "assistant"
     content: string
-    attachments?: unknown
-    action_data?: unknown
-    multi_action_data?: unknown
+    attachments?: Json | null
+    action_data?: Json | null
+    multi_action_data?: Json | null
   }
 ): Promise<ActionResult<ChatMessage>> {
   try {
     const { supabase } = await requireAuth()
 
+    const insertData: ChatMessageInsert = {
+      conversation_id: conversationId,
+      role: data.role,
+      content: data.content,
+      attachments: data.attachments,
+      action_data: data.action_data,
+      multi_action_data: data.multi_action_data,
+    }
+
     const { data: message, error } = await supabase
       .from("chat_messages")
-      .insert({
-        conversation_id: conversationId,
-        role: data.role,
-        content: data.content,
-        attachments: data.attachments ?? null,
-        action_data: data.action_data ?? null,
-        multi_action_data: data.multi_action_data ?? null,
-      })
+      .insert(insertData)
       .select()
       .single()
 

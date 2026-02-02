@@ -8,7 +8,7 @@ import { getTeams } from "./teams"
 import { getInboxItems } from "./inbox"
 import { getMyTasks } from "./tasks"
 import type { ActionResult } from "./types"
-import type { ChatContext, WorkloadInsights } from "./ai"
+import type { ChatContext, WorkloadInsights } from "./ai-types"
 
 /**
  * Calculates workload insights from user tasks for AI context.
