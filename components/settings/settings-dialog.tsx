@@ -21,6 +21,7 @@ import { BillingPane } from "./panes/billing-pane"
 import { ImportPane } from "./panes/import-pane"
 import { AgentsPane } from "./panes/agents-pane"
 import { SkillsPane } from "./panes/skills-pane"
+import { LabelsSettings } from "./labels-settings"
 
 interface SettingsDialogProps {
   open: boolean
@@ -54,6 +55,8 @@ export function SettingsDialog({ open, onOpenChange, initialSection = "account" 
         return <TypesPane />
       case "tags":
         return <TagsPane />
+      case "labels":
+        return <LabelsSettings />
       case "billing":
         return <BillingPane />
       case "import":

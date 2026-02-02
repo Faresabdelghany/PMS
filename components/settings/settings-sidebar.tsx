@@ -12,6 +12,7 @@ import {
   Robot,
   Sparkle,
   Tag,
+  Bookmark,
 } from "@phosphor-icons/react/dist/ssr"
 import { cn } from "@/lib/utils"
 
@@ -23,6 +24,7 @@ export type SettingsItemId =
   | "identity"
   | "types"
   | "tags"
+  | "labels"
   | "billing"
   | "import"
   | "agents"
@@ -46,6 +48,7 @@ const settingsSections = [
       { id: "identity" as const, label: "Identity" },
       { id: "types" as const, label: "Types" },
       { id: "tags" as const, label: "Tags" },
+      { id: "labels" as const, label: "Labels" },
       { id: "billing" as const, label: "Plans and billing" },
       { id: "import" as const, label: "Import" },
     ],
@@ -68,6 +71,7 @@ const settingsItemIcons: Record<SettingsItemId, React.ComponentType<{ className?
   identity: ShieldCheck,
   types: SquaresFour,
   tags: Tag,
+  labels: Bookmark,
   billing: CreditCard,
   import: UploadSimple,
   agents: Robot,

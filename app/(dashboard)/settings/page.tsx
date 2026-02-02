@@ -12,7 +12,7 @@ const pathToSection: Record<string, string> = {
   "/settings/ai": "agents",
   "/settings/organization": "teammates",
   "/settings/tags": "tags",
-  "/settings/labels": "types",
+  "/settings/labels": "labels",
 }
 
 export default function SettingsPage() {
