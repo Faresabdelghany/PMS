@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, type KeyboardEvent, type ChangeEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { PaperPlaneRight, Paperclip, X, Plus, Microphone } from "@phosphor-icons/react"
+import { PaperPlaneRight, Paperclip, X, Plus, Microphone } from "@phosphor-icons/react/dist/ssr"
 import type { Attachment } from "@/hooks/use-ai-chat"
 
 // =============================================================================

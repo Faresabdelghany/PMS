@@ -9,7 +9,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
-import { StarFour, Trash, SpinnerGap } from "@phosphor-icons/react"
+import { StarFour, Trash, SpinnerGap } from "@phosphor-icons/react/dist/ssr"
 import { useAIStatus } from "@/hooks/use-ai-status"
 import { useAIChat, type Attachment, type ClientSideCallbacks } from "@/hooks/use-ai-chat"
 import type { ChatContext } from "@/lib/actions/ai-types"

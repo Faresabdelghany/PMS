@@ -1,5 +1,5 @@
 import React from "react";
-import { Lightning, Compass, Check, CaretRight, X } from '@phosphor-icons/react';
+import { Lightning, Compass, Check, CaretRight, X } from '@phosphor-icons/react/dist/ssr';
 import { Button } from "../../ui/button";
 import { ProjectMode } from "../types";
 

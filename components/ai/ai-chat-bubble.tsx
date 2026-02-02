@@ -1,6 +1,6 @@
 "use client"
 
-import { StarFour } from "@phosphor-icons/react"
+import { StarFour } from "@phosphor-icons/react/dist/ssr"
 import { MotionDiv } from "@/components/ui/motion-lazy"
 import { cn } from "@/lib/utils"
 

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useMemo } from "react"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
-import { StarFour, Trash, SpinnerGap, Minus } from "@phosphor-icons/react"
+import { StarFour, Trash, SpinnerGap, Minus } from "@phosphor-icons/react/dist/ssr"
 import { MotionDiv } from "@/components/ui/motion-lazy"
 import { useAIStatus } from "@/hooks/use-ai-status"
 import { useAIChat, type Attachment, type ClientSideCallbacks } from "@/hooks/use-ai-chat"
