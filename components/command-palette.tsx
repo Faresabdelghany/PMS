@@ -115,6 +115,7 @@ export function CommandPalette({ onCreateProject, onCreateTask, onOpenSettings }
                     key={item.id}
                     value={`project-${item.id}-${item.title}`}
                     onSelect={() => navigate(item.url)}
+                    className="command-item-optimized"
                   >
                     <FolderSimple className="size-4 text-blue-500" />
                     <span>{item.title}</span>
@@ -135,6 +136,7 @@ export function CommandPalette({ onCreateProject, onCreateTask, onOpenSettings }
                     key={item.id}
                     value={`task-${item.id}-${item.title}`}
                     onSelect={() => navigate(item.url)}
+                    className="command-item-optimized"
                   >
                     <CheckSquare className="size-4 text-green-500" />
                     <span>{item.title}</span>
@@ -155,6 +157,7 @@ export function CommandPalette({ onCreateProject, onCreateTask, onOpenSettings }
                     key={item.id}
                     value={`client-${item.id}-${item.title}`}
                     onSelect={() => navigate(item.url)}
+                    className="command-item-optimized"
                   >
                     <Users className="size-4 text-purple-500" />
                     <span>{item.title}</span>

@@ -98,7 +98,7 @@ export function NotesTable({ notes, onAddNote, onEditNote, onDeleteNote, onNoteC
                     </TableHeader>
                     <TableBody>
                         {filteredNotes.map((note) => (
-                            <TableRow key={note.id} className="cursor-pointer" onClick={() => onNoteClick?.(note)}>
+                            <TableRow key={note.id} className="cursor-pointer table-row-optimized" onClick={() => onNoteClick?.(note)}>
                                 <TableCell onClick={(e: React.MouseEvent) => e.stopPropagation()}>
                                     <Checkbox
                                         checked={selectedNotes.includes(note.id)}

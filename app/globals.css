@@ -1008,3 +1008,37 @@
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* ============================================
+   PERFORMANCE UTILITIES
+   ============================================ */
+
+/* Content visibility for large lists - improves rendering performance */
+.content-visibility-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 50px;
+}
+
+/* Table row optimization */
+.table-row-optimized {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 45px;
+}
+
+/* Card optimization for grids */
+.card-optimized {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 200px;
+}
+
+/* List item optimization */
+.list-item-optimized {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 60px;
+}
+
+/* Command palette item optimization */
+.command-item-optimized {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 40px;
+}
