@@ -484,8 +484,8 @@ SUGGESTED_ACTIONS: [{"label": "Show blocked tasks", "prompt": "Tell me more abou
 // Streaming Implementation
 // =============================================================================
 
-export const runtime = "nodejs"
-export const dynamic = "force-dynamic"
+// Note: Route segment configs removed for cacheComponents compatibility
+// API routes are inherently dynamic and don't need explicit config
 
 // Provider-specific streaming implementations
 async function streamOpenAI(

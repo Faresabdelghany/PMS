@@ -14,8 +14,7 @@ import { revalidateTag as nextRevalidateTag } from "next/cache"
  */
 
 /**
- * Wrapper for Next.js 16's revalidateTag that includes the required profile argument.
- * Uses immediate expiration for on-demand revalidation.
+ * Wrapper for revalidateTag - invalidates cached data with the given tag
  */
 export function revalidateTag(tag: string): void {
   nextRevalidateTag(tag, { expire: 0 })
@@ -53,4 +52,15 @@ export const CacheTags = {
   // Teams
   teams: (orgId: string) => `teams-${orgId}`,
   team: (id: string) => `team-${id}`,
+
+  // Tags (entity)
+  tags: (orgId: string) => `tags-${orgId}`,
+
+  // Inbox & Activity (user-specific, short TTL)
+  inbox: (userId: string) => `inbox-${userId}`,
+  activity: (userId: string) => `activity-${userId}`,
+
+  // User settings (long TTL)
+  userProfile: (userId: string) => `user-profile-${userId}`,
+  userPreferences: (userId: string) => `user-preferences-${userId}`,
 } as const

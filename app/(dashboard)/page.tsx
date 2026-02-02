@@ -1,6 +1,8 @@
+import { Suspense } from "react"
 import { redirect } from "next/navigation"
-import { ProjectsContent } from "@/components/projects-content"
-import { cachedGetUserOrganizations, cachedGetProjects, cachedGetClients } from "@/lib/request-cache"
+import { cachedGetUserOrganizations } from "@/lib/request-cache"
+import { CachedProjectsList } from "@/components/dashboard"
+import { ProjectsListSkeleton } from "@/components/skeletons"
 
 export default async function Page() {
   // Use cached orgs - shared with layout (no duplicate DB hit)
@@ -12,19 +14,9 @@ export default async function Page() {
 
   const organization = orgsResult.data[0]
 
-  // Fetch projects and clients in parallel
-  const [projectsResult, clientsResult] = await Promise.all([
-    cachedGetProjects(organization.id),
-    cachedGetClients(organization.id),
-  ])
-  const projects = projectsResult.data ?? []
-  const clients = clientsResult.data ?? []
-
   return (
-    <ProjectsContent
-      initialProjects={projects}
-      clients={clients}
-      organizationId={organization.id}
-    />
+    <Suspense fallback={<ProjectsListSkeleton />}>
+      <CachedProjectsList orgId={organization.id} />
+    </Suspense>
   )
 }
