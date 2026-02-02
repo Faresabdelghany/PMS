@@ -22,7 +22,9 @@ import { ProjectTasksTabLazy } from "@/components/projects/ProjectTasksTabLazy"
 import { NotesTab } from "@/components/projects/NotesTab"
 import { AssetsFilesTab } from "@/components/projects/AssetsFilesTab"
 import { DeliverableTab } from "@/components/projects/DeliverableTab"
+import { AddFileModal } from "@/components/projects/AddFileModal"
 import { ProjectWizardLazy } from "@/components/project-wizard/ProjectWizardLazy"
+import { useUser } from "@/hooks/use-user"
 import { TaskQuickCreateModal, type TaskData, type CreateTaskContext } from "@/components/tasks/TaskQuickCreateModal"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
@@ -82,8 +84,10 @@ export function ProjectDetailsPage({
   organizationTags = [],
 }: ProjectDetailsPageProps) {
   const router = useRouter()
+  const { user, profile } = useUser()
   const [showMeta, setShowMeta] = useState(true)
   const [isWizardOpen, setIsWizardOpen] = useState(false)
+  const [isFileModalOpen, setIsFileModalOpen] = useState(false)
 
   // Real-time subscription for project updates (e.g., from AI chat)
   useProjectRealtime(projectId, {
@@ -312,7 +316,14 @@ export function ProjectDetailsPage({
           avatarUrl: undefined,
         },
       })),
-      quickLinks: [],
+      // Show the most recent files as quick links (limited to 5)
+      quickLinks: (supabaseProject.files || []).slice(0, 5).map((file) => ({
+        id: file.id,
+        name: file.name,
+        type: file.file_type as "pdf" | "zip" | "fig" | "doc" | "file",
+        sizeMB: Math.round(file.size_bytes / 1024 / 1024 * 100) / 100,
+        url: file.url,
+      })),
     }
   }, [supabaseProject, tasks, workstreams, organizationMembers])
 
@@ -516,6 +527,7 @@ export function ProjectDetailsPage({
                       backlog={project.backlog}
                       quickLinks={project.quickLinks}
                       client={supabaseProject.client}
+                      onUploadClick={() => setIsFileModalOpen(true)}
                     />
                   </MotionDiv>
                 )}
@@ -564,6 +576,23 @@ export function ProjectDetailsPage({
           organizationMembers={organizationMembers}
           tags={organizationTags}
         />
+
+        {/* File Upload Modal for Quick Links */}
+        {user && (
+          <AddFileModal
+            open={isFileModalOpen}
+            onOpenChange={setIsFileModalOpen}
+            projectId={projectId}
+            currentUser={{
+              id: user.id,
+              name: profile?.full_name || user.email,
+              avatarUrl: profile?.avatar_url || undefined,
+            }}
+            onCreate={() => {
+              router.refresh()
+            }}
+          />
+        )}
       </div>
     </div>
   )

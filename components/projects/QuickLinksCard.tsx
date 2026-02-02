@@ -1,19 +1,19 @@
 "use client"
 
 import { Paperclip, UploadSimple } from "@phosphor-icons/react/dist/ssr"
-import { toast } from "sonner"
 
 import type { QuickLink } from "@/lib/data/project-details"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { FileLinkRow } from "@/components/projects/FileLinkRow"
 
 type QuickLinksCardProps = {
   links: QuickLink[]
+  onUploadClick?: () => void
 }
 
-export function QuickLinksCard({ links = [] }: QuickLinksCardProps) {
+export function QuickLinksCard({ links = [], onUploadClick }: QuickLinksCardProps) {
   const isEmpty = !links || links.length === 0
 
   return (
@@ -35,7 +35,7 @@ export function QuickLinksCard({ links = [] }: QuickLinksCardProps) {
                   variant="secondary"
                   size="sm"
                   className="mt-3"
-                  onClick={() => toast.message("Upload file", { description: "Mock action" })}
+                  onClick={onUploadClick}
                 >
                   <UploadSimple className="h-4 w-4" />
                   Upload file

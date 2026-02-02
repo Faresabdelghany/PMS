@@ -19,6 +19,7 @@ type RightMetaPanelProps = {
   quickLinks?: QuickLink[]
   // Client can be a full Client or a partial client from the project relation
   client?: Client | { id: string; name: string } | null
+  onUploadClick?: () => void
 }
 
 // Helper to ensure client has all required fields
@@ -33,7 +34,7 @@ function toFullClient(client: Client | { id: string; name: string }): Client {
   }
 }
 
-export function RightMetaPanel({ time, backlog, quickLinks = [], client }: RightMetaPanelProps) {
+export function RightMetaPanel({ time, backlog, quickLinks = [], client, onUploadClick }: RightMetaPanelProps) {
   return (
     <aside className="flex flex-col gap-10 p-4 pt-8 lg:sticky lg:self-start">
       <TimeCard time={time} />
@@ -46,7 +47,7 @@ export function RightMetaPanel({ time, backlog, quickLinks = [], client }: Right
         </>
       )}
       <Separator />
-      <QuickLinksCard links={quickLinks} />
+      <QuickLinksCard links={quickLinks} onUploadClick={onUploadClick} />
     </aside>
   )
 }
