@@ -222,7 +222,7 @@ export default async function Page({ params }: PageProps) {
 - `clients` - Client management
 - `projects` - Project management with extended fields
 - `project_members` - Project membership with roles (owner/pic/member/viewer)
-- `project_labels` - Project-specific labels
+- `organization_labels` - Organization-level labels (type, duration, group, badge categories)
 - `tasks` - Task management
 - `workstreams` - Task grouping within projects
 - `project_files`, `project_notes` - Project assets
