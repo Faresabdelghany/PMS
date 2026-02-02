@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from "@/components/theme-provider"
+import { ColorThemeProvider } from "@/components/color-theme-provider"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -37,9 +38,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-          <Analytics />
-          <Toaster richColors closeButton />
+          <ColorThemeProvider>
+            {children}
+            <Analytics />
+            <Toaster richColors closeButton />
+          </ColorThemeProvider>
         </ThemeProvider>
       </body>
     </html>

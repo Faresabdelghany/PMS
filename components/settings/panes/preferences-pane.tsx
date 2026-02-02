@@ -18,6 +18,7 @@ import { SettingsPaneHeader, SettingSection, SettingRow } from "../setting-primi
 import { useOrganization } from "@/hooks/use-organization"
 import { getPreferences, savePreferences, type UserSettingsWithPreferences } from "@/lib/actions/user-settings"
 import { toast } from "sonner"
+import { useColorTheme, COLOR_THEMES, type ColorTheme } from "@/components/color-theme-provider"
 
 const TIMEZONES = [
   { value: "auto", label: "Auto-detect" },
@@ -37,6 +38,7 @@ const TIMEZONES = [
 export function PreferencesPane() {
   const { organization } = useOrganization()
   const { theme, setTheme } = useTheme()
+  const { colorTheme, setColorTheme } = useColorTheme()
   const [isMounted, setIsMounted] = useState(false)
   const [copied, setCopied] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -52,11 +54,15 @@ export function PreferencesPane() {
       const result = await getPreferences()
       if (result.data) {
         setPreferences(result.data)
+        // Sync color theme from server preferences
+        if (result.data.color_theme && result.data.color_theme !== colorTheme) {
+          setColorTheme(result.data.color_theme as ColorTheme)
+        }
       }
       setIsLoading(false)
     }
     loadPreferences()
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!copied) return
@@ -80,12 +86,20 @@ export function PreferencesPane() {
     const updated = { ...preferences, [key]: value }
     setPreferences(updated)
 
+    // Immediately update color theme for instant feedback
+    if (key === 'color_theme') {
+      setColorTheme(value as ColorTheme)
+    }
+
     startTransition(async () => {
       const result = await savePreferences({ [key]: value })
       if (result.error) {
         toast.error(result.error)
         // Revert on error
         setPreferences(preferences)
+        if (key === 'color_theme') {
+          setColorTheme(preferences.color_theme as ColorTheme)
+        }
       }
     })
   }
@@ -128,18 +142,39 @@ export function PreferencesPane() {
       <Separator />
 
       <SettingSection title="Appearance">
-        <SettingRow label="Theme">
+        <SettingRow label="Mode" description="Choose between light and dark mode.">
           <Select
             value={isMounted ? theme ?? "system" : "system"}
             onValueChange={(value) => setTheme(value)}
           >
             <SelectTrigger className="h-9 text-sm">
-              <SelectValue placeholder="Select theme" />
+              <SelectValue placeholder="Select mode" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="system">System default</SelectItem>
               <SelectItem value="light">Light</SelectItem>
               <SelectItem value="dark">Dark</SelectItem>
+            </SelectContent>
+          </Select>
+        </SettingRow>
+        <SettingRow label="Color theme" description="Choose your preferred color palette.">
+          <Select
+            value={isMounted ? (preferences?.color_theme ?? colorTheme ?? "default") : "default"}
+            onValueChange={(value) => handlePreferenceChange("color_theme", value)}
+            disabled={isLoading || isPending}
+          >
+            <SelectTrigger className="h-9 text-sm">
+              <SelectValue placeholder="Select color theme" />
+            </SelectTrigger>
+            <SelectContent>
+              {COLOR_THEMES.map((theme) => (
+                <SelectItem key={theme.value} value={theme.value}>
+                  <div className="flex flex-col">
+                    <span>{theme.label}</span>
+                    <span className="text-xs text-muted-foreground">{theme.description}</span>
+                  </div>
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </SettingRow>

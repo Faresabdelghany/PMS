@@ -35,6 +35,7 @@ const preferencesSchema = z.object({
   timezone: z.string().optional(),
   week_start_day: z.enum(['monday', 'sunday', 'saturday']).optional(),
   open_links_in_app: z.boolean().optional(),
+  color_theme: z.enum(['default', 'forest', 'ocean', 'sunset', 'rose', 'supabase', 'chatgpt']).optional(),
 })
 
 // Notification settings schema
@@ -43,6 +44,9 @@ const notificationSettingsSchema = z.object({
   notifications_email: z.boolean().optional(),
 })
 
+// Color theme type
+export type ColorThemeType = 'default' | 'forest' | 'ocean' | 'sunset' | 'rose' | 'supabase' | 'chatgpt'
+
 // Extended type with preferences
 export type UserSettingsWithPreferences = UserSettings & {
   timezone: string
@@ -50,6 +54,7 @@ export type UserSettingsWithPreferences = UserSettings & {
   open_links_in_app: boolean
   notifications_in_app: boolean
   notifications_email: boolean
+  color_theme: ColorThemeType
 }
 
 // Get user AI settings
@@ -501,6 +506,7 @@ export async function getPreferences(): Promise<ActionResult<UserSettingsWithPre
             open_links_in_app: true,
             notifications_in_app: true,
             notifications_email: true,
+            color_theme: "default",
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           } as UserSettingsWithPreferences,
