@@ -1,12 +1,24 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react"
+import { toast } from "sonner"
 import type { Project } from "@/lib/data/projects"
 import { ProjectCard } from "@/components/project-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
-import { DotsThreeVertical, Plus, StackSimple, Spinner, CircleNotch, CheckCircle } from "@phosphor-icons/react/dist/ssr"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { DotsThreeVertical, Plus, StackSimple, Spinner, CircleNotch, CheckCircle, PencilSimple, Trash } from "@phosphor-icons/react/dist/ssr"
+import { deleteProject } from "@/lib/actions/projects"
 
 function columnStatusIcon(status: Project["status"]): React.JSX.Element {
   switch (status) {
@@ -27,6 +39,7 @@ type ProjectBoardViewProps = {
   projects: Project[]
   loading?: boolean
   onAddProject?: () => void
+  onEditProject?: (project: Project) => void
 }
 
 const COLUMN_ORDER: Array<Project["status"]> = ["backlog", "planned", "active", "completed"]
@@ -48,9 +61,30 @@ function columnStatusLabel(status: Project["status"]): string {
   }
 }
 
-export function ProjectBoardView({ projects, loading = false, onAddProject }: ProjectBoardViewProps) {
+export function ProjectBoardView({ projects, loading = false, onAddProject, onEditProject }: ProjectBoardViewProps) {
   const [items, setItems] = useState<Project[]>(projects)
   const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Project | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    setIsDeleting(true)
+    try {
+      const result = await deleteProject(deleteTarget.id)
+      if (result.error) {
+        toast.error(result.error)
+      } else {
+        toast.success(`Project "${deleteTarget.name}" deleted`)
+        setItems((prev) => prev.filter((p) => p.id !== deleteTarget.id))
+      }
+    } catch {
+      toast.error("Failed to delete project")
+    } finally {
+      setIsDeleting(false)
+      setDeleteTarget(null)
+    }
+  }
 
   useEffect(() => {
     setItems(projects)
@@ -102,15 +136,32 @@ export function ProjectBoardView({ projects, loading = false, onAddProject }: Pr
             </PopoverTrigger>
             <PopoverContent className="w-40 p-2" align="end">
               <div className="space-y-1">
+                <button
+                  className="w-full flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-accent"
+                  onClick={() => onEditProject?.(p)}
+                >
+                  <PencilSimple className="h-4 w-4" />
+                  Edit
+                </button>
+                <div className="my-1 h-px bg-border" />
+                <div className="text-xs text-muted-foreground px-2 py-1">Move to</div>
                 {COLUMN_ORDER.map((s) => (
                   <button
                     key={s}
-                    className="w-full rounded-md px-2 py-1 text-left text-sm hover:bg-accent"
+                    className="w-full rounded-md px-2 py-1 text-left text-sm hover:bg-accent pl-6"
                     onClick={() => setItems((prev) => prev.map((x) => (x.id === p.id ? { ...x, status: s } : x)))}
                   >
-                    Move to {s}
+                    {columnStatusLabel(s)}
                   </button>
                 ))}
+                <div className="my-1 h-px bg-border" />
+                <button
+                  className="w-full flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm text-destructive hover:bg-accent"
+                  onClick={() => setDeleteTarget(p)}
+                >
+                  <Trash className="h-4 w-4" />
+                  Delete
+                </button>
               </div>
             </PopoverContent>
           </Popover>
@@ -149,58 +200,82 @@ export function ProjectBoardView({ projects, loading = false, onAddProject }: Pr
   }
 
   return (
-    <div className="p-4">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {COLUMN_ORDER.map((status) => (
-          <div
-            key={status}
-            className="rounded-xl bg-muted"
-            onDragOver={onDragOver}
-            onDrop={onDropTo(status)}
-          >
-            <div className="flex items-center justify-between px-3 py-3">
-              <div className="flex items-center gap-2">
-                {columnStatusIcon(status)}
-                <span className="inline-flex items-center gap-1 text-sm font-medium">
-                  {columnStatusLabel(status)}
-                </span>
-                <span className="text-xs text-muted-foreground">{groups.get(status)?.length ?? 0}</span>
+    <>
+      <div className="p-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {COLUMN_ORDER.map((status) => (
+            <div
+              key={status}
+              className="rounded-xl bg-muted"
+              onDragOver={onDragOver}
+              onDrop={onDropTo(status)}
+            >
+              <div className="flex items-center justify-between px-3 py-3">
+                <div className="flex items-center gap-2">
+                  {columnStatusIcon(status)}
+                  <span className="inline-flex items-center gap-1 text-sm font-medium">
+                    {columnStatusLabel(status)}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{groups.get(status)?.length ?? 0}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 rounded-lg"
+                    type="button"
+                    onClick={onAddProject}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 rounded-lg"
+                    type="button"
+                  >
+                    <DotsThreeVertical className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="px-3 pb-3 space-y-3 min-h-[120px]">
+                {(groups.get(status) ?? []).map(draggableCard)}
                 <Button
                   variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 rounded-lg"
+                  size="sm"
                   type="button"
                   onClick={onAddProject}
                 >
-                  <Plus className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 rounded-lg"
-                  type="button"
-                >
-                  <DotsThreeVertical className="h-4 w-4" />
+                  <Plus className="mr-1 h-4 w-4" />
+                  Add project
                 </Button>
               </div>
             </div>
-            <div className="px-3 pb-3 space-y-3 min-h-[120px]">
-              {(groups.get(status) ?? []).map(draggableCard)}
-              <Button
-                variant="ghost"
-                size="sm"
-                type="button"
-                onClick={onAddProject}
-              >
-                <Plus className="mr-1 h-4 w-4" />
-                Add project
-              </Button>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete project</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{deleteTarget?.name}&quot;? This action cannot be undone.
+              All tasks, files, and notes associated with this project will be permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

@@ -13,6 +13,7 @@ import { chipsToParams, paramsToChips } from "@/lib/url/filters"
 import { getProjects, type ProjectWithRelations } from "@/lib/actions/projects"
 import { usePooledRealtime } from "@/hooks/realtime-context"
 import type { Database } from "@/lib/supabase/types"
+import type { EditingProjectData } from "@/components/project-wizard/steps/StepQuickCreate"
 
 type ProjectRow = Database["public"]["Tables"]["projects"]["Row"]
 
@@ -57,6 +58,7 @@ export function ProjectsContent({
   const [viewOptions, setViewOptions] = useState<ViewOptions>(DEFAULT_VIEW_OPTIONS)
   const [filters, setFilters] = useState<FilterChip[]>([])
   const [isWizardOpen, setIsWizardOpen] = useState(false)
+  const [editingProject, setEditingProject] = useState<EditingProjectData | null>(null)
   const [supabaseProjects, setSupabaseProjects] = useState<ProjectWithRelations[]>(initialProjects)
 
   const isSyncingRef = useRef(false)
@@ -145,17 +147,56 @@ export function ProjectsContent({
   )
 
   const openWizard = () => {
+    setEditingProject(null)
     setIsWizardOpen(true)
   }
 
   const closeWizard = () => {
     setIsWizardOpen(false)
+    setEditingProject(null)
   }
 
   const handleProjectCreated = () => {
     setIsWizardOpen(false)
-    // Refresh projects after creation
+    setEditingProject(null)
+    // Refresh projects after creation/update
     fetchProjects()
+  }
+
+  // Convert ProjectWithRelations to EditingProjectData format
+  const toEditingProject = (p: ProjectWithRelations): EditingProjectData => ({
+    id: p.id,
+    name: p.name,
+    description: p.description,
+    status: p.status,
+    priority: p.priority,
+    start_date: p.start_date,
+    end_date: p.end_date,
+    client_id: p.client_id,
+    client: p.client,
+    type_label: p.type_label,
+    tags: p.tags || [],
+    owner_id: p.owner_id,
+    group_label: p.group_label,
+    label_badge: p.label_badge,
+    members: p.members?.map(m => ({
+      user_id: m.user_id,
+      role: m.role,
+      profile: {
+        id: m.profile.id,
+        full_name: m.profile.full_name,
+        email: m.profile.email,
+        avatar_url: m.profile.avatar_url,
+      },
+    })),
+  })
+
+  const openEditWizard = (projectId: string) => {
+    const project = supabaseProjects.find(p => p.id === projectId)
+    if (project) {
+      setEditingProject(toEditingProject(project))
+      setIsWizardOpen(true)
+    }
   }
 
   const removeFilter = (key: string, value: string) => {
@@ -251,14 +292,27 @@ export function ProjectsContent({
       {viewOptions.viewType === "timeline" && (
         <ProjectTimeline initialProjects={timelineProjects} />
       )}
-      {viewOptions.viewType === "list" && <ProjectCardsView projects={filteredProjects} onCreateProject={openWizard} />}
-      {viewOptions.viewType === "board" && <ProjectBoardView projects={filteredProjects} onAddProject={openWizard} />}
+      {viewOptions.viewType === "list" && (
+        <ProjectCardsView
+          projects={filteredProjects}
+          onCreateProject={openWizard}
+          onEditProject={(project) => openEditWizard(project.id)}
+        />
+      )}
+      {viewOptions.viewType === "board" && (
+        <ProjectBoardView
+          projects={filteredProjects}
+          onAddProject={openWizard}
+          onEditProject={(project) => openEditWizard(project.id)}
+        />
+      )}
       {isWizardOpen && (
         <ProjectWizardLazy
           onClose={closeWizard}
           onCreate={handleProjectCreated}
           organizationId={organizationId}
           clients={clients}
+          editingProject={editingProject}
         />
       )}
     </div>

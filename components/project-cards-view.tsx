@@ -2,6 +2,7 @@
 
 import type { Project } from "@/lib/data/projects"
 import { ProjectCard } from "@/components/project-card"
+import { ProjectCardActions } from "@/components/project-card-actions"
 import { Plus, FolderOpen } from "@phosphor-icons/react/dist/ssr"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -9,9 +10,10 @@ type ProjectCardsViewProps = {
   projects: Project[]
   loading?: boolean
   onCreateProject?: () => void
+  onEditProject?: (project: Project) => void
 }
 
-export function ProjectCardsView({ projects, loading = false, onCreateProject }: ProjectCardsViewProps) {
+export function ProjectCardsView({ projects, loading = false, onCreateProject, onEditProject }: ProjectCardsViewProps) {
   const isEmpty = !loading && projects.length === 0
 
   return (
@@ -40,7 +42,16 @@ export function ProjectCardsView({ projects, loading = false, onCreateProject }:
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {projects.map((p) => (
-            <ProjectCard key={p.id} project={p} />
+            <ProjectCard
+              key={p.id}
+              project={p}
+              actions={
+                <ProjectCardActions
+                  project={p}
+                  onEdit={() => onEditProject?.(p)}
+                />
+              }
+            />
           ))}
           <button
             className="rounded-2xl border border-dashed border-border/60 bg-background p-6 text-center text-sm text-muted-foreground hover:border-solid hover:border-border/80 hover:text-foreground transition-colors min-h-[180px] flex flex-col items-center justify-center cursor-pointer"
