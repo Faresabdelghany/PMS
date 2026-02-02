@@ -68,7 +68,7 @@ npx supabase status                     # Check local services status
 
 - **`app/`** - Next.js App Router pages and layouts
   - `(auth)/` - Authentication pages (login, signup)
-  - `(dashboard)/` - Main app routes with shared layout (projects, clients, tasks, settings)
+  - `(dashboard)/` - Main app routes with shared layout (projects, clients, tasks, settings, chat)
   - `auth/callback/` - OAuth callback handler
   - `onboarding/` - Organization onboarding
   - `invite/` - Organization invitation acceptance flow
@@ -76,9 +76,14 @@ npx supabase status                     # Check local services status
   - `ui/` - shadcn/ui design system primitives
   - `projects/`, `tasks/`, `clients/` - Feature components
   - `project-wizard/` - Multi-step project creation wizard
+  - `ai/` - AI chat components (chat view, input, history sidebar)
+  - `dashboard/` - Cached dashboard stat cards and project lists
+  - `skeletons/` - Loading skeleton components for all major views
 - **`lib/`** - Utilities and data
   - `supabase/` - Supabase clients and types
   - `actions/` - Server Actions for data mutations
+  - `server-cache.ts` - Request-level caching with React `cache()`
+  - `cache-tags.ts` - Cache tag constants for granular revalidation
   - `rate-limit/` - Rate limiting with Upstash/Vercel KV
   - `data/` - Type definitions and interfaces
   - `utils.ts` - Utility helpers including `cn()` for class merging
@@ -110,12 +115,18 @@ npx supabase status                     # Check local services status
 - `lib/actions/inbox.ts` - User inbox/notifications
 - `lib/actions/invitations.ts` - Organization member invitations
 - `lib/actions/teams.ts` - Team CRUD
+- `lib/actions/tags.ts` - Organization tags CRUD
+- `lib/actions/labels.ts` - Project labels CRUD
+- `lib/actions/deliverables.ts` - Project deliverables CRUD
+- `lib/actions/workflow-statuses.ts` - Custom workflow status management
 - `lib/actions/ai.ts` - AI generation (OpenAI, Anthropic, Google)
-- `lib/actions/user-settings.ts` - AI settings and API key management
+- `lib/actions/ai-context.ts` - AI context helpers for project/task data
+- `lib/actions/conversations.ts` - AI chat conversations and messages CRUD
+- `lib/actions/user-settings.ts` - User preferences, AI settings, color theme
 - `lib/actions/search.ts` - Global search across projects, tasks, and clients
 
 **Database Schema:**
-- 17 tables with full RLS policies
+- 19 tables with full RLS policies
 - Multi-tenant architecture (organization-based isolation)
 - See `supabase/migrations/` for complete schema
 
@@ -131,6 +142,34 @@ const ctx = await requireProjectMember(projectId)       // Project membership
 const ctx = await requireProjectOwnerOrPIC(projectId)   // Elevated access
 ```
 
+**Request-Level Caching:** Use `lib/server-cache.ts` for deduplicating database queries within a single request:
+```typescript
+import { getCachedProjects, getCachedTasks } from "@/lib/server-cache"
+
+// Multiple components calling this in the same request share one DB query
+const projects = await getCachedProjects(orgId)
+```
+Available cached functions: `getCachedProjects`, `getCachedProject`, `getCachedTasks`, `getCachedClients`, `getCachedOrganizationMembers`, `getCachedProjectCount`, `getCachedTaskStats`, etc.
+
+**Cache Tags:** Use `lib/cache-tags.ts` for granular cache invalidation:
+```typescript
+import { CacheTags, revalidateTag } from "@/lib/cache-tags"
+
+// Invalidate specific cached data after mutations
+revalidateTag(CacheTags.projects(orgId))
+revalidateTag(CacheTags.project(projectId))
+```
+
+**Skeleton Components:** Use `components/skeletons/` for loading states:
+```typescript
+import { ProjectsListSkeleton, TaskListSkeleton } from "@/components/skeletons"
+
+// Use in Suspense boundaries
+<Suspense fallback={<ProjectsListSkeleton />}>
+  <ProjectsList />
+</Suspense>
+```
+
 **Authentication Flow:**
 1. User signs up/in via `/login` or `/signup`
 2. OAuth callback at `/auth/callback` handles session exchange
@@ -139,7 +178,9 @@ const ctx = await requireProjectOwnerOrPIC(projectId)   // Elevated access
    - Redirects unauthenticated users to `/login`
    - Redirects users without organization to `/onboarding`
 
-**Styling:** Tailwind CSS with CSS custom properties for theming. Light/dark mode via `next-themes`. Component variants use `class-variance-authority`.
+**Styling:** Tailwind CSS with CSS custom properties for theming. Light/dark mode via `next-themes`. Color themes via `ColorThemeProvider`. Component variants use `class-variance-authority`.
+
+**Color Themes:** 12 color themes available (default, forest, ocean, sunset, rose, supabase, chatgpt, midnight, lavender, ember, mint, slate). Managed by `ColorThemeProvider` in dashboard layout. Use `useColorTheme()` hook to access/set theme.
 
 **shadcn/ui:** Uses "new-york" style with Lucide icons. Add new components via `npx shadcn@latest add <component>`.
 
@@ -153,7 +194,7 @@ export default async function Page({ params }: PageProps) {
 
 **Dashboard Layout Pattern:** All main app pages are under `app/(dashboard)/` route group which:
 - Provides shared layout with sidebar, header, and providers
-- Wraps pages with `UserProvider`, `OrganizationProvider`, `RealtimeProvider`, and `CommandPaletteProvider`
+- Wraps pages with `UserProvider`, `OrganizationProvider`, `RealtimeProvider`, `CommandPaletteProvider`, and `ColorThemeProvider`
 - Fetches active projects for sidebar display
 - Server Components fetch Supabase data and pass to Client Components as props
 
@@ -176,14 +217,19 @@ export default async function Page({ params }: PageProps) {
 - `profiles` - User profiles (synced from auth.users)
 - `organizations` - Multi-tenant organizations
 - `organization_members` - Org membership with roles (admin/member)
+- `organization_tags` - Organization-level tags
 - `teams` - Teams within organizations
 - `clients` - Client management
 - `projects` - Project management with extended fields
 - `project_members` - Project membership with roles (owner/pic/member/viewer)
+- `project_labels` - Project-specific labels
 - `tasks` - Task management
 - `workstreams` - Task grouping within projects
 - `project_files`, `project_notes` - Project assets
 - `inbox_items` - User notifications/inbox
+- `user_settings` - User preferences and AI settings (includes color_theme)
+- `chat_conversations` - AI chat conversation threads
+- `chat_messages` - AI chat messages with action data
 
 **Real-time Hooks:** Two realtime systems available:
 - `hooks/use-realtime.ts` - Individual hooks: `useTasksRealtime`, `useWorkstreamsRealtime`, `useProjectsRealtime`, etc.
@@ -215,7 +261,7 @@ KV_REST_API_TOKEN=<vercel-kv-token>
 ## Tech Stack
 
 - Next.js 16.1 (App Router, React Server Components)
-- React 19 + TypeScript (strict mode)
+- React 19 + TypeScript (strict mode enabled)
 - Tailwind CSS 4.1 + PostCSS
 - Supabase (PostgreSQL, Auth, Realtime, Storage)
 - shadcn/ui + Radix UI primitives
