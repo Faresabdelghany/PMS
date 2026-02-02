@@ -160,9 +160,9 @@ export function ChatView({
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col flex-1 min-h-0">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+      <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-b border-border">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center size-9 rounded-xl bg-violet-500/10">
             <StarFour weight="fill" className="size-5 text-violet-500" />
@@ -189,7 +189,7 @@ export function ChatView({
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Loading AI status or context */}
         {(isCheckingAI || isLoadingContext) && (
           <div className="flex-1 flex items-center justify-center">
@@ -333,7 +333,7 @@ export function ChatView({
               <AIChatInput
                 onSend={handleSendMessage}
                 disabled={isLoading}
-                placeholder="Ask anything…"
+                placeholder="How can I help you today?"
               />
             </div>
           </>

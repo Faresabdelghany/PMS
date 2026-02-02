@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, type KeyboardEvent, type ChangeEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { PaperPlaneRight, Paperclip, X } from "@phosphor-icons/react"
+import { PaperPlaneRight, Paperclip, X, Plus, Microphone } from "@phosphor-icons/react"
 import type { Attachment } from "@/hooks/use-ai-chat"
 
 // =============================================================================
@@ -246,58 +246,73 @@ export function AIChatInput({
         </div>
       )}
 
-      {/* Input Area */}
-      <div className="flex items-end gap-2">
-        {/* Attach Button */}
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          onClick={handleAttachClick}
-          disabled={disabled || isProcessing}
-          className="shrink-0"
-          aria-label="Attach file"
-        >
-          <Paperclip className="size-4" />
-        </Button>
+      {/* Hidden File Input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        onChange={handleFileChange}
+        className="sr-only"
+        aria-label="Attach files"
+        accept=".txt,.md,.json,.csv,.js,.jsx,.ts,.tsx,.html,.css,.xml,.yaml,.yml,.py,.rb,.php,.java,.c,.cpp,.go,.rs,.sql,.pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp,.svg"
+      />
 
-        {/* Hidden File Input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          onChange={handleFileChange}
-          className="sr-only"
-          aria-label="Attach files"
-          accept=".txt,.md,.json,.csv,.js,.jsx,.ts,.tsx,.html,.css,.xml,.yaml,.yml,.py,.rb,.php,.java,.c,.cpp,.go,.rs,.sql,.pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp,.svg"
-        />
+      {/* Unified Input Container - Single seamless area */}
+      <div className="rounded-3xl border border-border/50 bg-muted/50 dark:bg-muted/20">
+        {/* Textarea - uses native textarea for full control */}
+        <div className="px-4 pt-3 pb-1">
+          <textarea
+            ref={textareaRef}
+            name="message"
+            autoComplete="off"
+            value={message}
+            onChange={handleMessageChange}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+            disabled={disabled || isProcessing}
+            className="w-full min-h-[24px] max-h-[200px] resize-none bg-transparent border-0 outline-none text-sm text-foreground placeholder:text-muted-foreground/50 disabled:opacity-50 disabled:cursor-not-allowed"
+            rows={1}
+            autoFocus
+          />
+        </div>
 
-        {/* Textarea */}
-        <Textarea
-          ref={textareaRef}
-          name="message"
-          autoComplete="off"
-          value={message}
-          onChange={handleMessageChange}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          disabled={disabled || isProcessing}
-          className="min-h-[44px] max-h-[200px] resize-none py-2.5"
-          rows={1}
-          autoFocus
-        />
+        {/* Action Buttons Row */}
+        <div className="flex items-center justify-between px-3 pb-2">
+          {/* Left side - Attach Button */}
+          <button
+            type="button"
+            onClick={handleAttachClick}
+            disabled={disabled || isProcessing}
+            className="flex items-center justify-center size-7 rounded-full text-muted-foreground/50 hover:text-muted-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Attach file"
+          >
+            <Plus className="size-4" weight="bold" />
+          </button>
 
-        {/* Send Button */}
-        <Button
-          type="button"
-          size="icon-sm"
-          onClick={handleSend}
-          disabled={!canSend}
-          className="shrink-0"
-          aria-label="Send message"
-        >
-          <PaperPlaneRight className="size-4" weight="fill" />
-        </Button>
+          {/* Right side - Mic and Send Buttons */}
+          <div className="flex items-center gap-1">
+            {/* Microphone Button */}
+            <button
+              type="button"
+              disabled={disabled || isProcessing}
+              className="flex items-center justify-center size-7 rounded-full text-muted-foreground/50 hover:text-muted-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Voice input"
+            >
+              <Microphone className="size-4" />
+            </button>
+
+            {/* Send Button */}
+            <button
+              type="button"
+              onClick={handleSend}
+              disabled={!canSend}
+              className="flex items-center justify-center size-7 rounded-full transition-colors disabled:text-muted-foreground/50 disabled:cursor-not-allowed text-primary hover:text-primary/80"
+              aria-label="Send message"
+            >
+              <PaperPlaneRight className="size-4" />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )

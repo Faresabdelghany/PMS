@@ -142,7 +142,7 @@ export function ChatHistorySidebar({
   }
 
   return (
-    <aside className="w-72 border-r border-border/60 bg-muted/20 flex flex-col h-full">
+    <aside className="w-72 border-r border-border/60 bg-muted/20 flex flex-col h-full min-h-0">
       {/* New Chat Button */}
       <div className="p-3">
         <Button

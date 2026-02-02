@@ -79,9 +79,9 @@ export function ChatPageContent({
   )
 
   return (
-    <div className="flex flex-1 flex-col min-w-0 m-2 border border-border rounded-lg">
+    <div className="flex flex-1 flex-col min-w-0 min-h-0 m-2 border border-border rounded-lg overflow-hidden">
       {/* Top Bar */}
-      <div className="flex items-center gap-3 px-4 py-4 border-b border-border">
+      <div className="flex-shrink-0 flex items-center gap-3 px-4 py-4 border-b border-border">
         <SidebarTrigger className="h-8 w-8 rounded-lg hover:bg-accent text-muted-foreground" />
 
         {/* Mobile: History toggle button */}
@@ -101,10 +101,10 @@ export function ChatPageContent({
       </div>
 
       {/* Split Panel */}
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Desktop: History Sidebar */}
         {!isMobile && (
-          <div className="hidden md:block">
+          <div className="hidden md:flex flex-shrink-0">
             {historySidebarContent}
           </div>
         )}
@@ -119,7 +119,7 @@ export function ChatPageContent({
         )}
 
         {/* Right: Active Chat */}
-        <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex-1 flex flex-col min-h-0 min-w-0">
           {/* key prop forces remount when conversation changes, ensuring fresh state */}
           <ChatView
             key={conversationId ?? "new-chat"}
