@@ -9,6 +9,7 @@ export type TaskRowBaseProps = {
   checked: boolean
   title: string
   onCheckedChange?: () => void
+  onTitleClick?: () => void
   titleAriaLabel?: string
   titleSuffix?: ReactNode
   meta?: ReactNode
@@ -20,6 +21,7 @@ export const TaskRowBase = memo(function TaskRowBase({
   checked,
   title,
   onCheckedChange,
+  onTitleClick,
   titleAriaLabel,
   titleSuffix,
   meta,
@@ -41,14 +43,17 @@ export const TaskRowBase = memo(function TaskRowBase({
       />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span
+          <button
+            type="button"
+            onClick={onTitleClick}
             className={cn(
-              "flex-1 truncate text-left",
+              "flex-1 truncate text-left hover:underline focus:outline-none focus:underline",
               checked && "line-through text-muted-foreground",
+              onTitleClick && "cursor-pointer",
             )}
           >
             {title}
-          </span>
+          </button>
           {titleSuffix}
         </div>
         {subtitle && (

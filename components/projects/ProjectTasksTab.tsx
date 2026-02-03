@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState, useCallback } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { DotsThreeVertical, DotsSixVertical, PencilSimple, Plus, Trash } from "@phosphor-icons/react/dist/ssr"
 import {
   DndContext,
@@ -50,7 +51,8 @@ import { FilterPopover, type MemberOption, type TagOption } from "@/components/f
 import { ChipOverflow } from "@/components/chip-overflow"
 import { TaskRowBase } from "@/components/tasks/TaskRowBase"
 import { TaskQuickCreateModal, type TaskData } from "@/components/tasks/TaskQuickCreateModal"
-import type { OrganizationTag, TaskPriority as TaskPriorityType } from "@/lib/supabase/types"
+import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel"
+import type { OrganizationTag, TaskPriority as TaskPriorityType, Workstream } from "@/lib/supabase/types"
 import { formatDueLabel } from "@/lib/date-utils"
 import { cn } from "@/lib/utils"
 import { usePooledTasksRealtime } from "@/hooks/realtime-context"
@@ -121,6 +123,7 @@ function toTaskData(task: TaskLike, projectId: string, projectName: string): Tas
 type ProjectTasksTabProps = {
   projectId: string
   projectName: string
+  organizationId: string
   initialTasks?: TaskWithRelations[]
   workstreams?: { id: string; name: string }[]
   organizationMembers?: OrganizationMember[]
@@ -130,11 +133,14 @@ type ProjectTasksTabProps = {
 export function ProjectTasksTab({
   projectId,
   projectName,
+  organizationId,
   initialTasks = [],
   workstreams = [],
   organizationMembers = [],
   organizationTags = [],
 }: ProjectTasksTabProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [tasks, setTasks] = useState<TaskWithRelations[]>(initialTasks)
   const [filters, setFilters] = useState<FilterChipType[]>([])
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -307,6 +313,13 @@ export function ProjectTasksTab({
     setIsCreateModalOpen(true)
   }, [])
 
+  // Open task detail panel
+  const openTaskDetail = useCallback((taskId: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("task", taskId)
+    router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false })
+  }, [router, searchParams])
+
   const handleDeleteTask = useCallback(async () => {
     if (!taskToDelete) return
 
@@ -403,6 +416,7 @@ export function ProjectTasksTab({
                 key={task.id}
                 task={task}
                 onToggle={() => toggleTask(task.id)}
+                onTitleClick={openTaskDetail}
                 onEdit={openEditTask}
                 onDelete={(taskId) => setTaskToDelete(taskId)}
               />
@@ -446,6 +460,15 @@ export function ProjectTasksTab({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Task Detail Panel */}
+      <TaskDetailPanel
+        projectId={projectId}
+        organizationId={organizationId}
+        organizationMembers={organizationMembers as Parameters<typeof TaskDetailPanel>[0]["organizationMembers"]}
+        workstreams={workstreams.map((w) => ({ id: w.id, name: w.name }) as Workstream)}
+        tags={organizationTags}
+      />
     </section>
   )
 }
@@ -501,11 +524,12 @@ function getStatusColor(status: TaskLike["status"]): string {
 type TaskRowDnDProps = {
   task: TaskLike
   onToggle: () => void
+  onTitleClick?: (taskId: string) => void
   onEdit?: (task: TaskLike) => void
   onDelete?: (taskId: string) => void
 }
 
-function TaskRowDnD({ task, onToggle, onEdit, onDelete }: TaskRowDnDProps) {
+function TaskRowDnD({ task, onToggle, onTitleClick, onEdit, onDelete }: TaskRowDnDProps) {
   const isDone = task.status === "done"
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -523,6 +547,7 @@ function TaskRowDnD({ task, onToggle, onEdit, onDelete }: TaskRowDnDProps) {
         checked={isDone}
         title={task.name}
         onCheckedChange={onToggle}
+        onTitleClick={onTitleClick ? () => onTitleClick(task.id) : undefined}
         titleAriaLabel={task.name}
         titleSuffix={<TaskBadges workstreamName={task.workstreamName} className="hidden sm:inline" />}
         meta={

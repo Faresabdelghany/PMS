@@ -15,9 +15,10 @@ import {
   createTaskStatusCounts,
   createTaskPriorityCounts,
 } from "@/lib/constants/status"
-import type { Task, TaskInsert, TaskUpdate, TaskStatus, TaskPriority } from "@/lib/supabase/types"
+import type { Task, TaskInsert, TaskUpdate, TaskStatus, TaskPriority, TaskActivityAction } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 import { notify } from "./notifications"
+import { createTaskActivity } from "./task-activities"
 
 // Task validation schemas
 const createTaskSchema = z.object({
@@ -138,6 +139,9 @@ export async function createTask(
   if (error) {
     return { error: error.message }
   }
+
+  // Create "created" activity record
+  await createTaskActivity(task.id, "created")
 
   after(async () => {
     revalidatePath(`/projects/${projectId}`)
@@ -354,10 +358,127 @@ export async function updateTask(
     orgId = project?.organization_id ?? ""
   }
 
+  // Track activities for changed fields
+  if (oldTask) {
+    const activityPromises: Promise<unknown>[] = []
+
+    // Track name change
+    if (data.name !== undefined && data.name !== oldTask.name) {
+      activityPromises.push(
+        createTaskActivity(id, "name_changed", oldTask.name, data.name)
+      )
+    }
+
+    // Track status change
+    if (data.status !== undefined && data.status !== oldTask.status) {
+      activityPromises.push(
+        createTaskActivity(id, "status_changed", oldTask.status, data.status)
+      )
+    }
+
+    // Track assignee change
+    if (data.assignee_id !== undefined && data.assignee_id !== oldTask.assignee_id) {
+      if (data.assignee_id && !oldTask.assignee_id) {
+        // Assigned (need to get assignee name)
+        const { data: assignee } = await supabase
+          .from("profiles")
+          .select("full_name, email")
+          .eq("id", data.assignee_id)
+          .single()
+        activityPromises.push(
+          createTaskActivity(id, "assignee_changed", null, data.assignee_id, {
+            new_assignee_name: assignee?.full_name || assignee?.email || "Unknown",
+          })
+        )
+      } else if (!data.assignee_id && oldTask.assignee_id) {
+        // Unassigned
+        const { data: oldAssignee } = await supabase
+          .from("profiles")
+          .select("full_name, email")
+          .eq("id", oldTask.assignee_id)
+          .single()
+        activityPromises.push(
+          createTaskActivity(id, "assignee_removed", oldTask.assignee_id, null, {
+            old_assignee_name: oldAssignee?.full_name || oldAssignee?.email || "Unknown",
+          })
+        )
+      } else if (data.assignee_id && oldTask.assignee_id) {
+        // Reassigned
+        const [{ data: oldAssignee }, { data: newAssignee }] = await Promise.all([
+          supabase.from("profiles").select("full_name, email").eq("id", oldTask.assignee_id).single(),
+          supabase.from("profiles").select("full_name, email").eq("id", data.assignee_id).single(),
+        ])
+        activityPromises.push(
+          createTaskActivity(id, "assignee_changed", oldTask.assignee_id, data.assignee_id, {
+            old_assignee_name: oldAssignee?.full_name || oldAssignee?.email || "Unknown",
+            new_assignee_name: newAssignee?.full_name || newAssignee?.email || "Unknown",
+          })
+        )
+      }
+    }
+
+    // Track priority change
+    if (data.priority !== undefined && data.priority !== oldTask.priority) {
+      activityPromises.push(
+        createTaskActivity(id, "priority_changed", oldTask.priority, data.priority)
+      )
+    }
+
+    // Track due date (end_date) change
+    if (data.end_date !== undefined && data.end_date !== oldTask.end_date) {
+      activityPromises.push(
+        createTaskActivity(id, "due_date_changed", oldTask.end_date, data.end_date)
+      )
+    }
+
+    // Track start date change
+    if (data.start_date !== undefined && data.start_date !== oldTask.start_date) {
+      activityPromises.push(
+        createTaskActivity(id, "start_date_changed", oldTask.start_date, data.start_date)
+      )
+    }
+
+    // Track workstream change
+    if (data.workstream_id !== undefined && data.workstream_id !== oldTask.workstream_id) {
+      let workstreamName: string | null = null
+      if (data.workstream_id) {
+        const { data: ws } = await supabase
+          .from("workstreams")
+          .select("name")
+          .eq("id", data.workstream_id)
+          .single()
+        workstreamName = ws?.name ?? null
+      }
+      activityPromises.push(
+        createTaskActivity(id, "workstream_changed", oldTask.workstream_id, data.workstream_id, {
+          workstream_name: workstreamName,
+        })
+      )
+    }
+
+    // Track description change
+    if (data.description !== undefined && data.description !== oldTask.description) {
+      activityPromises.push(
+        createTaskActivity(id, "description_changed", null, null)
+      )
+    }
+
+    // Track tag change
+    if (data.tag !== undefined && data.tag !== oldTask.tag) {
+      activityPromises.push(
+        createTaskActivity(id, "tag_changed", oldTask.tag, data.tag)
+      )
+    }
+
+    // Execute all activity creations in parallel
+    await Promise.all(activityPromises)
+  }
+
   after(async () => {
     revalidatePath("/projects")
     revalidatePath("/tasks")
     revalidateTag(CacheTags.task(id))
+    revalidateTag(CacheTags.taskTimeline(id))
     if (task.project_id) {
       revalidateTag(CacheTags.tasks(task.project_id))
       // KV cache invalidation

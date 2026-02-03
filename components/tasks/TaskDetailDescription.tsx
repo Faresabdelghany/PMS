@@ -1,0 +1,113 @@
+"use client"
+
+import { useState, useCallback } from "react"
+import { PencilSimple, Check, X } from "@phosphor-icons/react/dist/ssr"
+import { Button } from "@/components/ui/button"
+import dynamic from "next/dynamic"
+
+const ProjectDescriptionEditor = dynamic(
+  () => import("@/components/project-wizard/ProjectDescriptionEditor").then((m) => m.ProjectDescriptionEditor),
+  { ssr: false, loading: () => <div className="h-32 bg-muted/30 rounded animate-pulse" /> }
+)
+
+interface TaskDetailDescriptionProps {
+  description: string | null
+  onSave: (description: string | null) => void
+}
+
+export function TaskDetailDescription({
+  description,
+  onSave,
+}: TaskDetailDescriptionProps) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editedDescription, setEditedDescription] = useState(description || "")
+
+  const handleSave = useCallback(() => {
+    const trimmed = editedDescription.trim()
+    onSave(trimmed || null)
+    setIsEditing(false)
+  }, [editedDescription, onSave])
+
+  const handleCancel = useCallback(() => {
+    setEditedDescription(description || "")
+    setIsEditing(false)
+  }, [description])
+
+  // Parse and render HTML content
+  const renderDescription = (html: string) => {
+    return (
+      <div
+        className="prose prose-sm max-w-none text-foreground prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground"
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    )
+  }
+
+  if (isEditing) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium">Description</h3>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCancel}
+              className="h-7 px-2"
+            >
+              <X className="h-4 w-4 mr-1" />
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSave}
+              className="h-7 px-2"
+            >
+              <Check className="h-4 w-4 mr-1" />
+              Save
+            </Button>
+          </div>
+        </div>
+        <ProjectDescriptionEditor
+          value={editedDescription}
+          onChange={setEditedDescription}
+          placeholder="Add a description..."
+          showTemplates={false}
+          className="min-h-[120px]"
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium">Description</h3>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setIsEditing(true)}
+          className="h-7 px-2 text-muted-foreground hover:text-foreground"
+        >
+          <PencilSimple className="h-4 w-4 mr-1" />
+          Edit
+        </Button>
+      </div>
+      {description ? (
+        <div
+          className="text-sm cursor-pointer hover:bg-muted/30 rounded p-2 -m-2 transition-colors"
+          onClick={() => setIsEditing(true)}
+        >
+          {renderDescription(description)}
+        </div>
+      ) : (
+        <div
+          className="text-sm text-muted-foreground cursor-pointer hover:bg-muted/30 rounded p-3 border border-dashed border-muted-foreground/30 transition-colors"
+          onClick={() => setIsEditing(true)}
+        >
+          Click to add a description...
+        </div>
+      )}
+    </div>
+  )
+}

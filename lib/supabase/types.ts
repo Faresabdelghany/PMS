@@ -48,6 +48,18 @@ export type FileType = "pdf" | "zip" | "fig" | "doc" | "file" | "image" | "video
 export type PaymentStatus = "unpaid" | "invoiced" | "paid"
 export type InboxItemType = "comment" | "task_update" | "client_update" | "project_milestone" | "system"
 export type LabelCategory = "type" | "duration" | "group" | "badge"
+export type TaskActivityAction =
+  | "created"
+  | "status_changed"
+  | "assignee_changed"
+  | "assignee_removed"
+  | "priority_changed"
+  | "due_date_changed"
+  | "start_date_changed"
+  | "workstream_changed"
+  | "description_changed"
+  | "tag_changed"
+  | "name_changed"
 
 export interface Database {
   public: {
@@ -1090,6 +1102,173 @@ export interface Database {
           }
         ]
       }
+      task_comments: {
+        Row: {
+          id: string
+          task_id: string
+          author_id: string
+          content: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          task_id: string
+          author_id: string
+          content: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          task_id?: string
+          author_id?: string
+          content?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      task_activities: {
+        Row: {
+          id: string
+          task_id: string
+          actor_id: string
+          action: string
+          old_value: string | null
+          new_value: string | null
+          metadata: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          task_id: string
+          actor_id: string
+          action: string
+          old_value?: string | null
+          new_value?: string | null
+          metadata?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          task_id?: string
+          actor_id?: string
+          action?: string
+          old_value?: string | null
+          new_value?: string | null
+          metadata?: Json | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_activities_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_activities_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      task_comment_reactions: {
+        Row: {
+          id: string
+          comment_id: string
+          user_id: string
+          emoji: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          comment_id: string
+          user_id: string
+          emoji: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          comment_id?: string
+          user_id?: string
+          emoji?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_comment_reactions_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "task_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_comment_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      task_comment_attachments: {
+        Row: {
+          id: string
+          comment_id: string
+          file_name: string
+          file_path: string
+          file_size: number
+          mime_type: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          comment_id: string
+          file_name: string
+          file_path: string
+          file_size: number
+          mime_type: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          comment_id?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          mime_type?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_comment_attachments_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "task_comments"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1106,6 +1285,14 @@ export interface Database {
       is_project_member: {
         Args: { proj_id: string }
         Returns: boolean
+      }
+      can_access_task: {
+        Args: { t_id: string }
+        Returns: boolean
+      }
+      get_task_project_id: {
+        Args: { t_id: string }
+        Returns: string
       }
     }
     Enums: {
@@ -1271,3 +1458,37 @@ export type WorkflowStatusUpdate = Partial<Omit<WorkflowStatusInsert, 'organizat
 export type ChatConversation = Database['public']['Tables']['chat_conversations']['Row']
 export type ChatMessage = Database['public']['Tables']['chat_messages']['Row']
 export type ChatMessageInsert = Database['public']['Tables']['chat_messages']['Insert']
+
+// Task Comments & Activities
+export type TaskComment = Database['public']['Tables']['task_comments']['Row']
+export type TaskCommentInsert = Database['public']['Tables']['task_comments']['Insert']
+export type TaskCommentUpdate = Database['public']['Tables']['task_comments']['Update']
+
+export type TaskActivity = Database['public']['Tables']['task_activities']['Row']
+export type TaskActivityInsert = Database['public']['Tables']['task_activities']['Insert']
+
+export type TaskCommentReaction = Database['public']['Tables']['task_comment_reactions']['Row']
+export type TaskCommentReactionInsert = Database['public']['Tables']['task_comment_reactions']['Insert']
+
+export type TaskCommentAttachment = Database['public']['Tables']['task_comment_attachments']['Row']
+export type TaskCommentAttachmentInsert = Database['public']['Tables']['task_comment_attachments']['Insert']
+
+// Minimal profile type for task relations (matches our SELECT queries)
+export type ProfileMinimal = Pick<Profile, 'id' | 'full_name' | 'email' | 'avatar_url'>
+
+// Task Comment with relations
+export type TaskCommentWithRelations = TaskComment & {
+  author: ProfileMinimal
+  reactions?: TaskCommentReaction[]
+  attachments?: TaskCommentAttachment[]
+}
+
+// Task Activity with relations
+export type TaskActivityWithRelations = TaskActivity & {
+  actor: ProfileMinimal | null
+}
+
+// Timeline item - union of comments and activities
+export type TaskTimelineItem =
+  | { type: 'comment'; data: TaskCommentWithRelations }
+  | { type: 'activity'; data: TaskActivityWithRelations }

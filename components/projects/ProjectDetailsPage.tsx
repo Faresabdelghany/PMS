@@ -253,6 +253,7 @@ export function ProjectDetailsPage({
                     <ProjectTasksTabLazy
                       projectId={projectId}
                       projectName={supabaseProject.name}
+                      organizationId={supabaseProject.organization_id}
                       initialTasks={tasks}
                       workstreams={workstreams.map(ws => ({ id: ws.id, name: ws.name }))}
                       organizationMembers={organizationMembers}

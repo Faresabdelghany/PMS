@@ -35,6 +35,9 @@ export const CacheTags = {
   tasks: (projectId: string) => `tasks-${projectId}`,
   task: (id: string) => `task-${id}`,
   myTasks: (userId: string) => `my-tasks-${userId}`,
+  taskTimeline: (taskId: string) => `task-timeline-${taskId}`,
+  taskComments: (taskId: string) => `task-comments-${taskId}`,
+  taskActivities: (taskId: string) => `task-activities-${taskId}`,
 
   // Workstreams
   workstreams: (projectId: string) => `workstreams-${projectId}`,
