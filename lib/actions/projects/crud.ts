@@ -43,7 +43,9 @@ export async function createProject(
   }
 
   // Extract related data from validated input
-  const { deliverables, metrics, owner_id, contributor_ids, stakeholder_ids, ...projectData } = validatedData
+  // Note: workstreams and starter_tasks are NOT columns in the projects table,
+  // they are transient fields used to create related records after project creation
+  const { deliverables, metrics, owner_id, contributor_ids, stakeholder_ids, workstreams, starter_tasks, ...projectData } = validatedData
 
   // Filter out empty deliverables and metrics
   const validDeliverables = deliverables?.filter((d) => d.title?.trim()) ?? []
@@ -182,21 +184,21 @@ export async function createProject(
     }
 
     // Create workstreams if provided
-    if (data.workstreams && data.workstreams.length > 0) {
-      for (let i = 0; i < data.workstreams.length; i++) {
+    if (workstreams && workstreams.length > 0) {
+      for (let i = 0; i < workstreams.length; i++) {
         await supabase.from("workstreams").insert({
           project_id: project.id,
-          name: data.workstreams[i],
-          position: i,
+          name: workstreams[i],
+          sort_order: i,
         })
       }
     }
 
     // Create starter tasks if provided
-    if (data.starter_tasks && data.starter_tasks.length > 0) {
+    if (starter_tasks && starter_tasks.length > 0) {
       // Get workstream IDs if we created any
       let workstreamMap: Record<string, string> = {}
-      if (data.workstreams && data.workstreams.length > 0) {
+      if (workstreams && workstreams.length > 0) {
         const { data: workstreamsData } = await supabase
           .from("workstreams")
           .select("id, name")
@@ -209,8 +211,8 @@ export async function createProject(
         }
       }
 
-      for (let i = 0; i < data.starter_tasks.length; i++) {
-        const task = data.starter_tasks[i]
+      for (let i = 0; i < starter_tasks.length; i++) {
+        const task = starter_tasks[i]
         await supabase.from("tasks").insert({
           project_id: project.id,
           name: task.title,
