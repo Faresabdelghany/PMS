@@ -75,6 +75,9 @@ npx supabase status                     # Check local services status
 - **`components/`** - React components organized by feature
   - `ui/` - shadcn/ui design system primitives
   - `projects/`, `tasks/`, `clients/` - Feature components
+  - `tasks/TaskDetailPanel.tsx` - Slide-over panel for task details with timeline
+  - `tasks/TaskTimeline.tsx` - Combined comments and activity feed
+  - `tasks/TaskCommentEditor.tsx` - Rich text comment input with @mentions
   - `project-wizard/` - Multi-step project creation wizard
   - `ai/` - AI chat components (chat view, input, history sidebar)
   - `dashboard/` - Cached dashboard stat cards and project lists
@@ -87,6 +90,7 @@ npx supabase status                     # Check local services status
   - `rate-limit/` - Rate limiting with Upstash/Vercel KV
   - `data/` - Type definitions and interfaces
   - `utils.ts` - Utility helpers including `cn()` for class merging
+  - `utils/activity-formatter.ts` - Activity message formatting helpers
 - **`hooks/`** - Custom React hooks
 - **`supabase/`** - Database migrations
 - **`e2e/`** - Playwright E2E tests
@@ -109,6 +113,8 @@ npx supabase status                     # Check local services status
 - `lib/actions/project-details.ts` - Project details fetching with relations
 - `lib/actions/clients.ts` - Client CRUD
 - `lib/actions/tasks.ts` - Task CRUD, reordering, status updates
+- `lib/actions/task-comments.ts` - Task comments with reactions and attachments
+- `lib/actions/task-activities.ts` - Task activity logging and timeline
 - `lib/actions/workstreams.ts` - Workstream CRUD and reordering
 - `lib/actions/files.ts` - File upload/download to Supabase Storage
 - `lib/actions/notes.ts` - Notes CRUD with audio support
@@ -126,7 +132,7 @@ npx supabase status                     # Check local services status
 - `lib/actions/search.ts` - Global search across projects, tasks, and clients
 
 **Database Schema:**
-- 19 tables with full RLS policies
+- 22 tables with full RLS policies
 - Multi-tenant architecture (organization-based isolation)
 - See `supabase/migrations/` for complete schema
 
@@ -203,6 +209,13 @@ export default async function Page({ params }: PageProps) {
 - Quick create project or task
 - Managed by `CommandPaletteProvider` in dashboard layout
 
+**Task Detail Panel:** URL-driven slide-over panel for viewing and editing tasks:
+- Opens via `?task=<taskId>` URL parameter (enables deep linking and browser back)
+- Shows task header, fields, description, and combined activity/comments timeline
+- Real-time updates via `useTaskTimelineRealtime` hook
+- Comment editor with @mentions and emoji reactions
+- Click task title in any task list to open panel
+
 **Rate Limiting:** Production uses Upstash + Vercel KV for rate limiting in `lib/rate-limit/`:
 - `rateLimiters.auth` - 5 requests per 15 min (brute force protection)
 - `rateLimiters.ai` - 50 requests per 24h (cost control)
@@ -224,6 +237,10 @@ export default async function Page({ params }: PageProps) {
 - `project_members` - Project membership with roles (owner/pic/member/viewer)
 - `organization_labels` - Organization-level labels (type, duration, group, badge categories)
 - `tasks` - Task management
+- `task_comments` - Task comments with rich text content
+- `task_comment_reactions` - Emoji reactions on comments
+- `task_comment_attachments` - File attachments on comments
+- `task_activities` - Activity log for task changes (status, assignee, etc.)
 - `workstreams` - Task grouping within projects
 - `project_files`, `project_notes` - Project assets
 - `inbox_items` - User notifications/inbox
@@ -233,6 +250,7 @@ export default async function Page({ params }: PageProps) {
 
 **Real-time Hooks:** Two realtime systems available:
 - `hooks/use-realtime.ts` - Individual hooks: `useTasksRealtime`, `useWorkstreamsRealtime`, `useProjectsRealtime`, etc.
+- `hooks/use-task-timeline-realtime.ts` - Real-time updates for task comments, activities, and reactions
 - `hooks/realtime-context.tsx` - Pooled subscriptions via `RealtimeProvider`:
   - Multiple components share subscriptions through context
   - Auto-pauses when browser tab is hidden to reduce connection overhead
