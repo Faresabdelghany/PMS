@@ -1,15 +1,18 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import dynamic from "next/dynamic"
 
 import type { ProjectFile, User } from "@/lib/data/project-details"
 import { RecentFileCard } from "@/components/projects/RecentFileCard"
 import { FilesTable } from "@/components/projects/FilesTable"
-import { AddFileModal } from "@/components/projects/AddFileModal"
-import { EditFileModal } from "@/components/projects/EditFileModal"
 import { deleteFile } from "@/lib/actions/files"
 import { useProjectFilesRealtime } from "@/hooks/use-project-files-realtime"
 import { Skeleton } from "@/components/ui/skeleton"
+
+// Lazy load modals - only loaded when opened
+const AddFileModal = dynamic(() => import("@/components/projects/AddFileModal").then(m => m.AddFileModal), { ssr: false })
+const EditFileModal = dynamic(() => import("@/components/projects/EditFileModal").then(m => m.EditFileModal), { ssr: false })
 
 type AssetsFilesTabProps = {
     projectId: string

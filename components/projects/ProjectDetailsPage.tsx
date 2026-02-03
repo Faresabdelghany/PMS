@@ -1,7 +1,8 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useMemo, useState, Suspense, lazy } from "react"
 import { useRouter } from "next/navigation"
+import dynamic from "next/dynamic"
 import { LinkSimple, SquareHalf } from "@phosphor-icons/react/dist/ssr"
 import { toast } from "sonner"
 import { AnimatePresence, MotionDiv } from "@/components/ui/motion-lazy"
@@ -23,19 +24,37 @@ import { TimelineGantt } from "@/components/projects/TimelineGantt"
 import { RightMetaPanel } from "@/components/projects/RightMetaPanel"
 import { WorkstreamTabLazy } from "@/components/projects/WorkstreamTabLazy"
 import { ProjectTasksTabLazy } from "@/components/projects/ProjectTasksTabLazy"
-import { NotesTab } from "@/components/projects/NotesTab"
-import { AssetsFilesTab } from "@/components/projects/AssetsFilesTab"
-import { DeliverableTab } from "@/components/projects/DeliverableTab"
-import { AddFileModal } from "@/components/projects/AddFileModal"
 import { ProjectWizardLazy } from "@/components/project-wizard/ProjectWizardLazy"
 import { useUser } from "@/hooks/use-user"
 import { TaskQuickCreateModal, type TaskData, type CreateTaskContext } from "@/components/tasks/TaskQuickCreateModal"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { WorkstreamTask, ProjectDetails } from "@/lib/data/project-details"
 import type { OrganizationTag } from "@/lib/supabase/types"
+
+// Lazy load tab content that's not immediately visible
+const NotesTab = dynamic(() => import("@/components/projects/NotesTab").then(m => m.NotesTab), { ssr: false })
+const AssetsFilesTab = dynamic(() => import("@/components/projects/AssetsFilesTab").then(m => m.AssetsFilesTab), { ssr: false })
+const DeliverableTab = dynamic(() => import("@/components/projects/DeliverableTab").then(m => m.DeliverableTab), { ssr: false })
+const AddFileModal = dynamic(() => import("@/components/projects/AddFileModal").then(m => m.AddFileModal), { ssr: false })
+
+// Tab loading skeleton
+function TabSkeleton() {
+  return (
+    <div className="space-y-4 pt-4">
+      <Skeleton className="h-6 w-32" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Skeleton className="h-24 rounded-lg" />
+        <Skeleton className="h-24 rounded-lg" />
+        <Skeleton className="h-24 rounded-lg" />
+        <Skeleton className="h-24 rounded-lg" />
+      </div>
+    </div>
+  )
+}
 
 type ProjectDetailsPageProps = {
   projectId: string
@@ -242,25 +261,31 @@ export function ProjectDetailsPage({
                   </TabsContent>
 
                   <TabsContent value="notes">
-                    <NotesTab
-                      projectId={projectId}
-                      projectName={project.name}
-                      notes={project.notes || []}
-                      onRefresh={() => router.refresh()}
-                    />
+                    <Suspense fallback={<TabSkeleton />}>
+                      <NotesTab
+                        projectId={projectId}
+                        projectName={project.name}
+                        notes={project.notes || []}
+                        onRefresh={() => router.refresh()}
+                      />
+                    </Suspense>
                   </TabsContent>
 
                   <TabsContent value="assets">
-                    <AssetsFilesTab projectId={project.id} />
+                    <Suspense fallback={<TabSkeleton />}>
+                      <AssetsFilesTab projectId={project.id} />
+                    </Suspense>
                   </TabsContent>
 
                   <TabsContent value="deliverables">
-                    <DeliverableTab
-                      projectId={projectId}
-                      deliverables={supabaseProject.deliverables}
-                      currency={supabaseProject.currency || "USD"}
-                      onRefresh={() => router.refresh()}
-                    />
+                    <Suspense fallback={<TabSkeleton />}>
+                      <DeliverableTab
+                        projectId={projectId}
+                        deliverables={supabaseProject.deliverables}
+                        currency={supabaseProject.currency || "USD"}
+                        onRefresh={() => router.refresh()}
+                      />
+                    </Suspense>
                   </TabsContent>
                 </Tabs>
               </div>

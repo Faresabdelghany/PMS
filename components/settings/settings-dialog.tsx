@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, lazy, Suspense } from "react"
 import {
   Dialog,
   DialogContent,
@@ -8,20 +8,38 @@ import {
 } from "@/components/ui/dialog"
 import { SettingsSidebar, type SettingsItemId } from "./settings-sidebar"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
+import { Skeleton } from "@/components/ui/skeleton"
 
-// Pane imports
-import { AccountPane } from "./panes/account-pane"
-import { NotificationsPane } from "./panes/notifications-pane"
-import { PreferencesPane } from "./panes/preferences-pane"
-import { TeammatesPane } from "./panes/teammates-pane"
-import { IdentityPane } from "./panes/identity-pane"
-import { TypesPane } from "./panes/types-pane"
-import { TagsPane } from "./panes/tags-pane"
-import { BillingPane } from "./panes/billing-pane"
-import { ImportPane } from "./panes/import-pane"
-import { AgentsPane } from "./panes/agents-pane"
-import { SkillsPane } from "./panes/skills-pane"
-import { LabelsSettings } from "./labels-settings"
+// Lazy load all panes for better initial bundle size
+const AccountPane = lazy(() => import("./panes/account-pane").then(m => ({ default: m.AccountPane })))
+const NotificationsPane = lazy(() => import("./panes/notifications-pane").then(m => ({ default: m.NotificationsPane })))
+const PreferencesPane = lazy(() => import("./panes/preferences-pane").then(m => ({ default: m.PreferencesPane })))
+const TeammatesPane = lazy(() => import("./panes/teammates-pane").then(m => ({ default: m.TeammatesPane })))
+const IdentityPane = lazy(() => import("./panes/identity-pane").then(m => ({ default: m.IdentityPane })))
+const TypesPane = lazy(() => import("./panes/types-pane").then(m => ({ default: m.TypesPane })))
+const TagsPane = lazy(() => import("./panes/tags-pane").then(m => ({ default: m.TagsPane })))
+const BillingPane = lazy(() => import("./panes/billing-pane").then(m => ({ default: m.BillingPane })))
+const ImportPane = lazy(() => import("./panes/import-pane").then(m => ({ default: m.ImportPane })))
+const AgentsPane = lazy(() => import("./panes/agents-pane").then(m => ({ default: m.AgentsPane })))
+const SkillsPane = lazy(() => import("./panes/skills-pane").then(m => ({ default: m.SkillsPane })))
+const LabelsSettings = lazy(() => import("./labels-settings").then(m => ({ default: m.LabelsSettings })))
+
+// Loading skeleton for settings panes
+function SettingsPaneSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-4 w-72" />
+      </div>
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+    </div>
+  )
+}
 
 interface SettingsDialogProps {
   open: boolean
@@ -85,7 +103,9 @@ export function SettingsDialog({ open, onOpenChange, initialSection = "account" 
             onItemSelect={setActiveItemId}
           />
           <main className="flex-1 min-h-0 overflow-y-auto px-6 py-6 sm:min-h-0">
-            {renderPane()}
+            <Suspense fallback={<SettingsPaneSkeleton />}>
+              {renderPane()}
+            </Suspense>
           </main>
         </div>
       </DialogContent>

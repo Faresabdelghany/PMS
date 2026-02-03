@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useState, useTransition } from "react"
+import dynamic from "next/dynamic"
 import { format } from "date-fns"
 import { Plus, Pencil, Trash, Package } from "@phosphor-icons/react/dist/ssr"
 import { toast } from "sonner"
@@ -32,9 +33,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
-import { DeliverableDialog, type DeliverableData } from "./DeliverableDialog"
+import type { DeliverableData } from "./DeliverableDialog"
 import { updateDeliverable, deleteDeliverable } from "@/lib/actions/deliverables"
 import type { DeliverableStatus, PaymentStatus } from "@/lib/supabase/types"
+
+// Lazy load modal - only loaded when opened
+const DeliverableDialog = dynamic(() => import("./DeliverableDialog").then(m => m.DeliverableDialog), { ssr: false })
 
 type Deliverable = {
   id: string

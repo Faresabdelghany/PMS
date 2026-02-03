@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import dynamic from "next/dynamic"
 import { Plus } from "@phosphor-icons/react/dist/ssr"
 import { toast } from "sonner"
 
@@ -11,9 +12,11 @@ import { useNotesRealtime } from "@/hooks/use-realtime"
 import { Button } from "@/components/ui/button"
 import { NoteCard } from "@/components/projects/NoteCard"
 import { NotesTable } from "@/components/projects/NotesTable"
-import { CreateNoteModal } from "@/components/projects/CreateNoteModal"
-import { UploadAudioModal } from "@/components/projects/UploadAudioModal"
-import { NotePreviewModal } from "@/components/projects/NotePreviewModal"
+
+// Lazy load modals - only loaded when opened
+const CreateNoteModal = dynamic(() => import("@/components/projects/CreateNoteModal").then(m => m.CreateNoteModal), { ssr: false })
+const UploadAudioModal = dynamic(() => import("@/components/projects/UploadAudioModal").then(m => m.UploadAudioModal), { ssr: false })
+const NotePreviewModal = dynamic(() => import("@/components/projects/NotePreviewModal").then(m => m.NotePreviewModal), { ssr: false })
 
 type NotesTabProps = {
     projectId: string
