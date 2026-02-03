@@ -1,51 +1,59 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import useSWR from "swr"
 import { hasAIConfigured, getAISettings } from "@/lib/actions/user-settings"
+import { SWRKeys, SWRStaleTime } from "@/lib/swr-config"
+
+type AIStatusData = {
+  isConfigured: boolean
+  provider: string | null
+  model: string | null
+}
+
+async function fetchAIStatus(): Promise<AIStatusData> {
+  const [configResult, settingsResult] = await Promise.all([
+    hasAIConfigured(),
+    getAISettings(),
+  ])
+
+  return {
+    isConfigured: configResult.data ?? false,
+    provider: settingsResult.data?.ai_provider ?? null,
+    model: settingsResult.data?.ai_model_preference ?? null,
+  }
+}
 
 export type AIStatusResult = {
   isConfigured: boolean
   isLoading: boolean
   provider: string | null
   model: string | null
-  refetch: () => Promise<void>
+  refetch: () => Promise<AIStatusData | undefined>
 }
 
+/**
+ * Hook for AI configuration status with SWR caching.
+ * Provides automatic caching, deduplication, and background revalidation.
+ */
 export function useAIStatus(): AIStatusResult {
-  const [isConfigured, setIsConfigured] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [provider, setProvider] = useState<string | null>(null)
-  const [model, setModel] = useState<string | null>(null)
-
-  const fetchStatus = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const [configResult, settingsResult] = await Promise.all([
-        hasAIConfigured(),
-        getAISettings(),
-      ])
-
-      setIsConfigured(configResult.data ?? false)
-      if (settingsResult.data) {
-        setProvider(settingsResult.data.ai_provider)
-        setModel(settingsResult.data.ai_model_preference)
-      }
-    } catch {
-      setIsConfigured(false)
-    } finally {
-      setIsLoading(false)
+  const { data, isLoading, mutate } = useSWR(
+    SWRKeys.aiStatus,
+    fetchAIStatus,
+    {
+      // Keep data fresh for 5 minutes before revalidating
+      dedupingInterval: SWRStaleTime.aiSettings,
+      // Don't retry too aggressively for AI settings
+      errorRetryCount: 2,
+      // Revalidate when window regains focus
+      revalidateOnFocus: true,
     }
-  }, [])
-
-  useEffect(() => {
-    fetchStatus()
-  }, [fetchStatus])
+  )
 
   return {
-    isConfigured,
+    isConfigured: data?.isConfigured ?? false,
     isLoading,
-    provider,
-    model,
-    refetch: fetchStatus,
+    provider: data?.provider ?? null,
+    model: data?.model ?? null,
+    refetch: mutate,
   }
 }

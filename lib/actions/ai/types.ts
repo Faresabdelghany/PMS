@@ -1,0 +1,37 @@
+// AI generation context for projects
+export type ProjectContext = {
+  name: string
+  description?: string
+  client?: string
+  status?: string
+  startDate?: string
+  endDate?: string
+  existingTasks?: { title: string; status: string }[]
+  existingWorkstreams?: string[]
+}
+
+// AI generation options
+export type GenerationOptions = {
+  maxTokens?: number
+  temperature?: number
+}
+
+// AI generation result
+export type AIGenerationResult = {
+  text: string
+  model: string
+  tokensUsed?: number
+}
+
+// Chat message types
+export interface ChatMessage {
+  role: "user" | "assistant"
+  content: string
+}
+
+export interface ChatResponse {
+  content: string
+  action?: import("../ai-types").ProposedAction
+  actions?: import("../ai-types").ProposedAction[]
+  suggestedActions?: import("../ai-types").SuggestedAction[]
+}
