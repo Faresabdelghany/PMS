@@ -213,7 +213,7 @@ export function ProjectDetailsPage({
               }
             >
               <div className="space-y-6 pt-4">
-                <ProjectHeader project={project} onEditProject={openWizard} />
+                <ProjectHeader project={project} status={supabaseProject.status} onEditProject={openWizard} />
 
                 <Tabs defaultValue="overview">
                   <TabsList className="w-full gap-6">
