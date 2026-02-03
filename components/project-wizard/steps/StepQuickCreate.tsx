@@ -67,11 +67,11 @@ export type EditingProjectData = {
 // --- Static Options (not user data) ---
 
 const STATUSES = [
-  { id: "backlog", label: "Backlog", dotClass: "bg-orange-600" },
-  { id: "todo", label: "Todo", dotClass: "bg-neutral-300" },
-  { id: "in-progress", label: "In Progress", dotClass: "bg-yellow-400" },
-  { id: "done", label: "Done", dotClass: "bg-green-600" },
-  { id: "canceled", label: "Canceled", dotClass: "bg-neutral-400" },
+  { id: "backlog", label: "Pre-Sales", dotClass: "bg-orange-600" },
+  { id: "todo", label: "Planned", dotClass: "bg-neutral-300" },
+  { id: "in-progress", label: "Active", dotClass: "bg-yellow-400" },
+  { id: "done", label: "Completed", dotClass: "bg-green-600" },
+  { id: "canceled", label: "Cancelled", dotClass: "bg-neutral-400" },
 ];
 
 const PRIORITIES = [

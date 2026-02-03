@@ -12,9 +12,9 @@ export const PROJECT_STATUSES = ["backlog", "planned", "active", "cancelled", "c
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number]
 
 export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
-  backlog: "Backlog",
+  backlog: "Pre-Sales",
   planned: "Planned",
-  active: "In Progress",
+  active: "Active",
   cancelled: "Cancelled",
   completed: "Completed",
 }
