@@ -253,7 +253,7 @@ export function ProfileSettings() {
             <div className="flex items-center gap-4">
               <div className="relative group">
                 <Avatar className="h-20 w-20">
-                  <AvatarImage src={avatarPreview || undefined} />
+                  <AvatarImage src={avatarPreview || undefined} alt={profile.full_name || "Profile picture"} />
                   <AvatarFallback className="text-2xl">
                     {profile.full_name?.[0] || profile.email[0].toUpperCase()}
                   </AvatarFallback>

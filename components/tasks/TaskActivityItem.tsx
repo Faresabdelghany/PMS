@@ -16,7 +16,7 @@ export function TaskActivityItem({ activity }: TaskActivityItemProps) {
   return (
     <div className="flex gap-3 py-2">
       <Avatar className="h-6 w-6 flex-shrink-0">
-        <AvatarImage src={actor?.avatar_url ?? undefined} />
+        <AvatarImage src={actor?.avatar_url ?? undefined} alt={actor?.full_name || "User"} />
         <AvatarFallback className="text-xs">
           {(actor?.full_name || actor?.email || "?").charAt(0).toUpperCase()}
         </AvatarFallback>

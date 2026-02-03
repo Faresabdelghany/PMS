@@ -315,7 +315,7 @@ export function InboxContent({ initialItems, initialUnreadCount, organizationId 
                   <div className="relative flex-shrink-0">
                     {item.actor ? (
                       <Avatar className="h-9 w-9">
-                        <AvatarImage src={item.actor.avatar_url || undefined} />
+                        <AvatarImage src={item.actor.avatar_url || undefined} alt={item.actor.full_name || "User"} />
                         <AvatarFallback className="text-xs">
                           {item.actor.full_name
                             ?.split(" ")

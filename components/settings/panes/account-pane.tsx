@@ -258,7 +258,7 @@ export function AccountPane() {
           <div className="flex flex-wrap items-center gap-4">
             <div className="relative group">
               <Avatar className="h-16 w-16">
-                <AvatarImage src={avatarPreview || undefined} />
+                <AvatarImage src={avatarPreview || undefined} alt={profile.full_name || "Profile picture"} />
                 <AvatarFallback className="text-xl">
                   {profile.full_name?.[0] || profile.email[0].toUpperCase()}
                 </AvatarFallback>

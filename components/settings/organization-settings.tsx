@@ -260,7 +260,7 @@ export function OrganizationSettings() {
                 <div key={member.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Avatar>
-                      <AvatarImage src={member.profile.avatar_url || undefined} />
+                      <AvatarImage src={member.profile.avatar_url || undefined} alt={member.profile.full_name || "Member"} />
                       <AvatarFallback>
                         {member.profile.full_name?.[0] || member.profile.email[0].toUpperCase()}
                       </AvatarFallback>

@@ -18,6 +18,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { getOptimizedAvatarUrl } from "@/lib/assets/avatars"
 import { ProgressCircle } from "@/components/progress-circle"
 import {
   MagnifyingGlass,
@@ -241,7 +242,7 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
               <span className="text-xs text-muted-foreground">Pro plan</span>
             </div>
           </div>
-          <button className="rounded-md p-1 hover:bg-accent">
+          <button className="rounded-md p-1 hover:bg-accent" aria-label="Switch workspace">
             <CaretUpDown className="h-4 w-4 text-muted-foreground" />
           </button>
         </div>
@@ -359,7 +360,7 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
 
         <div className="mt-2 flex items-center gap-3 rounded-lg p-2 hover:bg-accent cursor-pointer">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={profile?.avatar_url || "/avatar-profile.jpg"} />
+            <AvatarImage src={getOptimizedAvatarUrl(profile?.avatar_url, 64) || "/avatar-profile.jpg"} alt={profile?.full_name || "User avatar"} />
             <AvatarFallback>
               {profile?.full_name
                 ? profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)

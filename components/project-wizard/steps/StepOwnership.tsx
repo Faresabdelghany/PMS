@@ -288,7 +288,7 @@ export function StepOwnership({ data, updateData, currentUserId, organizationMem
             <div className="flex items-center gap-3">
               <Avatar className="h-5 w-5">
                 {ownerAccount && (
-                  <AvatarImage src={ownerAccount.avatarUrl || getAvatarUrl(ownerAccount.name)} />
+                  <AvatarImage src={ownerAccount.avatarUrl || getAvatarUrl(ownerAccount.name)} alt={ownerAccount.name} />
                 )}
                 <AvatarFallback>
                   {ownerAccount ? ownerAccount.initials : "PO"}
@@ -339,7 +339,7 @@ export function StepOwnership({ data, updateData, currentUserId, organizationMem
                   >
                     <div className="flex items-center gap-3">
                       <Avatar className="h-5 w-5 text-xs bg-background border border-border">
-                        <AvatarImage src={avatarUrl} />
+                        <AvatarImage src={avatarUrl} alt={account.name} />
                         <AvatarFallback>{account.initials}</AvatarFallback>
                       </Avatar>
                       <div>
@@ -424,7 +424,7 @@ export function StepOwnership({ data, updateData, currentUserId, organizationMem
                   >
                     <div className="flex items-center gap-3">
                       <Avatar className="h-5 w-5 text-xs bg-background border border-border">
-                        <AvatarImage src={avatarUrl} />
+                        <AvatarImage src={avatarUrl} alt={account.name} />
                         <AvatarFallback>{account.initials}</AvatarFallback>
                       </Avatar>
                       <div>

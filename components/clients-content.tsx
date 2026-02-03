@@ -20,11 +20,13 @@ import { CaretUpDown, ArrowDown, ArrowUp, DotsThreeVertical, Plus, MagnifyingGla
 import { toast } from "sonner"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useMemo, useState } from "react"
+import { useMemo, useState, lazy, Suspense, memo, useCallback } from "react"
 import type { ClientStatus } from "@/lib/supabase/types"
-import { ClientWizard } from "@/components/clients/ClientWizard"
-import { ClientDetailsDrawer } from "@/components/clients/ClientDetailsDrawer"
 import type { ClientWithProjectCount, ProjectCountBreakdown } from "@/lib/actions/clients"
+
+// Lazy load heavy modal components to reduce initial bundle size and improve LCP
+const ClientWizard = lazy(() => import("@/components/clients/ClientWizard").then(m => ({ default: m.ClientWizard })))
+const ClientDetailsDrawer = lazy(() => import("@/components/clients/ClientDetailsDrawer").then(m => ({ default: m.ClientDetailsDrawer })))
 
 interface MappedClient {
   id: string
@@ -126,6 +128,118 @@ function ClientProjectsBadge({
     </div>
   )
 }
+
+// Memoized table row to prevent unnecessary re-renders during interactions
+const ClientTableRow = memo(function ClientTableRow({
+  client,
+  checked,
+  onSelect,
+  onQuickView,
+}: {
+  client: MappedClient
+  checked: boolean
+  onSelect: (id: string) => void
+  onQuickView: (id: string) => void
+}) {
+  const { active, planned, completed } = client.projectBreakdown
+  const displayContactName = client.primaryContactName ?? client.name
+
+  return (
+    <TableRow className="hover:bg-muted/80">
+      <TableCell className="align-middle">
+        <Checkbox
+          aria-label={`Select ${client.name}`}
+          checked={checked}
+          onCheckedChange={() => onSelect(client.id)}
+        />
+      </TableCell>
+      <TableCell
+        className="align-middle text-sm font-medium text-foreground cursor-pointer"
+        onClick={() => onQuickView(client.id)}
+      >
+        <div className="flex items-center gap-3">
+          <Avatar className="h-8 w-8">
+            <AvatarFallback className="text-xs font-medium">
+              {displayContactName
+                .split(" ")
+                .map((part) => part.charAt(0))
+                .join("")
+                .slice(0, 2)
+                .toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col min-w-0">
+            <span className="truncate">{displayContactName}</span>
+            {client.primaryContactEmail && (
+              <span className="mt-0.5 text-[11px] text-muted-foreground truncate">
+                {client.primaryContactEmail}
+              </span>
+            )}
+          </div>
+        </div>
+      </TableCell>
+      <TableCell className="align-middle text-sm">
+        <div className="flex flex-col min-w-0">
+          <span className="truncate text-sm text-foreground">{client.name}</span>
+          {client.location && (
+            <span className="truncate text-[11px] text-muted-foreground">{client.location}</span>
+          )}
+        </div>
+      </TableCell>
+      <TableCell className="align-middle text-sm text-muted-foreground">
+        {client.industry ?? ""}
+      </TableCell>
+      <TableCell className="align-middle">
+        <ClientStatusBadge status={client.status} />
+      </TableCell>
+      <TableCell className="align-middle text-right text-sm text-muted-foreground">
+        <ClientProjectsBadge
+          active={active}
+          planned={planned}
+          completed={completed}
+        />
+      </TableCell>
+      <TableCell className="align-middle text-right">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
+            >
+              <DotsThreeVertical className="h-4 w-4" weight="regular" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem onClick={() => onQuickView(client.id)}>
+              Quick view
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                toast.info("Edit client opens modal (mock)")
+              }}
+            >
+              Edit client
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href={`/clients/${client.id}`}>View full page</Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive"
+              onClick={() => {
+                toast.success(`Archived ${client.name} (mock)`)
+              }}
+            >
+              Archive
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
+  )
+})
 
 interface ClientsContentProps {
   initialClients?: ClientWithProjectCount[]
@@ -232,14 +346,18 @@ export function ClientsContent({ initialClients = [], organizationId }: ClientsC
     })
   }
 
-  const toggleSelectOne = (id: string) => {
+  const toggleSelectOne = useCallback((id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
       return next
     })
-  }
+  }, [])
+
+  const handleQuickView = useCallback((id: string) => {
+    setActiveClientId(id)
+  }, [])
 
   const clearSelection = () => setSelectedIds(new Set())
 
@@ -399,113 +517,15 @@ export function ClientsContent({ initialClients = [], organizationId }: ClientsC
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {visibleClients.map((client) => {
-                    const checked = selectedIds.has(client.id)
-                    const { active, planned, completed } = client.projectBreakdown
-
-                    // Display contact name if available, otherwise fall back to client name
-                    const displayContactName = client.primaryContactName ?? client.name
-
-                    return (
-                      <TableRow key={client.id} className="hover:bg-muted/80">
-                        <TableCell className="align-middle">
-                          <Checkbox
-                            aria-label={`Select ${client.name}`}
-                            checked={checked}
-                            onCheckedChange={() => toggleSelectOne(client.id)}
-                          />
-                        </TableCell>
-                        <TableCell
-                          className="align-middle text-sm font-medium text-foreground cursor-pointer"
-                          onClick={() => setActiveClientId(client.id)}
-                        >
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback className="text-xs font-medium">
-                                {displayContactName
-                                  .split(" ")
-                                  .map((part) => part.charAt(0))
-                                  .join("")
-                                  .slice(0, 2)
-                                  .toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex flex-col min-w-0">
-                              <span className="truncate">{displayContactName}</span>
-                              {client.primaryContactEmail && (
-                                <span className="mt-0.5 text-[11px] text-muted-foreground truncate">
-                                  {client.primaryContactEmail}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="align-middle text-sm">
-                          <div className="flex flex-col min-w-0">
-                            <span className="truncate text-sm text-foreground">{client.name}</span>
-                            {client.location && (
-                              <span className="truncate text-[11px] text-muted-foreground">{client.location}</span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="align-middle text-sm text-muted-foreground">
-                          {client.industry ?? ""}
-                        </TableCell>
-                        <TableCell className="align-middle">
-                          <ClientStatusBadge status={client.status} />
-                        </TableCell>
-                        <TableCell className="align-middle text-right text-sm text-muted-foreground">
-                          <ClientProjectsBadge
-                            active={active}
-                            planned={planned}
-                            completed={completed}
-                          />
-                        </TableCell>
-                        <TableCell className="align-middle text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
-                              >
-                                <DotsThreeVertical className="h-4 w-4" weight="regular" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-40">
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setActiveClientId(client.id)
-                                }}
-                              >
-                                Quick view
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  toast.info("Edit client opens modal (mock)")
-                                }}
-                              >
-                                Edit client
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem asChild>
-                                <Link href={`/clients/${client.id}`}>View full page</Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={() => {
-                                  toast.success(`Archived ${client.name} (mock)`)
-                                }}
-                              >
-                                Archive
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
+                  {visibleClients.map((client) => (
+                    <ClientTableRow
+                      key={client.id}
+                      client={client}
+                      checked={selectedIds.has(client.id)}
+                      onSelect={toggleSelectOne}
+                      onQuickView={handleQuickView}
+                    />
+                  ))}
                 </TableBody>
               </Table>
 
@@ -626,14 +646,18 @@ export function ClientsContent({ initialClients = [], organizationId }: ClientsC
         </div>
       </div>
       {isWizardOpen && (
-        <ClientWizard
-          mode="create"
-          organizationId={organizationId}
-          onClose={() => setIsWizardOpen(false)}
-          onSubmit={() => router.refresh()}
-        />
+        <Suspense fallback={null}>
+          <ClientWizard
+            mode="create"
+            organizationId={organizationId}
+            onClose={() => setIsWizardOpen(false)}
+            onSubmit={() => router.refresh()}
+          />
+        </Suspense>
       )}
-      <ClientDetailsDrawer clientId={activeClientId} onClose={() => setActiveClientId(null)} />
+      <Suspense fallback={null}>
+        <ClientDetailsDrawer clientId={activeClientId} onClose={() => setActiveClientId(null)} />
+      </Suspense>
     </div>
   )
 }

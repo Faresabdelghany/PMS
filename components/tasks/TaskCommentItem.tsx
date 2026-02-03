@@ -91,7 +91,7 @@ export function TaskCommentItem({
   return (
     <div className="flex gap-3 group">
       <Avatar className="h-8 w-8 flex-shrink-0">
-        <AvatarImage src={author?.avatar_url ?? undefined} />
+        <AvatarImage src={author?.avatar_url ?? undefined} alt={author?.full_name || "User"} />
         <AvatarFallback className="text-xs">
           {(author?.full_name || author?.email || "?").charAt(0).toUpperCase()}
         </AvatarFallback>

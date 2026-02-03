@@ -226,7 +226,7 @@ export function TeammatesPane() {
               <div key={member.id} className="grid grid-cols-12 items-center px-4 py-4">
                 <div className="col-span-6 flex items-center gap-3">
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src={member.profile.avatar_url || undefined} />
+                    <AvatarImage src={member.profile.avatar_url || undefined} alt={member.profile.full_name || "Team member"} />
                     <AvatarFallback>
                       {member.profile.full_name?.[0] || member.profile.email[0].toUpperCase()}
                     </AvatarFallback>

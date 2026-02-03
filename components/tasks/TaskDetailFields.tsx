@@ -77,7 +77,7 @@ export function TaskDetailFields({
               {task.assignee ? (
                 <div className="flex items-center gap-2">
                   <Avatar className="h-5 w-5">
-                    <AvatarImage src={task.assignee.avatar_url ?? undefined} />
+                    <AvatarImage src={task.assignee.avatar_url ?? undefined} alt={task.assignee.full_name || task.assignee.email || "Assignee"} />
                     <AvatarFallback className="text-xs">
                       {(task.assignee.full_name || task.assignee.email || "?").charAt(0).toUpperCase()}
                     </AvatarFallback>
@@ -114,7 +114,7 @@ export function TaskDetailFields({
                       }}
                     >
                       <Avatar className="h-5 w-5 mr-2">
-                        <AvatarImage src={member.profile.avatar_url ?? undefined} />
+                        <AvatarImage src={member.profile.avatar_url ?? undefined} alt={member.profile.full_name || member.profile.email} />
                         <AvatarFallback className="text-xs">
                           {(member.profile.full_name || member.profile.email).charAt(0).toUpperCase()}
                         </AvatarFallback>
