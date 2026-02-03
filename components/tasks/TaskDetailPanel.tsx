@@ -200,13 +200,17 @@ export function TaskDetailPanel({
       <SheetContent
         side="right"
         className="w-full sm:w-[600px] lg:w-[700px] sm:max-w-none p-0 flex flex-col"
+        aria-describedby={undefined}
       >
+        {/* Always render SheetTitle for accessibility */}
+        <SheetTitle className="sr-only">
+          {task?.name || "Task Details"}
+        </SheetTitle>
         {isLoading ? (
           <TaskDetailPanelSkeleton />
         ) : task ? (
           <>
             <SheetHeader className="p-4 pb-0 flex-shrink-0">
-              <SheetTitle className="sr-only">{task.name}</SheetTitle>
               <TaskDetailHeader
                 task={task}
                 onStatusChange={(status) => handleUpdateTask("status", status)}
