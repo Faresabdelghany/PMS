@@ -11,6 +11,7 @@ import type { Project, ProjectUpdate, ProjectStatus, ProjectMemberRole, TaskPrio
 import type { ActionResult } from "../types"
 import type { GuidedProjectInput, ProjectFilters, ProjectWithRelations } from "./types"
 import { createProjectSchema } from "./validation"
+import { notify } from "../notifications"
 
 // Create project (supports both quick create and guided wizard)
 export async function createProject(
@@ -366,6 +367,18 @@ export async function updateProject(
 
   const supabase = await createClient()
 
+  // Get current user for notifications
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  // Get old project state for comparison (needed for status change notifications)
+  const { data: oldProject } = await supabase
+    .from("projects")
+    .select("status, name")
+    .eq("id", id)
+    .single()
+
   const { data: project, error } = await supabase
     .from("projects")
     .update(data)
@@ -385,6 +398,27 @@ export async function updateProject(
     if (project.organization_id) {
       revalidateTag(CacheTags.projects(project.organization_id))
       await invalidate.project(id, project.organization_id)
+    }
+
+    // Send notification on status change
+    if (user && oldProject && data.status && data.status !== oldProject.status) {
+      // Get all project members to notify
+      const { data: members } = await supabase
+        .from("project_members")
+        .select("user_id")
+        .eq("project_id", id)
+
+      if (members && members.length > 0) {
+        const memberIds = members.map((m) => m.user_id)
+        await notify({
+          orgId: project.organization_id,
+          userIds: memberIds,
+          actorId: user.id,
+          type: "project_milestone",
+          title: `updated "${project.name}" status to ${data.status}`,
+          projectId: id,
+        })
+      }
     }
   })
 

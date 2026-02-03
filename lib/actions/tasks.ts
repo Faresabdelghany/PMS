@@ -17,6 +17,7 @@ import {
 } from "@/lib/constants/status"
 import type { Task, TaskInsert, TaskUpdate, TaskStatus, TaskPriority } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
+import { notify } from "./notifications"
 
 // Task validation schemas
 const createTaskSchema = z.object({
@@ -88,6 +89,11 @@ export async function createTask(
   const validatedData = validation.data
   const supabase = await createClient()
 
+  // Get current user for notification actor
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
   // Build sort_order query based on workstream
   const sortOrderQuery = validatedData.workstream_id
     ? supabase
@@ -140,6 +146,19 @@ export async function createTask(
     revalidateTag(CacheTags.projectDetails(projectId))
     // KV cache invalidation
     await invalidate.task(projectId, validatedData.assignee_id ?? null, project?.organization_id ?? "")
+
+    // Notify assignee when task is created with assignment
+    if (user && validatedData.assignee_id && project?.organization_id) {
+      await notify({
+        orgId: project.organization_id,
+        userIds: [validatedData.assignee_id],
+        actorId: user.id,
+        type: "task_update",
+        title: `assigned you to "${task.name}"`,
+        projectId: task.project_id,
+        taskId: task.id,
+      })
+    }
   })
 
   return { data: task }
@@ -301,6 +320,18 @@ export async function updateTask(
 ): Promise<ActionResult<Task>> {
   const supabase = await createClient()
 
+  // Get current user for notification actor
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  // Get old task state for comparison (needed for notifications)
+  const { data: oldTask } = await supabase
+    .from("tasks")
+    .select("*, project:projects(id, name, organization_id)")
+    .eq("id", id)
+    .single()
+
   const { data: task, error } = await supabase
     .from("tasks")
     .update(data)
@@ -331,6 +362,70 @@ export async function updateTask(
       revalidateTag(CacheTags.tasks(task.project_id))
       // KV cache invalidation
       await invalidate.task(task.project_id, task.assignee_id, orgId)
+    }
+
+    // Send notifications for significant changes
+    if (user && oldTask && orgId) {
+      const projectName = (oldTask.project as { name: string } | null)?.name ?? "project"
+
+      // Notify on assignee change
+      if (data.assignee_id !== undefined && data.assignee_id !== oldTask.assignee_id) {
+        // Notify new assignee
+        if (data.assignee_id) {
+          await notify({
+            orgId,
+            userIds: [data.assignee_id],
+            actorId: user.id,
+            type: "task_update",
+            title: `assigned you to "${task.name}"`,
+            projectId: task.project_id,
+            taskId: task.id,
+          })
+        }
+        // Notify old assignee they were removed
+        if (oldTask.assignee_id) {
+          await notify({
+            orgId,
+            userIds: [oldTask.assignee_id],
+            actorId: user.id,
+            type: "task_update",
+            title: `removed you from "${task.name}"`,
+            projectId: task.project_id,
+            taskId: task.id,
+          })
+        }
+      }
+
+      // Notify on status change (only if task has assignee)
+      if (data.status !== undefined && data.status !== oldTask.status && task.assignee_id) {
+        await notify({
+          orgId,
+          userIds: [task.assignee_id],
+          actorId: user.id,
+          type: "task_update",
+          title: `updated "${task.name}" status to ${data.status}`,
+          projectId: task.project_id,
+          taskId: task.id,
+        })
+      }
+
+      // Notify on priority escalation to high/urgent (only if task has assignee)
+      if (
+        data.priority !== undefined &&
+        data.priority !== oldTask.priority &&
+        (data.priority === "high" || data.priority === "urgent") &&
+        task.assignee_id
+      ) {
+        await notify({
+          orgId,
+          userIds: [task.assignee_id],
+          actorId: user.id,
+          type: "task_update",
+          title: `marked "${task.name}" as ${data.priority} priority`,
+          projectId: task.project_id,
+          taskId: task.id,
+        })
+      }
     }
   })
 

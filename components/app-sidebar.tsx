@@ -1,6 +1,6 @@
 "use client"
 
-import { memo } from "react"
+import { memo, useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
@@ -35,6 +35,8 @@ import {
 } from "@phosphor-icons/react/dist/ssr"
 import { useUser } from "@/hooks/use-user"
 import { signOut } from "@/lib/actions/auth"
+import { getUnreadCount } from "@/lib/actions/inbox"
+import { useInboxRealtime } from "@/hooks/use-realtime"
 import type { Project } from "@/lib/supabase/types"
 import { useCommandPalette } from "@/components/command-palette"
 import { useSettingsDialog } from "@/components/providers/settings-dialog-provider"
@@ -55,7 +57,7 @@ type FooterItem = {
 }
 
 const navItems: NavItem[] = [
-  { id: "inbox", label: "Inbox", badge: 24 },
+  { id: "inbox", label: "Inbox" },
   { id: "my-tasks", label: "My task" },
   { id: "projects", label: "Projects" },
   { id: "clients", label: "Clients" },
@@ -168,6 +170,35 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
   const { profile, user } = useUser()
   const { open: openCommandPalette } = useCommandPalette()
   const { openSettings } = useSettingsDialog()
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  // Fetch initial unread count
+  useEffect(() => {
+    getUnreadCount().then(({ data }) => {
+      if (data !== undefined) setUnreadCount(data)
+    })
+  }, [])
+
+  // Real-time updates for inbox
+  useInboxRealtime(user?.id, {
+    onInsert: () => setUnreadCount((prev) => prev + 1),
+    onUpdate: (item, oldItem) => {
+      // Decrement when marked as read
+      if (!oldItem.is_read && item.is_read) {
+        setUnreadCount((prev) => Math.max(0, prev - 1))
+      }
+      // Increment when marked as unread (edge case)
+      if (oldItem.is_read && !item.is_read) {
+        setUnreadCount((prev) => prev + 1)
+      }
+    },
+    onDelete: (item) => {
+      // Decrement if deleted item was unread
+      if (!item.is_read) {
+        setUnreadCount((prev) => Math.max(0, prev - 1))
+      }
+    },
+  })
 
   const getHrefForNavItem = (id: NavItemId): string => {
     if (id === "my-tasks") return "/tasks"
@@ -258,9 +289,9 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
                         <span>{item.label}</span>
                       </Link>
                     </SidebarMenuButton>
-                    {item.badge && (
+                    {item.id === "inbox" && unreadCount > 0 && (
                       <SidebarMenuBadge className="bg-muted text-muted-foreground rounded-full px-2">
-                        {item.badge}
+                        {unreadCount > 99 ? "99+" : unreadCount}
                       </SidebarMenuBadge>
                     )}
                   </SidebarMenuItem>

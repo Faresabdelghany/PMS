@@ -9,6 +9,7 @@ import { UserProvider } from "@/components/providers/user-provider"
 import { RealtimeProvider } from "@/hooks/realtime-context"
 import { CommandPaletteProvider } from "@/components/command-palette-provider"
 import { SettingsDialogProvider } from "@/components/providers/settings-dialog-provider"
+import { NotificationToastProvider } from "@/components/providers/notification-toast-provider"
 import { PageSkeleton } from "@/components/ui/page-skeleton"
 import { ColorThemeSyncer } from "@/components/color-theme-syncer"
 import { getUserColorTheme } from "@/lib/actions/user-settings"
@@ -131,6 +132,7 @@ export default async function DashboardLayout({
           <SettingsDialogProvider>
             <CommandPaletteProvider>
               <ColorThemeSyncer serverTheme={colorTheme} />
+              <NotificationToastProvider userId={user.id} />
               <SidebarProvider>
                 <AppSidebar activeProjects={activeProjects} />
                 <SidebarInset>

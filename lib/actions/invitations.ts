@@ -2,10 +2,12 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { after } from "next/server"
 import { cookies } from "next/headers"
 import type { Invitation, OrgMemberRole } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 import { requireAuth, requireOrgMember } from "./auth-helpers"
+import { notify } from "./notifications"
 
 // Helper to clear the organization membership cache cookie
 async function clearOrgMembershipCache() {
@@ -131,10 +133,10 @@ export async function acceptInvitation(token: string): Promise<ActionResult> {
   try {
     const { user, supabase } = await requireAuth()
 
-    // Get invitation
+    // Get invitation with organization name
     const { data: invitation, error: inviteError } = await supabase
       .from("invitations")
-      .select("*")
+      .select("*, organization:organizations(name)")
       .eq("token", token)
       .eq("status", "pending")
       .single()
@@ -151,7 +153,7 @@ export async function acceptInvitation(token: string): Promise<ActionResult> {
     // Check if user email matches invitation email
     const { data: profile } = await supabase
       .from("profiles")
-      .select("email")
+      .select("email, full_name")
       .eq("id", user.id)
       .single()
 
@@ -197,6 +199,22 @@ export async function acceptInvitation(token: string): Promise<ActionResult> {
     // Clear the membership cache to reflect the new organization
     await clearOrgMembershipCache()
     revalidatePath("/", "layout")
+
+    // Notify the person who sent the invitation
+    const orgName = (invitation.organization as { name: string } | null)?.name ?? "the organization"
+    const userName = profile?.full_name ?? profile?.email ?? "Someone"
+
+    after(async () => {
+      await notify({
+        orgId: invitation.organization_id,
+        userIds: [invitation.invited_by_id],
+        actorId: user.id,
+        type: "system",
+        title: `${userName} joined ${orgName}`,
+        message: "They accepted your invitation",
+      })
+    })
+
     return {}
   } catch {
     return { error: "You must be logged in to accept an invitation" }

@@ -7,6 +7,7 @@ import { CacheTags, revalidateTag } from "@/lib/cache-tags"
 import { requireProjectOwnerOrPIC } from "../auth-helpers"
 import type { ProjectMember, ProjectMemberRole } from "@/lib/supabase/types"
 import type { ActionResult } from "../types"
+import { notify } from "../notifications"
 
 // Add project member
 export async function addProjectMember(
@@ -22,6 +23,18 @@ export async function addProjectMember(
   }
 
   const supabase = await createClient()
+
+  // Get current user for notifications
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  // Get project info for notification
+  const { data: project } = await supabase
+    .from("projects")
+    .select("name, organization_id")
+    .eq("id", projectId)
+    .single()
 
   const { data, error } = await supabase
     .from("project_members")
@@ -40,10 +53,22 @@ export async function addProjectMember(
     return { error: error.message }
   }
 
-  after(() => {
+  after(async () => {
     revalidatePath(`/projects/${projectId}`)
     revalidateTag(CacheTags.project(projectId))
     revalidateTag(CacheTags.projectMembers(projectId))
+
+    // Notify the new member
+    if (user && project) {
+      await notify({
+        orgId: project.organization_id,
+        userIds: [userId],
+        actorId: user.id,
+        type: "project_milestone",
+        title: `added you to "${project.name}"`,
+        projectId,
+      })
+    }
   })
 
   return { data }
@@ -97,6 +122,18 @@ export async function removeProjectMember(
 
   const supabase = await createClient()
 
+  // Get current user for notifications
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  // Get project info for notification
+  const { data: project } = await supabase
+    .from("projects")
+    .select("name, organization_id")
+    .eq("id", projectId)
+    .single()
+
   const { error } = await supabase
     .from("project_members")
     .delete()
@@ -107,10 +144,22 @@ export async function removeProjectMember(
     return { error: error.message }
   }
 
-  after(() => {
+  after(async () => {
     revalidatePath(`/projects/${projectId}`)
     revalidateTag(CacheTags.project(projectId))
     revalidateTag(CacheTags.projectMembers(projectId))
+
+    // Notify the removed member
+    if (user && project) {
+      await notify({
+        orgId: project.organization_id,
+        userIds: [userId],
+        actorId: user.id,
+        type: "project_milestone",
+        title: `removed you from "${project.name}"`,
+        projectId,
+      })
+    }
   })
 
   return {}

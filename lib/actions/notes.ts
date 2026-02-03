@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { after } from "next/server"
 import type {
   ProjectNote,
   ProjectNoteInsert,
@@ -12,6 +13,7 @@ import type {
 } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 import { requireAuth } from "./auth-helpers"
+import { notifyMentions } from "./notifications"
 
 
 // Extended note type with author info
@@ -56,6 +58,13 @@ export async function createNote(
       return { error: "Note title is required" }
     }
 
+    // Get project info for notifications
+    const { data: project } = await supabase
+      .from("projects")
+      .select("name, organization_id")
+      .eq("id", projectId)
+      .single()
+
     // Create note record
     const noteRecord: ProjectNoteInsert = {
       project_id: projectId,
@@ -78,6 +87,20 @@ export async function createNote(
     }
 
     revalidatePath(`/projects/${projectId}`)
+
+    // Send mention notifications after creating note
+    if (data.content && project) {
+      after(async () => {
+        await notifyMentions({
+          orgId: project.organization_id,
+          actorId: user.id,
+          content: data.content!,
+          contextTitle: note.title,
+          projectId,
+        })
+      })
+    }
+
     return { data: note }
   } catch {
     return { error: "Not authenticated" }
@@ -97,10 +120,22 @@ export async function updateNote(
 ): Promise<ActionResult<ProjectNote>> {
   const supabase = await createClient()
 
+  // Get current user for notifications
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
   // Validate title if provided
   if (data.title !== undefined && !data.title.trim()) {
     return { error: "Note title cannot be empty" }
   }
+
+  // Get old note content for mention comparison
+  const { data: oldNote } = await supabase
+    .from("project_notes")
+    .select("content, title, project_id")
+    .eq("id", noteId)
+    .single()
 
   // Build update object
   const updateData: ProjectNoteUpdate = {}
@@ -133,6 +168,28 @@ export async function updateNote(
   }
 
   revalidatePath(`/projects/${note.project_id}`)
+
+  // Send mention notifications for new mentions in content
+  if (user && data.content && oldNote && data.content !== oldNote.content) {
+    const { data: project } = await supabase
+      .from("projects")
+      .select("organization_id")
+      .eq("id", note.project_id)
+      .single()
+
+    if (project) {
+      after(async () => {
+        await notifyMentions({
+          orgId: project.organization_id,
+          actorId: user.id,
+          content: data.content!,
+          contextTitle: note.title,
+          projectId: note.project_id,
+        })
+      })
+    }
+  }
+
   return { data: note }
 }
 
