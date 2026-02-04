@@ -3,7 +3,7 @@
 
 -- Optimize task queries by workstream (used heavily in WorkstreamTab)
 CREATE INDEX IF NOT EXISTS idx_tasks_workstream_status_order
-ON tasks(workstream_id, status, "order")
+ON tasks(workstream_id, status, sort_order)
 WHERE workstream_id IS NOT NULL;
 
 -- Optimize task queries without workstream (unassigned tasks)
@@ -50,8 +50,8 @@ WHERE status != 'done';
 
 -- Index for overdue tasks
 CREATE INDEX IF NOT EXISTS idx_tasks_overdue
-ON tasks(project_id, due_date, status)
-WHERE due_date IS NOT NULL AND status != 'done';
+ON tasks(project_id, end_date, status)
+WHERE end_date IS NOT NULL AND status != 'done';
 
 -- Index for task search by name (trigram for full-text search)
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
