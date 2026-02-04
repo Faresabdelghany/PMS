@@ -210,56 +210,57 @@ export function TaskDetailPanel({
           <TaskDetailPanelSkeleton />
         ) : task ? (
           <>
-            <SheetHeader className="p-4 pb-0 flex-shrink-0">
+            <div className="px-5 pt-4 pb-3 space-y-2 flex-shrink-0">
               <TaskDetailHeader
                 task={task}
                 onStatusChange={(status) => handleUpdateTask("status", status)}
+                onClose={handleClose}
               />
-            </SheetHeader>
-
-            <div className="flex-1 overflow-y-auto">
-              <div className="p-4 space-y-6">
-                {/* Task Fields */}
-                <TaskDetailFields
-                  task={task}
-                  onUpdate={handleUpdateTask}
-                  organizationMembers={organizationMembers}
-                  workstreams={workstreams}
-                  tags={tags}
-                />
-
-                {/* Description */}
-                <TaskDetailDescription
-                  description={task.description}
-                  onSave={(desc) => handleUpdateTask("description", desc)}
-                />
-
-                {/* Timeline */}
-                <div className="border-t pt-6">
-                  <h3 className="text-sm font-medium mb-4">Activity</h3>
-                  <TaskTimeline
-                    items={timeline}
-                    currentUserId={organizationMembers.find(m => m.profile)?.profile?.id}
-                    onReactionToggle={async (commentId, emoji) => {
-                      const { toggleCommentReaction } = await import("@/lib/actions/task-comments")
-                      const result = await toggleCommentReaction(commentId, emoji)
-                      if (result.error) {
-                        toast.error(result.error)
-                      }
-                    }}
-                  />
-                </div>
-              </div>
             </div>
 
-            {/* Comment Editor - Sticky at bottom */}
-            <div className="flex-shrink-0 border-t p-4 bg-background">
-              <TaskCommentEditor
-                onSubmit={handleSubmitComment}
-                isSubmitting={isSubmitting}
+            <div className="flex-1 overflow-y-auto px-5 pb-4 pt-0 sm:pt-4 space-y-8">
+              {/* Task Fields */}
+              <TaskDetailFields
+                task={task}
+                onUpdate={handleUpdateTask}
                 organizationMembers={organizationMembers}
-                taskId={taskId!}
+                workstreams={workstreams}
+                tags={tags}
               />
+
+              {/* Description */}
+              <TaskDetailDescription
+                description={task.description}
+                onSave={(desc) => handleUpdateTask("description", desc)}
+              />
+
+              <div className="h-px w-full bg-border/80" />
+
+              {/* Timeline */}
+              <div className="space-y-3 pt-1">
+                <h3 className="text-sm font-medium text-foreground">Activity</h3>
+                <TaskTimeline
+                  items={timeline}
+                  currentUserId={organizationMembers.find(m => m.profile)?.profile?.id}
+                  onReactionToggle={async (commentId, emoji) => {
+                    const { toggleCommentReaction } = await import("@/lib/actions/task-comments")
+                    const result = await toggleCommentReaction(commentId, emoji)
+                    if (result.error) {
+                      toast.error(result.error)
+                    }
+                  }}
+                />
+              </div>
+
+              {/* Comment Editor */}
+              <div className="pb-4">
+                <TaskCommentEditor
+                  onSubmit={handleSubmitComment}
+                  isSubmitting={isSubmitting}
+                  organizationMembers={organizationMembers}
+                  taskId={taskId!}
+                />
+              </div>
             </div>
           </>
         ) : (

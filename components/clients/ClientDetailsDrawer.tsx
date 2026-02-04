@@ -13,6 +13,7 @@ import {
   Briefcase,
   MapPin,
   Globe2,
+  PencilLine,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -388,8 +389,9 @@ export function ClientDetailsDrawer({ clientId, onClose }: ClientDetailsDrawerPr
           <Button variant="outline" size="sm" className="text-xs" onClick={onClose}>
             Cancel
           </Button>
-          <Button size="sm" className="text-xs" onClick={() => setIsWizardOpen(true)}>
-            Edit client
+          <Button size="sm" className="text-xs gap-1.5" onClick={() => setIsWizardOpen(true)}>
+            <PencilLine className="h-3.5 w-3.5" />
+            Edit
           </Button>
         </div>
 
