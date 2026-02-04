@@ -213,7 +213,7 @@ export function TaskDetailPanel({
             <div className="px-5 pt-4 pb-3 space-y-2 flex-shrink-0">
               <TaskDetailHeader
                 task={task}
-                onStatusChange={(status) => handleUpdateTask("status", status)}
+                onNameChange={(name) => handleUpdateTask("name", name)}
               />
             </div>
 

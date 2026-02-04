@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils"
 import type { TaskWithRelations } from "@/lib/actions/tasks"
 import type {
   TaskPriority,
+  TaskStatus,
   Profile,
   OrganizationMember,
   Workstream,
@@ -51,6 +52,12 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string; color: string }[] 
   { value: "urgent", label: "Urgent", color: "text-red-500" },
 ]
 
+const STATUS_OPTIONS: { value: TaskStatus; label: string; color: string; dotColor: string }[] = [
+  { value: "todo", label: "To Do", color: "text-muted-foreground", dotColor: "bg-muted-foreground" },
+  { value: "in-progress", label: "In Progress", color: "text-blue-500", dotColor: "bg-blue-500" },
+  { value: "done", label: "Done", color: "text-green-500", dotColor: "bg-green-500" },
+]
+
 export function TaskDetailFields({
   task,
   onUpdate,
@@ -59,6 +66,7 @@ export function TaskDetailFields({
   tags = [],
 }: TaskDetailFieldsProps) {
   const [assigneeOpen, setAssigneeOpen] = useState(false)
+  const [statusOpen, setStatusOpen] = useState(false)
   const [priorityOpen, setPriorityOpen] = useState(false)
   const [workstreamOpen, setWorkstreamOpen] = useState(false)
   const [tagOpen, setTagOpen] = useState(false)
@@ -66,6 +74,7 @@ export function TaskDetailFields({
   const [endDateOpen, setEndDateOpen] = useState(false)
 
   const currentPriority = PRIORITY_OPTIONS.find(p => p.value === task.priority)
+  const currentStatus = STATUS_OPTIONS.find(s => s.value === task.status)
 
   const fields = [
     {
@@ -75,6 +84,19 @@ export function TaskDetailFields({
       value: task.assignee ? (task.assignee.full_name || task.assignee.email) : "Unassigned",
       popoverOpen: assigneeOpen,
       setPopoverOpen: setAssigneeOpen,
+      renderIcon: () =>
+        task.assignee ? (
+          <Avatar className="h-9 w-9">
+            <AvatarImage src={task.assignee.avatar_url ?? undefined} alt={task.assignee.full_name || task.assignee.email} />
+            <AvatarFallback className="text-xs font-medium">
+              {(task.assignee.full_name || task.assignee.email).charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        ) : (
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+            <UserIcon className="h-4 w-4 text-muted-foreground" />
+          </div>
+        ),
       renderPopoverContent: () => (
         <Command>
           <CommandInput placeholder="Search members..." />
@@ -114,12 +136,51 @@ export function TaskDetailFields({
       ),
     },
     {
+      id: "status",
+      label: "Status",
+      icon: Flag,
+      value: currentStatus?.label || "To Do",
+      popoverOpen: statusOpen,
+      setPopoverOpen: setStatusOpen,
+      renderIcon: () => (
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+          <span className={cn("w-2.5 h-2.5 rounded-full", currentStatus?.dotColor || "bg-muted-foreground")} />
+        </div>
+      ),
+      renderPopoverContent: () => (
+        <Command>
+          <CommandList>
+            <CommandGroup>
+              {STATUS_OPTIONS.map((status) => (
+                <CommandItem
+                  key={status.value}
+                  onSelect={() => {
+                    onUpdate("status", status.value)
+                    setStatusOpen(false)
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <span className={cn("w-2 h-2 rounded-full", status.dotColor)} />
+                  <span className={cn(status.color)}>{status.label}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      ),
+    },
+    {
       id: "priority",
       label: "Priority",
       icon: Flag,
       value: currentPriority?.label || "No priority",
       popoverOpen: priorityOpen,
       setPopoverOpen: setPriorityOpen,
+      renderIcon: () => (
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+          <Flag className={cn("h-4 w-4", currentPriority?.color || "text-muted-foreground")} />
+        </div>
+      ),
       renderPopoverContent: () => (
         <Command>
           <CommandList>
@@ -257,6 +318,7 @@ export function TaskDetailFields({
   }
 
   // Add tag field
+  const taskTag = tags.find(tag => tag.name === task.tag)
   fields.push({
     id: "tag",
     label: "Tag",
@@ -264,6 +326,15 @@ export function TaskDetailFields({
     value: task.tag || "No tag",
     popoverOpen: tagOpen,
     setPopoverOpen: setTagOpen,
+    renderIcon: () => (
+      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+        {taskTag ? (
+          <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: taskTag.color }} />
+        ) : (
+          <TagIcon className="h-4 w-4 text-muted-foreground" />
+        )}
+      </div>
+    ),
     renderPopoverContent: () => (
       <Command>
         <CommandInput placeholder="Search tags..." />
@@ -311,9 +382,13 @@ export function TaskDetailFields({
                   type="button"
                   className="flex flex-col items-start gap-2 min-w-0 text-left hover:opacity-80 transition-opacity cursor-pointer"
                 >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
-                    <Icon className="h-4 w-4 text-muted-foreground" />
-                  </div>
+                  {'renderIcon' in field && field.renderIcon ? (
+                    field.renderIcon()
+                  ) : (
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+                      <Icon className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  )}
                   <div className="space-y-0.5 min-w-0 w-full">
                     <p className="text-[11px] font-medium text-muted-foreground">{field.label}</p>
                     <p className="text-xs text-foreground truncate">{field.value}</p>
