@@ -40,7 +40,7 @@ const ColorThemeProviderContext = createContext<ColorThemeProviderState>(initial
 
 // Helper to get initial theme - reads from localStorage if available
 function getInitialTheme(storageKey: string, defaultTheme: ColorTheme): ColorTheme {
-  if (typeof globalThis.window === 'undefined') return defaultTheme
+  if (globalThis.window === undefined) return defaultTheme
   try {
     const stored = localStorage.getItem(storageKey) as ColorTheme | null
     if (stored && COLOR_THEMES.some(t => t.value === stored)) {

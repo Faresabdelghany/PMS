@@ -25,55 +25,101 @@ export type ImportResult = {
   errors: string[]
 }
 
+// CSV Parser state
+type CSVParserState = {
+  lines: string[][]
+  currentLine: string[]
+  currentField: string
+  inQuotes: boolean
+  skipNext: boolean
+}
+
+// Handle character inside quotes
+function handleQuotedChar(
+  state: CSVParserState,
+  char: string,
+  nextChar: string | undefined
+): boolean {
+  if (char === '"' && nextChar === '"') {
+    state.currentField += '"'
+    state.skipNext = true
+    return true
+  }
+  if (char === '"') {
+    state.inQuotes = false
+    return true
+  }
+  state.currentField += char
+  return true
+}
+
+// Handle character outside quotes
+function handleUnquotedChar(
+  state: CSVParserState,
+  char: string,
+  nextChar: string | undefined
+): void {
+  if (char === '"') {
+    state.inQuotes = true
+    return
+  }
+  if (char === ',') {
+    state.currentLine.push(state.currentField.trim())
+    state.currentField = ""
+    return
+  }
+  if (char === '\n' || (char === '\r' && nextChar === '\n')) {
+    finalizeLine(state)
+    if (char === '\r') state.skipNext = true
+    return
+  }
+  if (char !== '\r') {
+    state.currentField += char
+  }
+}
+
+// Finalize current line
+function finalizeLine(state: CSVParserState): void {
+  state.currentLine.push(state.currentField.trim())
+  if (state.currentLine.some(f => f !== "")) {
+    state.lines.push(state.currentLine)
+  }
+  state.currentLine = []
+  state.currentField = ""
+}
+
 // Parse CSV content
 function parseCSV(content: string): string[][] {
-  const lines: string[][] = []
-  let currentLine: string[] = []
-  let currentField = ""
-  let inQuotes = false
+  const state: CSVParserState = {
+    lines: [],
+    currentLine: [],
+    currentField: "",
+    inQuotes: false,
+    skipNext: false,
+  }
 
   for (let i = 0; i < content.length; i++) {
+    if (state.skipNext) {
+      state.skipNext = false
+      continue
+    }
+
     const char = content[i]
     const nextChar = content[i + 1]
 
-    if (inQuotes) {
-      if (char === '"' && nextChar === '"') {
-        currentField += '"'
-        i++ // Skip next quote
-      } else if (char === '"') {
-        inQuotes = false
-      } else {
-        currentField += char
-      }
+    if (state.inQuotes) {
+      handleQuotedChar(state, char, nextChar)
     } else {
-      if (char === '"') {
-        inQuotes = true
-      } else if (char === ',') {
-        currentLine.push(currentField.trim())
-        currentField = ""
-      } else if (char === '\n' || (char === '\r' && nextChar === '\n')) {
-        currentLine.push(currentField.trim())
-        if (currentLine.some(f => f !== "")) {
-          lines.push(currentLine)
-        }
-        currentLine = []
-        currentField = ""
-        if (char === '\r') i++ // Skip \n after \r
-      } else if (char !== '\r') {
-        currentField += char
-      }
+      handleUnquotedChar(state, char, nextChar)
     }
   }
 
   // Handle last field/line
-  if (currentField || currentLine.length > 0) {
-    currentLine.push(currentField.trim())
-    if (currentLine.some(f => f !== "")) {
-      lines.push(currentLine)
-    }
+  if (state.currentField || state.currentLine.length > 0) {
+    finalizeLine(state)
   }
 
-  return lines
+  return state.lines
 }
 
 // Map status string to TaskStatus enum

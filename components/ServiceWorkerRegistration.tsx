@@ -9,7 +9,7 @@ import { useEffect } from "react"
 export function ServiceWorkerRegistration() {
   useEffect(() => {
     if (
-      typeof globalThis.window !== "undefined" &&
+      globalThis.window !== undefined &&
       "serviceWorker" in navigator &&
       process.env.NODE_ENV === "production"
     ) {

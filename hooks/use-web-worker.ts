@@ -23,7 +23,7 @@ export function useWebWorker<T, R>(workerPath: string) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (typeof globalThis.window === "undefined") return
+    if (globalThis.window === undefined) return
 
     try {
       const worker = new Worker(workerPath)

@@ -239,6 +239,18 @@ export function WorkstreamTab({
 
   const activeTask = findTaskById(activeTaskId)
 
+  // Helper to update a single task's status within a group
+  const updateTaskInGroup = useCallback((
+    group: WorkstreamGroup,
+    taskId: string,
+    newStatus: WorkstreamTask["status"]
+  ): WorkstreamGroup => {
+    const updatedTasks = group.tasks.map((t) =>
+      t.id === taskId ? { ...t, status: newStatus } : t
+    )
+    return { ...group, tasks: updatedTasks }
+  }, [])
+
   // Helper to update task status in state
   const updateTaskStatusInState = useCallback((
     groupId: string,
@@ -246,13 +258,9 @@ export function WorkstreamTab({
     newStatus: WorkstreamTask["status"]
   ) => {
     setState((prev) =>
-      prev.map((g) =>
-        g.id === groupId
-          ? { ...g, tasks: g.tasks.map((t) => t.id === taskId ? { ...t, status: newStatus } : t) }
-          : g
-      )
+      prev.map((g) => g.id === groupId ? updateTaskInGroup(g, taskId, newStatus) : g)
     )
-  }, [])
+  }, [updateTaskInGroup])
 
   const toggleTask = useCallback(async (groupId: string, taskId: string) => {
     const group = state.find((g) => g.id === groupId)
