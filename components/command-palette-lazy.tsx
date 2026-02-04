@@ -10,11 +10,11 @@ const CommandPaletteDynamic = dynamic(
   { ssr: false }
 )
 
-type CommandPaletteLazyProps = {
+type CommandPaletteLazyProps = Readonly<{
   onCreateProject?: () => void
   onCreateTask?: () => void
   onOpenSettings?: () => void
-}
+}>
 
 export function CommandPaletteLazy(props: CommandPaletteLazyProps) {
   const [shouldLoad, setShouldLoad] = useState(false)

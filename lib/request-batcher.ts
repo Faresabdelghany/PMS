@@ -10,10 +10,10 @@ type BatchedRequest<T> = {
 }
 
 class RequestBatcher<TInput, TOutput> {
-  private queue: Map<string, BatchedRequest<TOutput>> = new Map()
+  private readonly queue: Map<string, BatchedRequest<TOutput>> = new Map()
   private timer: NodeJS.Timeout | null = null
-  private batchFn: (inputs: Map<string, TInput>) => Promise<Map<string, TOutput>>
-  private wait: number
+  private readonly batchFn: (inputs: Map<string, TInput>) => Promise<Map<string, TOutput>>
+  private readonly wait: number
 
   constructor(
     batchFn: (inputs: Map<string, TInput>) => Promise<Map<string, TOutput>>,
@@ -62,10 +62,10 @@ class RequestBatcher<TInput, TOutput> {
       // Resolve all promises with their results
       for (const [id, request] of currentQueue) {
         const result = results.get(id)
-        if (result !== undefined) {
-          request.resolve(result)
-        } else {
+        if (result === undefined) {
           request.reject(new Error(`No result for ${id}`))
+        } else {
+          request.resolve(result)
         }
       }
     } catch (error) {
@@ -77,7 +77,7 @@ class RequestBatcher<TInput, TOutput> {
   }
 
   // Temporary storage for inputs (cleared after flush)
-  private inputsStorage = new Map<string, TInput>()
+  private readonly inputsStorage = new Map<string, TInput>()
 
   private getInputsMap() {
     return this.inputsStorage
@@ -98,39 +98,37 @@ let taskStatusBatcher: RequestBatcher<TaskStatusInput, TaskStatusOutput> | null 
  * Get or create the task status update batcher
  */
 export function getTaskStatusBatcher() {
-  if (!taskStatusBatcher) {
-    taskStatusBatcher = new RequestBatcher<TaskStatusInput, TaskStatusOutput>(
-      async (inputs) => {
-        // Batch update all tasks in a single request
-        const updates = Array.from(inputs.values())
+  taskStatusBatcher ??= new RequestBatcher<TaskStatusInput, TaskStatusOutput>(
+    async (inputs) => {
+      // Batch update all tasks in a single request
+      const updates = Array.from(inputs.values())
 
-        // Call the batch update API endpoint
-        const response = await fetch("/api/tasks/batch-update-status", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ updates }),
+      // Call the batch update API endpoint
+      const response = await fetch("/api/tasks/batch-update-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updates }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Batch update failed")
+      }
+
+      const data = await response.json()
+
+      // Convert array result back to map
+      const results = new Map<string, TaskStatusOutput>()
+      for (const update of updates) {
+        results.set(update.taskId, {
+          success: data.success?.includes(update.taskId) ?? false,
+          error: data.errors?.[update.taskId],
         })
+      }
 
-        if (!response.ok) {
-          throw new Error("Batch update failed")
-        }
-
-        const data = await response.json()
-
-        // Convert array result back to map
-        const results = new Map<string, TaskStatusOutput>()
-        for (const update of updates) {
-          results.set(update.taskId, {
-            success: data.success?.includes(update.taskId) ?? false,
-            error: data.errors?.[update.taskId],
-          })
-        }
-
-        return results
-      },
-      50 // Wait 50ms to batch requests
-    )
-  }
+      return results
+    },
+    50 // Wait 50ms to batch requests
+  )
 
   return taskStatusBatcher
 }

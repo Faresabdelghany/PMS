@@ -3,7 +3,7 @@
  * Offloads computation from main thread to improve INP
  */
 
-self.addEventListener('message', (event) => {
+globalThis.addEventListener('message', (event) => {
   const { type, data } = event.data
 
   try {
@@ -26,9 +26,9 @@ self.addEventListener('message', (event) => {
         throw new Error(`Unknown operation: ${type}`)
     }
 
-    self.postMessage({ success: true, result })
+    globalThis.postMessage({ success: true, result })
   } catch (error) {
-    self.postMessage({
+    globalThis.postMessage({
       success: false,
       error: error.message,
     })
@@ -40,7 +40,7 @@ self.addEventListener('message', (event) => {
  */
 function transformProjectData(data) {
   // Heavy transformation logic
-  const { supabaseProject, tasks, workstreams, organizationMembers } = data
+  const { tasks, workstreams, organizationMembers } = data
 
   // Build member map for quick lookups
   const memberMap = new Map()
@@ -85,16 +85,18 @@ function sortTasks(data) {
     let aVal, bVal
 
     switch (sortBy) {
-      case 'priority':
+      case 'priority': {
         const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3, 'no-priority': 4 }
         aVal = priorityOrder[a.priority] ?? 4
         bVal = priorityOrder[b.priority] ?? 4
         break
-      case 'status':
+      }
+      case 'status': {
         const statusOrder = { 'in-progress': 0, todo: 1, done: 2 }
         aVal = statusOrder[a.status] ?? 1
         bVal = statusOrder[b.status] ?? 1
         break
+      }
       case 'dueDate':
         aVal = a.end_date ? new Date(a.end_date).getTime() : Infinity
         bVal = b.end_date ? new Date(b.end_date).getTime() : Infinity

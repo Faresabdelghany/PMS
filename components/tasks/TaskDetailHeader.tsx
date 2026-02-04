@@ -57,12 +57,13 @@ export function TaskDetailHeader({
               className="text-sm font-medium h-auto py-1 px-2"
             />
           ) : (
-            <p
-              className="text-sm font-medium text-foreground truncate cursor-pointer hover:bg-muted/50 rounded px-2 py-1 -ml-2 transition-colors"
+            <button
+              type="button"
+              className="text-sm font-medium text-foreground truncate cursor-pointer hover:bg-muted/50 rounded px-2 py-1 -ml-2 transition-colors text-left w-full"
               onClick={() => setIsEditingName(true)}
             >
               {task.name}
-            </p>
+            </button>
           )}
         </div>
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useState, useEffect, useTransition, startTransition } from "react"
+import { memo, useState, useEffect, startTransition } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
@@ -176,24 +176,19 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
 
   // Fetch initial unread count - deferred to not block hydration
   useEffect(() => {
-    // Use requestIdleCallback to defer until browser is idle
-    const fetchCount = () => {
-      getUnreadCount().then(({ data }) => {
-        if (data !== undefined) {
-          startTransition(() => {
-            setUnreadCount(data)
-          })
-        }
-      })
+    const fetchCount = async () => {
+      const { data } = await getUnreadCount()
+      if (data !== undefined) {
+        startTransition(() => setUnreadCount(data))
+      }
     }
 
-    if ("requestIdleCallback" in window) {
-      const id = window.requestIdleCallback(fetchCount, { timeout: 3000 })
-      return () => window.cancelIdleCallback(id)
-    } else {
-      const id = setTimeout(fetchCount, 100)
-      return () => clearTimeout(id)
+    if ("requestIdleCallback" in globalThis) {
+      const id = globalThis.requestIdleCallback(() => { fetchCount() }, { timeout: 3000 })
+      return () => globalThis.cancelIdleCallback(id)
     }
+    const id = setTimeout(fetchCount, 100)
+    return () => clearTimeout(id)
   }, [])
 
   // Real-time updates for inbox

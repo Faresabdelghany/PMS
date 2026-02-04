@@ -4,12 +4,12 @@ import { useVirtualizer } from "@tanstack/react-virtual"
 import { useRef } from "react"
 import type { ReactNode } from "react"
 
-type VirtualizedWorkstreamListProps = {
+type VirtualizedWorkstreamListProps = Readonly<{
   items: Array<{ id: string }>
   renderItem: (item: { id: string }, index: number) => ReactNode
   estimateSize?: number
   overscan?: number
-}
+}>
 
 /**
  * Virtualized list component for workstreams to improve INP

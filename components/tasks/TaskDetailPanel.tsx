@@ -206,9 +206,13 @@ export function TaskDetailPanel({
         <SheetTitle className="sr-only">
           {task?.name || "Task Details"}
         </SheetTitle>
-        {isLoading ? (
-          <TaskDetailPanelSkeleton />
-        ) : task ? (
+        {isLoading && <TaskDetailPanelSkeleton />}
+        {!isLoading && !task && (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            Task not found
+          </div>
+        )}
+        {!isLoading && task && (
           <>
             <div className="px-5 pt-4 pb-3 space-y-2 flex-shrink-0">
               <TaskDetailHeader
@@ -262,10 +266,6 @@ export function TaskDetailPanel({
               </div>
             </div>
           </>
-        ) : (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
-            Task not found
-          </div>
         )}
       </SheetContent>
     </Sheet>

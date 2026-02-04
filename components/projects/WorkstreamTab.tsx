@@ -239,49 +239,43 @@ export function WorkstreamTab({
 
   const activeTask = findTaskById(activeTaskId)
 
+  // Helper to update task status in state
+  const updateTaskStatusInState = useCallback((
+    groupId: string,
+    taskId: string,
+    newStatus: WorkstreamTask["status"]
+  ) => {
+    setState((prev) =>
+      prev.map((g) =>
+        g.id === groupId
+          ? { ...g, tasks: g.tasks.map((t) => t.id === taskId ? { ...t, status: newStatus } : t) }
+          : g
+      )
+    )
+  }, [])
+
   const toggleTask = useCallback(async (groupId: string, taskId: string) => {
     const group = state.find((g) => g.id === groupId)
     const task = group?.tasks.find((t) => t.id === taskId)
     if (!task) return
 
     const newStatus = task.status === "done" ? "todo" : "done"
+    const originalStatus = task.status
 
     // Optimistic update
-    setState((prev) =>
-      prev.map((g) =>
-        g.id === groupId
-          ? {
-              ...g,
-              tasks: g.tasks.map((t) =>
-                t.id === taskId ? { ...t, status: newStatus } : t
-              ),
-            }
-          : g
-      )
-    )
+    updateTaskStatusInState(groupId, taskId, newStatus)
 
     // Persist to database (deferred as non-urgent to improve INP)
     startTransition(() => {
       updateTaskStatus(taskId, newStatus as "todo" | "in-progress" | "done").then((result) => {
         if (result.error) {
           // Revert on error
-          setState((prev) =>
-            prev.map((g) =>
-              g.id === groupId
-                ? {
-                    ...g,
-                    tasks: g.tasks.map((t) =>
-                      t.id === taskId ? { ...t, status: task.status } : t
-                    ),
-                  }
-                : g
-            )
-          )
+          updateTaskStatusInState(groupId, taskId, originalStatus)
           toast.error("Failed to update task status")
         }
       })
     })
-  }, [state])
+  }, [state, updateTaskStatusInState])
 
   const handleDragStart = (event: DragStartEvent) => {
     const id = event.active.id
@@ -853,6 +847,60 @@ function WorkstreamTasks({
   )
 }
 
+// Status formatting helpers
+const STATUS_LABELS: Record<string, string> = {
+  "todo": "To do",
+  "in-progress": "In Progress",
+  "done": "Done"
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  "todo": "text-muted-foreground",
+  "in-progress": "text-amber-600",
+  "done": "text-green-600"
+}
+
+function getStatusLabel(status: string): string {
+  return STATUS_LABELS[status] || "To do"
+}
+
+function getStatusColor(status: string): string {
+  return STATUS_COLORS[status] || "text-muted-foreground"
+}
+
+// Priority formatting helpers
+const PRIORITY_LABELS: Record<string, string | null> = {
+  "no-priority": null,
+  "low": "Low",
+  "medium": "Medium",
+  "high": "High",
+  "urgent": "Urgent"
+}
+
+const PRIORITY_COLORS: Record<string, string> = {
+  "low": "text-green-600",
+  "medium": "text-amber-600",
+  "high": "text-orange-600",
+  "urgent": "text-red-600"
+}
+
+function getPriorityLabel(priority: string | undefined): string | null {
+  if (!priority) return null
+  return PRIORITY_LABELS[priority] ?? null
+}
+
+function getPriorityColor(priority: string | undefined): string {
+  if (!priority) return "text-muted-foreground"
+  return PRIORITY_COLORS[priority] || "text-muted-foreground"
+}
+
+// Due tone color helper
+function getDueToneColor(dueTone?: string): string {
+  if (dueTone === "danger") return "text-red-500"
+  if (dueTone === "warning") return "text-amber-500"
+  return "text-muted-foreground"
+}
+
 type TaskRowProps = {
   task: WorkstreamTask
   onEdit?: (task: WorkstreamTask) => void
@@ -876,28 +924,11 @@ const TaskRow = memo(function TaskRow({ task, onEdit, onDelete, onToggle, active
 
   const showDropLine = !isDragging && (isOver || overTaskId === task.id)
 
-  // Format status label
-  const statusLabel = task.status === "todo" ? "To do"
-    : task.status === "in-progress" ? "In Progress"
-    : "Done"
-
-  const statusColor = task.status === "todo" ? "text-muted-foreground"
-    : task.status === "in-progress" ? "text-amber-600"
-    : "text-green-600"
-
-  // Format priority label
-  const priorityLabel = task.priority === "no-priority" ? null
-    : task.priority === "low" ? "Low"
-    : task.priority === "medium" ? "Medium"
-    : task.priority === "high" ? "High"
-    : task.priority === "urgent" ? "Urgent"
-    : null
-
-  const priorityColor = task.priority === "low" ? "text-green-600"
-    : task.priority === "medium" ? "text-amber-600"
-    : task.priority === "high" ? "text-orange-600"
-    : task.priority === "urgent" ? "text-red-600"
-    : "text-muted-foreground"
+  // Use helper functions for status/priority formatting
+  const statusLabel = getStatusLabel(task.status)
+  const statusColor = getStatusColor(task.status)
+  const priorityLabel = getPriorityLabel(task.priority)
+  const priorityColor = getPriorityColor(task.priority)
 
   return (
     <div ref={setNodeRef} style={style} className="space-y-1">
@@ -940,14 +971,7 @@ const TaskRow = memo(function TaskRow({ task, onEdit, onDelete, onToggle, active
 
           {/* Due label */}
           {task.dueLabel && (
-            <span
-              className={cn(
-                "text-xs whitespace-nowrap hidden sm:inline",
-                task.dueTone === "danger" && "text-red-500",
-                task.dueTone === "warning" && "text-amber-500",
-                task.dueTone === "muted" && "text-muted-foreground",
-              )}
-            >
+            <span className={cn("text-xs whitespace-nowrap hidden sm:inline", getDueToneColor(task.dueTone))}>
               {task.dueLabel}
             </span>
           )}

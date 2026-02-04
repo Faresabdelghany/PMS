@@ -10,7 +10,7 @@ const NotificationToastProviderImpl = dynamic(
 )
 
 interface NotificationToastProviderLazyProps {
-  userId: string
+  readonly userId: string
 }
 
 /**
@@ -23,9 +23,9 @@ export function NotificationToastProviderLazy({ userId }: NotificationToastProvi
   useEffect(() => {
     // Defer loading until after initial paint using requestIdleCallback
     // Falls back to setTimeout for browsers without requestIdleCallback
-    if ("requestIdleCallback" in window) {
-      const id = window.requestIdleCallback(() => setShouldLoad(true), { timeout: 2000 })
-      return () => window.cancelIdleCallback(id)
+    if ("requestIdleCallback" in globalThis) {
+      const id = globalThis.requestIdleCallback(() => setShouldLoad(true), { timeout: 2000 })
+      return () => globalThis.cancelIdleCallback(id)
     } else {
       const id = setTimeout(() => setShouldLoad(true), 100)
       return () => clearTimeout(id)

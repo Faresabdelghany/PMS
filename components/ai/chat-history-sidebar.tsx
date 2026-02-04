@@ -175,15 +175,17 @@ export function ChatHistorySidebar({
 
       {/* Conversation List */}
       <div className="flex-1 overflow-y-auto px-2">
-        {isLoading ? (
+        {isLoading && (
           <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
             Loading...
           </div>
-        ) : groupedConversations.length === 0 ? (
+        )}
+        {!isLoading && groupedConversations.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 text-sm text-muted-foreground">
             {searchQuery ? "No chats found" : "No conversations yet"}
           </div>
-        ) : (
+        )}
+        {!isLoading && groupedConversations.length > 0 && (
           <div className="space-y-4 py-2">
             {groupedConversations.map((group) => (
               <div key={group.label} className="space-y-1">
