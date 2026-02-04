@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { CheckCircle, Circle, Clock, X } from "@phosphor-icons/react/dist/ssr"
-import { Check } from "lucide-react"
+import { CheckCircle, Circle, Clock } from "@phosphor-icons/react/dist/ssr"
 import { Button } from "@/components/ui/button"
 import {
   Select,
@@ -20,7 +19,6 @@ interface TaskDetailHeaderProps {
   task: TaskWithRelations
   onStatusChange: (status: TaskStatus) => void
   onNameChange?: (name: string) => void
-  onClose?: () => void
 }
 
 const STATUS_CONFIG: Record<TaskStatus, { label: string; color: string; dotColor: string }> = {
@@ -45,7 +43,6 @@ export function TaskDetailHeader({
   task,
   onStatusChange,
   onNameChange,
-  onClose,
 }: TaskDetailHeaderProps) {
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(task.name)
@@ -124,7 +121,7 @@ export function TaskDetailHeader({
 
       <div className="flex items-center gap-2">
         {/* Status Select */}
-        <div className="hidden sm:flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Status</span>
           <Select value={task.status} onValueChange={(value) => onStatusChange(value as TaskStatus)}>
             <SelectTrigger className="w-[140px] h-8">
@@ -150,18 +147,6 @@ export function TaskDetailHeader({
             </SelectContent>
           </Select>
         </div>
-
-        {/* Close button */}
-        {onClose && (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
-            onClick={onClose}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        )}
       </div>
     </div>
   )

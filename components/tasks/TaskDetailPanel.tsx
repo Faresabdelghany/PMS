@@ -199,7 +199,7 @@ export function TaskDetailPanel({
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <SheetContent
         side="right"
-        className="w-full sm:w-[600px] lg:w-[700px] sm:max-w-none p-0 flex flex-col"
+        className="w-full sm:w-[600px] lg:w-[700px] sm:max-w-none p-0 flex flex-col sm:rounded-l-[32px] overflow-hidden"
         aria-describedby={undefined}
       >
         {/* Always render SheetTitle for accessibility */}
@@ -214,7 +214,6 @@ export function TaskDetailPanel({
               <TaskDetailHeader
                 task={task}
                 onStatusChange={(status) => handleUpdateTask("status", status)}
-                onClose={handleClose}
               />
             </div>
 

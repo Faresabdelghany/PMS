@@ -98,7 +98,7 @@ export function ClientDetailsDrawer({ clientId, onClose }: ClientDetailsDrawerPr
           className="flex-1 bg-background/40 backdrop-blur-sm"
           onClick={onClose}
         />
-        <aside className="flex h-full w-full max-w-2xl flex-col border-l border-border bg-background shadow-2xl">
+        <aside className="flex h-full w-full max-w-2xl flex-col border-l border-border bg-background shadow-2xl rounded-l-[32px] overflow-hidden">
           <div className="px-5 pt-4 pb-3 space-y-2">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -203,7 +203,7 @@ export function ClientDetailsDrawer({ clientId, onClose }: ClientDetailsDrawerPr
         onClick={onClose}
       />
 
-      <aside className="flex h-full w-full max-w-2xl flex-col border-l border-border bg-background shadow-2xl">
+      <aside className="flex h-full w-full max-w-2xl flex-col border-l border-border bg-background shadow-2xl rounded-l-[32px] overflow-hidden">
         <div className="px-5 pt-4 pb-3 space-y-2">
           <div className="flex items-start justify-between gap-3">
             <div className="flex flex-col gap-2 min-w-0 flex-1">
