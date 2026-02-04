@@ -73,6 +73,7 @@ const nextConfig = {
       '@phosphor-icons/react/dist/ssr',
       'date-fns',
       '@radix-ui/react-icons',
+      'react-day-picker',
     ],
   },
 }

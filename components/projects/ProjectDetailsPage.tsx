@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
 import { LinkSimple, SquareHalf } from "@phosphor-icons/react/dist/ssr"
 import { toast } from "sonner"
-import { AnimatePresence, MotionDiv } from "@/components/ui/motion-lazy"
 import { useProjectRealtime } from "@/hooks/use-realtime"
 
 import type { ProjectFullDetails } from "@/lib/actions/projects"
@@ -36,9 +35,16 @@ import type { WorkstreamTask, ProjectDetails } from "@/lib/data/project-details"
 import type { OrganizationTag } from "@/lib/supabase/types"
 
 // Lazy load tab content that's not immediately visible
+// Preload functions to be called on tab hover for instant feel
 const NotesTab = dynamic(() => import("@/components/projects/NotesTab").then(m => m.NotesTab), { ssr: false })
+const preloadNotesTab = () => import("@/components/projects/NotesTab")
+
 const AssetsFilesTab = dynamic(() => import("@/components/projects/AssetsFilesTab").then(m => m.AssetsFilesTab), { ssr: false })
+const preloadAssetsFilesTab = () => import("@/components/projects/AssetsFilesTab")
+
 const DeliverableTab = dynamic(() => import("@/components/projects/DeliverableTab").then(m => m.DeliverableTab), { ssr: false })
+const preloadDeliverableTab = () => import("@/components/projects/DeliverableTab")
+
 const AddFileModal = dynamic(() => import("@/components/projects/AddFileModal").then(m => m.AddFileModal), { ssr: false })
 
 // Tab loading skeleton
@@ -211,7 +217,7 @@ export function ProjectDetailsPage({
 
             <div
               className={
-                "mt-0 grid grid-cols-1 gap-15 " +
+                "mt-0 grid grid-cols-1 gap-15 transition-[grid-template-columns] duration-150 ease-out " +
                 (showMeta
                   ? "lg:grid-cols-[minmax(0,2fr)_minmax(0,320px)]"
                   : "lg:grid-cols-[minmax(0,1fr)_minmax(0,0px)]")
@@ -225,9 +231,9 @@ export function ProjectDetailsPage({
                     <TabsTrigger value="overview">Overview</TabsTrigger>
                     <TabsTrigger value="workstream">Workstream</TabsTrigger>
                     <TabsTrigger value="tasks">Tasks</TabsTrigger>
-                    <TabsTrigger value="notes">Notes</TabsTrigger>
-                    <TabsTrigger value="assets">Assets &amp; Files</TabsTrigger>
-                    <TabsTrigger value="deliverables">Deliverables</TabsTrigger>
+                    <TabsTrigger value="notes" onMouseEnter={() => preloadNotesTab()}>Notes</TabsTrigger>
+                    <TabsTrigger value="assets" onMouseEnter={() => preloadAssetsFilesTab()}>Assets &amp; Files</TabsTrigger>
+                    <TabsTrigger value="deliverables" onMouseEnter={() => preloadDeliverableTab()}>Deliverables</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="overview">
@@ -296,26 +302,19 @@ export function ProjectDetailsPage({
                 </Tabs>
               </div>
 
-              <AnimatePresence initial={false}>
-                {showMeta && (
-                  <MotionDiv
-                    key="meta-panel"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.15, ease: "easeOut" }}
-                    className="lg:border-l lg:border-border lg:pl-6"
-                  >
-                    <RightMetaPanel
-                      time={project.time}
-                      backlog={project.backlog}
-                      quickLinks={project.quickLinks}
-                      client={supabaseProject.client}
-                      onUploadClick={() => setIsFileModalOpen(true)}
-                    />
-                  </MotionDiv>
-                )}
-              </AnimatePresence>
+              <div
+                className={`lg:border-l lg:border-border lg:pl-6 transition-all duration-150 ease-out ${
+                  showMeta ? "opacity-100" : "opacity-0 pointer-events-none"
+                }`}
+              >
+                <RightMetaPanel
+                  time={project.time}
+                  backlog={project.backlog}
+                  quickLinks={project.quickLinks}
+                  client={supabaseProject.client}
+                  onUploadClick={() => setIsFileModalOpen(true)}
+                />
+              </div>
             </div>
           </div>
         </div>

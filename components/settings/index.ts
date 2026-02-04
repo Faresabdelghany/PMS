@@ -10,5 +10,5 @@ export { SettingsDialog } from "./settings-dialog"
 export { SettingsSidebar, type SettingsItemId } from "./settings-sidebar"
 export { SettingSection, SettingRow, SettingsPaneHeader, PlaceholderPane } from "./setting-primitives"
 
-// Settings panes
-export * from "./panes"
+// Note: Settings panes are lazy-loaded directly in settings-dialog.tsx
+// Do not re-export them here to ensure proper tree-shaking

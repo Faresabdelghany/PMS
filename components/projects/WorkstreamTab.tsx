@@ -1,6 +1,7 @@
 "use client"
 
-import { useMemo, useState, useCallback, useEffect } from "react"
+import { useMemo, useState, useCallback, useEffect, startTransition, memo } from "react"
+import dynamic from "next/dynamic"
 import { CaretDown, DotsSixVertical, DotsThreeVertical, PencilSimple, Plus, Trash } from "@phosphor-icons/react/dist/ssr"
 import {
   DndContext,
@@ -52,7 +53,11 @@ import {
 } from "@/components/ui/alert-dialog"
 import { ProgressCircle } from "@/components/progress-circle"
 import { cn } from "@/lib/utils"
-import { CreateWorkstreamModal } from "./CreateWorkstreamModal"
+// Lazy load modal since it's not needed initially
+const CreateWorkstreamModal = dynamic(
+  () => import("./CreateWorkstreamModal").then((m) => ({ default: m.CreateWorkstreamModal })),
+  { ssr: false }
+)
 import { moveTaskToWorkstream, reorderTasks, updateTaskStatus, deleteTask } from "@/lib/actions/tasks"
 import { deleteWorkstream } from "@/lib/actions/workstreams"
 import { usePooledTasksRealtime, usePooledWorkstreamsRealtime } from "@/hooks/realtime-context"
@@ -255,24 +260,27 @@ export function WorkstreamTab({
       )
     )
 
-    // Persist to database
-    const result = await updateTaskStatus(taskId, newStatus as "todo" | "in-progress" | "done")
-    if (result.error) {
-      // Revert on error
-      setState((prev) =>
-        prev.map((g) =>
-          g.id === groupId
-            ? {
-                ...g,
-                tasks: g.tasks.map((t) =>
-                  t.id === taskId ? { ...t, status: task.status } : t
-                ),
-              }
-            : g
-        )
-      )
-      toast.error("Failed to update task status")
-    }
+    // Persist to database (deferred as non-urgent to improve INP)
+    startTransition(() => {
+      updateTaskStatus(taskId, newStatus as "todo" | "in-progress" | "done").then((result) => {
+        if (result.error) {
+          // Revert on error
+          setState((prev) =>
+            prev.map((g) =>
+              g.id === groupId
+                ? {
+                    ...g,
+                    tasks: g.tasks.map((t) =>
+                      t.id === taskId ? { ...t, status: task.status } : t
+                    ),
+                  }
+                : g
+            )
+          )
+          toast.error("Failed to update task status")
+        }
+      })
+    })
   }, [state])
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -550,7 +558,7 @@ export function WorkstreamTab({
             size="icon-sm"
             className="rounded-lg hover:cursor-pointer"
             aria-label="Collapse all"
-            onClick={() => setOpenValues([])}
+            onClick={() => startTransition(() => setOpenValues([]))}
             disabled={!allIds.length}
           >
             <CaretDown className="h-4 w-4" />
@@ -560,7 +568,7 @@ export function WorkstreamTab({
             size="icon-sm"
             className="rounded-lg hover:cursor-pointer"
             aria-label="Expand all"
-            onClick={() => setOpenValues(allIds)}
+            onClick={() => startTransition(() => setOpenValues(allIds))}
             disabled={!allIds.length}
           >
             <CaretDown className="h-4 w-4 rotate-180" />
@@ -586,7 +594,9 @@ export function WorkstreamTab({
             type="multiple"
             value={openValues}
             onValueChange={(values) =>
-              setOpenValues(Array.isArray(values) ? values : values ? [values] : [])
+              startTransition(() => {
+                setOpenValues(Array.isArray(values) ? values : values ? [values] : [])
+              })
             }
           >
             {state.map((group) => (
@@ -852,7 +862,7 @@ type TaskRowProps = {
   overTaskId: string | null
 }
 
-function TaskRow({ task, onEdit, onDelete, onToggle, activeTaskId, overTaskId }: TaskRowProps) {
+const TaskRow = memo(function TaskRow({ task, onEdit, onDelete, onToggle, activeTaskId, overTaskId }: TaskRowProps) {
   const isDone = task.status === "done"
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
@@ -1015,4 +1025,4 @@ function TaskRow({ task, onEdit, onDelete, onToggle, activeTaskId, overTaskId }:
       </div>
     </div>
   )
-}
+})

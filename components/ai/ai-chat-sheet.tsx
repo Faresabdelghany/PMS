@@ -14,7 +14,7 @@ import { useAIStatus } from "@/hooks/use-ai-status"
 import { useAIChat, type Attachment, type ClientSideCallbacks } from "@/hooks/use-ai-chat"
 import type { ChatContext } from "@/lib/actions/ai-types"
 import { AIChatMessage } from "./ai-chat-message"
-import { AIChatInput } from "./ai-chat-input"
+import { AIChatInputLazy } from "./ai-chat-input-lazy"
 import { AISetupPrompt } from "./ai-setup-prompt"
 
 // =============================================================================
@@ -192,7 +192,7 @@ export function AIChatSheet({ open, onOpenChange, context, isLoadingContext }: A
 
               {/* Input Area */}
               <div className="flex-shrink-0 border-t border-border p-4">
-                <AIChatInput
+                <AIChatInputLazy
                   onSend={handleSendMessage}
                   disabled={isLoading}
                   placeholder="Ask anything…"
