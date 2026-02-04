@@ -98,6 +98,118 @@ function mapPriority(value: string): TaskPriority {
   return "no-priority"
 }
 
+// Helper functions for CSV import
+
+function parseRowTitle(row: string[], mapping: ColumnMapping): string | null {
+  const title = row[mapping.title]?.trim()
+  return title || null
+}
+
+function applyOptionalField<T extends TaskInsert, K extends keyof T>(
+  task: T,
+  fieldKey: K,
+  value: T[K] | undefined
+): void {
+  if (value !== undefined) {
+    task[fieldKey] = value
+  }
+}
+
+function mapOptionalFields(
+  row: string[],
+  mapping: ColumnMapping,
+  emailToUserId: Map<string, string>
+): Partial<TaskInsert> {
+  const fields: Partial<TaskInsert> = {}
+
+  if (mapping.description !== undefined && row[mapping.description]) {
+    fields.description = row[mapping.description].trim()
+  }
+
+  if (mapping.status !== undefined && row[mapping.status]) {
+    fields.status = mapStatus(row[mapping.status])
+  }
+
+  if (mapping.priority !== undefined && row[mapping.priority]) {
+    fields.priority = mapPriority(row[mapping.priority])
+  }
+
+  if (mapping.assignee_email !== undefined && row[mapping.assignee_email]) {
+    const email = row[mapping.assignee_email].trim().toLowerCase()
+    const userId = emailToUserId.get(email)
+    if (userId) {
+      fields.assignee_id = userId
+    }
+  }
+
+  if (mapping.tags !== undefined && row[mapping.tags]) {
+    fields.tag = row[mapping.tags].trim()
+  }
+
+  if (mapping.start_date !== undefined && row[mapping.start_date]) {
+    const date = row[mapping.start_date].trim()
+    if (date && !isNaN(Date.parse(date))) {
+      fields.start_date = new Date(date).toISOString().split("T")[0]
+    }
+  }
+
+  if (mapping.end_date !== undefined && row[mapping.end_date]) {
+    const date = row[mapping.end_date].trim()
+    if (date && !isNaN(Date.parse(date))) {
+      fields.end_date = new Date(date).toISOString().split("T")[0]
+    }
+  }
+
+  return fields
+}
+
+function processCSVRow(
+  row: string[],
+  rowNum: number,
+  mapping: ColumnMapping,
+  projectId: string,
+  sortOrder: number,
+  emailToUserId: Map<string, string>,
+  result: ImportResult
+): TaskInsert | null {
+  const title = parseRowTitle(row, mapping)
+  if (!title) {
+    result.skipped++
+    result.errors.push(`Row ${rowNum}: Missing title`)
+    return null
+  }
+
+  const task: TaskInsert = {
+    project_id: projectId,
+    name: title,
+    sort_order: sortOrder,
+  }
+
+  const optionalFields = mapOptionalFields(row, mapping, emailToUserId)
+  Object.assign(task, optionalFields)
+
+  return task
+}
+
+async function batchInsertTasks(
+  supabase: any,
+  tasksToInsert: TaskInsert[]
+): Promise<{ success: boolean; error?: string }> {
+  if (tasksToInsert.length === 0) {
+    return { success: true }
+  }
+
+  const { error: insertError } = await supabase
+    .from("tasks")
+    .insert(tasksToInsert)
+
+  if (insertError) {
+    return { success: false, error: `Failed to import tasks: ${insertError.message}` }
+  }
+
+  return { success: true }
+}
+
 // Import tasks from CSV
 export async function importTasksFromCSV(
   projectId: string,
@@ -169,75 +281,19 @@ export async function importTasksFromCSV(
     const row = dataRows[i]
     const rowNum = hasHeader ? i + 2 : i + 1 // 1-indexed, accounting for header
 
-    // Get title (required)
-    const title = row[mapping.title]?.trim()
-    if (!title) {
-      result.skipped++
-      result.errors.push(`Row ${rowNum}: Missing title`)
-      continue
+    const task = processCSVRow(row, rowNum, mapping, projectId, sortOrder++, emailToUserId, result)
+    if (task) {
+      tasksToInsert.push(task)
     }
-
-    // Build task
-    const task: TaskInsert = {
-      project_id: projectId,
-      name: title,
-      sort_order: sortOrder++,
-    }
-
-    // Optional fields
-    if (mapping.description !== undefined && row[mapping.description]) {
-      task.description = row[mapping.description].trim()
-    }
-
-    if (mapping.status !== undefined && row[mapping.status]) {
-      task.status = mapStatus(row[mapping.status])
-    }
-
-    if (mapping.priority !== undefined && row[mapping.priority]) {
-      task.priority = mapPriority(row[mapping.priority])
-    }
-
-    if (mapping.assignee_email !== undefined && row[mapping.assignee_email]) {
-      const email = row[mapping.assignee_email].trim().toLowerCase()
-      const userId = emailToUserId.get(email)
-      if (userId) {
-        task.assignee_id = userId
-      }
-    }
-
-    if (mapping.tags !== undefined && row[mapping.tags]) {
-      task.tag = row[mapping.tags].trim()
-    }
-
-    if (mapping.start_date !== undefined && row[mapping.start_date]) {
-      const date = row[mapping.start_date].trim()
-      if (date && !isNaN(Date.parse(date))) {
-        task.start_date = new Date(date).toISOString().split("T")[0]
-      }
-    }
-
-    if (mapping.end_date !== undefined && row[mapping.end_date]) {
-      const date = row[mapping.end_date].trim()
-      if (date && !isNaN(Date.parse(date))) {
-        task.end_date = new Date(date).toISOString().split("T")[0]
-      }
-    }
-
-    tasksToInsert.push(task)
   }
 
   // Batch insert tasks
-  if (tasksToInsert.length > 0) {
-    const { error: insertError } = await supabase
-      .from("tasks")
-      .insert(tasksToInsert)
-
-    if (insertError) {
-      return { error: `Failed to import tasks: ${insertError.message}` }
-    }
-
-    result.imported = tasksToInsert.length
+  const insertResult = await batchInsertTasks(supabase, tasksToInsert)
+  if (!insertResult.success) {
+    return { error: insertResult.error }
   }
+
+  result.imported = tasksToInsert.length
 
   revalidatePath(`/projects/${projectId}`)
   revalidatePath("/tasks")

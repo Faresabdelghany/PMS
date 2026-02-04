@@ -732,12 +732,104 @@ async function streamOpenRouter(
 }
 
 // Transform provider stream to unified SSE format
+
+interface ProviderLineProcessor {
+  shouldProcess: (line: string) => boolean
+  extractText: (data: string) => string | null
+}
+
+function parseGoogleLine(data: string): string | null {
+  try {
+    const json = JSON.parse(data)
+    return json.candidates?.[0]?.content?.parts?.[0]?.text || null
+  } catch {
+    return null
+  }
+}
+
+function parseAnthropicLine(data: string): string | null {
+  try {
+    const json = JSON.parse(data)
+    if (json.type === "content_block_delta") {
+      return json.delta?.text || null
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+function parseOpenAILine(data: string): string | null {
+  try {
+    const json = JSON.parse(data)
+    return json.choices?.[0]?.delta?.content || null
+  } catch {
+    return null
+  }
+}
+
+function getLineProcessor(provider: string): ProviderLineProcessor {
+  const processors: Record<string, ProviderLineProcessor> = {
+    google: {
+      shouldProcess: (line) => line.startsWith("data: "),
+      extractText: (data) => parseGoogleLine(data),
+    },
+    anthropic: {
+      shouldProcess: (line) => line.startsWith("data: "),
+      extractText: (data) => parseAnthropicLine(data),
+    },
+  }
+
+  return processors[provider] || {
+    // OpenAI-compatible format (OpenAI, Groq, Mistral, xAI, DeepSeek, OpenRouter)
+    shouldProcess: (line) => line.startsWith("data: "),
+    extractText: (data) => parseOpenAILine(data),
+  }
+}
+
+function processStreamLine(
+  line: string,
+  processor: ProviderLineProcessor,
+  encoder: TextEncoder,
+  controller: ReadableStreamDefaultController
+): void {
+  if (!line.trim() || !processor.shouldProcess(line)) return
+
+  const data = line.slice(6) // Remove "data: " prefix
+  if (data === "[DONE]") return
+
+  const text = processor.extractText(data)
+  if (text) {
+    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`))
+  }
+}
+
+async function processStreamChunk(
+  value: Uint8Array,
+  buffer: string,
+  decoder: TextDecoder,
+  processor: ProviderLineProcessor,
+  encoder: TextEncoder,
+  controller: ReadableStreamDefaultController
+): Promise<string> {
+  let updatedBuffer = buffer + decoder.decode(value, { stream: true })
+  const lines = updatedBuffer.split("\n")
+  updatedBuffer = lines.pop() || ""
+
+  for (const line of lines) {
+    processStreamLine(line, processor, encoder, controller)
+  }
+
+  return updatedBuffer
+}
+
 function createUnifiedStream(
   providerStream: ReadableStream,
   provider: string
 ): ReadableStream {
   const encoder = new TextEncoder()
   const decoder = new TextDecoder()
+  const processor = getLineProcessor(provider)
 
   return new ReadableStream({
     async start(controller) {
@@ -747,70 +839,14 @@ function createUnifiedStream(
       try {
         while (true) {
           const { done, value } = await reader.read()
+
           if (done) {
             controller.enqueue(encoder.encode("data: [DONE]\n\n"))
             controller.close()
             break
           }
 
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split("\n")
-          buffer = lines.pop() || ""
-
-          for (const line of lines) {
-            if (!line.trim()) continue
-
-            // Handle Google's SSE format (with alt=sse parameter)
-            if (provider === "google") {
-              if (!line.startsWith("data: ")) continue
-              const data = line.slice(6)
-              if (data === "[DONE]") continue
-              try {
-                const json = JSON.parse(data)
-                const text = json.candidates?.[0]?.content?.parts?.[0]?.text || ""
-                if (text) {
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`))
-                }
-              } catch {
-                // Skip malformed JSON
-              }
-              continue
-            }
-
-            // Handle Anthropic's format
-            if (provider === "anthropic") {
-              if (!line.startsWith("data: ")) continue
-              const data = line.slice(6)
-              if (data === "[DONE]") continue
-              try {
-                const json = JSON.parse(data)
-                if (json.type === "content_block_delta") {
-                  const text = json.delta?.text || ""
-                  if (text) {
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`))
-                  }
-                }
-              } catch {
-                // Skip malformed JSON
-              }
-              continue
-            }
-
-            // Handle OpenAI-compatible format (OpenAI, Groq, Mistral, xAI, DeepSeek, OpenRouter)
-            if (line.startsWith("data: ")) {
-              const data = line.slice(6)
-              if (data === "[DONE]") continue
-              try {
-                const json = JSON.parse(data)
-                const text = json.choices?.[0]?.delta?.content || ""
-                if (text) {
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`))
-                }
-              } catch {
-                // Skip malformed JSON
-              }
-            }
-          }
+          buffer = await processStreamChunk(value, buffer, decoder, processor, encoder, controller)
         }
       } catch (error) {
         controller.enqueue(
