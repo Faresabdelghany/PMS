@@ -39,18 +39,17 @@ function handleQuotedChar(
   state: CSVParserState,
   char: string,
   nextChar: string | undefined
-): boolean {
+): void {
   if (char === '"' && nextChar === '"') {
     state.currentField += '"'
     state.skipNext = true
-    return true
+    return
   }
   if (char === '"') {
     state.inQuotes = false
-    return true
+    return
   }
   state.currentField += char
-  return true
 }
 
 // Handle character outside quotes
@@ -161,6 +160,30 @@ function applyOptionalField<T extends TaskInsert, K extends keyof T>(
   }
 }
 
+// Helper to get trimmed value from row if mapping exists
+function getMappedValue(row: string[], index: number | undefined): string | null {
+  if (index === undefined) return null
+  const value = row[index]
+  return value ? value.trim() : null
+}
+
+// Helper to parse date string to ISO format
+function parseDate(dateStr: string | null): string | null {
+  if (!dateStr || isNaN(Date.parse(dateStr))) return null
+  return new Date(dateStr).toISOString().split("T")[0]
+}
+
+// Helper to map assignee email to user ID
+function mapAssignee(
+  row: string[],
+  mapping: ColumnMapping,
+  emailToUserId: Map<string, string>
+): string | null {
+  const email = getMappedValue(row, mapping.assignee_email)
+  if (!email) return null
+  return emailToUserId.get(email.toLowerCase()) || null
+}
+
 function mapOptionalFields(
   row: string[],
   mapping: ColumnMapping,
@@ -168,43 +191,26 @@ function mapOptionalFields(
 ): Partial<TaskInsert> {
   const fields: Partial<TaskInsert> = {}
 
-  if (mapping.description !== undefined && row[mapping.description]) {
-    fields.description = row[mapping.description].trim()
-  }
+  const description = getMappedValue(row, mapping.description)
+  if (description) fields.description = description
 
-  if (mapping.status !== undefined && row[mapping.status]) {
-    fields.status = mapStatus(row[mapping.status])
-  }
+  const status = getMappedValue(row, mapping.status)
+  if (status) fields.status = mapStatus(status)
 
-  if (mapping.priority !== undefined && row[mapping.priority]) {
-    fields.priority = mapPriority(row[mapping.priority])
-  }
+  const priority = getMappedValue(row, mapping.priority)
+  if (priority) fields.priority = mapPriority(priority)
 
-  if (mapping.assignee_email !== undefined && row[mapping.assignee_email]) {
-    const email = row[mapping.assignee_email].trim().toLowerCase()
-    const userId = emailToUserId.get(email)
-    if (userId) {
-      fields.assignee_id = userId
-    }
-  }
+  const assigneeId = mapAssignee(row, mapping, emailToUserId)
+  if (assigneeId) fields.assignee_id = assigneeId
 
-  if (mapping.tags !== undefined && row[mapping.tags]) {
-    fields.tag = row[mapping.tags].trim()
-  }
+  const tag = getMappedValue(row, mapping.tags)
+  if (tag) fields.tag = tag
 
-  if (mapping.start_date !== undefined && row[mapping.start_date]) {
-    const date = row[mapping.start_date].trim()
-    if (date && !isNaN(Date.parse(date))) {
-      fields.start_date = new Date(date).toISOString().split("T")[0]
-    }
-  }
+  const startDate = parseDate(getMappedValue(row, mapping.start_date))
+  if (startDate) fields.start_date = startDate
 
-  if (mapping.end_date !== undefined && row[mapping.end_date]) {
-    const date = row[mapping.end_date].trim()
-    if (date && !isNaN(Date.parse(date))) {
-      fields.end_date = new Date(date).toISOString().split("T")[0]
-    }
-  }
+  const endDate = parseDate(getMappedValue(row, mapping.end_date))
+  if (endDate) fields.end_date = endDate
 
   return fields
 }
