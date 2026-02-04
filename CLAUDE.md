@@ -15,6 +15,7 @@ A modern project & task management SaaS application built with Next.js 16 App Ro
 pnpm install          # Install dependencies (Node.js 20+ required)
 pnpm dev              # Start development server at localhost:3000
 pnpm build            # Production build
+pnpm build:analyze    # Production build with bundle analyzer
 pnpm start            # Run production server
 pnpm lint             # Run ESLint
 ```
@@ -127,9 +128,14 @@ npx supabase status                     # Check local services status
 - `lib/actions/workflow-statuses.ts` - Custom workflow status management
 - `lib/actions/ai.ts` - AI generation (OpenAI, Anthropic, Google)
 - `lib/actions/ai-context.ts` - AI context helpers for project/task data
+- `lib/actions/ai-types.ts` - AI action types and proposed action schemas
+- `lib/actions/ai-helpers.ts` - AI prompt building and response parsing
+- `lib/actions/execute-ai-action.ts` - Execute AI-proposed actions (create task, update project, etc.)
 - `lib/actions/conversations.ts` - AI chat conversations and messages CRUD
 - `lib/actions/user-settings.ts` - User preferences, AI settings, color theme
 - `lib/actions/search.ts` - Global search across projects, tasks, and clients
+- `lib/actions/notifications.ts` - Send notifications via inbox system
+- `lib/actions/import.ts` - CSV import for tasks
 
 **Database Schema:**
 - 22 tables with full RLS policies
@@ -175,6 +181,8 @@ import { ProjectsListSkeleton, TaskListSkeleton } from "@/components/skeletons"
   <ProjectsList />
 </Suspense>
 ```
+
+**Streaming with loading.tsx:** Most dashboard routes have `loading.tsx` files that show skeleton UIs instantly while the page data loads. These use the same skeleton components and enable streaming via App Router.
 
 **Authentication Flow:**
 1. User signs up/in via `/login` or `/signup`
@@ -251,10 +259,16 @@ export default async function Page({ params }: PageProps) {
 **Real-time Hooks:** Two realtime systems available:
 - `hooks/use-realtime.ts` - Individual hooks: `useTasksRealtime`, `useWorkstreamsRealtime`, `useProjectsRealtime`, etc.
 - `hooks/use-task-timeline-realtime.ts` - Real-time updates for task comments, activities, and reactions
+- `hooks/use-project-files-realtime.ts` - Real-time updates for project files
 - `hooks/realtime-context.tsx` - Pooled subscriptions via `RealtimeProvider`:
   - Multiple components share subscriptions through context
   - Auto-pauses when browser tab is hidden to reduce connection overhead
   - Use `usePooledRealtime`, `usePooledTasksRealtime`, `usePooledProjectsRealtime`, etc.
+
+**AI Chat Hooks:**
+- `hooks/use-ai-chat.ts` - Core AI chat hook for streaming responses
+- `hooks/use-persisted-ai-chat.ts` - AI chat with Supabase persistence
+- `hooks/use-ai-status.ts` - Track AI request status and loading states
 
 **Data Types:** `lib/data/` contains UI type definitions only (interfaces and helper functions like `computeFilterCounts`). All data is fetched from Supabase.
 
