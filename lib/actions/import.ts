@@ -169,7 +169,7 @@ function getMappedValue(row: string[], index: number | undefined): string | null
 
 // Helper to parse date string to ISO format
 function parseDate(dateStr: string | null): string | null {
-  if (!dateStr || isNaN(Date.parse(dateStr))) return null
+  if (!dateStr || Number.isNaN(Date.parse(dateStr))) return null
   return new Date(dateStr).toISOString().split("T")[0]
 }
 
