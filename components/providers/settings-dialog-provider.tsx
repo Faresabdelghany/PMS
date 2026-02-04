@@ -1,8 +1,14 @@
 "use client"
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react"
-import { SettingsDialog } from "@/components/settings/settings-dialog"
+import dynamic from "next/dynamic"
 import type { SettingsItemId } from "@/components/settings/settings-sidebar"
+
+// Lazy load SettingsDialog - it's a heavy component that's only needed when opened
+const SettingsDialog = dynamic(
+  () => import("@/components/settings/settings-dialog").then((mod) => mod.SettingsDialog),
+  { ssr: false }
+)
 
 interface SettingsDialogContextValue {
   isOpen: boolean
@@ -19,12 +25,14 @@ interface SettingsDialogProviderProps {
 
 export function SettingsDialogProvider({ children }: SettingsDialogProviderProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [hasOpened, setHasOpened] = useState(false) // Track if dialog has ever been opened
   const [activeSection, setActiveSection] = useState<SettingsItemId>("account")
 
   const openSettings = useCallback((section?: SettingsItemId) => {
     if (section) {
       setActiveSection(section)
     }
+    setHasOpened(true) // Mark as opened to trigger lazy load
     setIsOpen(true)
   }, [])
 
@@ -42,11 +50,14 @@ export function SettingsDialogProvider({ children }: SettingsDialogProviderProps
       }}
     >
       {children}
-      <SettingsDialog
-        open={isOpen}
-        onOpenChange={setIsOpen}
-        initialSection={activeSection}
-      />
+      {/* Only load SettingsDialog after it's been opened once */}
+      {hasOpened && (
+        <SettingsDialog
+          open={isOpen}
+          onOpenChange={setIsOpen}
+          initialSection={activeSection}
+        />
+      )}
     </SettingsDialogContext.Provider>
   )
 }
