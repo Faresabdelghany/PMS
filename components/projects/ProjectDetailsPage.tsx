@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useState, Suspense, lazy } from "react"
+import { useCallback, useMemo, useState, Suspense, lazy, startTransition } from "react"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
 import { LinkSimple, SquareHalf } from "@phosphor-icons/react/dist/ssr"
@@ -82,9 +82,12 @@ export function ProjectDetailsPage({
   const [isFileModalOpen, setIsFileModalOpen] = useState(false)
 
   // Real-time subscription for project updates (e.g., from AI chat)
+  // Use startTransition to mark refresh as non-urgent, improving INP
   useProjectRealtime(projectId, {
     onUpdate: useCallback(() => {
-      router.refresh()
+      startTransition(() => {
+        router.refresh()
+      })
     }, [router]),
   })
 
@@ -193,7 +196,7 @@ export function ProjectDetailsPage({
             aria-pressed={!showMeta}
             aria-label={showMeta ? "Collapse meta panel" : "Expand meta panel"}
             className={showMeta ? "bg-muted" : ""}
-            onClick={() => setShowMeta((v) => !v)}
+            onClick={() => startTransition(() => setShowMeta((v) => !v))}
           >
             <SquareHalf className="h-4 w-4" weight="duotone" />
           </Button>
@@ -267,7 +270,7 @@ export function ProjectDetailsPage({
                         projectId={projectId}
                         projectName={project.name}
                         notes={project.notes || []}
-                        onRefresh={() => router.refresh()}
+                        onRefresh={() => startTransition(() => router.refresh())}
                       />
                     </Suspense>
                   </TabsContent>
@@ -284,7 +287,7 @@ export function ProjectDetailsPage({
                         projectId={projectId}
                         deliverables={supabaseProject.deliverables}
                         currency={supabaseProject.currency || "USD"}
-                        onRefresh={() => router.refresh()}
+                        onRefresh={() => startTransition(() => router.refresh())}
                       />
                     </Suspense>
                   </TabsContent>
@@ -295,10 +298,10 @@ export function ProjectDetailsPage({
                 {showMeta && (
                   <MotionDiv
                     key="meta-panel"
-                    initial={{ x: 80, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    exit={{ x: 80, opacity: 0 }}
-                    transition={{ type: "spring", stiffness: 260, damping: 26 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
                     className="lg:border-l lg:border-border lg:pl-6"
                   >
                     <RightMetaPanel
@@ -322,7 +325,7 @@ export function ProjectDetailsPage({
             onClose={closeWizard}
             onCreate={() => {
               closeWizard()
-              router.refresh()
+              startTransition(() => router.refresh())
             }}
             organizationId={supabaseProject.organization_id}
             clients={clients}
@@ -368,7 +371,7 @@ export function ProjectDetailsPage({
               avatarUrl: profile?.avatar_url || undefined,
             }}
             onCreate={() => {
-              router.refresh()
+              startTransition(() => router.refresh())
             }}
           />
         )}

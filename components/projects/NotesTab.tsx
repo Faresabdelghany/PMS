@@ -37,14 +37,16 @@ export function NotesTab({ projectId, projectName, notes, currentUser = defaultU
     const [isPending, startTransition] = useTransition()
     const recentNotes = notes.slice(0, 8)
 
-    // Real-time subscription for notes
+    // Real-time subscription for notes - use startTransition for non-blocking updates
     const handleRealtimeChange = useCallback(() => {
-        if (onRefresh) {
-            onRefresh()
-        } else {
-            router.refresh()
-        }
-    }, [onRefresh, router])
+        startTransition(() => {
+            if (onRefresh) {
+                onRefresh()
+            } else {
+                router.refresh()
+            }
+        })
+    }, [onRefresh, router, startTransition])
 
     useNotesRealtime(projectId, {
         onInsert: handleRealtimeChange,
