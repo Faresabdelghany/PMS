@@ -47,18 +47,17 @@ jobs:
           fetch-depth: 0  # Shallow clones should be disabled for better analysis
 
       - name: Analyze with SonarQube
-        uses: SonarSource/sonarqube-scan-action@v4
+        uses: SonarSource/sonarqube-scan-action@v6
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}   # Generate a token on SonarQube, add it to the secrets of this repo with the name SONAR_TOKEN (Settings > Secrets > Actions > add new repository secret)
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}   # add the URL of your instance to the secrets of this repo with the name SONAR_HOST_URL (Settings > Secrets > Actions > add new repository secret)
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
-          # Additional arguments for the sonarcloud scanner
           args: |
+            -Dsonar.organization=faresabdelghany
             -Dsonar.projectKey=Faresabdelghany_PMS
             -Dsonar.sources=app,components,lib,hooks
             -Dsonar.tests=e2e
             -Dsonar.exclusions=**/*.test.ts,**/*.test.tsx,**/*.spec.ts,**/*.spec.tsx,node_modules/**,*.next/**,.vercel/**,public/**,out/**,build/**,dist/**,coverage/**,playwright-report/**,test-results/**,supabase/functions/**
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-            -Dsonar.testExecutionReportPaths=test-results/sonar-report.xml
             -Dsonar.sourceEncoding=UTF-8
