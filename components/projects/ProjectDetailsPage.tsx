@@ -147,7 +147,7 @@ export function ProjectDetailsPage({
     setIsWorkstreamTaskModalOpen(true)
   }, [projectId])
 
-  const handleEditTaskFromWorkstream = useCallback((task: WorkstreamTask) => {
+  const handleEditTaskFromWorkstream = useCallback((task: WorkstreamTask, workstreamId: string, workstreamName: string) => {
     // Convert WorkstreamTask to TaskData format
     const taskData: TaskData = {
       id: task.id,
@@ -165,6 +165,8 @@ export function ProjectDetailsPage({
       } : undefined,
       projectId,
       projectName: supabaseProject.name,
+      workstreamId,
+      workstreamName,
     }
     setEditingWorkstreamTask(taskData)
     setWorkstreamTaskContext(undefined)

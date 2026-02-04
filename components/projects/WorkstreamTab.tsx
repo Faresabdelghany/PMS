@@ -92,7 +92,7 @@ type WorkstreamTabProps = {
   allProjectTasks?: ProjectTask[] // All project tasks for the modal picker
   organizationMembers?: OrganizationMember[]
   onAddTask?: (workstreamId: string, workstreamName: string) => void
-  onEditTask?: (task: WorkstreamTask) => void
+  onEditTask?: (task: WorkstreamTask, workstreamId: string, workstreamName: string) => void
   onRefresh?: () => void
 }
 
@@ -692,7 +692,7 @@ export function WorkstreamTab({
                   group={group}
                   activeTaskId={activeTaskId}
                   overTaskId={overTaskId}
-                  onEditTask={onEditTask}
+                  onEditTask={(task) => onEditTask?.(task, group.id, group.name)}
                   onDeleteTask={(task) => setTaskToDelete({ id: task.id, name: task.name })}
                   onToggle={(taskId) => toggleTask(group.id, taskId)}
                 />
