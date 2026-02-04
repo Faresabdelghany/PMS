@@ -10,10 +10,12 @@ import "./globals.css"
 const geist = Geist({
   subsets: ["latin"],
   variable: "--font-geist-sans",
+  display: "swap", // Ensure text remains visible during font load
 })
 const geistMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-geist-mono",
+  display: "swap",
 })
 
 export const metadata: Metadata = {
@@ -37,6 +39,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geist.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <head>
+        {/* Preconnect to external origins for faster resource loading */}
+        <link rel="preconnect" href="https://lazhmdyajdqbnxxwyxun.supabase.co" />
+        <link rel="dns-prefetch" href="https://lazhmdyajdqbnxxwyxun.supabase.co" />
         {/* Inline script to prevent color theme flash - runs before React hydrates */}
         <script
           dangerouslySetInnerHTML={{
