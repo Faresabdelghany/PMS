@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useState, Suspense, lazy, startTransition } from "react"
+import { useCallback, useMemo, useState, Suspense, lazy, startTransition, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
 import { LinkSimple, SquareHalf } from "@phosphor-icons/react/dist/ssr"
@@ -80,6 +80,8 @@ export function ProjectDetailsPage({
   const [showMeta, setShowMeta] = useState(true)
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [isFileModalOpen, setIsFileModalOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState("overview")
+  const [isTabPending, startTabTransition] = useTransition()
 
   // Real-time subscription for project updates (e.g., from AI chat)
   // Use startTransition to mark refresh as non-urgent, improving INP
@@ -218,7 +220,7 @@ export function ProjectDetailsPage({
               <div className="space-y-6 pt-4">
                 <ProjectHeader project={project} status={supabaseProject.status} onEditProject={openWizard} />
 
-                <Tabs defaultValue="overview">
+                <Tabs value={activeTab} onValueChange={(value) => startTabTransition(() => setActiveTab(value))}>
                   <TabsList className="w-full gap-6">
                     <TabsTrigger value="overview">Overview</TabsTrigger>
                     <TabsTrigger value="workstream">Workstream</TabsTrigger>

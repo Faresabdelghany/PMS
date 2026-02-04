@@ -578,7 +578,7 @@ export function WorkstreamTab({
           onDragCancel={handleDragCancel}
           measuring={{
             droppable: {
-              strategy: MeasuringStrategy.BeforeDragging,
+              strategy: MeasuringStrategy.WhileDragging,
             },
           }}
         >
