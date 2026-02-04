@@ -38,25 +38,38 @@ const initialState: ColorThemeProviderState = {
 
 const ColorThemeProviderContext = createContext<ColorThemeProviderState>(initialState)
 
+// Helper to get initial theme - reads from localStorage if available
+function getInitialTheme(storageKey: string, defaultTheme: ColorTheme): ColorTheme {
+  if (typeof window === 'undefined') return defaultTheme
+  try {
+    const stored = localStorage.getItem(storageKey) as ColorTheme | null
+    if (stored && COLOR_THEMES.some(t => t.value === stored)) {
+      return stored
+    }
+  } catch {
+    // localStorage might be unavailable
+  }
+  return defaultTheme
+}
+
 export function ColorThemeProvider({
   children,
   defaultTheme = 'default',
   storageKey = 'color-theme',
   ...props
 }: ColorThemeProviderProps) {
-  const [colorTheme, setColorThemeState] = useState<ColorTheme>(defaultTheme)
+  // Initialize with localStorage value to avoid flash
+  const [colorTheme, setColorThemeState] = useState<ColorTheme>(() =>
+    getInitialTheme(storageKey, defaultTheme)
+  )
   const [mounted, setMounted] = useState(false)
 
-  // Load theme from localStorage on mount
+  // Mark as mounted (for SSR hydration safety)
   useEffect(() => {
-    const stored = localStorage.getItem(storageKey) as ColorTheme | null
-    if (stored && COLOR_THEMES.some(t => t.value === stored)) {
-      setColorThemeState(stored)
-    }
     setMounted(true)
-  }, [storageKey])
+  }, [])
 
-  // Apply theme to document
+  // Apply theme to document when it changes
   useEffect(() => {
     if (!mounted) return
 

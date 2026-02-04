@@ -13,6 +13,7 @@ import {
   useDroppable,
   useSensor,
   useSensors,
+  MeasuringStrategy,
 } from "@dnd-kit/core"
 import {
   SortableContext,
@@ -575,6 +576,11 @@ export function WorkstreamTab({
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
+          measuring={{
+            droppable: {
+              strategy: MeasuringStrategy.BeforeDragging,
+            },
+          }}
         >
           <Accordion
             type="multiple"

@@ -13,7 +13,7 @@ interface ColorThemeSyncerProps {
  * even on new browsers/devices where localStorage is empty.
  */
 export function ColorThemeSyncer({ serverTheme }: ColorThemeSyncerProps) {
-  const { colorTheme, setColorTheme } = useColorTheme()
+  const { setColorTheme } = useColorTheme()
   const hasSynced = useRef(false)
 
   useEffect(() => {
@@ -21,13 +21,12 @@ export function ColorThemeSyncer({ serverTheme }: ColorThemeSyncerProps) {
     if (hasSynced.current) return
     hasSynced.current = true
 
-    // If localStorage has no theme or differs from server, sync from server
+    // Only sync from server if localStorage is empty (new browser/device)
+    // This prevents flash when user has a local theme preference
     const storedTheme = localStorage.getItem("color-theme")
 
-    // Server theme takes precedence if:
-    // 1. No localStorage theme exists (new browser/device)
-    // 2. Server theme is different (user changed on another device)
-    if (!storedTheme || storedTheme !== serverTheme) {
+    if (!storedTheme && serverTheme !== "default") {
+      // New browser/device - apply server theme
       setColorTheme(serverTheme)
     }
   }, [serverTheme, setColorTheme])

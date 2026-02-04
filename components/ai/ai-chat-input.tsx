@@ -138,16 +138,24 @@ export function AIChatInput({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Auto-resize textarea
+  // Auto-resize textarea using requestAnimationFrame to batch DOM reads/writes
+  // This avoids forced synchronous layout (reflow) by deferring measurements
   const adjustTextareaHeight = useCallback(() => {
     const textarea = textareaRef.current
     if (!textarea) return
 
-    // Reset height to get correct scrollHeight
-    textarea.style.height = "44px"
-    const scrollHeight = textarea.scrollHeight
-    const newHeight = Math.min(Math.max(scrollHeight, 44), 200)
-    textarea.style.height = `${newHeight}px`
+    // Use requestAnimationFrame to batch the DOM read and write operations
+    // This prevents forced reflow by allowing the browser to optimize layout
+    requestAnimationFrame(() => {
+      // Reset height first (write)
+      textarea.style.height = "44px"
+      // Read scrollHeight in the next frame to avoid forced reflow
+      requestAnimationFrame(() => {
+        const scrollHeight = textarea.scrollHeight
+        const newHeight = Math.min(Math.max(scrollHeight, 44), 200)
+        textarea.style.height = `${newHeight}px`
+      })
+    })
   }, [])
 
   const handleMessageChange = (e: ChangeEvent<HTMLTextAreaElement>) => {

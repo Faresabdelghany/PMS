@@ -7,6 +7,7 @@ import {
   DndContext,
   type DragEndEvent,
   closestCenter,
+  MeasuringStrategy,
 } from "@dnd-kit/core"
 import {
   SortableContext,
@@ -409,7 +410,15 @@ export function ProjectTasksTab({
       </header>
 
       <div className="space-y-1 px-2 py-3">
-        <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <DndContext
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+          measuring={{
+            droppable: {
+              strategy: MeasuringStrategy.BeforeDragging,
+            },
+          }}
+        >
           <SortableContext items={filteredTasks.map((task) => task.id)} strategy={verticalListSortingStrategy}>
             {filteredTasks.map((task) => (
               <TaskRowDnD

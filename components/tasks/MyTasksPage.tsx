@@ -6,6 +6,7 @@ import {
   DndContext,
   type DragEndEvent,
   closestCenter,
+  MeasuringStrategy,
 } from "@dnd-kit/core"
 import {
   arrayMove,
@@ -624,7 +625,15 @@ export function MyTasksPage({
 
       <div className="flex-1 min-h-0 space-y-4 overflow-y-auto px-4 py-4">
         {viewOptions.viewType === "list" && (
-          <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <DndContext
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+            measuring={{
+              droppable: {
+                strategy: MeasuringStrategy.BeforeDragging,
+              },
+            }}
+          >
             <ProjectTaskListView
               groups={visibleGroups}
               onToggleTask={toggleTask}

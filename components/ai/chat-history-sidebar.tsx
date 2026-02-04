@@ -199,6 +199,7 @@ export function ChatHistorySidebar({
                       <Link
                         key={conversation.id}
                         href={`/chat/${conversation.id}`}
+                        prefetch={false}
                         onClick={handleConversationClick}
                         className={cn(
                           "flex items-start gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors group relative",

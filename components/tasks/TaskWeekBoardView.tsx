@@ -13,6 +13,7 @@ import {
   useSensor,
   useSensors,
   closestCorners,
+  MeasuringStrategy,
 } from "@dnd-kit/core"
 import {
   SortableContext,
@@ -250,6 +251,11 @@ export function TaskWeekBoardView({ tasks, onAddTask, onToggleTask, onChangeTag,
           setActiveTask(map.get(id))
         }}
         onDragEnd={handleDragEnd}
+        measuring={{
+          droppable: {
+            strategy: MeasuringStrategy.BeforeDragging,
+          },
+        }}
       >
         <div className="overflow-x-auto flex-1 min-h-0">
           <div className="flex gap-4 px-4 pb-4 min-w-max">
