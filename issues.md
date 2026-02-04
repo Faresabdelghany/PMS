@@ -1,29 +1,43 @@
 # SonarQube Code Quality Issues
 
 **Scan Date:** February 4, 2026
-**Total Issues:** 80
-**Total Technical Debt:** 2 days 3 hours
+**Last Updated:** February 4, 2026
+**Total Issues:** 69 ~~80~~ (11 fixed)
+**Total Technical Debt:** ~1 day 4 hours ~~2 days 3 hours~~
 
 ## Summary
 
-- **Critical Code Smells:** 73
-- **Major Code Smells:** 2
+- **Critical Code Smells:** 64 ~~73~~ (9 fixed)
+- **Major Code Smells:** 0 ~~2~~ (2 fixed)
 - **Major Bugs:** 1
-- **Total Effort:** 2d 3h
+- **Total Effort:** ~1d 4h ~~2d 3h~~
 
-## Issue Categories
+## ✅ Fixed Issues (11 total)
 
-### Cognitive Complexity (41 issues)
+### Commit 6770b10 - Quick Wins (8 issues)
+- ✅ **Void Operator Usage (6 issues)** - All removed
+- ✅ **DOM API Issues (2 issues)** - Using dataset API
+
+### Commit c83610a - Critical Complexity Refactoring (3 issues)
+- ✅ **lib/actions/execute-ai-action.ts:43** - Complexity 92 → ~10 (handler registry pattern)
+- ✅ **app/api/ai/chat/route.ts:743** - Complexity 67 → ~10 (extracted stream parsers)
+- ✅ **lib/actions/import.ts:102** - Complexity 45 → ~12 (extracted helpers)
+
+---
+
+## Remaining Issue Categories
+
+### Cognitive Complexity (38 issues, was 41)
 Functions that are too complex and need to be broken down or simplified.
 
 ### Function Nesting (27 issues)
 Code nested more than 4 levels deep, making it hard to read and maintain.
 
-### Void Operator Usage (6 issues)
-Unnecessary use of `void` operator that reduces code clarity.
+### ~~Void Operator Usage (6 issues)~~ ✅ FIXED
+~~Unnecessary use of `void` operator that reduces code clarity.~~
 
-### DOM API Issues (2 issues)
-Prefer `.dataset` over direct attribute manipulation.
+### ~~DOM API Issues (2 issues)~~ ✅ FIXED
+~~Prefer `.dataset` over direct attribute manipulation.~~
 
 ### Duplicate Literals in SQL (12 issues)
 String literals duplicated in SQL migration files.
@@ -58,12 +72,12 @@ Function passed directly to `.map()` without proper handling.
 - **Category:** Adaptability, Maintainability
 - **Tag:** brain-overload
 
-#### 4. Very High Cognitive Complexity (Line 743)
-- **Severity:** Critical Code Smell
-- **Effort:** 57min
-- **Issue:** Refactor this function to reduce its Cognitive Complexity from 67 to the 15 allowed
-- **Category:** Adaptability, Maintainability
-- **Tag:** brain-overload
+#### ~~4. Very High Cognitive Complexity (Line 743)~~ ✅ FIXED
+- **Severity:** ~~Critical Code Smell~~ → Resolved
+- **Effort:** ~~57min~~ → Completed
+- **Issue:** ~~Refactor this function to reduce its Cognitive Complexity from 67 to the 15 allowed~~
+- **Resolution:** Extracted provider-specific stream parsers (parseGoogleLine, parseAnthropicLine, parseOpenAILine), created getLineProcessor() for provider selection, and extracted processStreamLine() and processStreamChunk() helpers.
+- **New Complexity:** ~10 (was 67)
 
 ---
 
@@ -356,15 +370,14 @@ Function passed directly to `.map()` without proper handling.
 
 ---
 
-### lib/actions/execute-ai-action.ts (1 issue)
+### ~~lib/actions/execute-ai-action.ts (1 issue)~~ ✅ FIXED
 
-#### 1. Extremely High Cognitive Complexity (Line 43)
-- **Severity:** Critical Code Smell
-- **Effort:** 1h 22min
-- **Issue:** Refactor this function to reduce its Cognitive Complexity from 92 to the 15 allowed
-- **Category:** Adaptability, Maintainability
-- **Tag:** brain-overload
-- **Note:** This is the most complex function in the codebase
+#### ~~1. Extremely High Cognitive Complexity (Line 43)~~ ✅ FIXED
+- **Severity:** ~~Critical Code Smell~~ → Resolved
+- **Effort:** ~~1h 22min~~ → Completed
+- **Issue:** ~~Refactor this function to reduce its Cognitive Complexity from 92 to the 15 allowed~~
+- **Resolution:** Replaced 200+ line switch statement with handler registry pattern. Each action type now has its own handler function. Main executeAction() reduced to ~15 lines.
+- **New Complexity:** ~10 (was 92)
 
 ---
 
@@ -379,7 +392,7 @@ Function passed directly to `.map()` without proper handling.
 
 ---
 
-### lib/actions/import.ts (2 issues)
+### lib/actions/import.ts (2 issues → 1 remaining)
 
 #### 1. High Cognitive Complexity (Line 29)
 - **Severity:** Critical Code Smell
@@ -388,12 +401,12 @@ Function passed directly to `.map()` without proper handling.
 - **Category:** Adaptability, Maintainability
 - **Tag:** brain-overload
 
-#### 2. Very High Cognitive Complexity (Line 102)
-- **Severity:** Critical Code Smell
-- **Effort:** 35min
-- **Issue:** Refactor this function to reduce its Cognitive Complexity from 45 to the 15 allowed
-- **Category:** Adaptability, Maintainability
-- **Tag:** brain-overload
+#### ~~2. Very High Cognitive Complexity (Line 102)~~ ✅ FIXED
+- **Severity:** ~~Critical Code Smell~~ → Resolved
+- **Effort:** ~~35min~~ → Completed
+- **Issue:** ~~Refactor this function to reduce its Cognitive Complexity from 45 to the 15 allowed~~
+- **Resolution:** Extracted mapOptionalFields() for field mapping, processCSVRow() for row processing, and batchInsertTasks() for database operations. Main function now delegates to focused helper functions.
+- **New Complexity:** ~12 (was 45)
 
 ---
 
@@ -557,11 +570,13 @@ Function passed directly to `.map()` without proper handling.
 
 ### 🔴 Critical Priority (Address First)
 
-1. **lib/actions/execute-ai-action.ts:43** - Complexity 92 (1h 22min)
-2. **app/api/ai/chat/route.ts:743** - Complexity 67 (57min)
+1. ~~**lib/actions/execute-ai-action.ts:43** - Complexity 92 (1h 22min)~~ ✅ FIXED
+2. ~~**app/api/ai/chat/route.ts:743** - Complexity 67 (57min)~~ ✅ FIXED
 3. **hooks/use-persisted-ai-chat.ts:314** - Complexity 49 (39min)
 4. **hooks/use-ai-chat.ts:225** - Complexity 46 (36min)
-5. **lib/actions/import.ts:102** - Complexity 45 (35min)
+5. ~~**lib/actions/import.ts:102** - Complexity 45 (35min)~~ ✅ FIXED
+
+**Remaining Critical Issues: 2** (was 5)
 
 ### 🟡 High Priority
 
@@ -571,8 +586,8 @@ Function passed directly to `.map()` without proper handling.
 
 ### 🟢 Medium Priority
 
-- Void operator removals (quick wins, 5min each)
-- DOM API improvements (5min each)
+- ~~Void operator removals (quick wins, 5min each)~~ ✅ FIXED
+- ~~DOM API improvements (5min each)~~ ✅ FIXED
 - Remaining cognitive complexity issues (15-25)
 
 ### 🔵 Low Priority
