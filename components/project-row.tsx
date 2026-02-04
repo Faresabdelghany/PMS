@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { memo, useState } from "react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { TimelineBar } from "@/components/timeline-bar"
 import { CaretDown, CaretRight, Folder, ChartBar } from "@phosphor-icons/react/dist/ssr"
@@ -15,7 +15,7 @@ interface ProjectRowProps {
   cellWidth: number
 }
 
-export function ProjectRow({ project, isExpanded, onToggle, dates, cellWidth }: ProjectRowProps) {
+export const ProjectRow = memo(function ProjectRow({ project, isExpanded, onToggle, dates, cellWidth }: ProjectRowProps) {
   const timelineWidth = dates.length * cellWidth
 
   return (
@@ -60,7 +60,7 @@ export function ProjectRow({ project, isExpanded, onToggle, dates, cellWidth }: 
       </div>
     </div>
   )
-}
+})
 
 interface TaskRowProps {
   task: Project["tasks"][number]
@@ -68,7 +68,7 @@ interface TaskRowProps {
   cellWidth: number
 }
 
-function TaskRow({ task, dates, cellWidth }: TaskRowProps) {
+const TaskRow = memo(function TaskRow({ task, dates, cellWidth }: TaskRowProps) {
   const [checked, setChecked] = useState(task.status === "done")
 
   const getStatusColor = (status: string) => {
@@ -117,4 +117,4 @@ function TaskRow({ task, dates, cellWidth }: TaskRowProps) {
       </div>
     </div>
   )
-}
+})

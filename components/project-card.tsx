@@ -1,7 +1,7 @@
 "use client"
 
+import { memo, useRef } from "react"
 import type { ReactNode } from "react"
-import { useRef } from "react"
 import { format } from "date-fns"
 import type { Project } from "@/lib/data/projects"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -35,7 +35,7 @@ function statusConfig(status: Project["status"]) {
   }
 }
 
-export function ProjectCard({ project, actions, variant = "list" }: ProjectCardProps) {
+export const ProjectCard = memo(function ProjectCard({ project, actions, variant = "list" }: ProjectCardProps) {
   const s = statusConfig(project.status)
   const assignee = project.members?.[0]
   const dueDate = project.endDate
@@ -183,4 +183,4 @@ export function ProjectCard({ project, actions, variant = "list" }: ProjectCardP
       </div>
     </div>
   )
-}
+})
