@@ -211,12 +211,10 @@ export async function deleteNote(noteId: string): Promise<ActionResult> {
   // If there's audio data with storage path, clean up the audio file
   const audioData = note.audio_data as AudioData | null
   if (audioData?.storage_path) {
-    const { error: storageError } = await supabase.storage
+    // Continue with note deletion even if audio cleanup fails
+    await supabase.storage
       .from("project-media")
       .remove([audioData.storage_path])
-
-    // Continue with note deletion even if audio cleanup fails
-    void storageError
   }
 
   // Delete the note

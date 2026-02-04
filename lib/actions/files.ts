@@ -346,12 +346,10 @@ export async function deleteFile(fileId: string): Promise<ActionResult> {
   // If there's a storage path, delete from storage
   if (file.storage_path) {
     const bucket = getBucketForFileType(file.file_type)
-    const { error: storageError } = await supabase.storage
+    // Continue to delete database record even if storage delete fails
+    await supabase.storage
       .from(bucket)
       .remove([file.storage_path])
-
-    // Continue to delete database record even if storage delete fails
-    void storageError
   }
 
   // Delete database record

@@ -89,14 +89,12 @@ export async function createWorkstream(
 
   // If task IDs provided, assign them to this workstream
   if (taskIds && taskIds.length > 0 && data) {
-    const { error: taskError } = await supabase
+    // Don't fail the whole operation if task assignment fails, workstream was created
+    await supabase
       .from("tasks")
       .update({ workstream_id: data.id })
       .in("id", taskIds)
       .eq("project_id", projectId) // Safety: only update tasks in same project
-
-    // Don't fail the whole operation if task assignment fails, workstream was created
-    void taskError
   }
 
   after(async () => {

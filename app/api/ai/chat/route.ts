@@ -50,7 +50,7 @@ async function verifyAIConfigForApiRoute(
     const migratedValue = migrateFromBase64(storedValue)
     if (migratedValue) {
       // Re-encrypt and save with new format (fire and forget)
-      void (supabase as unknown as SupabaseClient)
+      ;(supabase as unknown as SupabaseClient)
         .from("user_settings")
         .update({
           ai_api_key_encrypted: migratedValue,

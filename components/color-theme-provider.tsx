@@ -77,9 +77,9 @@ export function ColorThemeProvider({
 
     // Remove all color theme attributes first
     if (colorTheme === 'default') {
-      root.removeAttribute('data-color-theme')
+      delete root.dataset.colorTheme
     } else {
-      root.setAttribute('data-color-theme', colorTheme)
+      root.dataset.colorTheme = colorTheme
     }
   }, [colorTheme, mounted])
 

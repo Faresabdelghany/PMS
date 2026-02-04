@@ -121,9 +121,8 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
   // If user is created and session exists, auto-create personal workspace
   if (data.user && data.session) {
     // Create personal organization in the background
-    const orgResult = await createPersonalOrganization(data.user.id, fullName || "My")
     // Don't fail signup if org creation fails, user can create org later via onboarding
-    void orgResult.error
+    await createPersonalOrganization(data.user.id, fullName || "My")
 
     revalidatePath("/", "layout")
     redirect("/")
@@ -142,8 +141,7 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
     }
 
     // Create personal organization (errors are non-fatal, user can create org later)
-    const orgResult = await createPersonalOrganization(data.user.id, fullName || "My")
-    void orgResult.error
+    await createPersonalOrganization(data.user.id, fullName || "My")
 
     revalidatePath("/", "layout")
     redirect("/")
