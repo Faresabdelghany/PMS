@@ -6,6 +6,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ColorThemeProvider } from "@/components/color-theme-provider"
+import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration"
 import "./globals.css"
 
 const geist = Geist({
@@ -67,6 +68,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <ColorThemeProvider>
+            <ServiceWorkerRegistration />
             {children}
             <Analytics />
             <SpeedInsights />
