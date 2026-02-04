@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, createContext, useContext, useCallback, useMemo, useEffect, type ReactNode } from "react"
-import { CommandPalette } from "@/components/command-palette"
+import { CommandPaletteLazy } from "@/components/command-palette-lazy"
 import { ProjectWizardLazy } from "@/components/project-wizard/ProjectWizardLazy"
 import { TaskQuickCreateModalLazy } from "@/components/tasks/TaskQuickCreateModalLazy"
 import { useOrganization } from "@/hooks/use-organization"
@@ -67,8 +67,8 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
     <CommandPaletteContext.Provider value={contextValue}>
       {children}
 
-      {/* Command Palette - always rendered, listens for Cmd+K */}
-      <CommandPalette
+      {/* Command Palette - lazy loaded on first Cmd+K press */}
+      <CommandPaletteLazy
         onCreateProject={openCreateProject}
         onCreateTask={openCreateTask}
         onOpenSettings={openSettings}
