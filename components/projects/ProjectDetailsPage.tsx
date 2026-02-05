@@ -3,6 +3,12 @@
 import { useCallback, useMemo, useState, Suspense, startTransition, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
+import {
+  LazyOutcomesList,
+  LazyKeyFeaturesColumns,
+  LazyTimelineGantt,
+  LazyRightMetaPanel,
+} from "@/components/lazy-hydrate"
 import { LinkSimple, SquareHalf } from "@phosphor-icons/react/dist/ssr"
 import { toast } from "sonner"
 import { useProjectRealtime } from "@/hooks/use-realtime"
@@ -17,10 +23,6 @@ import {
 import { Breadcrumbs } from "@/components/projects/Breadcrumbs"
 import { ProjectHeader } from "@/components/projects/ProjectHeader"
 import { ScopeColumns } from "@/components/projects/ScopeColumns"
-import { OutcomesList } from "@/components/projects/OutcomesList"
-import { KeyFeaturesColumns } from "@/components/projects/KeyFeaturesColumns"
-import { TimelineGantt } from "@/components/projects/TimelineGantt"
-import { RightMetaPanel } from "@/components/projects/RightMetaPanel"
 import { WorkstreamTabLazy } from "@/components/projects/WorkstreamTabLazy"
 import { ProjectTasksTabLazy } from "@/components/projects/ProjectTasksTabLazy"
 import { ProjectWizardLazy } from "@/components/project-wizard/ProjectWizardLazy"
@@ -244,9 +246,10 @@ export function ProjectDetailsPage({
                         <p className="text-sm leading-6 text-muted-foreground">{project.description}</p>
                       )}
                       <ScopeColumns scope={project.scope} />
-                      <OutcomesList outcomes={project.outcomes} />
-                      <KeyFeaturesColumns features={project.keyFeatures} />
-                      <TimelineGantt tasks={project.timelineTasks} />
+                      {/* Below-fold sections - lazy hydrated for performance */}
+                      <LazyOutcomesList outcomes={project.outcomes} />
+                      <LazyKeyFeaturesColumns features={project.keyFeatures} />
+                      <LazyTimelineGantt tasks={project.timelineTasks} />
                     </div>
                   </TabsContent>
 
@@ -309,7 +312,8 @@ export function ProjectDetailsPage({
                   showMeta ? "opacity-100" : "opacity-0 pointer-events-none"
                 }`}
               >
-                <RightMetaPanel
+                {/* Side panel - lazy hydrated */}
+                <LazyRightMetaPanel
                   time={project.time}
                   backlog={project.backlog}
                   quickLinks={project.quickLinks}
