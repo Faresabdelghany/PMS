@@ -14,32 +14,35 @@ type PageProps = {
   params: Promise<{ id: string }>
 }
 
+/**
+ * Fetches org-dependent data (clients, members, tags) using the user's active org.
+ * This helper allows org data to be fetched in parallel with project data,
+ * eliminating the waterfall where we'd wait for project to get the org ID.
+ */
+async function fetchOrgData() {
+  const orgId = await getCachedActiveOrganizationId()
+  if (!orgId) {
+    return { clients: { data: null }, members: { data: null }, tags: { data: null }, orgId: null }
+  }
+  const [clients, members, tags] = await Promise.all([
+    getCachedClients(orgId),
+    getCachedOrganizationMembers(orgId),
+    getCachedTags(orgId),
+  ])
+  return { clients, members, tags, orgId }
+}
+
 export default async function Page({ params }: PageProps) {
   const { id } = await params
 
-  // Get user's active organization ID for speculative parallel fetching
-  // This eliminates the waterfall by starting org-dependent queries immediately
-  const speculativeOrgId = await getCachedActiveOrganizationId()
-
   // Start ALL queries in parallel - no waterfall!
-  // Project + Tasks + Workstreams are project-dependent
-  // Clients + Members + Tags are org-dependent (using speculative org ID)
-  // If the project belongs to a different org, the org data will be stale but unused
-  const [
-    projectResult,
-    tasksResult,
-    workstreamsResult,
-    clientsResult,
-    membersResult,
-    tagsResult,
-  ] = await Promise.all([
+  // Project data fetches in parallel with org data (which internally chains: activeOrgId → org queries)
+  // This is faster than: await project → await org data
+  const [projectResult, tasksResult, workstreamsResult, orgData] = await Promise.all([
     getCachedProjectWithDetails(id),
     getCachedTasks(id),
     getCachedWorkstreamsWithTasks(id),
-    // Speculatively fetch org data using the user's primary org
-    speculativeOrgId ? getCachedClients(speculativeOrgId) : Promise.resolve({ data: null }),
-    speculativeOrgId ? getCachedOrganizationMembers(speculativeOrgId) : Promise.resolve({ data: null }),
-    speculativeOrgId ? getCachedTags(speculativeOrgId) : Promise.resolve({ data: null }),
+    fetchOrgData(),
   ])
 
   if (projectResult.error || !projectResult.data) {
@@ -48,26 +51,25 @@ export default async function Page({ params }: PageProps) {
 
   const organizationId = projectResult.data.organization_id
 
-  // If the project belongs to a different org than the speculative one,
-  // fetch the correct org data (rare case for users with multiple orgs)
-  let finalClientsResult = clientsResult
-  let finalMembersResult = membersResult
-  let finalTagsResult = tagsResult
+  // Use speculatively fetched org data if it matches the project's org
+  // Otherwise, fetch the correct org data (rare case for users with multiple orgs)
+  let clientsResult = orgData.clients
+  let membersResult = orgData.members
+  let tagsResult = orgData.tags
 
-  if (speculativeOrgId !== organizationId) {
-    // Fetch org-dependent data for the actual org in parallel
+  if (orgData.orgId !== organizationId) {
     const [correctClients, correctMembers, correctTags] = await Promise.all([
       getCachedClients(organizationId),
       getCachedOrganizationMembers(organizationId),
       getCachedTags(organizationId),
     ])
-    finalClientsResult = correctClients
-    finalMembersResult = correctMembers
-    finalTagsResult = correctTags
+    clientsResult = correctClients
+    membersResult = correctMembers
+    tagsResult = correctTags
   }
 
   // Map clients to the format expected by ProjectWizard
-  const clients = (finalClientsResult.data || []).map((c) => ({
+  const clients = (clientsResult.data || []).map((c) => ({
     id: c.id,
     name: c.name,
   }))
@@ -79,8 +81,8 @@ export default async function Page({ params }: PageProps) {
       tasks={tasksResult.data || []}
       workstreams={workstreamsResult.data || []}
       clients={clients}
-      organizationMembers={finalMembersResult.data || []}
-      organizationTags={finalTagsResult.data || []}
+      organizationMembers={membersResult.data || []}
+      organizationTags={tagsResult.data || []}
     />
   )
 }

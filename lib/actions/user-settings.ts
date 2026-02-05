@@ -7,7 +7,7 @@ import type { AIProvider } from "@/lib/constants/ai"
 import { encrypt, decrypt, isEncryptedFormat, migrateFromBase64 } from "@/lib/crypto"
 import { invalidate } from "@/lib/cache"
 import { CacheTags, revalidateTag } from "@/lib/cache-tags"
-import { requireAuth } from "./auth-helpers"
+import { requireAuth, type TypedSupabaseClient } from "./auth-helpers"
 
 // Note: user_settings table exists in DB but not in generated types
 // Using explicit any for the table queries
@@ -57,7 +57,7 @@ export type ColorThemeType = 'default' | 'forest' | 'ocean' | 'sunset' | 'rose' 
  * @param userId - Optional pre-fetched user ID
  */
 export async function getUserColorTheme(
-  supabase?: Parameters<typeof requireAuth> extends never ? never : Awaited<ReturnType<typeof requireAuth>>["supabase"],
+  supabase?: TypedSupabaseClient,
   userId?: string
 ): Promise<ColorThemeType> {
   try {

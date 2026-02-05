@@ -5,7 +5,7 @@ import type { Database } from "@/lib/supabase/database.types"
 import { cacheGet, CacheKeys, CacheTTL } from "@/lib/cache"
 import { cachedGetUser } from "@/lib/request-cache"
 
-type TypedSupabaseClient = SupabaseClient<Database>
+export type TypedSupabaseClient = SupabaseClient<Database>
 
 export type AuthContext = {
   user: { id: string; email: string }

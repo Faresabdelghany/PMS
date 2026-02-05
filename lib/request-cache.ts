@@ -32,8 +32,8 @@ export const getSupabaseClient = cache(async () => {
 /**
  * Cached auth check - uses getSession() for fast local cookie reads
  *
- * IMPORTANT: This relies on middleware.ts refreshing the auth token.
- * With middleware in place, getSession() is safe and reads from cookies locally
+ * IMPORTANT: This relies on proxy.ts refreshing the auth token.
+ * With the proxy in place, getSession() is safe and reads from cookies locally
  * (~0ms) instead of making a network call to Supabase Auth (~300-500ms).
  *
  * This is critical for performance: layout and pages can both call this
