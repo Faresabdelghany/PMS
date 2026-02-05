@@ -7,7 +7,7 @@ import type { AIProvider } from "@/lib/constants/ai"
 import { encrypt, decrypt, isEncryptedFormat, migrateFromBase64 } from "@/lib/crypto"
 import { invalidate } from "@/lib/cache"
 import { CacheTags, revalidateTag } from "@/lib/cache-tags"
-import { requireAuth } from "./auth-helpers"
+import { requireAuth, type TypedSupabaseClient } from "./auth-helpers"
 
 // Note: user_settings table exists in DB but not in generated types
 // Using explicit any for the table queries
@@ -47,15 +47,35 @@ const notificationSettingsSchema = z.object({
 // Color theme type
 export type ColorThemeType = 'default' | 'forest' | 'ocean' | 'sunset' | 'rose' | 'supabase' | 'chatgpt' | 'midnight' | 'lavender' | 'ember' | 'mint' | 'slate'
 
-// Get user color theme (fast, minimal fetch for initial load)
-export async function getUserColorTheme(): Promise<ColorThemeType> {
+/**
+ * Get user color theme - optimized version that accepts pre-fetched auth context
+ *
+ * When called from the dashboard layout (which already has the supabase client
+ * and user from cachedGetUser), pass them to avoid a duplicate auth check.
+ *
+ * @param supabase - Optional pre-fetched Supabase client
+ * @param userId - Optional pre-fetched user ID
+ */
+export async function getUserColorTheme(
+  supabase?: TypedSupabaseClient,
+  userId?: string
+): Promise<ColorThemeType> {
   try {
-    const { user, supabase } = await requireAuth()
+    // If supabase and userId are provided, use them directly (avoids duplicate auth)
+    // Otherwise, fall back to requireAuth() for standalone usage
+    let client = supabase
+    let uid = userId
 
-    const { data } = await (supabase as any)
+    if (!client || !uid) {
+      const auth = await requireAuth()
+      client = auth.supabase
+      uid = auth.user.id
+    }
+
+    const { data } = await (client as any)
       .from("user_settings")
       .select("color_theme")
-      .eq("user_id", user.id)
+      .eq("user_id", uid)
       .single()
 
     return (data?.color_theme as ColorThemeType) || "default"
