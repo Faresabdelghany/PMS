@@ -106,7 +106,8 @@ export default async function DashboardLayout({
   // We start activeProjects query speculatively and check org access afterward
   const orgsPromise = getOrganizations(supabase, user.id)
   const profilePromise = getUserProfile(supabase, user.id)
-  const colorThemePromise = getUserColorTheme()
+  // Pass supabase and userId to avoid duplicate auth call inside getUserColorTheme
+  const colorThemePromise = getUserColorTheme(supabase, user.id)
 
   // Wait for orgs first to check if user has any (fast due to KV cache)
   const organizations = await orgsPromise

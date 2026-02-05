@@ -148,7 +148,6 @@ const ProjectMenuItem = memo(function ProjectMenuItem({
       <SidebarMenuButton asChild className="h-9 rounded-lg px-3 group">
         <Link
           href={`/projects/${project.id}`}
-          prefetch={false}
           onMouseEnter={preloadProjectDetails}
           onFocus={preloadProjectDetails}
         >
