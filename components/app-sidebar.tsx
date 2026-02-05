@@ -1,9 +1,9 @@
 "use client"
 
-import { memo, useState, useEffect, startTransition } from "react"
+import { memo, useState, useEffect, startTransition, useCallback } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import {
   Sidebar,
   SidebarContent,
@@ -140,16 +140,27 @@ const footerItemIcons: Record<SidebarFooterItemId, React.ComponentType<{ classNa
 // Memoized project item to prevent re-renders when other projects change
 const ProjectMenuItem = memo(function ProjectMenuItem({
   project,
+  onPrefetch,
 }: {
   project: Project
+  onPrefetch: (href: string) => void
 }) {
+  const href = `/projects/${project.id}`
+
+  // Combined handler: preload component code + prefetch RSC payload
+  const handleHover = useCallback(() => {
+    preloadProjectDetails()
+    onPrefetch(href)
+  }, [href, onPrefetch])
+
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild className="h-9 rounded-lg px-3 group">
         <Link
-          href={`/projects/${project.id}`}
-          onMouseEnter={preloadProjectDetails}
-          onFocus={preloadProjectDetails}
+          href={href}
+          prefetch={false}
+          onMouseEnter={handleHover}
+          onFocus={handleHover}
         >
           <ProgressCircle
             progress={project.progress || 0}
@@ -168,10 +179,17 @@ const ProjectMenuItem = memo(function ProjectMenuItem({
 
 export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const { profile, user } = useUser()
   const { open: openCommandPalette } = useCommandPalette()
   const { openSettings } = useSettingsDialog()
   const [unreadCount, setUnreadCount] = useState(0)
+
+  // Hover-based prefetch callback - more bandwidth-efficient than viewport prefetching
+  // Only prefetches when user shows intent by hovering
+  const handlePrefetch = useCallback((href: string) => {
+    router.prefetch(href)
+  }, [router])
 
   // Fetch initial unread count - deferred to not block hydration
   useEffect(() => {
@@ -320,7 +338,7 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
             <SidebarMenu>
               {activeProjects.length > 0 ? (
                 activeProjects.map((project) => (
-                  <ProjectMenuItem key={project.id} project={project} />
+                  <ProjectMenuItem key={project.id} project={project} onPrefetch={handlePrefetch} />
                 ))
               ) : (
                 <SidebarMenuItem>

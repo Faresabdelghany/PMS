@@ -14,6 +14,25 @@ import { NextResponse, type NextRequest } from "next/server"
  * calls in Server Components (they can use the already-refreshed session from cookies).
  */
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  // Public routes that don't require authentication
+  const publicRoutes = ["/login", "/signup", "/auth/callback", "/invite"]
+  const isPublicRoute = publicRoutes.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  )
+
+  // Fast path: Quick cookie check BEFORE expensive getUser() call
+  // If no auth cookies exist and this isn't a public route, redirect immediately
+  // This saves ~300-500ms for unauthenticated users trying to access protected routes
+  const hasAuthCookie = request.cookies.getAll().some((c) => c.name.includes("auth-token"))
+  if (!hasAuthCookie && !isPublicRoute) {
+    const url = request.nextUrl.clone()
+    url.pathname = "/login"
+    url.searchParams.set("redirect", pathname)
+    return NextResponse.redirect(url)
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -48,19 +67,11 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const { pathname } = request.nextUrl
-
-  // Public routes that don't require authentication
-  const publicRoutes = ["/login", "/signup", "/auth/callback", "/invite"]
-  const isPublicRoute = publicRoutes.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`)
-  )
-
-  // Redirect unauthenticated users to login (except for public routes)
+  // Secondary check: Cookie existed but was invalid/expired (getUser returned null)
+  // This handles cases where cookies exist but the session is invalid
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
-    // Preserve the original URL to redirect back after login
     url.searchParams.set("redirect", pathname)
     return NextResponse.redirect(url)
   }
