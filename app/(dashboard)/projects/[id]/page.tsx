@@ -1,63 +1,48 @@
-import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { ProjectDetailsPage } from "@/components/projects/ProjectDetailsPage"
 import {
-  getCachedProjectDetails,
-  getCachedProjectTasks,
-  getCachedProjectWorkstreams,
-  getCachedOrgData,
-} from "@/lib/cached-data"
-import { getCachedActiveOrganizationId } from "@/lib/server-cache"
-import { ProjectDetailsSkeleton } from "@/components/skeletons"
+  getCachedProjectWithDetails,
+  getCachedTasks,
+  getCachedWorkstreamsWithTasks,
+  getCachedClients,
+  getCachedOrganizationMembers,
+  getCachedTags,
+  getCachedActiveOrganizationId,
+} from "@/lib/server-cache"
 
 type PageProps = {
   params: Promise<{ id: string }>
 }
 
 /**
- * Project Details Page
- *
- * Performance optimizations:
- * 1. Cross-request caching via 'use cache' in getCachedProjectDetails etc.
- *    - Project data: 5min stale, 15min revalidate (realtimeBacked profile)
- *    - Org data: 15min stale, 30min revalidate (semiStatic profile)
- *
- * 2. Parallel fetching - all queries start simultaneously:
- *    - Project details (includes scope, outcomes, features, deliverables, metrics, notes, files)
- *    - Tasks for project
- *    - Workstreams with tasks
- *    - Organization data (clients, members, tags) - speculative fetch using primary org
- *
- * 3. Suspense streaming - page shell renders immediately while data loads
- *
- * Cache invalidation:
- * - Project mutations call revalidateTag(CacheTags.project(id))
- * - Task mutations call revalidateTag(CacheTags.tasks(projectId))
- * - Real-time subscriptions push updates after initial cached load
+ * Fetches org-dependent data (clients, members, tags) using the user's active org.
+ * This helper allows org data to be fetched in parallel with project data,
+ * eliminating the waterfall where we'd wait for project to get the org ID.
  */
+async function fetchOrgData() {
+  const orgId = await getCachedActiveOrganizationId()
+  if (!orgId) {
+    return { clients: { data: null }, members: { data: null }, tags: { data: null }, orgId: null }
+  }
+  const [clients, members, tags] = await Promise.all([
+    getCachedClients(orgId),
+    getCachedOrganizationMembers(orgId),
+    getCachedTags(orgId),
+  ])
+  return { clients, members, tags, orgId }
+}
+
 export default async function Page({ params }: PageProps) {
   const { id } = await params
 
-  // Suspense boundary enables streaming - show skeleton while data loads
-  return (
-    <Suspense fallback={<ProjectDetailsSkeleton />}>
-      <ProjectContent projectId={id} />
-    </Suspense>
-  )
-}
-
-/**
- * Async component that fetches and renders project data
- * Separated to enable Suspense boundary at page level
- */
-async function ProjectContent({ projectId }: { projectId: string }) {
   // Start ALL queries in parallel - no waterfall!
-  // Each query uses 'use cache' for cross-request caching with stale-while-revalidate
-  const [projectResult, tasksResult, workstreamsResult, orgId] = await Promise.all([
-    getCachedProjectDetails(projectId),
-    getCachedProjectTasks(projectId),
-    getCachedProjectWorkstreams(projectId),
-    getCachedActiveOrganizationId(),
+  // Project data fetches in parallel with org data (which internally chains: activeOrgId → org queries)
+  // This is faster than: await project → await org data
+  const [projectResult, tasksResult, workstreamsResult, orgData] = await Promise.all([
+    getCachedProjectWithDetails(id),
+    getCachedTasks(id),
+    getCachedWorkstreamsWithTasks(id),
+    fetchOrgData(),
   ])
 
   if (projectResult.error || !projectResult.data) {
@@ -66,39 +51,38 @@ async function ProjectContent({ projectId }: { projectId: string }) {
 
   const organizationId = projectResult.data.organization_id
 
-  // Fetch org data - use speculative orgId if available, otherwise use project's org
-  // This optimizes for the common case (single org) while handling multi-org users
-  const targetOrgId = orgId === organizationId ? orgId : organizationId
-  const orgData = await getCachedOrgData(targetOrgId)
+  // Use speculatively fetched org data if it matches the project's org
+  // Otherwise, fetch the correct org data (rare case for users with multiple orgs)
+  let clientsResult = orgData.clients
+  let membersResult = orgData.members
+  let tagsResult = orgData.tags
 
-  // If we speculatively fetched the wrong org, fetch the correct one
-  // This is rare (only for users with multiple orgs viewing a project from non-primary org)
-  let clientsData = orgData.clients.data
-  let membersData = orgData.members.data
-  let tagsData = orgData.tags.data
-
-  if (orgId && orgId !== organizationId) {
-    const correctOrgData = await getCachedOrgData(organizationId)
-    clientsData = correctOrgData.clients.data
-    membersData = correctOrgData.members.data
-    tagsData = correctOrgData.tags.data
+  if (orgData.orgId !== organizationId) {
+    const [correctClients, correctMembers, correctTags] = await Promise.all([
+      getCachedClients(organizationId),
+      getCachedOrganizationMembers(organizationId),
+      getCachedTags(organizationId),
+    ])
+    clientsResult = correctClients
+    membersResult = correctMembers
+    tagsResult = correctTags
   }
 
   // Map clients to the format expected by ProjectWizard
-  const clients = (clientsData || []).map((c) => ({
+  const clients = (clientsResult.data || []).map((c) => ({
     id: c.id,
     name: c.name,
   }))
 
   return (
     <ProjectDetailsPage
-      projectId={projectId}
+      projectId={id}
       supabaseProject={projectResult.data}
       tasks={tasksResult.data || []}
       workstreams={workstreamsResult.data || []}
       clients={clients}
-      organizationMembers={membersData || []}
-      organizationTags={tagsData || []}
+      organizationMembers={membersResult.data || []}
+      organizationTags={tagsResult.data || []}
     />
   )
 }
