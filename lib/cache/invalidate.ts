@@ -1,5 +1,5 @@
 // lib/cache/invalidate.ts
-import { kv, isKVAvailable } from "./client"
+import { kv, isKVAvailable, memCache } from "./client"
 import { CacheKeys } from "./keys"
 
 /**
@@ -11,9 +11,12 @@ export const invalidate = {
    * Delete a single cache key.
    */
   async key(key: string): Promise<void> {
-    if (!isKVAvailable()) return
     try {
-      await kv.del(key)
+      if (isKVAvailable()) {
+        await kv.del(key)
+      } else {
+        await memCache.del(key)
+      }
     } catch (error) {
       console.error(`[cache] invalidate.key error for ${key}:`, error)
     }
@@ -23,9 +26,13 @@ export const invalidate = {
    * Delete multiple cache keys.
    */
   async keys(keys: string[]): Promise<void> {
-    if (!isKVAvailable() || keys.length === 0) return
+    if (keys.length === 0) return
     try {
-      await kv.del(...keys)
+      if (isKVAvailable()) {
+        await kv.del(...keys)
+      } else {
+        await Promise.all(keys.map((k) => memCache.del(k)))
+      }
     } catch (error) {
       console.error(`[cache] invalidate.keys error:`, error)
     }
@@ -112,9 +119,14 @@ export const invalidate = {
   /**
    * Invalidate search cache for an org (all queries).
    * Uses pattern matching - more expensive, use sparingly.
+   * Note: Pattern matching only works with KV. Memory cache entries expire naturally.
    */
   async search(orgId: string): Promise<void> {
-    if (!isKVAvailable()) return
+    if (!isKVAvailable()) {
+      // Memory cache doesn't support pattern matching
+      // Search entries will expire naturally via TTL
+      return
+    }
     try {
       const pattern = `pms:search:${orgId}:*`
       const keys = await kv.keys(pattern)

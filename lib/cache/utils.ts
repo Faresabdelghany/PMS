@@ -1,23 +1,22 @@
 // lib/cache/utils.ts
-import { kv, isKVAvailable } from "./client"
+import { kv, isKVAvailable, memCache } from "./client"
 
 /**
  * Cache-aside pattern: Try cache first, fallback to fetcher.
  * Non-blocking cache write on miss.
+ *
+ * Uses Vercel KV in production, in-memory cache for local dev.
  */
 export async function cacheGet<T>(
   key: string,
   fetcher: () => Promise<T>,
   ttlSeconds: number
 ): Promise<T> {
-  // Skip cache if KV not available (local dev without KV)
-  if (!isKVAvailable()) {
-    return fetcher()
-  }
+  const cache = isKVAvailable() ? kv : memCache
 
   try {
     // Try cache first
-    const cached = await kv.get<T>(key)
+    const cached = await cache.get<T>(key)
     if (cached !== null) {
       return cached
     }
@@ -31,7 +30,7 @@ export async function cacheGet<T>(
 
   // Write to cache (non-blocking)
   if (fresh !== null && fresh !== undefined) {
-    kv.set(key, fresh, { ex: ttlSeconds }).catch((error) => {
+    cache.set(key, fresh, { ex: ttlSeconds }).catch((error) => {
       console.error(`[cache] SET error for ${key}:`, error)
     })
   }
@@ -48,12 +47,10 @@ export async function cacheInvalidateAndFetch<T>(
   fetcher: () => Promise<T>,
   ttlSeconds: number
 ): Promise<T> {
-  if (!isKVAvailable()) {
-    return fetcher()
-  }
+  const cache = isKVAvailable() ? kv : memCache
 
   try {
-    await kv.del(key)
+    await cache.del(key)
   } catch (error) {
     console.error(`[cache] DEL error for ${key}:`, error)
   }
@@ -62,7 +59,7 @@ export async function cacheInvalidateAndFetch<T>(
 
   if (fresh !== null && fresh !== undefined) {
     try {
-      await kv.set(key, fresh, { ex: ttlSeconds })
+      await cache.set(key, fresh, { ex: ttlSeconds })
     } catch (error) {
       console.error(`[cache] SET error for ${key}:`, error)
     }
