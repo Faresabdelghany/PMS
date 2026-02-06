@@ -19,29 +19,28 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     const supabase = await createClient()
-    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+    // Exchange code for session - the session data contains the user, no need for separate getUser() call
+    const { data: sessionData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
 
-    if (!exchangeError) {
-      // Check if user has an organization
-      const { data: { user } } = await supabase.auth.getUser()
+    if (!exchangeError && sessionData.session) {
+      const user = sessionData.session.user
 
-      if (user) {
-        const { data: membership } = await supabase
-          .from("organization_members")
-          .select("organization_id")
-          .eq("user_id", user.id)
-          .limit(1)
-          .single()
+      // Check if user already has an organization membership
+      const { data: membership } = await supabase
+        .from("organization_members")
+        .select("organization_id")
+        .eq("user_id", user.id)
+        .limit(1)
+        .single()
 
-        // If user has no organization, auto-create a personal workspace
-        if (!membership) {
-          const fullName = user.user_metadata?.full_name || user.email?.split("@")[0] || "My"
-          const orgResult = await createPersonalOrganization(user.id, fullName)
-          if (orgResult.error) {
-            console.error("Failed to create personal organization:", orgResult.error)
-            // Fallback to onboarding if auto-creation fails
-            return NextResponse.redirect(`${origin}/onboarding`)
-          }
+      // If user has no organization, auto-create a personal workspace
+      if (!membership) {
+        const fullName = user.user_metadata?.full_name || user.email?.split("@")[0] || "My"
+        const orgResult = await createPersonalOrganization(user.id, fullName)
+        if (orgResult.error) {
+          console.error("Failed to create personal organization:", orgResult.error)
+          // Fallback to onboarding if auto-creation fails
+          return NextResponse.redirect(`${origin}/onboarding`)
         }
       }
 
@@ -50,8 +49,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Log the exchange error for debugging
-    console.error("Auth code exchange error:", exchangeError.message)
-    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(exchangeError.message)}`)
+    console.error("Auth code exchange error:", exchangeError?.message)
+    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(exchangeError?.message || "Authentication failed")}`)
   }
 
   // No code or error - invalid callback

@@ -162,24 +162,27 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
 
 // Sign in with email and password
 export async function signIn(formData: FormData): Promise<AuthResult> {
-  // Get client IP for rate limiting
-  const headersList = await headers()
-  const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"
-
-  // Check rate limit
-  const limit = await checkRateLimit(rateLimiters.auth, ip)
-  if (!limit.success) {
-    return rateLimitError(limit.reset)
-  }
-
-  // Validate input
+  // Validate input first (sync operation, no await needed)
   const validation = validate(signInSchema, formDataToObject(formData))
   if (!validation.success) {
     return { error: validation.error }
   }
 
+  // Start parallel operations: headers for rate limiting and Supabase client creation
+  const [headersList, supabase] = await Promise.all([
+    headers(),
+    createClient(),
+  ])
+
+  const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"
+
+  // Check rate limit (fast - returns immediately if KV unavailable)
+  const limit = await checkRateLimit(rateLimiters.auth, ip)
+  if (!limit.success) {
+    return rateLimitError(limit.reset)
+  }
+
   const { email, password } = validation.data
-  const supabase = await createClient()
 
   const { error } = await supabase.auth.signInWithPassword({
     email,
@@ -190,15 +193,20 @@ export async function signIn(formData: FormData): Promise<AuthResult> {
     return { error: error.message }
   }
 
-  revalidatePath("/", "layout")
+  // Targeted revalidation - only invalidate auth-related cache, not entire layout
+  // The middleware will refresh the session, so we just need to clear stale data
+  revalidatePath("/")
   redirect("/")
 }
 
 // Sign in with OAuth (Google)
 export async function signInWithGoogle(): Promise<void> {
-  const supabase = await createClient()
+  // Parallelize client creation and headers fetch
+  const [supabase, headersList] = await Promise.all([
+    createClient(),
+    headers(),
+  ])
 
-  const headersList = await headers()
   const origin = headersList.get("origin") || process.env.NEXT_PUBLIC_SITE_URL
 
   const { data, error } = await supabase.auth.signInWithOAuth({
