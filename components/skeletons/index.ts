@@ -55,3 +55,10 @@ export {
   AISettingsSkeleton,
   SettingsPageSkeleton,
 } from "./settings-skeletons"
+
+// Performance skeletons
+export {
+  ChartSkeleton,
+  PerformanceStatCardSkeleton,
+  PerformancePageSkeleton,
+} from "./performance-skeletons"

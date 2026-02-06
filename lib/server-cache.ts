@@ -306,3 +306,15 @@ export const getCachedTaskStats = cache(async (orgId: string) => {
     }).length,
   }
 })
+
+// ============================================
+// PERFORMANCE / ANALYTICS
+// ============================================
+
+/**
+ * Get performance metrics for an organization (request-level cached)
+ */
+export const getCachedPerformanceMetrics = cache(async (orgId: string) => {
+  const { getPerformanceMetrics } = await import("./actions/analytics")
+  return getPerformanceMetrics(orgId)
+})

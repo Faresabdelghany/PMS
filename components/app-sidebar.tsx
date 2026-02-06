@@ -108,7 +108,9 @@ const preloadHandlers: Record<NavItemId, () => void> = {
     }
   },
   performance: () => {
-    // No preload for performance page yet
+    if (typeof window !== "undefined") {
+      void import("@/components/performance/PerformanceDashboard")
+    }
   },
 }
 
@@ -136,6 +138,12 @@ const footerItemIcons: Record<SidebarFooterItemId, React.ComponentType<{ classNa
   templates: Layout,
   help: Question,
 }
+
+// Memoized nav item icon component to avoid IIFE in render
+const NavItemIcon = memo(function NavItemIcon({ id }: { id: NavItemId }) {
+  const Icon = navItemIcons[id]
+  return Icon ? <Icon className="h-[18px] w-[18px]" /> : null
+})
 
 // Memoized project item to prevent re-renders when other projects change
 const ProjectMenuItem = memo(function ProjectMenuItem({
@@ -235,6 +243,7 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
     if (id === "inbox") return "/inbox"
     if (id === "clients") return "/clients"
     if (id === "chat") return "/chat"
+    if (id === "performance") return "/performance"
     return "#"
   }
 
@@ -253,6 +262,9 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
     }
     if (id === "chat") {
       return pathname.startsWith("/chat")
+    }
+    if (id === "performance") {
+      return pathname.startsWith("/performance")
     }
     return false
   }
@@ -311,10 +323,7 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
                         onMouseEnter={preloadHandlers[item.id]}
                         onFocus={preloadHandlers[item.id]}
                       >
-                        {(() => {
-                          const Icon = navItemIcons[item.id]
-                          return Icon ? <Icon className="h-[18px] w-[18px]" /> : null
-                        })()}
+                        <NavItemIcon id={item.id} />
                         <span>{item.label}</span>
                       </Link>
                     </SidebarMenuButton>
