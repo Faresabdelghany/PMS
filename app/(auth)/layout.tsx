@@ -1,6 +1,3 @@
-"use client"
-
-import { useEffect, useState } from "react"
 import Link from "next/link"
 import { FolderKanban } from "lucide-react"
 
@@ -9,12 +6,6 @@ export default function AuthLayout({
 }: {
   children: React.ReactNode
 }) {
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
       {/* Left Panel - Animated Gradient Background */}
@@ -22,16 +13,16 @@ export default function AuthLayout({
         {/* Animated gradient orbs */}
         <div className="absolute inset-0 overflow-hidden">
           <div
-            className={`absolute -top-1/4 -left-1/4 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-violet-600/40 via-indigo-600/30 to-transparent blur-3xl transition-all duration-1000 ${mounted ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}
-            style={{ animation: 'float 8s ease-in-out infinite' } as React.CSSProperties}
+            className="absolute -top-1/4 -left-1/4 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-violet-600/40 via-indigo-600/30 to-transparent blur-3xl animate-in fade-in zoom-in-90 duration-1000"
+            style={{ animation: 'float 8s ease-in-out infinite' }}
           />
           <div
-            className={`absolute top-1/2 -right-1/4 w-[500px] h-[500px] rounded-full bg-gradient-to-bl from-fuchsia-600/30 via-purple-600/20 to-transparent blur-3xl transition-all duration-1000 delay-200 ${mounted ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}
-            style={{ animation: 'float 10s ease-in-out infinite reverse' } as React.CSSProperties}
+            className="absolute top-1/2 -right-1/4 w-[500px] h-[500px] rounded-full bg-gradient-to-bl from-fuchsia-600/30 via-purple-600/20 to-transparent blur-3xl animate-in fade-in zoom-in-90 duration-1000 delay-200"
+            style={{ animation: 'float 10s ease-in-out infinite reverse' }}
           />
           <div
-            className={`absolute -bottom-1/4 left-1/3 w-[400px] h-[400px] rounded-full bg-gradient-to-tr from-blue-600/25 via-cyan-600/15 to-transparent blur-3xl transition-all duration-1000 delay-500 ${mounted ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}
-            style={{ animation: 'float 12s ease-in-out infinite' } as React.CSSProperties}
+            className="absolute -bottom-1/4 left-1/3 w-[400px] h-[400px] rounded-full bg-gradient-to-tr from-blue-600/25 via-cyan-600/15 to-transparent blur-3xl animate-in fade-in zoom-in-90 duration-1000 delay-500"
+            style={{ animation: 'float 12s ease-in-out infinite' }}
           />
         </div>
 
@@ -50,19 +41,19 @@ export default function AuthLayout({
           {[...Array(6)].map((_, i) => (
             <div
               key={i}
-              className={`absolute w-2 h-2 bg-white/10 rounded-full transition-all duration-1000 ${mounted ? 'opacity-100' : 'opacity-0'}`}
+              className="absolute w-2 h-2 bg-white/10 rounded-full"
               style={{
                 left: `${15 + i * 15}%`,
                 top: `${20 + (i % 3) * 25}%`,
                 animation: `float ${6 + i * 2}s ease-in-out infinite`,
                 animationDelay: `${i * 0.5}s`
-              } as React.CSSProperties}
+              }}
             />
           ))}
         </div>
 
         {/* Content */}
-        <div className={`relative z-10 max-w-lg px-12 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+        <div className="relative z-10 max-w-lg px-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
           {/* Logo */}
           <div className="flex items-center gap-3 mb-12">
             <div className="relative">
@@ -95,8 +86,8 @@ export default function AuthLayout({
             ].map((feature, i) => (
               <div
                 key={feature.label}
-                className={`flex items-center gap-4 transition-all duration-500 ${mounted ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'}`}
-                style={{ transitionDelay: `${600 + i * 100}ms` }}
+                className="flex items-center gap-4 animate-in fade-in slide-in-from-left-4 duration-500"
+                style={{ animationDelay: `${600 + i * 100}ms`, animationFillMode: 'backwards' }}
               >
                 <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 flex items-center justify-center">
                   <div className="w-2 h-2 rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-400" />
@@ -111,7 +102,7 @@ export default function AuthLayout({
         </div>
 
         {/* Bottom attribution */}
-        <div className={`absolute bottom-8 left-12 text-sm text-white/30 transition-all duration-700 delay-700 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+        <div className="absolute bottom-8 left-12 text-sm text-white/30 animate-in fade-in duration-700 delay-700">
           Trusted by 10,000+ teams worldwide
         </div>
       </div>
@@ -132,11 +123,10 @@ export default function AuthLayout({
           <span className="text-lg font-semibold tracking-tight">PM Tools</span>
         </Link>
 
-        <div className={`w-full max-w-[420px] transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+        <div className="w-full max-w-[420px] animate-in fade-in slide-in-from-bottom-4 duration-500">
           {children}
         </div>
       </div>
-
     </div>
   )
 }

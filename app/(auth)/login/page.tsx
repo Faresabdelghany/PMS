@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useState, useTransition, useEffect } from "react"
+import { Suspense, useState, useTransition } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useForm } from "react-hook-form"
@@ -40,11 +40,6 @@ function LoginForm() {
   const [isPending, startTransition] = useTransition()
   const [isGooglePending, startGoogleTransition] = useTransition()
   const [formError, setFormError] = useState<string | null>(error)
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -83,7 +78,7 @@ function LoginForm() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className={`space-y-2 transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+      <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500">
         <h1 className="text-3xl font-bold tracking-tight">Welcome back</h1>
         <p className="text-muted-foreground">
           Sign in to your account to continue
@@ -98,7 +93,7 @@ function LoginForm() {
       )}
 
       {/* Google Sign In */}
-      <div className={`transition-all duration-500 delay-100 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+      <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 delay-100">
         <Button
           variant="outline"
           className="w-full h-12 text-base font-medium border-2 hover:bg-accent/50 transition-all duration-200"
@@ -132,7 +127,7 @@ function LoginForm() {
       </div>
 
       {/* Divider */}
-      <div className={`relative transition-all duration-500 delay-150 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+      <div className="relative animate-in fade-in duration-500 delay-150">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t border-border/60" />
         </div>
@@ -150,7 +145,7 @@ function LoginForm() {
             control={form.control}
             name="email"
             render={({ field }) => (
-              <FormItem className={`transition-all duration-500 delay-200 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+              <FormItem className="animate-in fade-in slide-in-from-bottom-2 duration-500 delay-200">
                 <FormLabel className="text-sm font-medium">Email address</FormLabel>
                 <FormControl>
                   <Input
@@ -170,7 +165,7 @@ function LoginForm() {
             control={form.control}
             name="password"
             render={({ field }) => (
-              <FormItem className={`transition-all duration-500 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+              <FormItem className="animate-in fade-in slide-in-from-bottom-2 duration-500 delay-300">
                 <div className="flex items-center justify-between">
                   <FormLabel className="text-sm font-medium">Password</FormLabel>
                   <Link
@@ -193,7 +188,7 @@ function LoginForm() {
             )}
           />
 
-          <div className={`pt-2 transition-all duration-500 delay-400 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+          <div className="pt-2 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-400">
             <Button
               type="submit"
               className="w-full h-12 text-base font-semibold bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all duration-200 group"
@@ -216,7 +211,7 @@ function LoginForm() {
       </Form>
 
       {/* Footer */}
-      <div className={`text-center transition-all duration-500 delay-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+      <div className="text-center animate-in fade-in duration-500 delay-500">
         <p className="text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}
           <Link
@@ -229,7 +224,7 @@ function LoginForm() {
       </div>
 
       {/* Trust badge */}
-      <div className={`flex items-center justify-center gap-2 pt-4 transition-all duration-500 delay-600 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+      <div className="flex items-center justify-center gap-2 pt-4 animate-in fade-in duration-500 delay-600">
         <Sparkles className="h-4 w-4 text-muted-foreground/60" />
         <span className="text-xs text-muted-foreground/60">
           Secured with enterprise-grade encryption

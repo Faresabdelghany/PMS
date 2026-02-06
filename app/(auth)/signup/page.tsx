@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition, useEffect } from "react"
+import { useState, useTransition } from "react"
 import Link from "next/link"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -56,11 +56,9 @@ export default function SignupPage() {
   const [isPending, startTransition] = useTransition()
   const [isGooglePending, startGoogleTransition] = useTransition()
   const [formError, setFormError] = useState<string | null>(null)
-  const [mounted, setMounted] = useState(false)
+  const [passwordValue, setPasswordValue] = useState("")
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const passwordStrength = passwordValue ? getPasswordStrength(passwordValue) : null
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -71,10 +69,6 @@ export default function SignupPage() {
     },
     mode: "onChange",
   })
-
-  // Track password for strength indicator using local state
-  const [passwordValue, setPasswordValue] = useState("")
-  const passwordStrength = passwordValue ? getPasswordStrength(passwordValue) : null
 
   function onSubmit(values: SignupFormValues) {
     setFormError(null)
@@ -105,7 +99,7 @@ export default function SignupPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className={`space-y-2 transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+      <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500">
         <h1 className="text-3xl font-bold tracking-tight">Create your account</h1>
         <p className="text-muted-foreground">
           Start managing projects like a pro
@@ -120,7 +114,7 @@ export default function SignupPage() {
       )}
 
       {/* Google Sign In */}
-      <div className={`transition-all duration-500 delay-100 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+      <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 delay-100">
         <Button
           variant="outline"
           className="w-full h-12 text-base font-medium border-2 hover:bg-accent/50 transition-all duration-200"
@@ -154,7 +148,7 @@ export default function SignupPage() {
       </div>
 
       {/* Divider */}
-      <div className={`relative transition-all duration-500 delay-150 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+      <div className="relative animate-in fade-in duration-500 delay-150">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t border-border/60" />
         </div>
@@ -172,7 +166,7 @@ export default function SignupPage() {
             control={form.control}
             name="fullName"
             render={({ field }) => (
-              <FormItem className={`transition-all duration-500 delay-200 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+              <FormItem className="animate-in fade-in slide-in-from-bottom-2 duration-500 delay-200">
                 <FormLabel className="text-sm font-medium">Full name</FormLabel>
                 <FormControl>
                   <Input
@@ -192,7 +186,7 @@ export default function SignupPage() {
             control={form.control}
             name="email"
             render={({ field }) => (
-              <FormItem className={`transition-all duration-500 delay-250 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+              <FormItem className="animate-in fade-in slide-in-from-bottom-2 duration-500 delay-250">
                 <FormLabel className="text-sm font-medium">Email address</FormLabel>
                 <FormControl>
                   <Input
@@ -212,7 +206,7 @@ export default function SignupPage() {
             control={form.control}
             name="password"
             render={({ field }) => (
-              <FormItem className={`transition-all duration-500 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+              <FormItem className="animate-in fade-in slide-in-from-bottom-2 duration-500 delay-300">
                 <FormLabel className="text-sm font-medium">Password</FormLabel>
                 <FormControl>
                   <PasswordInput
@@ -251,7 +245,7 @@ export default function SignupPage() {
             )}
           />
 
-          <div className={`pt-2 transition-all duration-500 delay-400 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+          <div className="pt-2 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-400">
             <Button
               type="submit"
               className="w-full h-12 text-base font-semibold bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all duration-200 group"
@@ -274,7 +268,7 @@ export default function SignupPage() {
       </Form>
 
       {/* Benefits list */}
-      <div className={`space-y-3 pt-2 transition-all duration-500 delay-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+      <div className="space-y-3 pt-2 animate-in fade-in duration-500 delay-500">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">What you&apos;ll get:</p>
         <div className="grid grid-cols-2 gap-2">
           {[
@@ -292,7 +286,7 @@ export default function SignupPage() {
       </div>
 
       {/* Terms */}
-      <div className={`text-center transition-all duration-500 delay-600 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+      <div className="text-center animate-in fade-in duration-500 delay-600">
         <p className="text-xs text-muted-foreground leading-relaxed">
           By creating an account, you agree to our{" "}
           <Link href="/terms" className="text-primary hover:underline">
@@ -306,7 +300,7 @@ export default function SignupPage() {
       </div>
 
       {/* Footer */}
-      <div className={`text-center transition-all duration-500 delay-700 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+      <div className="text-center animate-in fade-in duration-500 delay-700">
         <p className="text-sm text-muted-foreground">
           Already have an account?{" "}
           <Link
@@ -319,7 +313,7 @@ export default function SignupPage() {
       </div>
 
       {/* Trust badge */}
-      <div className={`flex items-center justify-center gap-2 pt-2 transition-all duration-500 delay-800 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+      <div className="flex items-center justify-center gap-2 pt-2 animate-in fade-in duration-500 delay-800">
         <Sparkles className="h-4 w-4 text-muted-foreground/60" />
         <span className="text-xs text-muted-foreground/60">
           Free 14-day trial, no credit card required
