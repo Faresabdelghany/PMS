@@ -88,6 +88,7 @@ npx supabase status                     # Check local services status
   - `actions/` - Server Actions for data mutations
   - `server-cache.ts` - Request-level caching with React `cache()`
   - `cache-tags.ts` - Cache tag constants for granular revalidation
+  - `cache/` - KV caching layer (Vercel KV/Redis) for cross-request caching
   - `rate-limit/` - Rate limiting with Upstash/Vercel KV
   - `data/` - Type definitions and interfaces
   - `utils.ts` - Utility helpers including `cn()` for class merging
@@ -172,6 +173,15 @@ revalidateTag(CacheTags.projects(orgId))
 revalidateTag(CacheTags.project(projectId))
 ```
 
+**KV Caching (Cross-Request):** Use `lib/cache/` for persistent caching with Vercel KV/Redis:
+```typescript
+import { CacheKeys, CacheTTL, cacheGet } from "@/lib/cache"
+
+// TTL tiers: USER (10min), PROJECTS (2min), TASKS (30sec)
+const projects = await cacheGet(CacheKeys.projects(orgId), fetchProjects, CacheTTL.PROJECTS)
+```
+Gracefully degrades when KV is unavailable (local dev).
+
 **Skeleton Components:** Use `components/skeletons/` for loading states:
 ```typescript
 import { ProjectsListSkeleton, TaskListSkeleton } from "@/components/skeletons"
@@ -208,7 +218,7 @@ export default async function Page({ params }: PageProps) {
 
 **Dashboard Layout Pattern:** All main app pages are under `app/(dashboard)/` route group which:
 - Provides shared layout with sidebar, header, and providers
-- Wraps pages with `UserProvider`, `OrganizationProvider`, `RealtimeProvider`, `CommandPaletteProvider`, and `ColorThemeProvider`
+- Wraps pages with `UserProvider`, `OrganizationProvider`, `RealtimeProvider`, `CommandPaletteProvider`, `ColorThemeProvider`, and `NotificationToastProvider`
 - Fetches active projects for sidebar display
 - Server Components fetch Supabase data and pass to Client Components as props
 
