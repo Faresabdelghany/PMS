@@ -1042,3 +1042,19 @@
   content-visibility: auto;
   contain-intrinsic-size: 0 40px;
 }
+
+/* ============================================
+   AUTH PAGE ANIMATIONS
+   ============================================ */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-20px) rotate(3deg);
+  }
+}
+
+.animate-float {
+  animation: float 8s ease-in-out infinite;
+}

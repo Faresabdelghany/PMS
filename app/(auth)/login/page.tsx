@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useState, useTransition } from "react"
+import { Suspense, useState, useTransition, useEffect } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useForm } from "react-hook-form"
@@ -10,7 +10,6 @@ import { signIn, signInWithGoogle } from "@/lib/actions/auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PasswordInput } from "@/components/ui/password-input"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Form,
   FormControl,
@@ -19,7 +18,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
-import { Loader2 } from "lucide-react"
+import { Loader2, ArrowRight, Sparkles } from "lucide-react"
 
 // Login schema - intentionally loose password validation
 // Password strength is only enforced during signup, not login
@@ -41,6 +40,11 @@ function LoginForm() {
   const [isPending, startTransition] = useTransition()
   const [isGooglePending, startGoogleTransition] = useTransition()
   const [formError, setFormError] = useState<string | null>(error)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -64,7 +68,6 @@ function LoginForm() {
       if (result?.error) {
         setFormError(result.error)
       }
-      // On success, redirect happens server-side, no need to handle here
     })
   }
 
@@ -78,104 +81,34 @@ function LoginForm() {
   const isFormValid = form.formState.isValid
 
   return (
-    <Card>
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold">Sign in</CardTitle>
-        <CardDescription>
-          Enter your email and password to sign in to your account
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {formError && (
-          <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
-            {formError}
-          </div>
-        )}
+    <div className="space-y-8">
+      {/* Header */}
+      <div className={`space-y-2 transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+        <h1 className="text-3xl font-bold tracking-tight">Welcome back</h1>
+        <p className="text-muted-foreground">
+          Sign in to your account to continue
+        </p>
+      </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="email"
-                      placeholder="name@example.com"
-                      autoComplete="email"
-                      disabled={isLoading}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <div className="flex items-center justify-between">
-                    <FormLabel>Password</FormLabel>
-                    <Link
-                      href="/forgot-password"
-                      className="text-sm text-muted-foreground hover:text-primary"
-                    >
-                      Forgot password?
-                    </Link>
-                  </div>
-                  <FormControl>
-                    <PasswordInput
-                      autoComplete="current-password"
-                      disabled={isLoading}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoading || !isFormValid}
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                "Sign in"
-              )}
-            </Button>
-          </form>
-        </Form>
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground">
-              Or continue with
-            </span>
-          </div>
+      {/* Error message */}
+      {formError && (
+        <div className="p-4 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl animate-in fade-in slide-in-from-top-1 duration-200">
+          {formError}
         </div>
+      )}
 
+      {/* Google Sign In */}
+      <div className={`transition-all duration-500 delay-100 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
         <Button
           variant="outline"
-          className="w-full"
+          className="w-full h-12 text-base font-medium border-2 hover:bg-accent/50 transition-all duration-200"
           onClick={handleGoogleSignIn}
           disabled={isLoading}
         >
           {isGooglePending ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
           ) : (
-            <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+            <svg className="mr-3 h-5 w-5" viewBox="0 0 24 24">
               <path
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                 fill="#4285F4"
@@ -196,29 +129,143 @@ function LoginForm() {
           )}
           {isGooglePending ? "Connecting..." : "Continue with Google"}
         </Button>
-      </CardContent>
-      <CardFooter className="flex justify-center">
+      </div>
+
+      {/* Divider */}
+      <div className={`relative transition-all duration-500 delay-150 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t border-border/60" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background px-4 text-muted-foreground font-medium">
+            or continue with email
+          </span>
+        </div>
+      </div>
+
+      {/* Form */}
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem className={`transition-all duration-500 delay-200 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+                <FormLabel className="text-sm font-medium">Email address</FormLabel>
+                <FormControl>
+                  <Input
+                    type="email"
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    disabled={isLoading}
+                    className="h-12 text-base border-2 focus:border-primary/50 transition-colors"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem className={`transition-all duration-500 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+                <div className="flex items-center justify-between">
+                  <FormLabel className="text-sm font-medium">Password</FormLabel>
+                  <Link
+                    href="/forgot-password"
+                    className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
+                <FormControl>
+                  <PasswordInput
+                    autoComplete="current-password"
+                    disabled={isLoading}
+                    className="h-12 text-base border-2 focus:border-primary/50 transition-colors"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className={`pt-2 transition-all duration-500 delay-400 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+            <Button
+              type="submit"
+              className="w-full h-12 text-base font-semibold bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all duration-200 group"
+              disabled={isLoading || !isFormValid}
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                <>
+                  Sign in
+                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </Form>
+
+      {/* Footer */}
+      <div className={`text-center transition-all duration-500 delay-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
         <p className="text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}
-          <Link href="/signup" className="text-primary hover:underline">
-            Sign up
+          <Link
+            href="/signup"
+            className="text-primary hover:text-primary/80 font-semibold transition-colors"
+          >
+            Create account
           </Link>
         </p>
-      </CardFooter>
-    </Card>
+      </div>
+
+      {/* Trust badge */}
+      <div className={`flex items-center justify-center gap-2 pt-4 transition-all duration-500 delay-600 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+        <Sparkles className="h-4 w-4 text-muted-foreground/60" />
+        <span className="text-xs text-muted-foreground/60">
+          Secured with enterprise-grade encryption
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function LoginSkeleton() {
+  return (
+    <div className="space-y-8 animate-pulse">
+      <div className="space-y-2">
+        <div className="h-9 w-48 bg-muted rounded-lg" />
+        <div className="h-5 w-64 bg-muted rounded-lg" />
+      </div>
+      <div className="h-12 w-full bg-muted rounded-xl" />
+      <div className="h-px w-full bg-muted" />
+      <div className="space-y-5">
+        <div className="space-y-2">
+          <div className="h-4 w-24 bg-muted rounded" />
+          <div className="h-12 w-full bg-muted rounded-xl" />
+        </div>
+        <div className="space-y-2">
+          <div className="h-4 w-20 bg-muted rounded" />
+          <div className="h-12 w-full bg-muted rounded-xl" />
+        </div>
+        <div className="h-12 w-full bg-muted rounded-xl" />
+      </div>
+    </div>
   )
 }
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={
-      <Card>
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Sign in</CardTitle>
-          <CardDescription>Loading...</CardDescription>
-        </CardHeader>
-      </Card>
-    }>
+    <Suspense fallback={<LoginSkeleton />}>
       <LoginForm />
     </Suspense>
   )
