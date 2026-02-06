@@ -252,8 +252,9 @@ export function useAIChat(context: ChatContext, callbacks?: ClientSideCallbacks)
       setMessages((prev) => [...prev, assistantMessage])
 
       try {
-        // Build chat messages for API
-        const chatMessages = [...messages, userMessage].map((m) => ({
+        // Build chat messages for API using ref to avoid stale closure
+        // Rule: rerender-functional-setstate - use refs for stable callbacks
+        const chatMessages = [...messagesRef.current, userMessage].map((m) => ({
           role: m.role,
           content: m.content,
         }))
@@ -395,7 +396,7 @@ export function useAIChat(context: ChatContext, callbacks?: ClientSideCallbacks)
         abortControllerRef.current = null
       }
     },
-    [messages] // contextRef is used instead of context to avoid callback recreation
+    [] // Empty deps - uses messagesRef and contextRef to avoid callback recreation
   )
 
   const confirmAction = useCallback(async (messageId: string) => {
@@ -421,8 +422,8 @@ export function useAIChat(context: ChatContext, callbacks?: ClientSideCallbacks)
     // Cast to non-null since we checked above (TypeScript doesn't track closure mutations)
     const actionData = actionToExecute as { type: ProposedAction["type"]; data: Record<string, unknown> }
 
-    // Auto-inject orgId from context for actions that need it
-    const orgId = context.appData?.organization?.id
+    // Auto-inject orgId from context for actions that need it (use ref for stable callback)
+    const orgId = contextRef.current.appData?.organization?.id
     if (orgId && !actionData.data.orgId) {
       const actionsNeedingOrgId = ["create_project", "create_client"]
       if (actionsNeedingOrgId.includes(actionData.type)) {
@@ -466,11 +467,12 @@ export function useAIChat(context: ChatContext, callbacks?: ClientSideCallbacks)
         )
       )
     }
-  }, [context, callbacks]) // context needed for orgId injection, callbacks for client-side actions
+  }, [callbacks]) // contextRef used for orgId injection, callbacks for client-side actions
 
   // Execute all actions sequentially with automatic ID injection
   const confirmAllActions = useCallback(async (messageId: string) => {
-    const orgId = context.appData?.organization?.id
+    // Use ref for stable callback (rerender-functional-setstate pattern)
+    const orgId = contextRef.current.appData?.organization?.id
 
     // Get the message directly from ref (React 18 batching workaround)
     const message = messagesRef.current.find((m) => m.id === messageId)
@@ -631,7 +633,7 @@ export function useAIChat(context: ChatContext, callbacks?: ClientSideCallbacks)
           : m
       )
     )
-  }, [context, callbacks])
+  }, [callbacks]) // contextRef used for orgId injection
 
   const clearChat = useCallback(() => {
     setMessages([])
