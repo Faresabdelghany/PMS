@@ -30,38 +30,45 @@ function generateSlug(name: string): string {
 }
 
 // Auto-create personal organization for new users
+// Uses optimistic insert with retry on slug collision instead of sequential checks
 export async function createPersonalOrganization(userId: string, fullName: string): Promise<{ error?: string }> {
   const adminClient = createAdminClient()
 
   const orgName = `${fullName}'s Workspace`
   const baseSlug = generateSlug(orgName)
   let slug = baseSlug
-  let counter = 1
+  let org: { id: string } | null = null
+  const maxAttempts = 3
 
-  // Check for slug uniqueness
-  while (true) {
-    const { data: existing } = await adminClient
+  // Optimistic insert with retry on unique constraint violation
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const { data, error } = await adminClient
       .from("organizations")
-      .select("id")
-      .eq("slug", slug)
+      .insert({
+        name: orgName,
+        slug,
+      })
+      .select()
       .single()
 
-    if (!existing) break
-    slug = `${baseSlug}-${counter++}`
+    if (!error) {
+      org = data
+      break
+    }
+
+    // 23505 is PostgreSQL unique constraint violation
+    if (error.code === "23505") {
+      // Add random suffix for next attempt
+      slug = `${baseSlug}-${crypto.randomUUID().split("-")[0]}`
+      continue
+    }
+
+    // Other error, bail out
+    return { error: error.message }
   }
 
-  // Create organization
-  const { data: org, error: orgError } = await adminClient
-    .from("organizations")
-    .insert({
-      name: orgName,
-      slug,
-    })
-    .select()
-    .single()
-
-  if (orgError) {
-    return { error: orgError.message }
+  if (!org) {
+    return { error: "Failed to create organization after multiple attempts" }
   }
 
   // Add user as admin
@@ -84,8 +91,18 @@ export async function createPersonalOrganization(userId: string, fullName: strin
 
 // Sign up with email and password
 export async function signUp(formData: FormData): Promise<AuthResult> {
-  // Get client IP for rate limiting
-  const headersList = await headers()
+  // Validate input first (sync operation, no await needed)
+  const validation = validate(signUpSchema, formDataToObject(formData))
+  if (!validation.success) {
+    return { error: validation.error }
+  }
+
+  // Start parallel operations: headers for rate limiting and Supabase client creation
+  const [headersList, supabase] = await Promise.all([
+    headers(),
+    createClient(),
+  ])
+
   const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"
 
   // Check rate limit
@@ -94,14 +111,7 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
     return rateLimitError(limit.reset)
   }
 
-  // Validate input
-  const validation = validate(signUpSchema, formDataToObject(formData))
-  if (!validation.success) {
-    return { error: validation.error }
-  }
-
   const { email, password, fullName } = validation.data
-  const supabase = await createClient()
 
   // Sign up with email confirmation disabled (auto-confirm)
   const { data, error } = await supabase.auth.signUp({

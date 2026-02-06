@@ -1,6 +1,6 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
+import { cachedGetUser } from "@/lib/request-cache"
 import { rateLimiters, checkRateLimit, rateLimitError } from "@/lib/rate-limit/limiter"
 import type { ActionResult } from "../types"
 import type { AIGenerationResult, GenerationOptions, ProjectContext } from "./types"
@@ -27,9 +27,8 @@ export async function generateText(
     return { error: configResult.error }
   }
 
-  // Get user ID for rate limiting
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // Use cached auth - deduplicates with other calls in the same request
+  const { user } = await cachedGetUser()
 
   if (user) {
     // Check daily AI rate limit

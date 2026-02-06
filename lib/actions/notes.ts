@@ -14,6 +14,7 @@ import type {
 import type { ActionResult } from "./types"
 import { requireAuth } from "./auth-helpers"
 import { notifyMentions } from "./notifications"
+import { cachedGetUser } from "@/lib/request-cache"
 
 
 // Extended note type with author info
@@ -118,12 +119,8 @@ export async function updateNote(
     audio_data?: AudioData
   }
 ): Promise<ActionResult<ProjectNote>> {
-  const supabase = await createClient()
-
-  // Get current user for notifications
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Use cached auth - deduplicates with other calls in the same request
+  const { user, supabase } = await cachedGetUser()
 
   // Validate title if provided
   if (data.title !== undefined && !data.title.trim()) {

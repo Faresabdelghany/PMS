@@ -1,13 +1,19 @@
 "use client"
 
 import { useState, useCallback } from "react"
+import dynamic from "next/dynamic"
 import { Sparkle } from "@phosphor-icons/react/dist/ssr"
 import { SidebarMenuButton } from "@/components/ui/sidebar"
 import { AnimatePresence } from "@/components/ui/motion-lazy"
-import { AIChatModal } from "./ai-chat-modal"
 import { AIChatBubble } from "./ai-chat-bubble"
 import { getAIContext } from "@/lib/actions/ai-context"
 import type { ChatContext } from "@/lib/actions/ai-types"
+
+// Lazy load the heavy AI chat modal - only loads when opened (~20KB deferred)
+const AIChatModal = dynamic(
+  () => import("./ai-chat-modal").then((m) => m.AIChatModal),
+  { ssr: false }
+)
 
 type ChatState = "closed" | "open" | "minimized"
 

@@ -7,6 +7,7 @@ import { CacheTags, revalidateTag } from "@/lib/cache-tags"
 import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
 import { requireProjectMember, requireProjectOwnerOrPIC } from "../auth-helpers"
 import { uuidSchema, validate } from "@/lib/validations"
+import { cachedGetUser } from "@/lib/request-cache"
 import type { Project, ProjectUpdate, ProjectStatus, ProjectMemberRole, TaskPriority } from "@/lib/supabase/types"
 import type { ActionResult } from "../types"
 import type { GuidedProjectInput, ProjectFilters, ProjectWithRelations } from "./types"
@@ -31,12 +32,9 @@ export async function createProject(
   }
 
   const validatedData = validation.data
-  const supabase = await createClient()
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
+  // Use cached auth - deduplicates with other calls in the same request
+  const { user, error: authError, supabase } = await cachedGetUser()
 
   if (authError || !user) {
     return { error: "Not authenticated" }
@@ -367,12 +365,8 @@ export async function updateProject(
     return { error: "You must be a project member to update this project" }
   }
 
-  const supabase = await createClient()
-
-  // Get current user for notifications
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Use cached auth - already cached from requireProjectMember() above
+  const { user, supabase } = await cachedGetUser()
 
   // Get old project state for comparison (needed for status change notifications)
   const { data: oldProject } = await supabase

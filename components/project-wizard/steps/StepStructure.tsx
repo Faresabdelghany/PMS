@@ -1,4 +1,5 @@
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { ProjectData, WorkStructure, GeneratedTask } from "../types";
 import { cn } from "@/lib/utils";
 import { Label } from "../../ui/label";
@@ -6,10 +7,21 @@ import { Input } from "../../ui/input";
 import { Button } from "../../ui/button";
 import { ArrowRight, Flag, GitMerge, Plus, X } from "@phosphor-icons/react/dist/ssr";
 import { useAIStatus } from "@/hooks/use-ai-status";
-import { AIGenerateButton } from "@/components/ai/ai-generate-button";
-import { AISetupPrompt } from "@/components/ai/ai-setup-prompt";
-import { AITaskPreview } from "@/components/ai/ai-task-preview";
 import { generateWorkstreams, generateTasks, type ProjectContext } from "@/lib/actions/ai";
+
+// Lazy load AI components - only loads when AI is configured (~15KB deferred)
+const AIGenerateButton = dynamic(
+  () => import("@/components/ai/ai-generate-button").then((m) => m.AIGenerateButton),
+  { ssr: false }
+);
+const AISetupPrompt = dynamic(
+  () => import("@/components/ai/ai-setup-prompt").then((m) => m.AISetupPrompt),
+  { ssr: false }
+);
+const AITaskPreview = dynamic(
+  () => import("@/components/ai/ai-task-preview").then((m) => m.AITaskPreview),
+  { ssr: false }
+);
 
 // Simple Toggle component
 function SimpleToggle({ checked, onCheckedChange }: { checked: boolean; onCheckedChange: (c: boolean) => void }) {

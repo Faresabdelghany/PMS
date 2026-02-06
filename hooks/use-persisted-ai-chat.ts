@@ -286,6 +286,10 @@ export function usePersistedAIChat({
   // Ref to access current messages synchronously
   const messagesRef = useRef<Message[]>(messages)
 
+  // Ref to access latest context without causing callback recreation
+  const contextRef = useRef<ChatContext>(context)
+  contextRef.current = context
+
   // AbortController for stopping generation
   const abortControllerRef = useRef<AbortController | null>(null)
 
@@ -375,8 +379,9 @@ export function usePersistedAIChat({
           content: m.content,
         }))
 
+        // Use ref to avoid stale closure
         const contextWithAttachments: ChatContext = {
-          ...context,
+          ...contextRef.current,
           attachments: attachments?.map((a) => ({
             name: a.name,
             content: a.extractedText || "",
@@ -542,7 +547,7 @@ export function usePersistedAIChat({
         abortControllerRef.current = null
       }
     },
-    [organizationId, context, conversationId]
+    [organizationId, conversationId] // contextRef is used instead of context to avoid callback recreation
   )
 
   // -------------------------------------------------------------------------
@@ -553,7 +558,8 @@ export function usePersistedAIChat({
       const message = messagesRef.current.find((m) => m.id === messageId)
       if (!message?.action || message.action.status !== "pending") return
 
-      const orgId = context.appData?.organization?.id
+      // Use ref to avoid stale closure
+      const orgId = contextRef.current.appData?.organization?.id
 
       // Mark as executing
       setMessages((prev) =>
@@ -618,7 +624,7 @@ export function usePersistedAIChat({
         )
       }
     },
-    [context, clientSideCallbacks]
+    [clientSideCallbacks] // contextRef is used instead of context to avoid callback recreation
   )
 
   // -------------------------------------------------------------------------
@@ -629,7 +635,8 @@ export function usePersistedAIChat({
       const message = messagesRef.current.find((m) => m.id === messageId)
       if (!message?.multiAction || message.multiAction.isExecuting) return
 
-      const orgId = context.appData?.organization?.id
+      // Use ref to avoid stale closure
+      const orgId = contextRef.current.appData?.organization?.id
 
       // Mark as executing
       setMessages((prev) =>
@@ -787,7 +794,7 @@ export function usePersistedAIChat({
         )
       }
     },
-    [context, clientSideCallbacks]
+    [clientSideCallbacks] // contextRef is used instead of context to avoid callback recreation
   )
 
   // -------------------------------------------------------------------------

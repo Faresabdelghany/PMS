@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import { CacheTags, revalidateTag } from "@/lib/cache-tags"
 import { requireProjectOwnerOrPIC } from "../auth-helpers"
+import { cachedGetUser } from "@/lib/request-cache"
 import type { ProjectMember, ProjectMemberRole } from "@/lib/supabase/types"
 import type { ActionResult } from "../types"
 import { notify } from "../notifications"
@@ -22,12 +23,8 @@ export async function addProjectMember(
     return { error: "Owner or PIC access required to add project members" }
   }
 
-  const supabase = await createClient()
-
-  // Get current user for notifications
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Use cached auth - already cached from requireProjectOwnerOrPIC() above
+  const { user, supabase } = await cachedGetUser()
 
   // Get project info for notification
   const { data: project } = await supabase
@@ -120,12 +117,8 @@ export async function removeProjectMember(
     return { error: "Owner or PIC access required to remove project members" }
   }
 
-  const supabase = await createClient()
-
-  // Get current user for notifications
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Use cached auth - already cached from requireProjectOwnerOrPIC() above
+  const { user, supabase } = await cachedGetUser()
 
   // Get project info for notification
   const { data: project } = await supabase

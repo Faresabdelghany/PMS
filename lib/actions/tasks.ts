@@ -7,6 +7,7 @@ import { z } from "zod"
 import { CacheTags, revalidateTag } from "@/lib/cache-tags"
 import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
 import { uuidSchema, validate } from "@/lib/validations"
+import { cachedGetUser } from "@/lib/request-cache"
 import {
   TASK_STATUSES,
   TASK_PRIORITIES,
@@ -88,12 +89,9 @@ export async function createTask(
   }
 
   const validatedData = validation.data
-  const supabase = await createClient()
 
-  // Get current user for notification actor
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Use cached auth - deduplicates with other calls in the same request
+  const { user, supabase } = await cachedGetUser()
 
   // Build sort_order query based on workstream
   const sortOrderQuery = validatedData.workstream_id
@@ -218,12 +216,8 @@ export async function getMyTasks(
   orgId: string,
   filters?: Omit<TaskFilters, "assigneeId">
 ): Promise<ActionResult<TaskWithRelations[]>> {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
+  // Use cached auth - deduplicates with other calls in the same request
+  const { user, error: authError, supabase } = await cachedGetUser()
 
   if (authError || !user) {
     return { error: "Not authenticated" }
@@ -322,12 +316,8 @@ export async function updateTask(
   id: string,
   data: TaskUpdate
 ): Promise<ActionResult<Task>> {
-  const supabase = await createClient()
-
-  // Get current user for notification actor
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Use cached auth - deduplicates with other calls in the same request
+  const { user, supabase } = await cachedGetUser()
 
   // Get old task state for comparison (needed for notifications)
   const { data: oldTask } = await supabase
@@ -347,16 +337,9 @@ export async function updateTask(
     return { error: error.message }
   }
 
-  // Get orgId from project for cache invalidation
-  let orgId = ""
-  if (task.project_id) {
-    const { data: project } = await supabase
-      .from("projects")
-      .select("organization_id")
-      .eq("id", task.project_id)
-      .single()
-    orgId = project?.organization_id ?? ""
-  }
+  // Get orgId from the already-fetched oldTask (includes project with organization_id)
+  // This avoids an extra sequential query after the update
+  const orgId = (oldTask?.project as { organization_id?: string } | null)?.organization_id ?? ""
 
   // Track activities for changed fields
   if (oldTask) {

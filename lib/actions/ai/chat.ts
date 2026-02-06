@@ -1,6 +1,6 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
+import { cachedGetUser } from "@/lib/request-cache"
 import { rateLimiters, checkRateLimit, rateLimitError } from "@/lib/rate-limit/limiter"
 import { buildChatSystemPrompt } from "../ai-helpers"
 import type { ActionResult } from "../types"
@@ -28,8 +28,8 @@ export async function sendChatMessage(
     return { error: configResult.error }
   }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // Use cached auth - deduplicates with other calls in the same request
+  const { user } = await cachedGetUser()
 
   if (user) {
     const dailyLimit = await checkRateLimit(rateLimiters.ai, user.id)

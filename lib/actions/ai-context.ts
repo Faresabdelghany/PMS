@@ -3,7 +3,7 @@
 import { requireAuth } from "./auth-helpers"
 import { getProjects } from "./projects"
 import { getClients } from "./clients"
-import { getOrganizationMembers, getOrganization } from "./organizations"
+import { getOrganizationMembers, getOrganization, getUserOrganizations } from "./organizations"
 import { getTeams } from "./teams"
 import { getInboxItems } from "./inbox"
 import { getMyTasks } from "./tasks"
@@ -88,20 +88,20 @@ function calculateWorkloadInsights(
  */
 export async function getAIContext(): Promise<ActionResult<ChatContext>> {
   try {
-    const { user, supabase } = await requireAuth()
+    // Fetch auth and org in parallel - getUserOrganizations is cached, so if layout
+    // already called it, this is a cache hit (~0ms instead of ~100ms waterfall)
+    const [authResult, orgsResult] = await Promise.all([
+      requireAuth(),
+      getUserOrganizations(),
+    ])
 
-    // Get user's organization
-    const { data: orgMembership } = await supabase
-      .from("organization_members")
-      .select("organization_id")
-      .eq("user_id", user.id)
-      .single()
+    const { user } = authResult
 
-    if (!orgMembership) {
+    if (orgsResult.error || !orgsResult.data?.length) {
       return { error: "No organization found" }
     }
 
-    const organizationId = orgMembership.organization_id
+    const organizationId = orgsResult.data[0].id
 
     // Fetch all data in parallel
     const [

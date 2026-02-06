@@ -205,6 +205,10 @@ export function useAIChat(context: ChatContext, callbacks?: ClientSideCallbacks)
   const messagesRef = useRef<Message[]>([])
   messagesRef.current = messages
 
+  // Ref to access latest context without causing callback recreation
+  const contextRef = useRef<ChatContext>(context)
+  contextRef.current = context
+
   // AbortController for stopping generation
   const abortControllerRef = useRef<AbortController | null>(null)
 
@@ -254,9 +258,9 @@ export function useAIChat(context: ChatContext, callbacks?: ClientSideCallbacks)
           content: m.content,
         }))
 
-        // Add attachments to context if provided
+        // Add attachments to context if provided (use ref to avoid stale closure)
         const contextWithAttachments: ChatContext = {
-          ...context,
+          ...contextRef.current,
           attachments: attachments?.map((a) => ({
             name: a.name,
             content: a.extractedText || "",
@@ -391,7 +395,7 @@ export function useAIChat(context: ChatContext, callbacks?: ClientSideCallbacks)
         abortControllerRef.current = null
       }
     },
-    [context, messages]
+    [messages] // contextRef is used instead of context to avoid callback recreation
   )
 
   const confirmAction = useCallback(async (messageId: string) => {

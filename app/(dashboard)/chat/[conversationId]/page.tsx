@@ -10,27 +10,26 @@ type PageProps = {
 }
 
 async function ChatContent({ conversationId }: { conversationId: string }) {
-  // Use cached auth - shared with layout (no duplicate DB hit)
-  const { user, error: authError } = await cachedGetUser()
+  // Fetch auth, orgs, conversation, and messages in parallel
+  // All cached functions dedupe with layout, and conversation/messages are independent
+  const [userResult, orgsResult, conversationResult, messagesResult] = await Promise.all([
+    cachedGetUser(),
+    cachedGetUserOrganizations(),
+    getConversation(conversationId),
+    getConversationMessages(conversationId),
+  ])
+
+  const { user, error: authError } = userResult
 
   if (authError || !user) {
     redirect("/login")
   }
-
-  // Use cached orgs - shared with layout (no duplicate DB hit)
-  const orgsResult = await cachedGetUserOrganizations()
 
   if (orgsResult.error || !orgsResult.data?.length) {
     redirect("/onboarding")
   }
 
   const orgId = orgsResult.data[0].id
-
-  // Fetch conversation and messages in parallel
-  const [conversationResult, messagesResult] = await Promise.all([
-    getConversation(conversationId),
-    getConversationMessages(conversationId),
-  ])
 
   // If conversation not found, redirect to new chat
   if (conversationResult.error || !conversationResult.data) {
