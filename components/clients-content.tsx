@@ -4,7 +4,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -206,6 +206,7 @@ const ClientTableRow = memo(function ClientTableRow({
               variant="ghost"
               size="icon-sm"
               className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
+              aria-label={`Actions for ${client.name}`}
             >
               <DotsThreeVertical className="h-4 w-4" weight="regular" />
             </Button>
@@ -423,6 +424,12 @@ export function ClientsContent({ initialClients = [], organizationId }: ClientsC
                   </TabsTrigger>
                 ))}
               </TabsList>
+              {/* Hidden TabsContent elements for aria-controls accessibility */}
+              <TabsContent value="all" forceMount className="hidden" />
+              <TabsContent value="active" forceMount className="hidden" />
+              <TabsContent value="prospect" forceMount className="hidden" />
+              <TabsContent value="on_hold" forceMount className="hidden" />
+              <TabsContent value="archived" forceMount className="hidden" />
             </Tabs>
           </div>
 
@@ -542,6 +549,7 @@ export function ClientsContent({ initialClients = [], organizationId }: ClientsC
                       className="h-7 w-7"
                       onClick={() => goToPage(currentPage - 1)}
                       disabled={currentPage === 1}
+                      aria-label="Previous page"
                     >
                       ‹
                     </Button>
@@ -554,6 +562,7 @@ export function ClientsContent({ initialClients = [], organizationId }: ClientsC
                       className="h-7 w-7"
                       onClick={() => goToPage(currentPage + 1)}
                       disabled={currentPage === totalPages}
+                      aria-label="Next page"
                     >
                       ›
                     </Button>
@@ -573,6 +582,7 @@ export function ClientsContent({ initialClients = [], organizationId }: ClientsC
                         className="h-7 w-7"
                         onClick={() => goToPage(1)}
                         disabled={currentPage === 1}
+                        aria-label="First page"
                       >
                         «
                       </Button>
@@ -582,6 +592,7 @@ export function ClientsContent({ initialClients = [], organizationId }: ClientsC
                         className="h-7 w-7"
                         onClick={() => goToPage(currentPage - 1)}
                         disabled={currentPage === 1}
+                        aria-label="Previous page"
                       >
                         ‹
                       </Button>
@@ -608,6 +619,7 @@ export function ClientsContent({ initialClients = [], organizationId }: ClientsC
                         className="h-7 w-7"
                         onClick={() => goToPage(currentPage + 1)}
                         disabled={currentPage === totalPages}
+                        aria-label="Next page"
                       >
                         ›
                       </Button>
@@ -617,14 +629,17 @@ export function ClientsContent({ initialClients = [], organizationId }: ClientsC
                         className="h-7 w-7"
                         onClick={() => goToPage(totalPages)}
                         disabled={currentPage === totalPages}
+                        aria-label="Last page"
                       >
                         »
                       </Button>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <span>Rows per page</span>
+                      <label htmlFor="clients-page-size" className="sr-only">Rows per page</label>
+                      <span aria-hidden="true">Rows per page</span>
                       <select
+                        id="clients-page-size"
                         className="h-7 rounded-md border border-border bg-background px-2 text-xs"
                         value={pageSize}
                         onChange={(e) => {

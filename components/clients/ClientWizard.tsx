@@ -114,6 +114,7 @@ export function ClientWizard({ mode, initialClient, organizationId, onClose, onS
             size="icon"
             className="h-8 w-8 rounded-full"
             onClick={onClose}
+            aria-label="Close dialog"
           >
             <X className="h-4 w-4" />
           </Button>

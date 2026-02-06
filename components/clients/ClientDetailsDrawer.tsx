@@ -113,6 +113,7 @@ export function ClientDetailsDrawer({ clientId, onClose }: ClientDetailsDrawerPr
                 size="icon-sm"
                 className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
                 onClick={onClose}
+                aria-label="Close client details"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -227,6 +228,7 @@ export function ClientDetailsDrawer({ clientId, onClose }: ClientDetailsDrawerPr
                 size="icon-sm"
                 className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
                 onClick={onClose}
+                aria-label="Close client details"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -272,6 +274,7 @@ export function ClientDetailsDrawer({ clientId, onClose }: ClientDetailsDrawerPr
               <div className="relative flex-1">
                 <button
                   type="button"
+                  aria-label="View previous projects"
                   className="absolute left-0 top-1/2 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground hover:shadow disabled:opacity-40 disabled:pointer-events-none disabled:bg-background cursor-pointer z-10"
                   disabled={!canPrev}
                   onClick={() => {
@@ -311,6 +314,7 @@ export function ClientDetailsDrawer({ clientId, onClose }: ClientDetailsDrawerPr
                 </div>
                 <button
                   type="button"
+                  aria-label="View next projects"
                   className="absolute right-0 top-1/2 flex h-8 w-8 translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground hover:shadow disabled:opacity-40 disabled:pointer-events-none disabled:bg-background cursor-pointer z-10"
                   disabled={!canNext}
                   onClick={() => {
