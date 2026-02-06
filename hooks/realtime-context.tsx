@@ -12,6 +12,7 @@ import {
 import { createClient } from "@/lib/supabase/client"
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from "@supabase/supabase-js"
 import type { Database } from "@/lib/supabase/types"
+import { useDocumentVisibility } from "./use-document-visibility"
 
 type TableName = keyof Database["public"]["Tables"]
 type TableRow<T extends TableName> = Database["public"]["Tables"][T]["Row"]
@@ -45,28 +46,6 @@ type RealtimeContextValue = {
 }
 
 const RealtimeContext = createContext<RealtimeContextValue | null>(null)
-
-/**
- * Hook to track document visibility state
- */
-function useDocumentVisibility(): boolean {
-  const [isVisible, setIsVisible] = useState(() =>
-    typeof document !== "undefined" ? document.visibilityState === "visible" : true
-  )
-
-  useEffect(() => {
-    if (typeof document === "undefined") return
-
-    const handleVisibilityChange = () => {
-      setIsVisible(document.visibilityState === "visible")
-    }
-
-    document.addEventListener("visibilitychange", handleVisibilityChange)
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange)
-  }, [])
-
-  return isVisible
-}
 
 /**
  * Provider that manages pooled real-time subscriptions

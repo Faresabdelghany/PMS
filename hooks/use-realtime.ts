@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useCallback, useRef, useState } from "react"
+import { useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import type {
@@ -9,6 +9,7 @@ import type {
   RealtimePostgresChangesFilter,
 } from "@supabase/supabase-js"
 import type { Database } from "@/lib/supabase/types"
+import { useDocumentVisibility } from "./use-document-visibility"
 
 type TableName = keyof Database["public"]["Tables"]
 type TableRow<T extends TableName> = Database["public"]["Tables"][T]["Row"]
@@ -31,29 +32,6 @@ export type UseRealtimeOptions<T extends TableName> = {
   enabled?: boolean
   /** Pause subscription when tab is hidden (default: true) */
   pauseWhenHidden?: boolean
-}
-
-/**
- * Hook to track document visibility state
- * Used to pause realtime subscriptions when tab is hidden
- */
-function useDocumentVisibility(): boolean {
-  const [isVisible, setIsVisible] = useState(() =>
-    typeof document !== "undefined" ? document.visibilityState === "visible" : true
-  )
-
-  useEffect(() => {
-    if (typeof document === "undefined") return
-
-    const handleVisibilityChange = () => {
-      setIsVisible(document.visibilityState === "visible")
-    }
-
-    document.addEventListener("visibilitychange", handleVisibilityChange)
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange)
-  }, [])
-
-  return isVisible
 }
 
 /**

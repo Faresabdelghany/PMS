@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
 
 export type ColorTheme = 'default' | 'forest' | 'ocean' | 'sunset' | 'rose' | 'supabase' | 'chatgpt' | 'midnight' | 'lavender' | 'ember' | 'mint' | 'slate'
 
@@ -88,10 +88,11 @@ export function ColorThemeProvider({
     setColorThemeState(theme)
   }, [storageKey])
 
-  const value = {
+  // Memoize value to prevent consumer re-renders
+  const value = useMemo(() => ({
     colorTheme,
     setColorTheme,
-  }
+  }), [colorTheme, setColorTheme])
 
   return (
     <ColorThemeProviderContext.Provider {...props} value={value}>

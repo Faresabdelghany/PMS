@@ -31,14 +31,17 @@ type CommandPaletteProps = {
   onOpenSettings?: () => void
 }
 
+// Hoisted empty results object to prevent re-renders
+const EMPTY_RESULTS: {
+  projects: SearchResult[]
+  tasks: SearchResult[]
+  clients: SearchResult[]
+} = { projects: [], tasks: [], clients: [] }
+
 export function CommandPalette({ onCreateProject, onCreateTask, onOpenSettings }: CommandPaletteProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
-  const [results, setResults] = useState<{
-    projects: SearchResult[]
-    tasks: SearchResult[]
-    clients: SearchResult[]
-  }>({ projects: [], tasks: [], clients: [] })
+  const [results, setResults] = useState(EMPTY_RESULTS)
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
   const { organization } = useOrganization()
@@ -59,7 +62,7 @@ export function CommandPalette({ onCreateProject, onCreateTask, onOpenSettings }
   // Search when query changes
   useEffect(() => {
     if (!query || query.length < 2 || !organization) {
-      setResults({ projects: [], tasks: [], clients: [] })
+      setResults(EMPTY_RESULTS)
       return
     }
 
