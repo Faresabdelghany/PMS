@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { ProjectData, WorkStructure, GeneratedTask } from "../types";
 import { cn } from "@/lib/utils";
@@ -107,7 +107,9 @@ export function StepStructure({ data, updateData }: StepStructureProps) {
     }
   ];
 
-  const handleGenerateWorkstreams = async () => {
+  // Memoized callbacks to prevent unnecessary re-renders
+  // Rule: rerender-functional-setstate - use stable callbacks
+  const handleGenerateWorkstreams = useCallback(async () => {
     setIsGeneratingWorkstreams(true);
     try {
       const context: ProjectContext = {
@@ -131,9 +133,9 @@ export function StepStructure({ data, updateData }: StepStructureProps) {
     } finally {
       setIsGeneratingWorkstreams(false);
     }
-  };
+  }, [data.name, data.description, updateData]);
 
-  const handleGenerateTasks = async () => {
+  const handleGenerateTasks = useCallback(async () => {
     setIsGeneratingTasks(true);
     setShowTaskToggle(true);
     try {
@@ -166,9 +168,9 @@ export function StepStructure({ data, updateData }: StepStructureProps) {
     } finally {
       setIsGeneratingTasks(false);
     }
-  };
+  }, [data.name, data.description, data.workstreams, updateData]);
 
-  const handleAISetupComplete = (action: "workstreams" | "tasks") => {
+  const handleAISetupComplete = useCallback((action: "workstreams" | "tasks") => {
     refetchAIStatus();
     setTimeout(() => {
       if (action === "workstreams") {
@@ -177,17 +179,17 @@ export function StepStructure({ data, updateData }: StepStructureProps) {
         handleGenerateTasks();
       }
     }, 100);
-  };
+  }, [refetchAIStatus, handleGenerateWorkstreams, handleGenerateTasks]);
 
-  const addWorkstream = () => {
+  const addWorkstream = useCallback(() => {
     if (!newWorkstream.trim()) return;
     updateData({ workstreams: [...data.workstreams, newWorkstream.trim()] });
     setNewWorkstream("");
-  };
+  }, [newWorkstream, data.workstreams, updateData]);
 
-  const removeWorkstream = (ws: string) => {
+  const removeWorkstream = useCallback((ws: string) => {
     updateData({ workstreams: data.workstreams.filter((w) => w !== ws) });
-  };
+  }, [data.workstreams, updateData]);
 
   return (
     <div className="flex flex-col space-y-6">

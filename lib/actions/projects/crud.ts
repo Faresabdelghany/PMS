@@ -181,45 +181,49 @@ export async function createProject(
       throw firstError.error
     }
 
-    // Create workstreams if provided
+    // Create workstreams if provided (batched insert for better performance)
+    // Rule: async-parallel - batch multiple inserts into single query
+    let workstreamMap: Record<string, string> = {}
     if (workstreams && workstreams.length > 0) {
-      for (let i = 0; i < workstreams.length; i++) {
-        await supabase.from("workstreams").insert({
-          project_id: project.id,
-          name: workstreams[i],
-          sort_order: i,
-        })
+      const { data: createdWorkstreams, error: wsError } = await supabase
+        .from("workstreams")
+        .insert(
+          workstreams.map((name, i) => ({
+            project_id: project.id,
+            name,
+            sort_order: i,
+          }))
+        )
+        .select("id, name")
+
+      if (wsError) {
+        throw new Error(`Failed to create workstreams: ${wsError.message}`)
+      }
+
+      // Build workstream name->id map for task assignment
+      if (createdWorkstreams) {
+        workstreamMap = Object.fromEntries(
+          createdWorkstreams.map((ws) => [ws.name, ws.id])
+        )
       }
     }
 
-    // Create starter tasks if provided
+    // Create starter tasks if provided (batched insert for better performance)
     if (starter_tasks && starter_tasks.length > 0) {
-      // Get workstream IDs if we created any
-      let workstreamMap: Record<string, string> = {}
-      if (workstreams && workstreams.length > 0) {
-        const { data: workstreamsData } = await supabase
-          .from("workstreams")
-          .select("id, name")
-          .eq("project_id", project.id)
-
-        if (workstreamsData) {
-          workstreamMap = Object.fromEntries(
-            workstreamsData.map((ws) => [ws.name, ws.id])
-          )
-        }
-      }
-
-      for (let i = 0; i < starter_tasks.length; i++) {
-        const task = starter_tasks[i]
-        await supabase.from("tasks").insert({
+      const { error: tasksError } = await supabase.from("tasks").insert(
+        starter_tasks.map((task, i) => ({
           project_id: project.id,
           name: task.title,
           description: task.description || null,
           priority: task.priority as TaskPriority,
-          status: "todo",
+          status: "todo" as const,
           sort_order: i,
           workstream_id: task.workstream ? workstreamMap[task.workstream] || null : null,
-        })
+        }))
+      )
+
+      if (tasksError) {
+        throw new Error(`Failed to create starter tasks: ${tasksError.message}`)
       }
     }
   } catch (relatedError) {
