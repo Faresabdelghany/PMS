@@ -33,7 +33,16 @@ import {
   CaretUpDown,
   SignOut,
   Sparkle,
+  User,
 } from "@phosphor-icons/react/dist/ssr"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { useUser } from "@/hooks/use-user"
 import { signOut } from "@/lib/actions/auth"
 import { getUnreadCount } from "@/lib/actions/inbox"
@@ -395,30 +404,56 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
           })}
         </SidebarMenu>
 
-        <div className="mt-2 flex items-center gap-3 rounded-lg p-2 hover:bg-accent cursor-pointer">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={getOptimizedAvatarUrl(profile?.avatar_url, 64) || "/avatar-profile.jpg"} alt={profile?.full_name || "User avatar"} />
-            <AvatarFallback>
-              {profile?.full_name
-                ? profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
-                : user?.email?.slice(0, 2).toUpperCase() || "U"}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex flex-1 flex-col">
-            <span className="text-sm font-medium">
-              {profile?.full_name || user?.email?.split("@")[0] || "User"}
-            </span>
-          </div>
-          <button
-            onClick={async () => {
-              await signOut()
-            }}
-            className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-            title="Sign out"
-          >
-            <SignOut className="h-4 w-4" />
-          </button>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="mt-2 flex w-full items-center gap-3 rounded-lg p-2 hover:bg-accent cursor-pointer text-left transition-colors">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={getOptimizedAvatarUrl(profile?.avatar_url, 64) || "/avatar-profile.jpg"} alt={profile?.full_name || "User avatar"} />
+                <AvatarFallback>
+                  {profile?.full_name
+                    ? profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+                    : user?.email?.slice(0, 2).toUpperCase() || "U"}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-1 flex-col min-w-0">
+                <span className="text-sm font-medium truncate">
+                  {profile?.full_name || user?.email?.split("@")[0] || "User"}
+                </span>
+                <span className="text-xs text-muted-foreground truncate">
+                  {user?.email || ""}
+                </span>
+              </div>
+              <CaretUpDown className="h-4 w-4 text-muted-foreground shrink-0" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" side="top" className="w-56">
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">
+                  {profile?.full_name || "User"}
+                </p>
+                <p className="text-xs leading-none text-muted-foreground">
+                  {user?.email || ""}
+                </p>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => openSettings()}>
+              <User className="h-4 w-4" />
+              Profile Settings
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={async () => {
+                await signOut()
+              }}
+              className="text-destructive focus:text-destructive focus:bg-destructive/10"
+            >
+              <SignOut className="h-4 w-4" />
+              Log out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </SidebarFooter>
     </Sidebar>
   )
