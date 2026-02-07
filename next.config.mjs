@@ -74,6 +74,13 @@ const nextConfig = {
       'date-fns',
       '@radix-ui/react-icons',
       'react-day-picker',
+      'recharts',
+      '@dnd-kit/core',
+      '@dnd-kit/sortable',
+      '@dnd-kit/utilities',
+      '@tiptap/react',
+      '@tiptap/starter-kit',
+      'motion/react',
     ],
   },
 }

@@ -1,12 +1,21 @@
 "use client"
 
 import { useEffect, useState, useRef, useMemo, useCallback } from "react"
+import dynamic from "next/dynamic"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { ProjectHeader } from "@/components/project-header"
-import { ProjectTimeline } from "@/components/project-timeline"
 import { ProjectCardsView } from "@/components/project-cards-view"
-import { ProjectBoardView } from "@/components/project-board-view"
 import { ProjectWizardLazy } from "@/components/project-wizard/ProjectWizardLazy"
+
+// Lazy-load heavy view components that are conditionally rendered
+const ProjectTimeline = dynamic(
+  () => import("@/components/project-timeline").then(m => ({ default: m.ProjectTimeline })),
+  { ssr: false }
+)
+const ProjectBoardView = dynamic(
+  () => import("@/components/project-board-view").then(m => ({ default: m.ProjectBoardView })),
+  { ssr: false }
+)
 import { computeFilterCounts, type Project as MockProject } from "@/lib/data/projects"
 import { DEFAULT_VIEW_OPTIONS, type FilterChip, type ViewOptions } from "@/lib/view-options"
 import { chipsToParams, paramsToChips } from "@/lib/url/filters"
@@ -74,47 +83,28 @@ export function ProjectsContent({
     }
   }, [organizationId])
 
-  // Real-time updates for projects
-  // No filter - listen to all projects and filter client-side
-  // This is because Supabase realtime filters may have issues with non-JWT columns
+  // Real-time updates for projects (server-side filtered by organization)
   usePooledRealtime({
     table: "projects",
-    filter: undefined,
+    filter: organizationId ? `organization_id=eq.${organizationId}` : undefined,
     enabled: !!organizationId,
     onInsert: (project: ProjectRow) => {
-      console.log("[Projects Realtime] INSERT received:", project)
-      console.log("[Projects Realtime] organizationId:", organizationId, "project.organization_id:", project.organization_id)
-
-      // Client-side filter by organization since we're not using server-side filter
-      if (project.organization_id !== organizationId) {
-        console.log("[Projects Realtime] Skipping - org mismatch")
-        return
-      }
-
       setSupabaseProjects(prev => {
-        // Avoid duplicates
-        if (prev.some(p => p.id === project.id)) {
-          console.log("[Projects Realtime] Skipping - duplicate")
-          return prev
-        }
-        // Add new project with empty relations (will be hydrated on next fetch if needed)
+        if (prev.some(p => p.id === project.id)) return prev
         const newProject: ProjectWithRelations = {
           ...project,
           members: [],
           client: null,
         }
-        console.log("[Projects Realtime] Adding new project to state")
         return [newProject, ...prev]
       })
     },
     onUpdate: (project: ProjectRow) => {
-      console.log("[Projects Realtime] UPDATE received:", project)
       setSupabaseProjects(prev =>
         prev.map(p => p.id === project.id ? { ...p, ...project } : p)
       )
     },
     onDelete: (project: ProjectRow) => {
-      console.log("[Projects Realtime] DELETE received:", project)
       setSupabaseProjects(prev => prev.filter(p => p.id !== project.id))
     },
   })

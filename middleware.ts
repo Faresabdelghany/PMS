@@ -23,9 +23,9 @@ export async function middleware(request: NextRequest) {
   )
 
   // Fast path: Quick cookie check BEFORE expensive getUser() call
-  // If no auth cookies exist and this isn't a public route, redirect immediately
-  // This saves ~300-500ms for unauthenticated users trying to access protected routes
   const hasAuthCookie = request.cookies.getAll().some((c) => c.name.includes("auth-token"))
+
+  // No auth cookie + protected route → redirect immediately (saves ~300-500ms)
   if (!hasAuthCookie && !isPublicRoute) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
@@ -33,6 +33,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // No auth cookie + public route → skip getUser() entirely (saves ~300-500ms)
+  // Nothing to refresh when there's no session
+  if (!hasAuthCookie && isPublicRoute) {
+    return NextResponse.next({ request })
+  }
+
+  // Auth cookie exists → refresh the token via getUser()
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -67,8 +74,7 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Secondary check: Cookie existed but was invalid/expired (getUser returned null)
-  // This handles cases where cookies exist but the session is invalid
+  // Cookie existed but was invalid/expired → redirect to login
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"

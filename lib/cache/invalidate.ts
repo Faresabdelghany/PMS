@@ -139,9 +139,14 @@ export const invalidate = {
   },
 
   /**
-   * Invalidate all caches that include profile/avatar data.
+   * Invalidate caches that include profile/avatar data.
    * Called when a user updates their profile (avatar, name, etc.)
-   * This invalidates caches in all organizations the user belongs to.
+   *
+   * Only invalidates caches that actually contain profile data:
+   * - orgMembers (renders member names/avatars)
+   * - sidebar (shows user info)
+   * Projects and clients caches don't embed profile data, so skipping them
+   * avoids unnecessary cache misses and re-fetches.
    */
   async profile(userId: string, orgIds: string[]): Promise<void> {
     const keys: string[] = [CacheKeys.user(userId)]
@@ -149,10 +154,7 @@ export const invalidate = {
     for (const orgId of orgIds) {
       keys.push(
         CacheKeys.orgMembers(orgId),
-        CacheKeys.userTasks(userId, orgId),
-        CacheKeys.sidebar(orgId),
-        CacheKeys.projects(orgId),
-        CacheKeys.clients(orgId)
+        CacheKeys.sidebar(orgId)
       )
     }
 

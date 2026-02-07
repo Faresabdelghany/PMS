@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import { cookies } from "next/headers"
 import { CacheTags, revalidateTag } from "@/lib/cache-tags"
+import { cacheGet, CacheKeys, CacheTTL } from "@/lib/cache"
 import { requireAuth, requireOrgMember } from "./auth-helpers"
 import type { Organization, OrganizationInsert, OrganizationUpdate, OrgMemberRole } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
@@ -197,23 +198,33 @@ export async function deleteOrganization(id: string): Promise<ActionResult> {
   redirect("/")
 }
 
-// Get organization members
+// Get organization members (with KV caching)
 export async function getOrganizationMembers(orgId: string) {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
-    .from("organization_members")
-    .select(`
-      *,
-      profile:profiles(*)
-    `)
-    .eq("organization_id", orgId)
+  try {
+    const members = await cacheGet(
+      CacheKeys.orgMembers(orgId),
+      async () => {
+        const { data, error } = await supabase
+          .from("organization_members")
+          .select(`
+            *,
+            profile:profiles(id, full_name, email, avatar_url)
+          `)
+          .eq("organization_id", orgId)
 
-  if (error) {
-    return { error: error.message }
+        if (error) throw error
+        return data ?? []
+      },
+      CacheTTL.MEMBERSHIP
+    )
+    return { data: members }
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Failed to fetch members",
+    }
   }
-
-  return { data }
 }
 
 // Update member role

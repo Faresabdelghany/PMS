@@ -52,7 +52,13 @@ import { FilterPopover, type MemberOption, type TagOption } from "@/components/f
 import { ChipOverflow } from "@/components/chip-overflow"
 import { TaskRowBase } from "@/components/tasks/TaskRowBase"
 import { TaskQuickCreateModal, type TaskData } from "@/components/tasks/TaskQuickCreateModal"
-import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel"
+import dynamic from "next/dynamic"
+
+// Lazy-load task detail panel - defers Tiptap/comment editor until a task is opened
+const TaskDetailPanel = dynamic(
+  () => import("@/components/tasks/TaskDetailPanel").then(m => ({ default: m.TaskDetailPanel })),
+  { ssr: false }
+)
 import type { OrganizationTag, TaskPriority as TaskPriorityType, Workstream } from "@/lib/supabase/types"
 import { formatDueLabel } from "@/lib/date-utils"
 import { cn } from "@/lib/utils"
@@ -474,7 +480,7 @@ export function ProjectTasksTab({
       <TaskDetailPanel
         projectId={projectId}
         organizationId={organizationId}
-        organizationMembers={organizationMembers as Parameters<typeof TaskDetailPanel>[0]["organizationMembers"]}
+        organizationMembers={organizationMembers as any}
         workstreams={workstreams.map((w) => ({ id: w.id, name: w.name }) as Workstream)}
         tags={organizationTags}
       />

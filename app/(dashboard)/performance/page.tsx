@@ -1,10 +1,16 @@
 import { Suspense } from "react"
+import dynamic from "next/dynamic"
 import { redirect } from "next/navigation"
 import { Breadcrumbs } from "@/components/projects/Breadcrumbs"
-import { PerformanceDashboard } from "@/components/performance"
 import { PerformancePageSkeleton } from "@/components/skeletons/performance-skeletons"
 import { cachedGetUserOrganizations } from "@/lib/request-cache"
 import { getCachedPerformanceMetrics } from "@/lib/server-cache"
+
+// Lazy-load recharts-heavy dashboard component
+const PerformanceDashboard = dynamic(
+  () => import("@/components/performance").then(m => ({ default: m.PerformanceDashboard })),
+  { loading: () => <PerformancePageSkeleton /> }
+)
 
 async function PerformanceContent({ orgId }: { orgId: string }) {
   const result = await getCachedPerformanceMetrics(orgId)
