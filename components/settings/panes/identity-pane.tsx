@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator"
 import { SettingsPaneHeader, SettingSection, SettingRow } from "../setting-primitives"
 import { useOrganization } from "@/hooks/use-organization"
 import { updateOrganization } from "@/lib/actions/organizations"
+import { UI_TOAST_TIMEOUT } from "@/lib/constants"
 
 const identityCards = [
   {
@@ -58,7 +59,7 @@ export function IdentityPane() {
     } else {
       setSuccess("Organization updated successfully")
       await refreshOrganizations()
-      setTimeout(() => setSuccess(null), 3000)
+      setTimeout(() => setSuccess(null), UI_TOAST_TIMEOUT)
     }
 
     setIsSaving(false)

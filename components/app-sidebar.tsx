@@ -50,6 +50,7 @@ import { useInboxRealtime } from "@/hooks/use-realtime"
 import type { Project } from "@/lib/supabase/types"
 import { useCommandPalette } from "@/components/command-palette"
 import { useSettingsDialog } from "@/components/providers/settings-dialog-provider"
+import { PROGRESS_THRESHOLDS, BADGE_CAP } from "@/lib/constants"
 
 // Navigation items defined inline (no mock data dependency)
 type NavItemId = "inbox" | "my-tasks" | "projects" | "clients" | "chat" | "performance"
@@ -83,9 +84,9 @@ const footerItems: FooterItem[] = [
 
 // Color palette for projects based on progress
 const getProjectColor = (progress: number): string => {
-  if (progress >= 75) return "var(--chart-1)" // green-ish for near completion
-  if (progress >= 50) return "var(--chart-3)" // yellow-ish for mid-progress
-  if (progress >= 25) return "var(--chart-5)" // blue-ish for early progress
+  if (progress >= PROGRESS_THRESHOLDS.high) return "var(--chart-1)" // green-ish for near completion
+  if (progress >= PROGRESS_THRESHOLDS.medium) return "var(--chart-3)" // yellow-ish for mid-progress
+  if (progress >= PROGRESS_THRESHOLDS.low) return "var(--chart-5)" // blue-ish for early progress
   return "var(--chart-2)" // red-ish for just started
 }
 
@@ -338,7 +339,7 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
                     </SidebarMenuButton>
                     {item.id === "inbox" && unreadCount > 0 && (
                       <SidebarMenuBadge className="bg-muted text-muted-foreground rounded-full px-2">
-                        {unreadCount > 99 ? "99+" : unreadCount}
+                        {unreadCount > BADGE_CAP ? `${BADGE_CAP}+` : unreadCount}
                       </SidebarMenuBadge>
                     )}
                   </SidebarMenuItem>

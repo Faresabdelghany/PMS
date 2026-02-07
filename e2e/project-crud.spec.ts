@@ -1,4 +1,6 @@
 import { test, expect, projectTestData, generateUniqueProjectName } from './fixtures';
+import type { ProjectsPage } from './pages/ProjectsPage';
+import type { ProjectWizardPage } from './pages/ProjectWizardPage';
 
 /**
  * Project CRUD Tests
@@ -11,8 +13,8 @@ test.describe('Project CRUD Operations', () => {
 
   // Helper to create a test project
   async function createTestProject(
-    projectsPage: any,
-    projectWizardPage: any,
+    projectsPage: ProjectsPage,
+    projectWizardPage: ProjectWizardPage,
     name?: string
   ): Promise<string> {
     const projectName = name || generateUniqueProjectName();

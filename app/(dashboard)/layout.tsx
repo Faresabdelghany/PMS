@@ -15,6 +15,7 @@ import { ColorThemeSyncer } from "@/components/color-theme-syncer"
 import { getUserColorTheme } from "@/lib/actions/user-settings"
 import type { OrganizationWithRole } from "@/hooks/use-organization"
 import type { Profile, Project } from "@/lib/supabase/types"
+import { SIDEBAR_PROJECT_LIMIT } from "@/lib/constants"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/supabase/database.types"
 
@@ -63,7 +64,7 @@ async function getActiveProjects(
         .eq("organization_id", organizationId)
         .eq("status", "active")
         .order("updated_at", { ascending: false })
-        .limit(7)
+        .limit(SIDEBAR_PROJECT_LIMIT)
 
       return data || []
     },

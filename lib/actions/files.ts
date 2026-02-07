@@ -9,6 +9,7 @@ import type {
 } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 import { requireAuth } from "./auth-helpers"
+import { getStoragePublicUrl, removeStorageFile } from "@/lib/supabase/storage-utils"
 
 
 // Extended file type with uploader info
@@ -187,11 +188,11 @@ export async function uploadFile(
     }
 
     // Get public URL for the file
-    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(storagePath)
+    const publicUrl = getStoragePublicUrl(supabase, bucket, storagePath)
 
     // For private buckets, create a signed URL instead
-    let fileUrl = urlData.publicUrl
-    if (!urlData.publicUrl || bucket !== "avatars") {
+    let fileUrl = publicUrl || ""
+    if (!publicUrl || bucket !== "avatars") {
       const { data: signedData } = await supabase.storage
         .from(bucket)
         .createSignedUrl(storagePath, 60 * 60 * 24 * 365) // 1 year
@@ -221,7 +222,7 @@ export async function uploadFile(
 
     if (dbError) {
       // If database insert fails, try to clean up the storage file
-      await supabase.storage.from(bucket).remove([storagePath])
+      await removeStorageFile(supabase, bucket, [storagePath])
       return { error: `Failed to save file record: ${dbError.message}` }
     }
 
@@ -347,9 +348,7 @@ export async function deleteFile(fileId: string): Promise<ActionResult> {
   if (file.storage_path) {
     const bucket = getBucketForFileType(file.file_type)
     // Continue to delete database record even if storage delete fails
-    await supabase.storage
-      .from(bucket)
-      .remove([file.storage_path])
+    await removeStorageFile(supabase, bucket, [file.storage_path])
   }
 
   // Delete database record

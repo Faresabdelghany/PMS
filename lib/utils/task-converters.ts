@@ -1,4 +1,5 @@
 import { format, differenceInDays, isPast, isToday } from "date-fns"
+import { URGENCY_DAYS_CRITICAL, URGENCY_DAYS_WARNING } from "@/lib/constants"
 import type { TaskWithRelations } from "@/lib/actions/tasks"
 import type { Workstream } from "@/lib/supabase/types"
 import type {
@@ -114,10 +115,10 @@ function computeDueInfo(endDate: string | null): {
   } else if (isPast(due)) {
     dueLabel = `Overdue (${format(due, "MMM d")})`
     dueTone = "danger"
-  } else if (daysUntil <= 3) {
+  } else if (daysUntil <= URGENCY_DAYS_CRITICAL) {
     dueLabel = `Due ${format(due, "EEE")}`
     dueTone = "warning"
-  } else if (daysUntil <= 7) {
+  } else if (daysUntil <= URGENCY_DAYS_WARNING) {
     dueLabel = `Due ${format(due, "MMM d")}`
     dueTone = "muted"
   } else {

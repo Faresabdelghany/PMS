@@ -150,24 +150,24 @@ export async function acceptInvitation(token: string): Promise<ActionResult> {
       return { error: "This invitation has expired" }
     }
 
-    // Check if user email matches invitation email
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("email, full_name")
-      .eq("id", user.id)
-      .single()
+    // Fetch profile and check membership in parallel (independent queries)
+    const [{ data: profile }, { data: existingMember }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("email, full_name")
+        .eq("id", user.id)
+        .single(),
+      supabase
+        .from("organization_members")
+        .select("id")
+        .eq("organization_id", invitation.organization_id)
+        .eq("user_id", user.id)
+        .single(),
+    ])
 
     if (profile?.email.toLowerCase() !== invitation.email.toLowerCase()) {
       return { error: "This invitation was sent to a different email address" }
     }
-
-    // Check if already a member
-    const { data: existingMember } = await supabase
-      .from("organization_members")
-      .select("id")
-      .eq("organization_id", invitation.organization_id)
-      .eq("user_id", user.id)
-      .single()
 
     if (existingMember) {
       // Update invitation status and return success

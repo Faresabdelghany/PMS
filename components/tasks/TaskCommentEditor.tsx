@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/popover"
 import { TaskReactions } from "./TaskReactions"
 import { cn } from "@/lib/utils"
-import type { Profile, OrganizationMember } from "@/lib/supabase/types"
+import type { TaskPanelMember } from "./TaskDetailPanel"
 import dynamic from "next/dynamic"
 
 const ProjectDescriptionEditor = dynamic(
@@ -22,7 +22,7 @@ const ProjectDescriptionEditor = dynamic(
 interface TaskCommentEditorProps {
   onSubmit: (content: string, attachments?: string[]) => Promise<void>
   isSubmitting?: boolean
-  organizationMembers?: (OrganizationMember & { profile: Profile })[]
+  organizationMembers?: TaskPanelMember[]
   taskId: string
   placeholder?: string
 }

@@ -30,6 +30,7 @@ import {
 } from "@/lib/actions/user-settings"
 import { AI_MODELS, AI_PROVIDERS, type AIProvider } from "@/lib/constants/ai"
 import { testAIConnection } from "@/lib/actions/ai"
+import { UI_TOAST_TIMEOUT } from "@/lib/constants"
 
 export function AgentsPane() {
   const [isLoading, setIsLoading] = useState(true)
@@ -126,7 +127,7 @@ export function AgentsPane() {
       }
 
       setSuccess("Settings saved successfully")
-      setTimeout(() => setSuccess(null), 3000)
+      setTimeout(() => setSuccess(null), UI_TOAST_TIMEOUT)
     } catch {
       setError("Failed to save settings")
     }
@@ -147,7 +148,7 @@ export function AgentsPane() {
     } else {
       setMaskedKey(null)
       setSuccess("API key deleted")
-      setTimeout(() => setSuccess(null), 3000)
+      setTimeout(() => setSuccess(null), UI_TOAST_TIMEOUT)
     }
 
     setIsSaving(false)

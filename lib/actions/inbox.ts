@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 import type { InboxItem, InboxItemInsert, InboxItemWithRelations, InboxItemType } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 import { requireAuth } from "./auth-helpers"
+import { INBOX_PAGE_SIZE } from "@/lib/constants"
 
 export type InboxFilters = {
   isRead?: boolean
@@ -38,7 +39,7 @@ export async function getInboxItems(
       query = query.eq("item_type", filters.itemType)
     }
 
-    const { data, error } = await query.limit(50)
+    const { data, error } = await query.limit(INBOX_PAGE_SIZE)
 
     if (error) {
       return { error: error.message }

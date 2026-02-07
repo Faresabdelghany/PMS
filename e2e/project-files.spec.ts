@@ -1,4 +1,7 @@
 import { test, expect, generateUniqueProjectName } from './fixtures';
+import type { ProjectsPage } from './pages/ProjectsPage';
+import type { ProjectWizardPage } from './pages/ProjectWizardPage';
+import type { ProjectDetailsPage } from './pages/ProjectDetailsPage';
 
 /**
  * Project Files Tests
@@ -10,9 +13,9 @@ test.describe('Project Files Tab', () => {
 
   // Helper to create a test project and navigate to it
   async function createAndOpenProject(
-    projectsPage: any,
-    projectWizardPage: any,
-    projectDetailsPage: any
+    projectsPage: ProjectsPage,
+    projectWizardPage: ProjectWizardPage,
+    projectDetailsPage: ProjectDetailsPage
   ): Promise<string> {
     const projectName = generateUniqueProjectName();
     await projectsPage.goTo();

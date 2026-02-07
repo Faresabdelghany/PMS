@@ -10,6 +10,7 @@ import { Loader2, Camera, Trash2 } from "lucide-react"
 import { useUser } from "@/hooks/use-user"
 import { createClient } from "@/lib/supabase/client"
 import { uploadAvatar, deleteAvatar } from "@/lib/actions/user-settings"
+import { UI_TOAST_TIMEOUT, UI_EMAIL_CONFIRM_TIMEOUT, MAX_AVATAR_SIZE } from "@/lib/constants"
 
 export function ProfileSettings() {
   const { user, profile, isLoading, refreshProfile } = useUser()
@@ -61,7 +62,7 @@ export function ProfileSettings() {
         if (refreshProfile) {
           await refreshProfile()
         }
-        setTimeout(() => setSuccess(null), 3000)
+        setTimeout(() => setSuccess(null), UI_TOAST_TIMEOUT)
       }
     } catch {
       setError("Failed to update profile")
@@ -81,7 +82,7 @@ export function ProfileSettings() {
     }
 
     // Validate file size (5MB)
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > MAX_AVATAR_SIZE) {
       setError("Image must be less than 5MB")
       return
     }
@@ -112,7 +113,7 @@ export function ProfileSettings() {
       if (refreshProfile) {
         await refreshProfile()
       }
-      setTimeout(() => setSuccess(null), 3000)
+      setTimeout(() => setSuccess(null), UI_TOAST_TIMEOUT)
     }
 
     setIsUploadingAvatar(false)
@@ -139,7 +140,7 @@ export function ProfileSettings() {
       if (refreshProfile) {
         await refreshProfile()
       }
-      setTimeout(() => setSuccess(null), 3000)
+      setTimeout(() => setSuccess(null), UI_TOAST_TIMEOUT)
     }
 
     setIsUploadingAvatar(false)
@@ -164,7 +165,7 @@ export function ProfileSettings() {
       } else {
         setSuccess("Confirmation email sent to your new address. Please check your inbox.")
         setNewEmail("")
-        setTimeout(() => setSuccess(null), 5000)
+        setTimeout(() => setSuccess(null), UI_EMAIL_CONFIRM_TIMEOUT)
       }
     } catch {
       setError("Failed to update email")
@@ -202,7 +203,7 @@ export function ProfileSettings() {
         setSuccess("Password updated successfully")
         setNewPassword("")
         setConfirmPassword("")
-        setTimeout(() => setSuccess(null), 3000)
+        setTimeout(() => setSuccess(null), UI_TOAST_TIMEOUT)
       }
     } catch {
       setError("Failed to update password")

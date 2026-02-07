@@ -59,11 +59,15 @@ export async function createProject(
   let validMemberIds = new Set<string>()
 
   if (allMemberIds.length > 0) {
-    const { data: orgMembers } = await supabase
+    const { data: orgMembers, error: membersError } = await supabase
       .from("organization_members")
       .select("user_id")
       .eq("organization_id", orgId)
       .in("user_id", allMemberIds)
+
+    if (membersError) {
+      console.error("Failed to validate organization members:", membersError.message)
+    }
 
     validMemberIds = new Set(orgMembers?.map((m) => m.user_id) || [])
   }

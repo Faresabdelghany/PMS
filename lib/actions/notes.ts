@@ -15,6 +15,7 @@ import type { ActionResult } from "./types"
 import { requireAuth } from "./auth-helpers"
 import { notifyMentions } from "./notifications"
 import { cachedGetUser } from "@/lib/request-cache"
+import { removeStorageFile } from "@/lib/supabase/storage-utils"
 
 
 // Extended note type with author info
@@ -128,11 +129,15 @@ export async function updateNote(
   }
 
   // Get old note content for mention comparison
-  const { data: oldNote } = await supabase
+  const { data: oldNote, error: oldNoteError } = await supabase
     .from("project_notes")
     .select("content, title, project_id")
     .eq("id", noteId)
     .single()
+
+  if (oldNoteError || !oldNote) {
+    return { error: "Note not found" }
+  }
 
   // Build update object
   const updateData: ProjectNoteUpdate = {}
@@ -209,9 +214,7 @@ export async function deleteNote(noteId: string): Promise<ActionResult> {
   const audioData = note.audio_data as AudioData | null
   if (audioData?.storage_path) {
     // Continue with note deletion even if audio cleanup fails
-    await supabase.storage
-      .from("project-media")
-      .remove([audioData.storage_path])
+    await removeStorageFile(supabase, "project-media", [audioData.storage_path])
   }
 
   // Delete the note

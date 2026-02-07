@@ -57,6 +57,11 @@ async function verifyAIConfigForApiRoute(
           updated_at: new Date().toISOString(),
         })
         .eq("user_id", userId)
+        .then(({ error }) => {
+          if (error) {
+            console.error("Failed to migrate API key encryption format:", error.message)
+          }
+        })
 
       try {
         apiKey = decrypt(migratedValue)

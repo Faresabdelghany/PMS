@@ -480,7 +480,7 @@ export function ProjectTasksTab({
       <TaskDetailPanel
         projectId={projectId}
         organizationId={organizationId}
-        organizationMembers={organizationMembers as any}
+        organizationMembers={organizationMembers}
         workstreams={workstreams.map((w) => ({ id: w.id, name: w.name }) as Workstream)}
         tags={organizationTags}
       />

@@ -8,10 +8,9 @@ import { encrypt, decrypt, isEncryptedFormat, migrateFromBase64 } from "@/lib/cr
 import { invalidate } from "@/lib/cache"
 import { CacheTags, revalidateTag } from "@/lib/cache-tags"
 import { requireAuth, type TypedSupabaseClient } from "./auth-helpers"
-
-// Note: user_settings table exists in DB but not in generated types
-// Using explicit any for the table queries
-
+import { getStoragePublicUrl, removeStorageFile } from "@/lib/supabase/storage-utils"
+import type { AIProviderDB as DbAIProvider } from "@/lib/supabase/types"
+import { MAX_AVATAR_SIZE } from "@/lib/constants"
 
 // User settings row type
 export type UserSettings = {
@@ -72,7 +71,7 @@ export async function getUserColorTheme(
       uid = auth.user.id
     }
 
-    const { data } = await (client as any)
+    const { data } = await client
       .from("user_settings")
       .select("color_theme")
       .eq("user_id", uid)
@@ -99,7 +98,7 @@ export async function getAISettings(): Promise<ActionResult<UserSettings | null>
   try {
     const { user, supabase } = await requireAuth()
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("user_settings")
       .select("*")
       .eq("user_id", user.id)
@@ -127,7 +126,7 @@ export async function saveAISettings(
     const { user, supabase } = await requireAuth()
 
     // Check if settings already exist
-    const { data: existing } = await (supabase as any)
+    const { data: existing } = await supabase
       .from("user_settings")
       .select("id")
       .eq("user_id", user.id)
@@ -135,12 +134,19 @@ export async function saveAISettings(
 
     let result
 
+    // Build update payload, casting AIProvider to match DB enum
+    // (constants/ai includes null + extra providers; DB type is narrower)
+    const payload = {
+      ...data,
+      ai_provider: data.ai_provider as DbAIProvider | undefined,
+    }
+
     if (existing) {
       // Update existing settings
-      result = await (supabase as any)
+      result = await supabase
         .from("user_settings")
         .update({
-          ...data,
+          ...payload,
           updated_at: new Date().toISOString(),
         })
         .eq("user_id", user.id)
@@ -148,11 +154,11 @@ export async function saveAISettings(
         .single()
     } else {
       // Create new settings
-      result = await (supabase as any)
+      result = await supabase
         .from("user_settings")
         .insert({
           user_id: user.id,
-          ...data,
+          ...payload,
         })
         .select()
         .single()
@@ -186,7 +192,7 @@ export async function saveAIApiKey(
     }
 
     // Check if settings already exist
-    const { data: existing } = await (supabase as any)
+    const { data: existing } = await supabase
       .from("user_settings")
       .select("id")
       .eq("user_id", user.id)
@@ -195,7 +201,7 @@ export async function saveAIApiKey(
     let error
 
     if (existing) {
-      const result = await (supabase as any)
+      const result = await supabase
         .from("user_settings")
         .update({
           ai_api_key_encrypted: encryptedKey,
@@ -205,7 +211,7 @@ export async function saveAIApiKey(
 
       error = result.error
     } else {
-      const result = await (supabase as any).from("user_settings").insert({
+      const result = await supabase.from("user_settings").insert({
         user_id: user.id,
         ai_api_key_encrypted: encryptedKey,
       })
@@ -229,7 +235,7 @@ export async function getDecryptedApiKey(): Promise<ActionResult<string | null>>
   try {
     const { user, supabase } = await requireAuth()
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("user_settings")
       .select("ai_api_key_encrypted")
       .eq("user_id", user.id)
@@ -262,7 +268,7 @@ export async function getDecryptedApiKey(): Promise<ActionResult<string | null>>
     const migratedValue = migrateFromBase64(storedValue)
     if (migratedValue) {
       // Re-encrypt and save with new format
-      await (supabase as any)
+      await supabase
         .from("user_settings")
         .update({
           ai_api_key_encrypted: migratedValue,
@@ -296,7 +302,7 @@ export async function deleteAIApiKey(): Promise<ActionResult<{ success: boolean 
   try {
     const { user, supabase } = await requireAuth()
 
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("user_settings")
       .update({
         ai_api_key_encrypted: null,
@@ -320,7 +326,7 @@ export async function hasAIConfigured(): Promise<ActionResult<boolean>> {
   try {
     const { user, supabase } = await requireAuth()
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("user_settings")
       .select("ai_provider, ai_api_key_encrypted")
       .eq("user_id", user.id)
@@ -380,8 +386,7 @@ export async function uploadAvatar(
     }
 
     // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024
-    if (file.size > maxSize) {
+    if (file.size > MAX_AVATAR_SIZE) {
       return { error: "Image must be less than 5MB" }
     }
 
@@ -408,11 +413,11 @@ export async function uploadAvatar(
     }
 
     // Get public URL
-    const { data: urlData } = supabase.storage
-      .from("avatars")
-      .getPublicUrl(filename)
+    const avatarUrl = getStoragePublicUrl(supabase, "avatars", filename)
 
-    const avatarUrl = urlData.publicUrl
+    if (!avatarUrl) {
+      return { error: "Failed to get avatar URL after upload" }
+    }
 
     // Update profile with new avatar URL
     const { error: updateError } = await supabase
@@ -472,10 +477,10 @@ export async function deleteAvatar(): Promise<ActionResult<{ success: boolean }>
         const bucketIndex = pathParts.indexOf("avatars")
         if (bucketIndex !== -1) {
           const storagePath = pathParts.slice(bucketIndex + 1).join("/")
-          await supabase.storage.from("avatars").remove([storagePath])
+          await removeStorageFile(supabase, "avatars", [storagePath])
         }
       } catch {
-        // Ignore URL parsing errors
+        // Ignore URL parsing errors — avatar URL may be an external OAuth URL
       }
     }
 
@@ -522,7 +527,7 @@ export async function getPreferences(): Promise<ActionResult<UserSettingsWithPre
   try {
     const { user, supabase } = await requireAuth()
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("user_settings")
       .select("*")
       .eq("user_id", user.id)
@@ -572,7 +577,7 @@ export async function savePreferences(
     }
 
     // Check if settings exist
-    const { data: existing } = await (supabase as any)
+    const { data: existing } = await supabase
       .from("user_settings")
       .select("id")
       .eq("user_id", user.id)
@@ -581,7 +586,7 @@ export async function savePreferences(
     let error
 
     if (existing) {
-      const result = await (supabase as any)
+      const result = await supabase
         .from("user_settings")
         .update({
           ...validation.data,
@@ -590,7 +595,7 @@ export async function savePreferences(
         .eq("user_id", user.id)
       error = result.error
     } else {
-      const result = await (supabase as any)
+      const result = await supabase
         .from("user_settings")
         .insert({
           user_id: user.id,
@@ -624,7 +629,7 @@ export async function saveNotificationSettings(
     }
 
     // Check if settings exist
-    const { data: existing } = await (supabase as any)
+    const { data: existing } = await supabase
       .from("user_settings")
       .select("id")
       .eq("user_id", user.id)
@@ -633,7 +638,7 @@ export async function saveNotificationSettings(
     let error
 
     if (existing) {
-      const result = await (supabase as any)
+      const result = await supabase
         .from("user_settings")
         .update({
           ...validation.data,
@@ -642,7 +647,7 @@ export async function saveNotificationSettings(
         .eq("user_id", user.id)
       error = result.error
     } else {
-      const result = await (supabase as any)
+      const result = await supabase
         .from("user_settings")
         .insert({
           user_id: user.id,

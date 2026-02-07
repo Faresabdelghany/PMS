@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { cacheGet, CacheKeys, CacheTTL, hashQuery } from "@/lib/cache"
+import { SEARCH_RESULTS_PER_CATEGORY } from "@/lib/constants"
 import type { ActionResult } from "./types"
 
 export type SearchResult = {
@@ -68,7 +69,7 @@ export async function globalSearch(
             .select("id, name, status, client:clients(name)")
             .eq("organization_id", orgId)
             .ilike("name", searchTerm)
-            .limit(5),
+            .limit(SEARCH_RESULTS_PER_CATEGORY),
 
           // Search tasks (need to join through projects to filter by org)
           supabase
@@ -76,7 +77,7 @@ export async function globalSearch(
             .select("id, name, status, project:projects!inner(id, name, organization_id)")
             .eq("project.organization_id", orgId)
             .ilike("name", searchTerm)
-            .limit(5),
+            .limit(SEARCH_RESULTS_PER_CATEGORY),
 
           // Search clients
           supabase
@@ -84,7 +85,7 @@ export async function globalSearch(
             .select("id, name, status, primary_contact_name")
             .eq("organization_id", orgId)
             .or(`name.ilike.${searchTerm},primary_contact_name.ilike.${searchTerm}`)
-            .limit(5),
+            .limit(SEARCH_RESULTS_PER_CATEGORY),
         ])
 
         // Transform results

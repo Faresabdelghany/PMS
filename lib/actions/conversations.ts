@@ -3,6 +3,7 @@
 import { requireAuth } from "./auth-helpers"
 import type { ChatConversation, ChatMessage, ChatMessageInsert, Json } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
+import { CONVERSATION_PAGE_SIZE, MESSAGE_PAGE_SIZE, SEARCH_CONVERSATION_LIMIT } from "@/lib/constants"
 
 /**
  * Get all conversations for the current user in an organization.
@@ -20,7 +21,7 @@ export async function getConversations(
       .eq("organization_id", organizationId)
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false })
-      .limit(50)
+      .limit(CONVERSATION_PAGE_SIZE)
 
     if (error) {
       return { error: error.message }
@@ -73,6 +74,7 @@ export async function getConversationMessages(
       .select("*")
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: true })
+      .limit(MESSAGE_PAGE_SIZE)
 
     if (error) {
       return { error: error.message }
@@ -258,7 +260,7 @@ export async function searchConversations(
       .eq("user_id", user.id)
       .ilike("title", `%${query}%`)
       .order("updated_at", { ascending: false })
-      .limit(20)
+      .limit(SEARCH_CONVERSATION_LIMIT)
 
     if (error) {
       return { error: error.message }

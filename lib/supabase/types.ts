@@ -34,6 +34,16 @@ type TaskPriority = TaskPriorityType
 type ClientStatus = ClientStatusType
 type DeliverableStatus = DeliverableStatusType
 
+// Workflow enum types
+export type WorkflowCategory = 'unstarted' | 'started' | 'finished' | 'canceled'
+export type WorkflowEntityType = 'task' | 'project' | 'workstream'
+
+// Color theme type
+export type ColorThemeType = 'default' | 'forest' | 'ocean' | 'sunset' | 'rose' | 'supabase' | 'chatgpt' | 'midnight' | 'lavender' | 'ember' | 'mint' | 'slate'
+
+// AI provider type (matches lib/constants/ai)
+export type AIProviderDB = 'openai' | 'anthropic' | 'google' | 'groq' | 'mistral' | 'xai' | 'deepseek' | 'openrouter' | (string & {})
+
 // Additional enum types (not status/priority related)
 export type ProjectIntent = "delivery" | "experiment" | "internal"
 export type SuccessType = "deliverable" | "metric" | "undefined"
@@ -1269,6 +1279,115 @@ export interface Database {
           }
         ]
       }
+      user_settings: {
+        Row: {
+          id: string
+          user_id: string
+          ai_provider: AIProviderDB
+          ai_api_key_encrypted: string | null
+          ai_model_preference: string | null
+          timezone: string
+          week_start_day: 'monday' | 'sunday' | 'saturday'
+          open_links_in_app: boolean
+          notifications_in_app: boolean
+          notifications_email: boolean
+          color_theme: ColorThemeType
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          ai_provider?: AIProviderDB
+          ai_api_key_encrypted?: string | null
+          ai_model_preference?: string | null
+          timezone?: string
+          week_start_day?: 'monday' | 'sunday' | 'saturday'
+          open_links_in_app?: boolean
+          notifications_in_app?: boolean
+          notifications_email?: boolean
+          color_theme?: ColorThemeType
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          ai_provider?: AIProviderDB
+          ai_api_key_encrypted?: string | null
+          ai_model_preference?: string | null
+          timezone?: string
+          week_start_day?: 'monday' | 'sunday' | 'saturday'
+          open_links_in_app?: boolean
+          notifications_in_app?: boolean
+          notifications_email?: boolean
+          color_theme?: ColorThemeType
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_settings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      workflow_statuses: {
+        Row: {
+          id: string
+          organization_id: string
+          entity_type: WorkflowEntityType
+          category: WorkflowCategory
+          name: string
+          description: string | null
+          color: string
+          is_default: boolean
+          is_locked: boolean
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          entity_type: WorkflowEntityType
+          category: WorkflowCategory
+          name: string
+          description?: string | null
+          color?: string
+          is_default?: boolean
+          is_locked?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          entity_type?: WorkflowEntityType
+          category?: WorkflowCategory
+          name?: string
+          description?: string | null
+          color?: string
+          is_default?: boolean
+          is_locked?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_statuses_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1293,6 +1412,10 @@ export interface Database {
       get_task_project_id: {
         Args: { t_id: string }
         Returns: string
+      }
+      create_default_workflow_statuses: {
+        Args: { org_id: string }
+        Returns: void
       }
     }
     Enums: {
@@ -1432,27 +1555,15 @@ export type UserPreferences = {
   notifications_email: boolean
 }
 
-// Workflow status types
-export type WorkflowCategory = 'unstarted' | 'started' | 'finished' | 'canceled'
-export type WorkflowEntityType = 'task' | 'project' | 'workstream'
+// User Settings (from Database)
+export type UserSettingsRow = Database["public"]["Tables"]["user_settings"]["Row"]
+export type UserSettingsInsert = Database["public"]["Tables"]["user_settings"]["Insert"]
+export type UserSettingsUpdate = Database["public"]["Tables"]["user_settings"]["Update"]
 
-export type WorkflowStatus = {
-  id: string
-  organization_id: string
-  entity_type: WorkflowEntityType
-  category: WorkflowCategory
-  name: string
-  description: string | null
-  color: string
-  is_default: boolean
-  is_locked: boolean
-  sort_order: number
-  created_at: string
-  updated_at: string
-}
-
-export type WorkflowStatusInsert = Omit<WorkflowStatus, 'id' | 'created_at' | 'updated_at'>
-export type WorkflowStatusUpdate = Partial<Omit<WorkflowStatusInsert, 'organization_id' | 'entity_type'>>
+// Workflow status types (from Database)
+export type WorkflowStatusRow = Database["public"]["Tables"]["workflow_statuses"]["Row"]
+export type WorkflowStatusInsert = Database["public"]["Tables"]["workflow_statuses"]["Insert"]
+export type WorkflowStatusUpdate = Database["public"]["Tables"]["workflow_statuses"]["Update"]
 
 // Chat types
 export type ChatConversation = Database['public']['Tables']['chat_conversations']['Row']

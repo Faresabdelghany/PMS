@@ -86,7 +86,8 @@ npx supabase status                     # Check local services status
 - **`lib/`** - Utilities and data
   - `supabase/` - Supabase clients and types
   - `actions/` - Server Actions for data mutations
-  - `server-cache.ts` - Request-level caching with React `cache()`
+  - `request-cache.ts` - Core request-level caching (`cachedGetUser`, `getSupabaseClient`, and cached action wrappers)
+  - `server-cache.ts` - Additional request-level cached functions (wraps actions with React `cache()`)
   - `cache-tags.ts` - Cache tag constants for granular revalidation
   - `cache/` - KV caching layer (Vercel KV/Redis) for cross-request caching
   - `rate-limit/` - Rate limiting with Upstash/Vercel KV
@@ -155,7 +156,20 @@ const ctx = await requireProjectMember(projectId)       // Project membership
 const ctx = await requireProjectOwnerOrPIC(projectId)   // Elevated access
 ```
 
-**Request-Level Caching:** Use `lib/server-cache.ts` for deduplicating database queries within a single request:
+**Request-Level Caching (two layers):**
+
+1. `lib/request-cache.ts` — Core cached functions including auth and Supabase client:
+```typescript
+import { cachedGetUser, getSupabaseClient } from "@/lib/request-cache"
+
+// Shared auth check — layout and pages share one call per request
+const { user, supabase } = await cachedGetUser()
+
+// cachedGetUser uses getSession() (fast local cookie read, ~0ms)
+// instead of getUser() (~300-500ms network call) because middleware refreshes the token
+```
+
+2. `lib/server-cache.ts` — Cached data-fetching wrappers:
 ```typescript
 import { getCachedProjects, getCachedTasks } from "@/lib/server-cache"
 
@@ -182,6 +196,14 @@ const projects = await cacheGet(CacheKeys.projects(orgId), fetchProjects, CacheT
 ```
 Gracefully degrades when KV is unavailable (local dev).
 
+**Next.js Cache Profiles (`next.config.mjs`):** Custom `cacheLife` profiles defined for future use:
+- `realtimeBacked` (stale: 5min) — data with real-time subscriptions (projects, tasks)
+- `semiStatic` (stale: 15min) — infrequently changing data (members, tags)
+- `static` (stale: 30min) — rarely changing data (organization details)
+- `user` (stale: 1hr) — user profile and preferences
+
+Note: PPR (`cacheComponents`) is disabled because the app is fully auth-protected. Performance is achieved through request-level dedup, KV caching, tag-based invalidation, and Suspense streaming.
+
 **Skeleton Components:** Use `components/skeletons/` for loading states:
 ```typescript
 import { ProjectsListSkeleton, TaskListSkeleton } from "@/components/skeletons"
@@ -198,7 +220,11 @@ import { ProjectsListSkeleton, TaskListSkeleton } from "@/components/skeletons"
 1. User signs up/in via `/login` or `/signup`
 2. OAuth callback at `/auth/callback` handles session exchange
 3. OAuth callback auto-creates personal organization for new users
-4. Dashboard layout (`app/(dashboard)/layout.tsx`) checks auth on every request:
+4. `middleware.ts` runs on every request:
+   - Fast-path: No auth cookie + protected route → redirect to `/login?redirect=<path>` (saves ~300-500ms by skipping `getUser()`)
+   - Auth cookie exists → refreshes token via `getUser()`, making `getSession()` safe for downstream Server Components
+   - Redirects authenticated users away from `/login` and `/signup`
+5. Dashboard layout (`app/(dashboard)/layout.tsx`) checks auth via `cachedGetUser()`:
    - Redirects unauthenticated users to `/login`
    - Redirects users without organization to `/onboarding`
 
@@ -218,8 +244,8 @@ export default async function Page({ params }: PageProps) {
 
 **Dashboard Layout Pattern:** All main app pages are under `app/(dashboard)/` route group which:
 - Provides shared layout with sidebar, header, and providers
-- Wraps pages with `UserProvider`, `OrganizationProvider`, `RealtimeProvider`, `CommandPaletteProvider`, `ColorThemeProvider`, and `NotificationToastProvider`
-- Fetches active projects for sidebar display
+- Provider nesting order (outermost first): `UserProvider` → `OrganizationProvider` → `RealtimeProvider` → `SettingsDialogProvider` → `CommandPaletteProvider` → `ColorThemeSyncer` → `NotificationToastProviderLazy` → `SidebarProvider`
+- Fetches orgs, profile, active projects, and color theme in parallel (no waterfall)
 - Server Components fetch Supabase data and pass to Client Components as props
 
 **Command Palette:** Global search and actions via Cmd+K (Mac) / Ctrl+K (Windows):

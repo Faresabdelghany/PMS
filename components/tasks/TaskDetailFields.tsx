@@ -30,16 +30,15 @@ import type { TaskWithRelations } from "@/lib/actions/tasks"
 import type {
   TaskPriority,
   TaskStatus,
-  Profile,
-  OrganizationMember,
   Workstream,
   OrganizationTag,
 } from "@/lib/supabase/types"
+import type { TaskPanelMember } from "./TaskDetailPanel"
 
 interface TaskDetailFieldsProps {
   task: TaskWithRelations
   onUpdate: (field: string, value: unknown) => void
-  organizationMembers?: (OrganizationMember & { profile: Profile })[]
+  organizationMembers?: TaskPanelMember[]
   workstreams?: Workstream[]
   tags?: OrganizationTag[]
 }

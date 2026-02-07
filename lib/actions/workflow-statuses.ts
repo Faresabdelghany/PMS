@@ -46,7 +46,7 @@ export async function getWorkflowStatuses(
 ): Promise<ActionResult<WorkflowStatus[]>> {
   const supabase = await createClient()
 
-  let query = (supabase as any)
+  let query = supabase
     .from("workflow_statuses")
     .select("*")
     .eq("organization_id", organizationId)
@@ -81,7 +81,7 @@ export async function createWorkflowStatus(
   const validData = validation.data
 
   // Get max sort_order for this entity type and category
-  const { data: maxOrder } = await (supabase as any)
+  const { data: maxOrder } = await supabase
     .from("workflow_statuses")
     .select("sort_order")
     .eq("organization_id", organizationId)
@@ -93,7 +93,7 @@ export async function createWorkflowStatus(
 
   const sortOrder = maxOrder ? maxOrder.sort_order + 1 : 0
 
-  const { data: status, error } = await (supabase as any)
+  const { data: status, error } = await supabase
     .from("workflow_statuses")
     .insert({
       organization_id: organizationId,
@@ -128,7 +128,7 @@ export async function updateWorkflowStatus(
   }
 
   // Check if status is locked
-  const { data: existing } = await (supabase as any)
+  const { data: existing } = await supabase
     .from("workflow_statuses")
     .select("is_locked")
     .eq("id", id)
@@ -138,7 +138,7 @@ export async function updateWorkflowStatus(
     return { error: "Cannot modify a locked status" }
   }
 
-  const { data: status, error } = await (supabase as any)
+  const { data: status, error } = await supabase
     .from("workflow_statuses")
     .update({
       ...validation.data,
@@ -161,7 +161,7 @@ export async function deleteWorkflowStatus(id: string): Promise<ActionResult<{ s
   const supabase = await createClient()
 
   // Check if status is locked or default
-  const { data: existing } = await (supabase as any)
+  const { data: existing } = await supabase
     .from("workflow_statuses")
     .select("is_locked, is_default")
     .eq("id", id)
@@ -175,7 +175,7 @@ export async function deleteWorkflowStatus(id: string): Promise<ActionResult<{ s
     return { error: "Cannot delete a default status" }
   }
 
-  const { error } = await (supabase as any)
+  const { error } = await supabase
     .from("workflow_statuses")
     .delete()
     .eq("id", id)
@@ -196,7 +196,7 @@ export async function reorderWorkflowStatuses(
 
   // Update sort_order for each status
   const updates = statusIds.map((id, index) =>
-    (supabase as any)
+    supabase
       .from("workflow_statuses")
       .update({ sort_order: index })
       .eq("id", id)
@@ -219,7 +219,7 @@ export async function initializeWorkflowStatuses(
 ): Promise<ActionResult<{ success: boolean }>> {
   const supabase = await createClient()
 
-  const { error } = await (supabase as any).rpc("create_default_workflow_statuses", {
+  const { error } = await supabase.rpc("create_default_workflow_statuses", {
     org_id: organizationId,
   })
 

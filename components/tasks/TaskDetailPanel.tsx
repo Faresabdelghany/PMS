@@ -19,18 +19,26 @@ import { getTaskTimeline } from "@/lib/actions/task-activities"
 import { createTaskComment } from "@/lib/actions/task-comments"
 import type {
   TaskTimelineItem,
-  Profile,
-  OrganizationMember,
   Workstream,
   OrganizationTag,
 } from "@/lib/supabase/types"
 import { toast } from "sonner"
 import { useTaskTimelineRealtime } from "@/hooks/use-task-timeline-realtime"
 
+export type TaskPanelMember = {
+  user_id: string
+  profile: {
+    id: string
+    full_name: string | null
+    email: string
+    avatar_url: string | null
+  }
+}
+
 interface TaskDetailPanelProps {
   projectId: string
   organizationId: string
-  organizationMembers?: (OrganizationMember & { profile: Profile })[]
+  organizationMembers?: TaskPanelMember[]
   workstreams?: Workstream[]
   tags?: OrganizationTag[]
 }

@@ -53,7 +53,7 @@ export default function RootLayout({
                   if (theme && theme !== 'default') {
                     document.documentElement.setAttribute('data-color-theme', theme);
                   }
-                } catch (e) {}
+                } catch (e) { /* localStorage may be unavailable in private browsing */ }
               })();
             `,
           }}

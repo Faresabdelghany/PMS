@@ -1,4 +1,6 @@
 import { test, expect, projectTestData, generateUniqueProjectName } from './fixtures';
+import type { ProjectsPage } from './pages/ProjectsPage';
+import type { ProjectWizardPage } from './pages/ProjectWizardPage';
 
 /**
  * Project Filtering & Search Tests
@@ -11,8 +13,8 @@ test.describe('Project Filtering & Search', () => {
 
   // Helper to create a test project with specific attributes
   async function createTestProjectWithStatus(
-    projectsPage: any,
-    projectWizardPage: any,
+    projectsPage: ProjectsPage,
+    projectWizardPage: ProjectWizardPage,
     status: string,
     name?: string
   ): Promise<string> {

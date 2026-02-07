@@ -10,6 +10,7 @@ import { SettingsPaneHeader, SettingSection, SettingRow } from "../setting-primi
 import { useUser } from "@/hooks/use-user"
 import { createClient } from "@/lib/supabase/client"
 import { uploadAvatar, deleteAvatar } from "@/lib/actions/user-settings"
+import { UI_TOAST_TIMEOUT, UI_EMAIL_CONFIRM_TIMEOUT, UI_COPY_RESET_DELAY, MAX_AVATAR_SIZE } from "@/lib/constants"
 
 export function AccountPane() {
   const { user, profile, isLoading, refreshProfile } = useUser()
@@ -42,7 +43,7 @@ export function AccountPane() {
 
   useEffect(() => {
     if (!copiedId) return
-    const t = setTimeout(() => setCopiedId(false), 1500)
+    const t = setTimeout(() => setCopiedId(false), UI_COPY_RESET_DELAY)
     return () => clearTimeout(t)
   }, [copiedId])
 
@@ -68,7 +69,7 @@ export function AccountPane() {
         if (refreshProfile) {
           await refreshProfile()
         }
-        setTimeout(() => setSuccess(null), 3000)
+        setTimeout(() => setSuccess(null), UI_TOAST_TIMEOUT)
       }
     } catch {
       setError("Failed to update profile")
@@ -86,7 +87,7 @@ export function AccountPane() {
       return
     }
 
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > MAX_AVATAR_SIZE) {
       setError("Image must be less than 5MB")
       return
     }
@@ -114,7 +115,7 @@ export function AccountPane() {
       if (refreshProfile) {
         await refreshProfile()
       }
-      setTimeout(() => setSuccess(null), 3000)
+      setTimeout(() => setSuccess(null), UI_TOAST_TIMEOUT)
     }
 
     setIsUploadingAvatar(false)
@@ -140,7 +141,7 @@ export function AccountPane() {
       if (refreshProfile) {
         await refreshProfile()
       }
-      setTimeout(() => setSuccess(null), 3000)
+      setTimeout(() => setSuccess(null), UI_TOAST_TIMEOUT)
     }
 
     setIsUploadingAvatar(false)
@@ -165,7 +166,7 @@ export function AccountPane() {
       } else {
         setSuccess("Confirmation email sent to your new address. Please check your inbox.")
         setNewEmail("")
-        setTimeout(() => setSuccess(null), 5000)
+        setTimeout(() => setSuccess(null), UI_EMAIL_CONFIRM_TIMEOUT)
       }
     } catch {
       setError("Failed to update email")
@@ -203,7 +204,7 @@ export function AccountPane() {
         setSuccess("Password updated successfully")
         setNewPassword("")
         setConfirmPassword("")
-        setTimeout(() => setSuccess(null), 3000)
+        setTimeout(() => setSuccess(null), UI_TOAST_TIMEOUT)
       }
     } catch {
       setError("Failed to update password")

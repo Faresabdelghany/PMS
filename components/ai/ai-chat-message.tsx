@@ -26,6 +26,7 @@ import {
 import type { Message, ActionState, MultiActionState } from "@/hooks/use-ai-chat"
 import type { ProposedAction, SuggestedAction } from "@/lib/actions/ai-types"
 import { MarkdownContent } from "./markdown-content"
+import { AI_CONTEXT_LIMITS } from "@/lib/constants"
 
 // =============================================================================
 // Types
@@ -615,7 +616,7 @@ function SuggestedActions({ suggestions, onSelect }: SuggestedActionsProps) {
 
   return (
     <div className="mt-3 flex flex-wrap gap-2">
-      {suggestions.slice(0, 3).map((suggestion, index) => (
+      {suggestions.slice(0, AI_CONTEXT_LIMITS.suggestedActions).map((suggestion, index) => (
         <button
           key={index}
           onClick={() => onSelect(suggestion.prompt)}

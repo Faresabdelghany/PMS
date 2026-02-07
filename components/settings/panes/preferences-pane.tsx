@@ -19,6 +19,7 @@ import { useOrganization } from "@/hooks/use-organization"
 import { getPreferences, savePreferences, type UserSettingsWithPreferences } from "@/lib/actions/user-settings"
 import { toast } from "sonner"
 import { useColorTheme, COLOR_THEMES, type ColorTheme } from "@/components/color-theme-provider"
+import { UI_COPY_RESET_DELAY } from "@/lib/constants"
 
 const TIMEZONES = [
   { value: "auto", label: "Auto-detect" },
@@ -66,7 +67,7 @@ export function PreferencesPane() {
 
   useEffect(() => {
     if (!copied) return
-    const t = setTimeout(() => setCopied(false), 1500)
+    const t = setTimeout(() => setCopied(false), UI_COPY_RESET_DELAY)
     return () => clearTimeout(t)
   }, [copied])
 
@@ -80,7 +81,7 @@ export function PreferencesPane() {
     }
   }
 
-  const handlePreferenceChange = (key: keyof UserSettingsWithPreferences, value: any) => {
+  const handlePreferenceChange = (key: keyof UserSettingsWithPreferences, value: UserSettingsWithPreferences[keyof UserSettingsWithPreferences]) => {
     if (!preferences) return
 
     const updated = { ...preferences, [key]: value }

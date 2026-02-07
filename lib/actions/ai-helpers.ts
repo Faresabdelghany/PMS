@@ -2,6 +2,7 @@
 // These are pure functions that can be used by both server actions and API routes
 
 import type { ChatContext } from "./ai-types"
+import { AI_CONTEXT_LIMITS } from "@/lib/constants"
 
 // =============================================================================
 // System Prompt Builder
@@ -27,26 +28,26 @@ ${context.filters ? `- Filters: ${JSON.stringify(context.filters)}` : ""}
 
 ## Organization
 - Name: ${organization.name}
-- Members (${members.length}): ${members.slice(0, 10).map(m => `${m.name} (${m.role})`).join(", ")}${members.length > 10 ? "..." : ""}
+- Members (${members.length}): ${members.slice(0, AI_CONTEXT_LIMITS.members).map(m => `${m.name} (${m.role})`).join(", ")}${members.length > AI_CONTEXT_LIMITS.members ? "..." : ""}
 - Teams (${teams.length}): ${teams.map(t => t.name).join(", ") || "None"}
 
 ## Projects (${projects.length})
-${projects.slice(0, 20).map(p =>
+${projects.slice(0, AI_CONTEXT_LIMITS.projects).map(p =>
   `- ${p.name} [${p.status}]${p.clientName ? ` - Client: ${p.clientName}` : ""}${p.dueDate ? ` - Due: ${p.dueDate}` : ""}`
 ).join("\n")}
-${projects.length > 20 ? `\n...and ${projects.length - 20} more projects` : ""}
+${projects.length > AI_CONTEXT_LIMITS.projects ? `\n...and ${projects.length - AI_CONTEXT_LIMITS.projects} more projects` : ""}
 
 ## Clients (${clients.length})
 ${clients.map(c => `- ${c.name} [${c.status}] (${c.projectCount} projects)`).join("\n") || "None"}
 
 ## Your Tasks (${userTasks.length})
-${userTasks.slice(0, 15).map(t =>
+${userTasks.slice(0, AI_CONTEXT_LIMITS.tasks).map(t =>
   `- ${t.title} [${t.status}] (${t.priority}) - ${t.projectName}${t.dueDate ? ` - Due: ${t.dueDate}` : ""}`
 ).join("\n")}
-${userTasks.length > 15 ? `\n...and ${userTasks.length - 15} more tasks` : ""}
+${userTasks.length > AI_CONTEXT_LIMITS.tasks ? `\n...and ${userTasks.length - AI_CONTEXT_LIMITS.tasks} more tasks` : ""}
 
 ## Inbox (${inbox.filter(i => !i.read).length} unread)
-${inbox.slice(0, 5).map(i => `- ${i.title} [${i.type}]${i.read ? "" : " *NEW*"}`).join("\n") || "No notifications"}`
+${inbox.slice(0, AI_CONTEXT_LIMITS.inbox).map(i => `- ${i.title} [${i.type}]${i.read ? "" : " *NEW*"}`).join("\n") || "No notifications"}`
 
   // Add workload insights section
   const insights = appData.workloadInsights
@@ -104,7 +105,7 @@ Projects: ${cProjects.map(p => `${p.name} [${p.status}]`).join(", ") || "None"}`
 
 ## Attached Documents
 ${context.attachments.map(a =>
-      `--- ${a.name} ---\n${a.content.slice(0, 5000)}${a.content.length > 5000 ? "\n[truncated]" : ""}`
+      `--- ${a.name} ---\n${a.content.slice(0, AI_CONTEXT_LIMITS.content)}${a.content.length > AI_CONTEXT_LIMITS.content ? "\n[truncated]" : ""}`
     ).join("\n\n")}`
   }
 
@@ -249,7 +250,7 @@ Team Member IDs (for task assignment):
 ${members.length > 0 ? members.map(m => `- "${m.name}": ${m.id}`).join("\n") : "No members"}
 
 Task IDs (use these exact UUIDs for existing tasks):
-${userTasks.length > 0 ? userTasks.slice(0, 30).map(t => `- "${t.title}" [${t.status}]: ${t.id}`).join("\n") : "No tasks yet"}
+${userTasks.length > 0 ? userTasks.slice(0, AI_CONTEXT_LIMITS.taskList).map(t => `- "${t.title}" [${t.status}]: ${t.id}`).join("\n") : "No tasks yet"}
 ${appData.currentProject?.tasks?.length ? `\nCurrent Project Tasks:\n${appData.currentProject.tasks.map(t => `- "${t.title}" [${t.status}]: ${t.id}`).join("\n")}` : ""}
 
 Workstream IDs (use these exact UUIDs for existing workstreams):

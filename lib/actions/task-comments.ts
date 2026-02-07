@@ -15,6 +15,7 @@ import type { ActionResult } from "./types"
 import { requireAuth } from "./auth-helpers"
 import { notifyMentions } from "./notifications"
 import { CacheTags, revalidateTag } from "@/lib/cache-tags"
+import { getStoragePublicUrl } from "@/lib/supabase/storage-utils"
 
 // Create a new comment on a task
 export async function createTaskComment(
@@ -74,11 +75,14 @@ export async function createTaskComment(
         }
       })
 
-      await supabase.from("task_comment_attachments").insert(attachmentRecords)
+      const { error: attachError } = await supabase.from("task_comment_attachments").insert(attachmentRecords)
+      if (attachError) {
+        console.error("Failed to insert comment attachments:", attachError.message)
+      }
     }
 
     // Fetch the complete comment with relations
-    const { data: fullComment } = await supabase
+    const { data: fullComment, error: refetchError } = await supabase
       .from("task_comments")
       .select(`
         *,
@@ -88,6 +92,12 @@ export async function createTaskComment(
       `)
       .eq("id", comment.id)
       .single()
+
+    if (refetchError || !fullComment) {
+      console.error("Failed to refetch comment with relations:", refetchError?.message)
+      // Return the original comment with minimal shape rather than failing
+      return { data: { ...comment, reactions: [], attachments: [] } as TaskCommentWithRelations }
+    }
 
     revalidateTag(CacheTags.taskTimeline(taskId))
     revalidateTag(CacheTags.taskComments(taskId))
@@ -349,14 +359,12 @@ export async function uploadCommentAttachment(
       return { error: `Failed to upload file: ${uploadError.message}` }
     }
 
-    const { data: urlData } = supabase.storage
-      .from("task-attachments")
-      .getPublicUrl(storagePath)
+    const publicUrl = getStoragePublicUrl(supabase, "task-attachments", storagePath)
 
     return {
       data: {
         path: storagePath,
-        url: urlData.publicUrl,
+        url: publicUrl || "",
       },
     }
   } catch (error) {

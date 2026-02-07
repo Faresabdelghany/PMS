@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Copy, Check } from "@phosphor-icons/react/dist/ssr"
 import { cn } from "@/lib/utils"
+import { UI_COPY_RESET_DELAY } from "@/lib/constants"
 
 interface CopyButtonProps {
   text: string
@@ -16,7 +17,7 @@ export function CopyButton({ text, className }: CopyButtonProps) {
     try {
       await navigator.clipboard.writeText(text)
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      setTimeout(() => setCopied(false), UI_COPY_RESET_DELAY)
     } catch (err) {
       console.error("Failed to copy text:", err)
     }
