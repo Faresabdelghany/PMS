@@ -42,7 +42,7 @@ export type WorkflowEntityType = 'task' | 'project' | 'workstream'
 export type ColorThemeType = 'default' | 'forest' | 'ocean' | 'sunset' | 'rose' | 'supabase' | 'chatgpt' | 'midnight' | 'lavender' | 'ember' | 'mint' | 'slate'
 
 // AI provider type (matches lib/constants/ai)
-export type AIProviderDB = 'openai' | 'anthropic' | 'google' | 'groq' | 'mistral' | 'xai' | 'deepseek' | 'openrouter' | (string & {})
+export type AIProviderDB = 'openai' | 'anthropic' | 'google' | 'groq' | 'mistral' | 'xai' | 'deepseek' | 'openrouter' | string
 
 // Additional enum types (not status/priority related)
 export type ProjectIntent = "delivery" | "experiment" | "internal"
