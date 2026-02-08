@@ -40,3 +40,12 @@ next-env.d.ts
 # next-agents-md
 .next-docs/
 .playwright-mcp/
+
+# Windows artifacts
+nul
+
+# MCP local config
+.mcp.json
+
+# Performance reports
+docs/Issues/
