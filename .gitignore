@@ -47,5 +47,3 @@ nul
 # MCP local config
 .mcp.json
 
-# Performance reports
-docs/Issues/
