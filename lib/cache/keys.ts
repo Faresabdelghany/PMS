@@ -28,6 +28,12 @@ export const CacheKeys = {
   // Teams (TTL: 5 min)
   teams: (orgId: string) => `pms:teams:${orgId}`,
 
+  // Tags (TTL: 5 min)
+  tags: (orgId: string) => `pms:tags:${orgId}`,
+
+  // Labels (TTL: 5 min)
+  labels: (orgId: string) => `pms:labels:${orgId}`,
+
   // Tasks (TTL: 30 sec)
   userTasks: (userId: string, orgId: string) =>
     `pms:tasks:user:${userId}:${orgId}`,
@@ -35,6 +41,13 @@ export const CacheKeys = {
 
   // Workstreams (TTL: 1 min)
   workstreams: (projectId: string) => `pms:workstreams:${projectId}`,
+
+  // Session validation (TTL: 5 min)
+  sessionValidated: (userId: string) => `pms:session:validated:${userId}`,
+
+  // Project membership (TTL: 5 min)
+  projectMembership: (projectId: string, userId: string) =>
+    `pms:project:membership:${projectId}:${userId}`,
 
   // Search (TTL: 30 sec)
   search: (orgId: string, queryHash: string) =>
@@ -55,6 +68,11 @@ export const CacheTTL = {
   PROJECTS: 120, // 2 minutes
   CLIENTS: 120, // 2 minutes
   TEAMS: 300, // 5 minutes
+  TAGS: 300, // 5 minutes
+  LABELS: 300, // 5 minutes
+
+  // Session
+  SESSION: 300, // 5 minutes
 
   // Tier 3: Volatile data
   TASKS: 30, // 30 seconds

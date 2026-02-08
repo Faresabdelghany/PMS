@@ -44,6 +44,14 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // Warm the KV cache with user's dashboard data (best-effort)
+      try {
+        const { warmUserCache } = await import("@/lib/cache")
+        await warmUserCache(user.id)
+      } catch {
+        // Non-fatal
+      }
+
       // Redirect to the requested page or home (which is projects)
       return NextResponse.redirect(`${origin}${next}`)
     }

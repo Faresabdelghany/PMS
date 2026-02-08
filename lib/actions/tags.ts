@@ -2,24 +2,33 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
 import type { OrganizationTag, OrganizationTagUpdate } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
-// Get all tags for an organization
+// Get all tags for an organization (with KV caching)
 export async function getTags(orgId: string): Promise<ActionResult<OrganizationTag[]>> {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
-    .from("organization_tags")
-    .select("*")
-    .eq("organization_id", orgId)
-    .order("name")
+  try {
+    const data = await cacheGet(
+      CacheKeys.tags(orgId),
+      async () => {
+        const { data, error } = await supabase
+          .from("organization_tags")
+          .select("*")
+          .eq("organization_id", orgId)
+          .order("name")
 
-  if (error) {
-    return { error: error.message }
+        if (error) throw error
+        return data ?? []
+      },
+      CacheTTL.TAGS
+    )
+    return { data }
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Failed to fetch tags" }
   }
-
-  return { data }
 }
 
 // Create a new tag
@@ -64,6 +73,7 @@ export async function createTag(
   }
 
   revalidatePath("/settings")
+  invalidate.tags(orgId)
   return { data }
 }
 
@@ -114,11 +124,12 @@ export async function updateTag(
   }
 
   revalidatePath("/settings")
+  if (data) invalidate.tags(data.organization_id)
   return { data }
 }
 
 // Delete a tag
-export async function deleteTag(tagId: string): Promise<ActionResult> {
+export async function deleteTag(tagId: string, orgId?: string): Promise<ActionResult> {
   const supabase = await createClient()
 
   const { error } = await supabase
@@ -131,5 +142,6 @@ export async function deleteTag(tagId: string): Promise<ActionResult> {
   }
 
   revalidatePath("/settings")
+  if (orgId) invalidate.tags(orgId)
   return {}
 }

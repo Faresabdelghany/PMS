@@ -82,27 +82,37 @@ export async function requireOrgMember(
 /**
  * Requires the user to be a member of the specified project.
  * Returns the member's role within the project.
+ * Uses KV caching to avoid repeated DB queries for the same project membership.
  */
 export async function requireProjectMember(
   projectId: string
 ): Promise<ProjectMemberContext> {
   const { user, supabase } = await requireAuth()
 
-  const { data: member, error } = await supabase
-    .from("project_members")
-    .select("role")
-    .eq("project_id", projectId)
-    .eq("user_id", user.id)
-    .single()
+  const member = await cacheGet(
+    CacheKeys.projectMembership(projectId, user.id),
+    async () => {
+      const { data, error } = await supabase
+        .from("project_members")
+        .select("role")
+        .eq("project_id", projectId)
+        .eq("user_id", user.id)
+        .single()
 
-  if (error || !member) {
+      if (error || !data) return null
+      return { role: data.role }
+    },
+    CacheTTL.MEMBERSHIP
+  )
+
+  if (!member) {
     throw new Error("Not a member of this project")
   }
 
   return {
     user,
     supabase,
-    member: { role: member.role },
+    member,
   }
 }
 

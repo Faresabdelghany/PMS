@@ -2,32 +2,42 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
 import type { OrganizationLabel, OrganizationLabelUpdate, LabelCategory } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
-// Get all labels for an organization, optionally filtered by category
+// Get all labels for an organization, optionally filtered by category (with KV caching)
 export async function getLabels(
   orgId: string,
   category?: LabelCategory
 ): Promise<ActionResult<OrganizationLabel[]>> {
   const supabase = await createClient()
 
-  let query = supabase
-    .from("organization_labels")
-    .select("*")
-    .eq("organization_id", orgId)
+  try {
+    // Cache all labels for the org, then filter by category client-side
+    const allLabels = await cacheGet(
+      CacheKeys.labels(orgId),
+      async () => {
+        const { data, error } = await supabase
+          .from("organization_labels")
+          .select("*")
+          .eq("organization_id", orgId)
+          .order("name")
 
-  if (category) {
-    query = query.eq("category", category)
+        if (error) throw error
+        return data ?? []
+      },
+      CacheTTL.LABELS
+    )
+
+    const data = category
+      ? allLabels.filter((l) => l.category === category)
+      : allLabels
+
+    return { data }
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Failed to fetch labels" }
   }
-
-  const { data, error } = await query.order("name")
-
-  if (error) {
-    return { error: error.message }
-  }
-
-  return { data }
 }
 
 // Create a new label
@@ -78,6 +88,7 @@ export async function createLabel(
   }
 
   revalidatePath("/settings")
+  invalidate.labels(orgId)
   return { data }
 }
 
@@ -128,11 +139,12 @@ export async function updateLabel(
   }
 
   revalidatePath("/settings")
+  if (data) invalidate.labels(data.organization_id)
   return { data }
 }
 
 // Delete a label
-export async function deleteLabel(labelId: string): Promise<ActionResult> {
+export async function deleteLabel(labelId: string, orgId?: string): Promise<ActionResult> {
   const supabase = await createClient()
 
   const { error } = await supabase
@@ -145,5 +157,6 @@ export async function deleteLabel(labelId: string): Promise<ActionResult> {
   }
 
   revalidatePath("/settings")
+  if (orgId) invalidate.labels(orgId)
   return {}
 }

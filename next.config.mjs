@@ -8,11 +8,15 @@ const withBundleAnalyzer = bundleAnalyzer({
 const nextConfig = {
   // Note: cacheComponents (PPR) is disabled because this app is fully auth-protected.
   // PPR requires static shells which conflicts with app-wide auth requirements.
+  // "use cache" also requires cacheComponents and cannot be used independently.
   //
   // Performance is achieved through:
+  // - Middleware optimizations: prefetch skip + KV session caching
+  // - Cache warming: proactive KV population on login/signup/OAuth
   // - Request-level deduplication: React cache() in lib/request-cache.ts
-  // - KV caching: lib/cache/ with Redis/Vercel KV
+  // - KV caching: lib/cache/ with Redis/Vercel KV (tags, labels, teams, memberships)
   // - Tag-based invalidation: revalidateTag() in server actions
+  // - SWR client-side caching: hooks/use-swr-data.ts for background revalidation
   // - Suspense streaming: Component-level loading states
   //
   // Custom cache profiles (for future use when PPR becomes more flexible)

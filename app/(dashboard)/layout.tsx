@@ -10,6 +10,7 @@ import { RealtimeProvider } from "@/hooks/realtime-context"
 import { CommandPaletteProvider } from "@/components/command-palette-provider"
 import { SettingsDialogProvider } from "@/components/providers/settings-dialog-provider"
 import { NotificationToastProviderLazy } from "@/components/providers/notification-toast-provider-lazy"
+import { SWRProvider } from "@/components/providers/swr-provider"
 import { PageSkeleton } from "@/components/ui/page-skeleton"
 import { ColorThemeSyncer } from "@/components/color-theme-syncer"
 import { getUserColorTheme } from "@/lib/actions/user-settings"
@@ -125,26 +126,28 @@ export default async function DashboardLayout({
   ])
 
   return (
-    <UserProvider
-      initialUser={{ id: user.id, email: user.email || "" }}
-      initialProfile={profile}
-    >
-      <OrganizationProvider initialOrganizations={organizations}>
-        <RealtimeProvider>
-          <SettingsDialogProvider>
-            <CommandPaletteProvider>
-              <ColorThemeSyncer serverTheme={colorTheme} />
-              <NotificationToastProviderLazy userId={user.id} />
-              <SidebarProvider>
-                <AppSidebar activeProjects={activeProjects} />
-                <SidebarInset>
-                  <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
-                </SidebarInset>
-              </SidebarProvider>
-            </CommandPaletteProvider>
-          </SettingsDialogProvider>
-        </RealtimeProvider>
-      </OrganizationProvider>
-    </UserProvider>
+    <SWRProvider>
+      <UserProvider
+        initialUser={{ id: user.id, email: user.email || "" }}
+        initialProfile={profile}
+      >
+        <OrganizationProvider initialOrganizations={organizations}>
+          <RealtimeProvider>
+            <SettingsDialogProvider>
+              <CommandPaletteProvider>
+                <ColorThemeSyncer serverTheme={colorTheme} />
+                <NotificationToastProviderLazy userId={user.id} />
+                <SidebarProvider>
+                  <AppSidebar activeProjects={activeProjects} />
+                  <SidebarInset>
+                    <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
+                  </SidebarInset>
+                </SidebarProvider>
+              </CommandPaletteProvider>
+            </SettingsDialogProvider>
+          </RealtimeProvider>
+        </OrganizationProvider>
+      </UserProvider>
+    </SWRProvider>
   )
 }

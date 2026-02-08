@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { invalidate } from "@/lib/cache"
 import type { Team, TeamInsert, TeamUpdate } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
@@ -35,6 +36,7 @@ export async function createTeam(
   }
 
   revalidatePath("/", "layout")
+  invalidate.team(orgId)
   return { data }
 }
 
@@ -107,11 +109,12 @@ export async function updateTeam(
   }
 
   revalidatePath("/", "layout")
+  if (data) invalidate.team(data.organization_id)
   return { data }
 }
 
 // Delete team
-export async function deleteTeam(id: string): Promise<ActionResult> {
+export async function deleteTeam(id: string, orgId?: string): Promise<ActionResult> {
   const supabase = await createClient()
 
   const { error } = await supabase.from("teams").delete().eq("id", id)
@@ -121,5 +124,6 @@ export async function deleteTeam(id: string): Promise<ActionResult> {
   }
 
   revalidatePath("/", "layout")
+  if (orgId) invalidate.team(orgId)
   return {}
 }

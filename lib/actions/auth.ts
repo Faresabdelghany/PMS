@@ -134,6 +134,10 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
     // Don't fail signup if org creation fails, user can create org later via onboarding
     await createPersonalOrganization(data.user.id, fullName || "My")
 
+    // Warm cache for the new user
+    const { warmUserCache } = await import("@/lib/cache")
+    warmUserCache(data.user.id).catch(() => {})
+
     revalidatePath("/", "layout")
     redirect("/inbox")
   }
@@ -184,13 +188,19 @@ export async function signIn(formData: FormData): Promise<AuthResult> {
 
   const { email, password } = validation.data
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
 
   if (error) {
     return { error: error.message }
+  }
+
+  // Warm the KV cache with user's dashboard data (non-blocking, best-effort)
+  if (data.user) {
+    const { warmUserCache } = await import("@/lib/cache")
+    warmUserCache(data.user.id).catch(() => {})
   }
 
   // Targeted revalidation - only invalidate auth-related cache, not entire layout
@@ -228,6 +238,14 @@ export async function signInWithGoogle(): Promise<void> {
 // Sign out
 export async function signOut(): Promise<void> {
   const supabase = await createClient()
+
+  // Invalidate session cache before signing out
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session?.user?.id) {
+    const { invalidate } = await import("@/lib/cache")
+    invalidate.session(session.user.id).catch(() => {})
+  }
+
   await supabase.auth.signOut()
   revalidatePath("/", "layout")
   redirect("/login")

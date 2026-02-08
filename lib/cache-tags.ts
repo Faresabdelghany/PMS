@@ -59,6 +59,9 @@ export const CacheTags = {
   // Tags (entity)
   tags: (orgId: string) => `tags-${orgId}`,
 
+  // Labels
+  labels: (orgId: string) => `labels-${orgId}`,
+
   // Inbox & Activity (user-specific, short TTL)
   inbox: (userId: string) => `inbox-${userId}`,
   activity: (userId: string) => `activity-${userId}`,

@@ -117,6 +117,34 @@ export const invalidate = {
   },
 
   /**
+   * Invalidate tag cache keys.
+   */
+  async tags(orgId: string): Promise<void> {
+    await this.keys([CacheKeys.tags(orgId)])
+  },
+
+  /**
+   * Invalidate label cache keys.
+   */
+  async labels(orgId: string): Promise<void> {
+    await this.keys([CacheKeys.labels(orgId)])
+  },
+
+  /**
+   * Invalidate session validation cache.
+   */
+  async session(userId: string): Promise<void> {
+    await this.key(CacheKeys.sessionValidated(userId))
+  },
+
+  /**
+   * Invalidate project membership cache.
+   */
+  async projectMembership(projectId: string, userId: string): Promise<void> {
+    await this.key(CacheKeys.projectMembership(projectId, userId))
+  },
+
+  /**
    * Invalidate search cache for an org (all queries).
    * Uses pattern matching - more expensive, use sparingly.
    * Note: Pattern matching only works with KV. Memory cache entries expire naturally.
