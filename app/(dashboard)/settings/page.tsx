@@ -27,8 +27,8 @@ export default function SettingsPage() {
     // Open the settings dialog with the appropriate section
     openSettings(section as Parameters<typeof openSettings>[0])
 
-    // Redirect to the projects page (home)
-    router.replace("/")
+    // Redirect to inbox (home)
+    router.replace("/inbox")
   }, [openSettings, router])
 
   // Show a brief loading state while redirecting

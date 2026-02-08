@@ -75,7 +75,12 @@ function toProjectTask(task: TaskLike): ProjectTask {
 import { deleteTask, updateTask, updateTaskStatus, reorderTasks } from "@/lib/actions/tasks"
 import { DEFAULT_VIEW_OPTIONS, type FilterChip as FilterChipType, type ViewOptions } from "@/lib/view-options"
 import type { FilterCounts } from "@/lib/data/projects"
-import { TaskWeekBoardView } from "@/components/tasks/TaskWeekBoardView"
+import dynamic from "next/dynamic"
+
+const TaskWeekBoardView = dynamic(
+  () => import("@/components/tasks/TaskWeekBoardView").then(m => ({ default: m.TaskWeekBoardView })),
+  { ssr: false, loading: () => <div className="flex items-center justify-center py-20 text-muted-foreground text-sm">Loading board view...</div> }
+)
 import {
   ProjectTaskListView,
   filterTasksByChips,

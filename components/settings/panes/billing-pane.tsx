@@ -79,6 +79,7 @@ export function BillingPane() {
                 Monthly
               </span>
               <Switch
+                aria-label="Toggle annual billing"
                 checked={billingPeriod === "annual"}
                 onCheckedChange={(checked) => setBillingPeriod(checked ? "annual" : "monthly")}
               />

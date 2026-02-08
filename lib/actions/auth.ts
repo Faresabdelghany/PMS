@@ -135,7 +135,7 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
     await createPersonalOrganization(data.user.id, fullName || "My")
 
     revalidatePath("/", "layout")
-    redirect("/")
+    redirect("/inbox")
   }
 
   // Fallback: if no session (email confirmation is required in Supabase settings)
@@ -154,7 +154,7 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
     await createPersonalOrganization(data.user.id, fullName || "My")
 
     revalidatePath("/", "layout")
-    redirect("/")
+    redirect("/inbox")
   }
 
   return { success: true }
@@ -196,7 +196,7 @@ export async function signIn(formData: FormData): Promise<AuthResult> {
   // Targeted revalidation - only invalidate auth-related cache, not entire layout
   // The middleware will refresh the session, so we just need to clear stale data
   revalidatePath("/")
-  redirect("/")
+  redirect("/inbox")
 }
 
 // Sign in with OAuth (Google)
@@ -345,5 +345,5 @@ export async function updatePassword(formData: FormData): Promise<AuthResult> {
   }
 
   revalidatePath("/", "layout")
-  redirect("/")
+  redirect("/inbox")
 }

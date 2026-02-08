@@ -23,7 +23,7 @@ export default function OnboardingPage() {
       setError(result.error)
       setIsLoading(false)
     } else if (result.data) {
-      router.push("/")
+      router.push("/inbox")
     }
   }
 

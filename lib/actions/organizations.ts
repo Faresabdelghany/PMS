@@ -195,7 +195,7 @@ export async function deleteOrganization(id: string): Promise<ActionResult> {
     revalidateTag(CacheTags.organizationMembers(id))
   })
 
-  redirect("/")
+  redirect("/inbox")
 }
 
 // Get organization members (with KV caching)

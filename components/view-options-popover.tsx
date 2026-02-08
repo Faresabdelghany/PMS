@@ -179,6 +179,7 @@ export function ViewOptionsPopover({ options, onChange, allowedViewTypes }: View
             <div className="flex items-center justify-between">
               <span className="text-sm">Show absent parent</span>
               <Switch
+                aria-label="Show absent parent"
                 checked={options.showAbsentParent}
                 onCheckedChange={(checked) => onChange({ ...options, showAbsentParent: checked })}
               />
@@ -188,6 +189,7 @@ export function ViewOptionsPopover({ options, onChange, allowedViewTypes }: View
             <div className="flex items-center justify-between">
               <span className="text-sm">Show closed projects</span>
               <Switch
+                aria-label="Show closed projects"
                 checked={options.showClosedProjects}
                 onCheckedChange={(checked) => onChange({ ...options, showClosedProjects: checked })}
               />

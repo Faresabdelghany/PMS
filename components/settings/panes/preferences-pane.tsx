@@ -184,6 +184,7 @@ export function PreferencesPane() {
           description="When you click a link to the app, open it in the app if possible."
         >
           <Switch
+            aria-label="Open links in app"
             checked={preferences?.open_links_in_app ?? true}
             onCheckedChange={(checked) => handlePreferenceChange("open_links_in_app", checked)}
             disabled={isLoading || isPending}

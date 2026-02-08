@@ -82,10 +82,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Redirect authenticated users away from auth pages
+  // Redirect authenticated users away from auth pages and root to inbox
   if (user && (pathname === "/login" || pathname === "/signup")) {
     const url = request.nextUrl.clone()
-    url.pathname = "/"
+    url.pathname = "/inbox"
+    return NextResponse.redirect(url)
+  }
+
+  // Redirect authenticated users from / to /inbox (avoids extra redirect hop)
+  if (user && pathname === "/") {
+    const url = request.nextUrl.clone()
+    url.pathname = "/inbox"
     return NextResponse.redirect(url)
   }
 

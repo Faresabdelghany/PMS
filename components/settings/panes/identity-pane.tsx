@@ -129,7 +129,7 @@ export function IdentityPane() {
             </p>
             <div className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
               <span className="text-sm text-foreground">{card.toggleLabel}</span>
-              <Switch disabled={!card.enabled} defaultChecked={card.enabled} />
+              <Switch aria-label={card.toggleLabel} disabled={!card.enabled} defaultChecked={card.enabled} />
             </div>
           </div>
         ))}

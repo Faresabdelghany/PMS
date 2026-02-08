@@ -71,7 +71,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
 
     setState("success")
     setTimeout(() => {
-      router.push("/")
+      router.push("/inbox")
     }, 2000)
   }
 
@@ -197,7 +197,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button onClick={() => router.push("/")} className="w-full">
+              <Button onClick={() => router.push("/inbox")} className="w-full">
                 Go to Dashboard
               </Button>
             </CardContent>

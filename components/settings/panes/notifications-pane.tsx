@@ -94,6 +94,7 @@ export function NotificationsPane() {
                 <span className="text-xs text-muted-foreground">{item.description}</span>
               </div>
               <Switch
+                aria-label={item.title}
                 checked={item.enabled}
                 onCheckedChange={(checked) => handleToggle(item.key, checked)}
                 disabled={isLoading || isPending}

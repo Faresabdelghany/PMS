@@ -641,6 +641,7 @@ export function TaskQuickCreateModal({
           {!editingTask && (
             <div className="flex items-center gap-2">
               <Switch
+                aria-label="Create more"
                 checked={createMore}
                 onCheckedChange={(value) => setCreateMore(Boolean(value))}
               />

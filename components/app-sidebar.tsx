@@ -249,7 +249,7 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
 
   const getHrefForNavItem = (id: NavItemId): string => {
     if (id === "my-tasks") return "/tasks"
-    if (id === "projects") return "/"
+    if (id === "projects") return "/projects"
     if (id === "inbox") return "/inbox"
     if (id === "clients") return "/clients"
     if (id === "chat") return "/chat"
@@ -259,7 +259,7 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
 
   const isItemActive = (id: NavItemId): boolean => {
     if (id === "projects") {
-      return pathname === "/" || pathname.startsWith("/projects")
+      return pathname.startsWith("/projects")
     }
     if (id === "my-tasks") {
       return pathname.startsWith("/tasks")
@@ -330,8 +330,15 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
                     >
                       <Link
                         href={href}
-                        onMouseEnter={preloadHandlers[item.id]}
-                        onFocus={preloadHandlers[item.id]}
+                        prefetch={false}
+                        onMouseEnter={() => {
+                          preloadHandlers[item.id]()
+                          handlePrefetch(href)
+                        }}
+                        onFocus={() => {
+                          preloadHandlers[item.id]()
+                          handlePrefetch(href)
+                        }}
                       >
                         <NavItemIcon id={item.id} />
                         <span>{item.label}</span>

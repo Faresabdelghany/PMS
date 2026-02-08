@@ -200,7 +200,7 @@ export function CommandPalette({ onCreateProject, onCreateTask, onOpenSettings }
 
         {/* Navigation */}
         <CommandGroup heading="Navigation">
-          <CommandItem onSelect={() => navigate("/")}>
+          <CommandItem onSelect={() => navigate("/projects")}>
             <House className="size-4" />
             <span>Go to Projects</span>
             <CommandShortcut>G P</CommandShortcut>
