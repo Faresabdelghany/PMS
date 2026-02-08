@@ -225,8 +225,8 @@ function LoginForm() {
 
       {/* Trust badge */}
       <div className="flex items-center justify-center gap-2 pt-4 animate-in fade-in duration-500 delay-600">
-        <Sparkles className="h-4 w-4 text-muted-foreground/60" />
-        <span className="text-xs text-muted-foreground/60">
+        <Sparkles className="h-4 w-4 text-muted-foreground" />
+        <span className="text-xs text-muted-foreground">
           Secured with enterprise-grade encryption
         </span>
       </div>

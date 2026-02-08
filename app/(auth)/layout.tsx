@@ -108,7 +108,7 @@ export default function AuthLayout({
       </div>
 
       {/* Right Panel - Form */}
-      <div className="relative flex items-center justify-center p-6 sm:p-12 bg-background">
+      <main className="relative flex items-center justify-center p-6 sm:p-12 bg-background">
         {/* Subtle gradient accent */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-primary/5 via-transparent to-transparent rounded-full blur-3xl pointer-events-none" />
 
@@ -126,7 +126,7 @@ export default function AuthLayout({
         <div className="w-full max-w-[420px] animate-in fade-in slide-in-from-bottom-4 duration-500">
           {children}
         </div>
-      </div>
+      </main>
     </div>
   )
 }
