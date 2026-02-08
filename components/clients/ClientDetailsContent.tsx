@@ -1,7 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowLeft, PencilSimple, Trash } from "@phosphor-icons/react/dist/ssr"
+import { ArrowLeft } from "@phosphor-icons/react/dist/ssr/ArrowLeft"
+import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
+import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"

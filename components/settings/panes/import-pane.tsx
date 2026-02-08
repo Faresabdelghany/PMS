@@ -1,16 +1,14 @@
 "use client"
 
 import { useState, useTransition, useEffect } from "react"
-import {
-  UploadSimple,
-  CheckCircle,
-  Circle,
-  Info,
-  X,
-  Spinner,
-  Check,
-  Warning,
-} from "@phosphor-icons/react/dist/ssr"
+import { UploadSimple } from "@phosphor-icons/react/dist/ssr/UploadSimple"
+import { CheckCircle } from "@phosphor-icons/react/dist/ssr/CheckCircle"
+import { Circle } from "@phosphor-icons/react/dist/ssr/Circle"
+import { Info } from "@phosphor-icons/react/dist/ssr/Info"
+import { X } from "@phosphor-icons/react/dist/ssr/X"
+import { Spinner } from "@phosphor-icons/react/dist/ssr/Spinner"
+import { Check } from "@phosphor-icons/react/dist/ssr/Check"
+import { Warning } from "@phosphor-icons/react/dist/ssr/Warning"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import {

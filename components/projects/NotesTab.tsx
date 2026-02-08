@@ -3,7 +3,7 @@
 import { useState, useTransition, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
-import { Plus } from "@phosphor-icons/react/dist/ssr"
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
 import { toast } from "sonner"
 
 import type { ProjectNote, User } from "@/lib/data/project-details"

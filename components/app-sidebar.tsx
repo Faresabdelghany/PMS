@@ -20,21 +20,19 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getOptimizedAvatarUrl } from "@/lib/assets/avatars"
 import { ProgressCircle } from "@/components/progress-circle"
-import {
-  MagnifyingGlass,
-  Tray,
-  CheckSquare,
-  Folder,
-  Users,
-  ChartBar,
-  Gear,
-  Layout,
-  Question,
-  CaretUpDown,
-  SignOut,
-  Sparkle,
-  User,
-} from "@phosphor-icons/react/dist/ssr"
+import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr/MagnifyingGlass"
+import { Tray } from "@phosphor-icons/react/dist/ssr/Tray"
+import { CheckSquare } from "@phosphor-icons/react/dist/ssr/CheckSquare"
+import { Folder } from "@phosphor-icons/react/dist/ssr/Folder"
+import { Users } from "@phosphor-icons/react/dist/ssr/Users"
+import { ChartBar } from "@phosphor-icons/react/dist/ssr/ChartBar"
+import { Gear } from "@phosphor-icons/react/dist/ssr/Gear"
+import { Layout } from "@phosphor-icons/react/dist/ssr/Layout"
+import { Question } from "@phosphor-icons/react/dist/ssr/Question"
+import { CaretUpDown } from "@phosphor-icons/react/dist/ssr/CaretUpDown"
+import { SignOut } from "@phosphor-icons/react/dist/ssr/SignOut"
+import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
+import { User } from "@phosphor-icons/react/dist/ssr/User"
 import {
   DropdownMenu,
   DropdownMenuContent,

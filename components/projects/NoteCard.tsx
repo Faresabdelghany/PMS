@@ -1,5 +1,7 @@
 import { memo } from "react"
-import { File, DotsThree, Waveform } from "@phosphor-icons/react/dist/ssr"
+import { File } from "@phosphor-icons/react/dist/ssr/File"
+import { DotsThree } from "@phosphor-icons/react/dist/ssr/DotsThree"
+import { Waveform } from "@phosphor-icons/react/dist/ssr/Waveform"
 import { format } from "date-fns"
 
 import type { ProjectNote } from "@/lib/data/project-details"

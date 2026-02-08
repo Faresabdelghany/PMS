@@ -1,6 +1,6 @@
 "use client"
 
-import { Sparkle } from "@phosphor-icons/react/dist/ssr"
+import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 import { PlaceholderPane, SettingsPaneHeader } from "../setting-primitives"
 
 export function SkillsPane() {

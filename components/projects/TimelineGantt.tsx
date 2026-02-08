@@ -6,7 +6,10 @@ import { addDays, differenceInDays, format, isWithinInterval, startOfWeek } from
 import type { TimelineTask } from "@/lib/data/project-details"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { CaretLeft, CaretRight, CalendarBlank, MagnifyingGlass } from "@phosphor-icons/react/dist/ssr"
+import { CaretLeft } from "@phosphor-icons/react/dist/ssr/CaretLeft"
+import { CaretRight } from "@phosphor-icons/react/dist/ssr/CaretRight"
+import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank"
+import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr/MagnifyingGlass"
 
 type TimelineGanttProps = {
   tasks: TimelineTask[]

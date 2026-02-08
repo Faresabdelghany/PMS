@@ -2,15 +2,13 @@
 
 import { useCallback, useEffect, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import {
-  FolderSimple,
-  CheckSquare,
-  Users,
-  House,
-  Gear,
-  Plus,
-  MagnifyingGlass,
-} from "@phosphor-icons/react/dist/ssr"
+import { FolderSimple } from "@phosphor-icons/react/dist/ssr/FolderSimple"
+import { CheckSquare } from "@phosphor-icons/react/dist/ssr/CheckSquare"
+import { Users } from "@phosphor-icons/react/dist/ssr/Users"
+import { House } from "@phosphor-icons/react/dist/ssr/House"
+import { Gear } from "@phosphor-icons/react/dist/ssr/Gear"
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
+import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr/MagnifyingGlass"
 
 import {
   CommandDialog,

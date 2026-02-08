@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useCallback, useRef } from "react"
-import { PaperPlaneTilt, Paperclip, Smiley } from "@phosphor-icons/react/dist/ssr"
+import { PaperPlaneTilt } from "@phosphor-icons/react/dist/ssr/PaperPlaneTilt"
+import { Paperclip } from "@phosphor-icons/react/dist/ssr/Paperclip"
+import { Smiley } from "@phosphor-icons/react/dist/ssr/Smiley"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {

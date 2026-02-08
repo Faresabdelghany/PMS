@@ -17,7 +17,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { DotsThreeVertical, Plus, StackSimple, Spinner, CircleNotch, CheckCircle, PencilSimple, Trash } from "@phosphor-icons/react/dist/ssr"
+import { DotsThreeVertical } from "@phosphor-icons/react/dist/ssr/DotsThreeVertical"
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
+import { StackSimple } from "@phosphor-icons/react/dist/ssr/StackSimple"
+import { Spinner } from "@phosphor-icons/react/dist/ssr/Spinner"
+import { CircleNotch } from "@phosphor-icons/react/dist/ssr/CircleNotch"
+import { CheckCircle } from "@phosphor-icons/react/dist/ssr/CheckCircle"
+import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
+import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
 import { deleteProject } from "@/lib/actions/projects"
 
 function columnStatusIcon(status: Project["status"]): React.JSX.Element {

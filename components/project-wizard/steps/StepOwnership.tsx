@@ -3,7 +3,8 @@ import { ProjectData, OwnershipEntry } from "../types";
 import { Label } from "../../ui/label";
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "../../ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar";
-import { Plus, X } from "@phosphor-icons/react/dist/ssr";
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
+import { X } from "@phosphor-icons/react/dist/ssr/X"
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";

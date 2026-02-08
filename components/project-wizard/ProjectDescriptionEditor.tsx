@@ -6,7 +6,8 @@ import Placeholder from "@tiptap/extension-placeholder";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import "@/styles/tiptap.css";
-import { Plus, ArrowsOutSimple } from "@phosphor-icons/react/dist/ssr";
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
+import { ArrowsOutSimple } from "@phosphor-icons/react/dist/ssr/ArrowsOutSimple"
 import { useAIStatus } from "@/hooks/use-ai-status";
 import { AIGenerateButton } from "@/components/ai/ai-generate-button";
 import { AISetupPrompt } from "@/components/ai/ai-setup-prompt";

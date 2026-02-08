@@ -1,7 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { DotsThree, MagnifyingGlass, Plus } from "@phosphor-icons/react/dist/ssr"
+import { DotsThree } from "@phosphor-icons/react/dist/ssr/DotsThree"
+import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr/MagnifyingGlass"
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
 import { format } from "date-fns"
 
 import type { ProjectNote, NoteStatus } from "@/lib/data/project-details"

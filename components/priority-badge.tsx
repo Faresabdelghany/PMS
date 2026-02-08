@@ -1,6 +1,6 @@
 "use client"
 
-import { WarningOctagon } from "@phosphor-icons/react/dist/ssr"
+import { WarningOctagon } from "@phosphor-icons/react/dist/ssr/WarningOctagon"
 import { cn } from "@/lib/utils"
 
 export type PriorityLevel = "urgent" | "high" | "medium" | "low"

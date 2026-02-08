@@ -7,20 +7,18 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Checkbox } from "@/components/ui/checkbox"
-import {
-  MagnifyingGlass,
-  FunnelSimple,
-  Check,
-  CheckCircle,
-  Trash,
-  ChatCircle,
-  ArrowsClockwise,
-  Users,
-  Flag,
-  Bell,
-  Circle,
-  DotsThree,
-} from "@phosphor-icons/react/dist/ssr"
+import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr/MagnifyingGlass"
+import { FunnelSimple } from "@phosphor-icons/react/dist/ssr/FunnelSimple"
+import { Check } from "@phosphor-icons/react/dist/ssr/Check"
+import { CheckCircle } from "@phosphor-icons/react/dist/ssr/CheckCircle"
+import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
+import { ChatCircle } from "@phosphor-icons/react/dist/ssr/ChatCircle"
+import { ArrowsClockwise } from "@phosphor-icons/react/dist/ssr/ArrowsClockwise"
+import { Users } from "@phosphor-icons/react/dist/ssr/Users"
+import { Flag } from "@phosphor-icons/react/dist/ssr/Flag"
+import { Bell } from "@phosphor-icons/react/dist/ssr/Bell"
+import { Circle } from "@phosphor-icons/react/dist/ssr/Circle"
+import { DotsThree } from "@phosphor-icons/react/dist/ssr/DotsThree"
 import { toast } from "sonner"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"

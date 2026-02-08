@@ -9,7 +9,8 @@ import {
   LazyTimelineGantt,
   LazyRightMetaPanel,
 } from "@/components/lazy-hydrate"
-import { LinkSimple, SquareHalf } from "@phosphor-icons/react/dist/ssr"
+import { LinkSimple } from "@phosphor-icons/react/dist/ssr/LinkSimple"
+import { SquareHalf } from "@phosphor-icons/react/dist/ssr/SquareHalf"
 import { toast } from "sonner"
 import { useProjectRealtime } from "@/hooks/use-realtime"
 

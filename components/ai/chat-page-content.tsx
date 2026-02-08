@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { List } from "@phosphor-icons/react/dist/ssr"
+import { List } from "@phosphor-icons/react/dist/ssr/List"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Breadcrumbs } from "@/components/projects/Breadcrumbs"

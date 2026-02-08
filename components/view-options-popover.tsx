@@ -4,21 +4,19 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Switch } from "@/components/ui/switch"
-import {
-  Sliders,
-  ListBullets,
-  Kanban,
-  ChartBar,
-  TextIndent,
-  CaretUpDown,
-  ListDashes,
-  Globe,
-  Spinner,
-  User,
-  Tag,
-  TextT,
-  Calendar,
-} from "@phosphor-icons/react/dist/ssr"
+import { Sliders } from "@phosphor-icons/react/dist/ssr/Sliders"
+import { ListBullets } from "@phosphor-icons/react/dist/ssr/ListBullets"
+import { Kanban } from "@phosphor-icons/react/dist/ssr/Kanban"
+import { ChartBar } from "@phosphor-icons/react/dist/ssr/ChartBar"
+import { TextIndent } from "@phosphor-icons/react/dist/ssr/TextIndent"
+import { CaretUpDown } from "@phosphor-icons/react/dist/ssr/CaretUpDown"
+import { ListDashes } from "@phosphor-icons/react/dist/ssr/ListDashes"
+import { Globe } from "@phosphor-icons/react/dist/ssr/Globe"
+import { Spinner } from "@phosphor-icons/react/dist/ssr/Spinner"
+import { User } from "@phosphor-icons/react/dist/ssr/User"
+import { Tag } from "@phosphor-icons/react/dist/ssr/Tag"
+import { TextT } from "@phosphor-icons/react/dist/ssr/TextT"
+import { Calendar } from "@phosphor-icons/react/dist/ssr/Calendar"
 import { cn } from "@/lib/utils"
 
 type Options = {

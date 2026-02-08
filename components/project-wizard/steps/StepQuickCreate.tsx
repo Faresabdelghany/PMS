@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
+import Image from "next/image";
 import { AnimatePresence } from "@/components/ui/motion-lazy";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -17,7 +18,21 @@ import {
   CommandItem,
   CommandList,
 } from "../../ui/command";
-import { Check, X, CornersOut, Star, CalendarBlank, UserCircle, Spinner, List, Paperclip, Microphone, Rows, ChartBar, Tag, SquaresFour, Bookmark } from "@phosphor-icons/react/dist/ssr";
+import { Check } from "@phosphor-icons/react/dist/ssr/Check"
+import { X } from "@phosphor-icons/react/dist/ssr/X"
+import { CornersOut } from "@phosphor-icons/react/dist/ssr/CornersOut"
+import { Star } from "@phosphor-icons/react/dist/ssr/Star"
+import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank"
+import { UserCircle } from "@phosphor-icons/react/dist/ssr/UserCircle"
+import { Spinner } from "@phosphor-icons/react/dist/ssr/Spinner"
+import { List } from "@phosphor-icons/react/dist/ssr/List"
+import { Paperclip } from "@phosphor-icons/react/dist/ssr/Paperclip"
+import { Microphone } from "@phosphor-icons/react/dist/ssr/Microphone"
+import { Rows } from "@phosphor-icons/react/dist/ssr/Rows"
+import { ChartBar } from "@phosphor-icons/react/dist/ssr/ChartBar"
+import { Tag } from "@phosphor-icons/react/dist/ssr/Tag"
+import { SquaresFour } from "@phosphor-icons/react/dist/ssr/SquaresFour"
+import { Bookmark } from "@phosphor-icons/react/dist/ssr/Bookmark"
 import { ProjectDescriptionEditorLazy as ProjectDescriptionEditor } from "../ProjectDescriptionEditorLazy";
 import type { ProjectStatus, ProjectPriority, OrganizationTag, OrganizationLabel } from "@/lib/supabase/types";
 import type { OrganizationMember } from "./StepOwnership";
@@ -470,9 +485,11 @@ export function StepQuickCreate({
               renderItem={(item, isSelected) => (
                 <div className="flex items-center gap-2 w-full">
                   {item.avatar ? (
-                    <img
+                    <Image
                       src={item.avatar}
                       alt=""
+                      width={20}
+                      height={20}
                       className="size-5 rounded-full object-cover"
                     />
                   ) : (
@@ -488,9 +505,10 @@ export function StepQuickCreate({
                 <button className="bg-muted flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:border-primary/50 transition-colors">
                   <div className="relative rounded-full size-4 overflow-hidden">
                     {assignee?.avatar ? (
-                      <img
+                      <Image
                         alt=""
-                        className="object-cover size-full"
+                        fill
+                        className="object-cover"
                         src={assignee.avatar}
                       />
                     ) : (

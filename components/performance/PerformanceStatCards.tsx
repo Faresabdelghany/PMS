@@ -1,12 +1,10 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Folder,
-  CheckCircle,
-  Clock,
-  TrendUp,
-} from "@phosphor-icons/react/dist/ssr"
+import { Folder } from "@phosphor-icons/react/dist/ssr/Folder"
+import { CheckCircle } from "@phosphor-icons/react/dist/ssr/CheckCircle"
+import { Clock } from "@phosphor-icons/react/dist/ssr/Clock"
+import { TrendUp } from "@phosphor-icons/react/dist/ssr/TrendUp"
 import type { PerformanceMetrics } from "@/lib/actions/analytics"
 
 type PerformanceStatCardsProps = {

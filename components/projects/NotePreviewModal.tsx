@@ -1,18 +1,16 @@
 "use client"
 
 import { useState } from "react"
-import {
-    ArrowLeft,
-    DotsThree,
-    PencilSimple,
-    Export,
-    CaretDown,
-    Play,
-    Pause,
-    SkipBack,
-    SkipForward,
-    CircleNotch,
-} from "@phosphor-icons/react/dist/ssr"
+import { ArrowLeft } from "@phosphor-icons/react/dist/ssr/ArrowLeft"
+import { DotsThree } from "@phosphor-icons/react/dist/ssr/DotsThree"
+import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
+import { Export } from "@phosphor-icons/react/dist/ssr/Export"
+import { CaretDown } from "@phosphor-icons/react/dist/ssr/CaretDown"
+import { Play } from "@phosphor-icons/react/dist/ssr/Play"
+import { Pause } from "@phosphor-icons/react/dist/ssr/Pause"
+import { SkipBack } from "@phosphor-icons/react/dist/ssr/SkipBack"
+import { SkipForward } from "@phosphor-icons/react/dist/ssr/SkipForward"
+import { CircleNotch } from "@phosphor-icons/react/dist/ssr/CircleNotch"
 import { format } from "date-fns"
 
 import type { ProjectNote, TranscriptSegment } from "@/lib/data/project-details"

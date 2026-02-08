@@ -1,5 +1,9 @@
 import { useCallback } from "react"
-import { DotsThree, ArrowSquareOut, DownloadSimple, PencilSimple, Trash } from "@phosphor-icons/react/dist/ssr"
+import { DotsThree } from "@phosphor-icons/react/dist/ssr/DotsThree"
+import { ArrowSquareOut } from "@phosphor-icons/react/dist/ssr/ArrowSquareOut"
+import { DownloadSimple } from "@phosphor-icons/react/dist/ssr/DownloadSimple"
+import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
+import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
 
 import type { ProjectFile } from "@/lib/data/project-details"
 import { Button } from "@/components/ui/button"

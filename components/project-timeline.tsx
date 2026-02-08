@@ -10,13 +10,11 @@ import {
   format,
   isSameDay,
 } from "date-fns"
-import {
-  CaretLeft,
-  CaretRight,
-  MagnifyingGlassPlus,
-  MagnifyingGlassMinus,
-  CaretDown,
-} from "@phosphor-icons/react/dist/ssr"
+import { CaretLeft } from "@phosphor-icons/react/dist/ssr/CaretLeft"
+import { CaretRight } from "@phosphor-icons/react/dist/ssr/CaretRight"
+import { MagnifyingGlassPlus } from "@phosphor-icons/react/dist/ssr/MagnifyingGlassPlus"
+import { MagnifyingGlassMinus } from "@phosphor-icons/react/dist/ssr/MagnifyingGlassMinus"
+import { CaretDown } from "@phosphor-icons/react/dist/ssr/CaretDown"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"

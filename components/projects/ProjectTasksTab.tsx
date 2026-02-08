@@ -2,7 +2,11 @@
 
 import { useMemo, useState, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { DotsThreeVertical, DotsSixVertical, PencilSimple, Plus, Trash } from "@phosphor-icons/react/dist/ssr"
+import { DotsThreeVertical } from "@phosphor-icons/react/dist/ssr/DotsThreeVertical"
+import { DotsSixVertical } from "@phosphor-icons/react/dist/ssr/DotsSixVertical"
+import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
+import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
 import {
   DndContext,
   type DragEndEvent,

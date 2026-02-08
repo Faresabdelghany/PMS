@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Client, ClientStatus } from "@/lib/supabase/types"
 import { createClientAction, updateClient } from "@/lib/actions/clients"
-import { X } from "@phosphor-icons/react/dist/ssr"
+import { X } from "@phosphor-icons/react/dist/ssr/X"
 
 interface ClientWizardProps {
   mode: "create" | "edit"

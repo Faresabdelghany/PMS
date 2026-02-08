@@ -11,7 +11,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { X, Plus, ArrowsClockwise } from "@phosphor-icons/react/dist/ssr"
+import { X } from "@phosphor-icons/react/dist/ssr/X"
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
+import { ArrowsClockwise } from "@phosphor-icons/react/dist/ssr/ArrowsClockwise"
 import type { GeneratedTask } from "@/components/project-wizard/types"
 
 interface AITaskPreviewProps {

@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Spinner, ShieldCheck, DiamondsFour } from "@phosphor-icons/react/dist/ssr"
+import { Spinner } from "@phosphor-icons/react/dist/ssr/Spinner"
+import { ShieldCheck } from "@phosphor-icons/react/dist/ssr/ShieldCheck"
+import { DiamondsFour } from "@phosphor-icons/react/dist/ssr/DiamondsFour"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"

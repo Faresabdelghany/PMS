@@ -16,7 +16,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { StarFour, Eye, EyeSlash, CheckCircle, XCircle, CircleNotch } from "@phosphor-icons/react/dist/ssr"
+import { StarFour } from "@phosphor-icons/react/dist/ssr/StarFour"
+import { Eye } from "@phosphor-icons/react/dist/ssr/Eye"
+import { EyeSlash } from "@phosphor-icons/react/dist/ssr/EyeSlash"
+import { CheckCircle } from "@phosphor-icons/react/dist/ssr/CheckCircle"
+import { XCircle } from "@phosphor-icons/react/dist/ssr/XCircle"
+import { CircleNotch } from "@phosphor-icons/react/dist/ssr/CircleNotch"
 import { AI_MODELS, type AIProvider } from "@/lib/constants/ai"
 import { saveAISettings, saveAIApiKey } from "@/lib/actions/user-settings"
 import { testAIConnection } from "@/lib/actions/ai"

@@ -1,4 +1,7 @@
-import { Rocket, Flask, Briefcase, Check } from "@phosphor-icons/react/dist/ssr";
+import { Rocket } from "@phosphor-icons/react/dist/ssr/Rocket"
+import { Flask } from "@phosphor-icons/react/dist/ssr/Flask"
+import { Briefcase } from "@phosphor-icons/react/dist/ssr/Briefcase"
+import { Check } from "@phosphor-icons/react/dist/ssr/Check"
 import { cn } from "@/lib/utils";
 import { ProjectIntent } from "../types";
 

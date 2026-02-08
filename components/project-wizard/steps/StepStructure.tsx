@@ -5,7 +5,11 @@ import { cn } from "@/lib/utils";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
 import { Button } from "../../ui/button";
-import { ArrowRight, Flag, GitMerge, Plus, X } from "@phosphor-icons/react/dist/ssr";
+import { ArrowRight } from "@phosphor-icons/react/dist/ssr/ArrowRight"
+import { Flag } from "@phosphor-icons/react/dist/ssr/Flag"
+import { GitMerge } from "@phosphor-icons/react/dist/ssr/GitMerge"
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
+import { X } from "@phosphor-icons/react/dist/ssr/X"
 import { useAIStatus } from "@/hooks/use-ai-status";
 import { generateWorkstreams, generateTasks, type ProjectContext } from "@/lib/actions/ai";
 

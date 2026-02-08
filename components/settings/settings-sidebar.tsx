@@ -1,19 +1,17 @@
 "use client"
 
-import {
-  UserCircle,
-  Bell,
-  SlidersHorizontal,
-  UsersThree,
-  ShieldCheck,
-  SquaresFour,
-  CreditCard,
-  UploadSimple,
-  Robot,
-  Sparkle,
-  Tag,
-  Bookmark,
-} from "@phosphor-icons/react/dist/ssr"
+import { UserCircle } from "@phosphor-icons/react/dist/ssr/UserCircle"
+import { Bell } from "@phosphor-icons/react/dist/ssr/Bell"
+import { SlidersHorizontal } from "@phosphor-icons/react/dist/ssr/SlidersHorizontal"
+import { UsersThree } from "@phosphor-icons/react/dist/ssr/UsersThree"
+import { ShieldCheck } from "@phosphor-icons/react/dist/ssr/ShieldCheck"
+import { SquaresFour } from "@phosphor-icons/react/dist/ssr/SquaresFour"
+import { CreditCard } from "@phosphor-icons/react/dist/ssr/CreditCard"
+import { UploadSimple } from "@phosphor-icons/react/dist/ssr/UploadSimple"
+import { Robot } from "@phosphor-icons/react/dist/ssr/Robot"
+import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
+import { Tag } from "@phosphor-icons/react/dist/ssr/Tag"
+import { Bookmark } from "@phosphor-icons/react/dist/ssr/Bookmark"
 import { cn } from "@/lib/utils"
 
 export type SettingsItemId =

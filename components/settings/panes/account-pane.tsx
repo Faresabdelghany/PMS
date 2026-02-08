@@ -1,7 +1,11 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Camera, Trash, Spinner, Copy, Check } from "@phosphor-icons/react/dist/ssr"
+import { Camera } from "@phosphor-icons/react/dist/ssr/Camera"
+import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
+import { Spinner } from "@phosphor-icons/react/dist/ssr/Spinner"
+import { Copy } from "@phosphor-icons/react/dist/ssr/Copy"
+import { Check } from "@phosphor-icons/react/dist/ssr/Check"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"

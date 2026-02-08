@@ -2,7 +2,10 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
-import { CalendarBlank, Tag as TagIcon, X, CheckSquare } from '@phosphor-icons/react/dist/ssr'
+import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank"
+import { Tag as TagIcon } from "@phosphor-icons/react/dist/ssr/Tag"
+import { X } from "@phosphor-icons/react/dist/ssr/X"
+import { CheckSquare } from "@phosphor-icons/react/dist/ssr/CheckSquare"
 
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'

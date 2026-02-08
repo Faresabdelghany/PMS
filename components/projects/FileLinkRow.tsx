@@ -1,5 +1,5 @@
 import { memo } from "react"
-import { DownloadSimple } from "@phosphor-icons/react/dist/ssr"
+import { DownloadSimple } from "@phosphor-icons/react/dist/ssr/DownloadSimple"
 import Image from "next/image"
 
 import type { QuickLink } from "@/lib/data/project-details"

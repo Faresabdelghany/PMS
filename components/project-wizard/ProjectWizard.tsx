@@ -13,7 +13,9 @@ import { StepOwnership, type OrganizationMember } from "./steps/StepOwnership";
 import { StepStructure } from "./steps/StepStructure";
 import { StepReview } from "./steps/StepReview";
 import { StepQuickCreate, type QuickCreateProjectData, type EditingProjectData } from "./steps/StepQuickCreate";
-import { CaretLeft, CaretRight, X } from "@phosphor-icons/react/dist/ssr";
+import { CaretLeft } from "@phosphor-icons/react/dist/ssr/CaretLeft"
+import { CaretRight } from "@phosphor-icons/react/dist/ssr/CaretRight"
+import { X } from "@phosphor-icons/react/dist/ssr/X"
 import { cn } from "@/lib/utils";
 import { createProject, updateProject } from "@/lib/actions/projects";
 import { getOrganizationMembers } from "@/lib/actions/organizations";

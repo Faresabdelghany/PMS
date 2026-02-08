@@ -2,27 +2,25 @@
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import {
-  Check,
-  SpinnerGap,
-  Warning,
-  Paperclip,
-  Play,
-  StarFour,
-  Folder,
-  Flag,
-  Circle,
-  User,
-  Plus,
-  CheckSquare,
-  Pencil,
-  Trash,
-  Users,
-  Note,
-  Briefcase,
-  Lightning,
-  Clock,
-} from "@phosphor-icons/react/dist/ssr"
+import { Check } from "@phosphor-icons/react/dist/ssr/Check"
+import { SpinnerGap } from "@phosphor-icons/react/dist/ssr/SpinnerGap"
+import { Warning } from "@phosphor-icons/react/dist/ssr/Warning"
+import { Paperclip } from "@phosphor-icons/react/dist/ssr/Paperclip"
+import { Play } from "@phosphor-icons/react/dist/ssr/Play"
+import { StarFour } from "@phosphor-icons/react/dist/ssr/StarFour"
+import { Folder } from "@phosphor-icons/react/dist/ssr/Folder"
+import { Flag } from "@phosphor-icons/react/dist/ssr/Flag"
+import { Circle } from "@phosphor-icons/react/dist/ssr/Circle"
+import { User } from "@phosphor-icons/react/dist/ssr/User"
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
+import { CheckSquare } from "@phosphor-icons/react/dist/ssr/CheckSquare"
+import { Pencil } from "@phosphor-icons/react/dist/ssr/Pencil"
+import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
+import { Users } from "@phosphor-icons/react/dist/ssr/Users"
+import { Note } from "@phosphor-icons/react/dist/ssr/Note"
+import { Briefcase } from "@phosphor-icons/react/dist/ssr/Briefcase"
+import { Lightning } from "@phosphor-icons/react/dist/ssr/Lightning"
+import { Clock } from "@phosphor-icons/react/dist/ssr/Clock"
 import type { Message, ActionState, MultiActionState } from "@/hooks/use-ai-chat"
 import type { ProposedAction, SuggestedAction } from "@/lib/actions/ai-types"
 import { MarkdownContent } from "./markdown-content"

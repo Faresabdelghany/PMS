@@ -7,13 +7,11 @@ import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
-import {
-  Funnel,
-  Spinner,
-  Tag,
-  User,
-  ChartBar,
-} from "@phosphor-icons/react/dist/ssr"
+import { Funnel } from "@phosphor-icons/react/dist/ssr/Funnel"
+import { Spinner } from "@phosphor-icons/react/dist/ssr/Spinner"
+import { Tag } from "@phosphor-icons/react/dist/ssr/Tag"
+import { User } from "@phosphor-icons/react/dist/ssr/User"
+import { ChartBar } from "@phosphor-icons/react/dist/ssr/ChartBar"
 
 export type FilterChip = { key: string; value: string }
 

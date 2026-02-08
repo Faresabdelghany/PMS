@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { Copy, Check } from "@phosphor-icons/react/dist/ssr"
+import { Copy } from "@phosphor-icons/react/dist/ssr/Copy"
+import { Check } from "@phosphor-icons/react/dist/ssr/Check"
 import { cn } from "@/lib/utils"
 import { UI_COPY_RESET_DELAY } from "@/lib/constants"
 

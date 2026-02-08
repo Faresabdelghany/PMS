@@ -10,7 +10,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { LinkSimple, ShareNetwork, DotsThreeVertical } from "@phosphor-icons/react/dist/ssr"
+import { LinkSimple } from "@phosphor-icons/react/dist/ssr/LinkSimple"
+import { ShareNetwork } from "@phosphor-icons/react/dist/ssr/ShareNetwork"
+import { DotsThreeVertical } from "@phosphor-icons/react/dist/ssr/DotsThreeVertical"
 
 type ProjectHeaderActionsProps = {
   projectId: string

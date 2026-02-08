@@ -1,7 +1,11 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { Paperclip, Microphone, UploadSimple, Tag, X } from "@phosphor-icons/react/dist/ssr"
+import { Paperclip } from "@phosphor-icons/react/dist/ssr/Paperclip"
+import { Microphone } from "@phosphor-icons/react/dist/ssr/Microphone"
+import { UploadSimple } from "@phosphor-icons/react/dist/ssr/UploadSimple"
+import { Tag } from "@phosphor-icons/react/dist/ssr/Tag"
+import { X } from "@phosphor-icons/react/dist/ssr/X"
 import { toast } from "sonner"
 
 import type { User, ProjectNote } from "@/lib/data/project-details"

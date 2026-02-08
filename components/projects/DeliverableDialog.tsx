@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { format } from "date-fns"
-import { CalendarBlank } from "@phosphor-icons/react/dist/ssr"
+import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank"
 import { toast } from "sonner"
 
 import {

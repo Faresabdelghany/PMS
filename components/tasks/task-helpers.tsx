@@ -1,7 +1,13 @@
 "use client"
 
 import { format } from "date-fns"
-import { ChartBar, DotsThreeVertical, DotsSixVertical, FolderSimple, PencilSimple, Plus, Trash } from "@phosphor-icons/react/dist/ssr"
+import { ChartBar } from "@phosphor-icons/react/dist/ssr/ChartBar"
+import { DotsThreeVertical } from "@phosphor-icons/react/dist/ssr/DotsThreeVertical"
+import { DotsSixVertical } from "@phosphor-icons/react/dist/ssr/DotsSixVertical"
+import { FolderSimple } from "@phosphor-icons/react/dist/ssr/FolderSimple"
+import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
+import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
 import {
   SortableContext,
   useSortable,

@@ -3,7 +3,10 @@
 import { memo, useState } from "react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { TimelineBar } from "@/components/timeline-bar"
-import { CaretDown, CaretRight, Folder, ChartBar } from "@phosphor-icons/react/dist/ssr"
+import { CaretDown } from "@phosphor-icons/react/dist/ssr/CaretDown"
+import { CaretRight } from "@phosphor-icons/react/dist/ssr/CaretRight"
+import { Folder } from "@phosphor-icons/react/dist/ssr/Folder"
+import { ChartBar } from "@phosphor-icons/react/dist/ssr/ChartBar"
 import { cn } from "@/lib/utils"
 import type { Project } from "@/lib/data/projects"
 

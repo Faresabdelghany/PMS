@@ -6,7 +6,18 @@ import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar";
 import { getAvatarUrl } from "@/lib/assets/avatars";
-import { Rocket, Flask, Briefcase, User, Users, Layout, Target, CheckCircle, Question, PencilSimpleLine, FolderSimple, GitMerge } from "@phosphor-icons/react/dist/ssr";
+import { Rocket } from "@phosphor-icons/react/dist/ssr/Rocket"
+import { Flask } from "@phosphor-icons/react/dist/ssr/Flask"
+import { Briefcase } from "@phosphor-icons/react/dist/ssr/Briefcase"
+import { User } from "@phosphor-icons/react/dist/ssr/User"
+import { Users } from "@phosphor-icons/react/dist/ssr/Users"
+import { Layout } from "@phosphor-icons/react/dist/ssr/Layout"
+import { Target } from "@phosphor-icons/react/dist/ssr/Target"
+import { CheckCircle } from "@phosphor-icons/react/dist/ssr/CheckCircle"
+import { Question } from "@phosphor-icons/react/dist/ssr/Question"
+import { PencilSimpleLine } from "@phosphor-icons/react/dist/ssr/PencilSimpleLine"
+import { FolderSimple } from "@phosphor-icons/react/dist/ssr/FolderSimple"
+import { GitMerge } from "@phosphor-icons/react/dist/ssr/GitMerge"
 
 interface StepReviewProps {
   data: ProjectData;

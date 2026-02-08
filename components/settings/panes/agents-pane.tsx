@@ -1,15 +1,13 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import {
-  Spinner,
-  Eye,
-  EyeClosed,
-  CheckCircle,
-  XCircle,
-  Sparkle,
-  Trash,
-} from "@phosphor-icons/react/dist/ssr"
+import { Spinner } from "@phosphor-icons/react/dist/ssr/Spinner"
+import { Eye } from "@phosphor-icons/react/dist/ssr/Eye"
+import { EyeClosed } from "@phosphor-icons/react/dist/ssr/EyeClosed"
+import { CheckCircle } from "@phosphor-icons/react/dist/ssr/CheckCircle"
+import { XCircle } from "@phosphor-icons/react/dist/ssr/XCircle"
+import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
+import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"

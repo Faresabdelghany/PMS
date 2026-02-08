@@ -1,7 +1,12 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Spinner, Plus, DotsThree, Pencil, Trash, MagnifyingGlass } from "@phosphor-icons/react/dist/ssr"
+import { Spinner } from "@phosphor-icons/react/dist/ssr/Spinner"
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
+import { DotsThree } from "@phosphor-icons/react/dist/ssr/DotsThree"
+import { Pencil } from "@phosphor-icons/react/dist/ssr/Pencil"
+import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
+import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr/MagnifyingGlass"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"

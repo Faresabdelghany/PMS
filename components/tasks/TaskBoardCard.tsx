@@ -2,7 +2,10 @@
 
 import { memo, type ReactNode } from "react"
 import { format } from "date-fns"
-import { CaretDown, FolderSimple, CalendarBlank, Tag as TagIcon } from "@phosphor-icons/react/dist/ssr"
+import { CaretDown } from "@phosphor-icons/react/dist/ssr/CaretDown"
+import { FolderSimple } from "@phosphor-icons/react/dist/ssr/FolderSimple"
+import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank"
+import { Tag as TagIcon } from "@phosphor-icons/react/dist/ssr/Tag"
 
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"

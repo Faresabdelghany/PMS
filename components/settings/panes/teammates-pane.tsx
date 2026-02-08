@@ -1,7 +1,10 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Spinner, Trash, EnvelopeSimple, UserPlus } from "@phosphor-icons/react/dist/ssr"
+import { Spinner } from "@phosphor-icons/react/dist/ssr/Spinner"
+import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
+import { EnvelopeSimple } from "@phosphor-icons/react/dist/ssr/EnvelopeSimple"
+import { UserPlus } from "@phosphor-icons/react/dist/ssr/UserPlus"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"

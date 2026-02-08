@@ -3,16 +3,14 @@
 import { useEffect, useRef, useMemo } from "react"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
-import {
-  StarFour,
-  Trash,
-  SpinnerGap,
-  Plus,
-  Warning,
-  ChartBar,
-  MagnifyingGlass,
-  Lightbulb,
-} from "@phosphor-icons/react/dist/ssr"
+import { StarFour } from "@phosphor-icons/react/dist/ssr/StarFour"
+import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
+import { SpinnerGap } from "@phosphor-icons/react/dist/ssr/SpinnerGap"
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
+import { Warning } from "@phosphor-icons/react/dist/ssr/Warning"
+import { ChartBar } from "@phosphor-icons/react/dist/ssr/ChartBar"
+import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr/MagnifyingGlass"
+import { Lightbulb } from "@phosphor-icons/react/dist/ssr/Lightbulb"
 import { useAIStatus } from "@/hooks/use-ai-status"
 import {
   usePersistedAIChat,

@@ -1,6 +1,7 @@
 "use client"
 
-import { Paperclip, UploadSimple } from "@phosphor-icons/react/dist/ssr"
+import { Paperclip } from "@phosphor-icons/react/dist/ssr/Paperclip"
+import { UploadSimple } from "@phosphor-icons/react/dist/ssr/UploadSimple"
 
 import type { QuickLink } from "@/lib/data/project-details"
 import { CardTitle } from "@/components/ui/card"

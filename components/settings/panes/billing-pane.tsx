@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { CheckCircle, DiamondsFour } from "@phosphor-icons/react/dist/ssr"
+import { CheckCircle } from "@phosphor-icons/react/dist/ssr/CheckCircle"
+import { DiamondsFour } from "@phosphor-icons/react/dist/ssr/DiamondsFour"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"

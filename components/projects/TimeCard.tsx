@@ -1,4 +1,5 @@
-import { CalendarBlank, Clock } from "@phosphor-icons/react/dist/ssr"
+import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank"
+import { Clock } from "@phosphor-icons/react/dist/ssr/Clock"
 
 import { Progress } from "@/components/ui/progress"
 import { StatRow } from "@/components/projects/StatRow"

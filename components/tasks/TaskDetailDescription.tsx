@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { PencilSimple, Check, X } from "@phosphor-icons/react/dist/ssr"
+import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
+import { Check } from "@phosphor-icons/react/dist/ssr/Check"
+import { X } from "@phosphor-icons/react/dist/ssr/X"
 import { Button } from "@/components/ui/button"
 import dynamic from "next/dynamic"
 

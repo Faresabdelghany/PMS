@@ -16,7 +16,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { CaretUpDown, ArrowDown, ArrowUp, DotsThreeVertical, Plus, MagnifyingGlass, Folder } from "@phosphor-icons/react/dist/ssr"
+import { CaretUpDown } from "@phosphor-icons/react/dist/ssr/CaretUpDown"
+import { ArrowDown } from "@phosphor-icons/react/dist/ssr/ArrowDown"
+import { ArrowUp } from "@phosphor-icons/react/dist/ssr/ArrowUp"
+import { DotsThreeVertical } from "@phosphor-icons/react/dist/ssr/DotsThreeVertical"
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
+import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr/MagnifyingGlass"
+import { Folder } from "@phosphor-icons/react/dist/ssr/Folder"
 import { toast } from "sonner"
 import Link from "next/link"
 import { useRouter } from "next/navigation"

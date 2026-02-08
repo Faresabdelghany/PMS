@@ -1,16 +1,14 @@
 "use client"
 
 import { useState, useEffect, useTransition, useCallback } from "react"
-import {
-  Plus,
-  DotsThree,
-  Pencil,
-  Trash,
-  CheckCircle,
-  Circle,
-  Lock,
-  Spinner,
-} from "@phosphor-icons/react/dist/ssr"
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
+import { DotsThree } from "@phosphor-icons/react/dist/ssr/DotsThree"
+import { Pencil } from "@phosphor-icons/react/dist/ssr/Pencil"
+import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
+import { CheckCircle } from "@phosphor-icons/react/dist/ssr/CheckCircle"
+import { Circle } from "@phosphor-icons/react/dist/ssr/Circle"
+import { Lock } from "@phosphor-icons/react/dist/ssr/Lock"
+import { Spinner } from "@phosphor-icons/react/dist/ssr/Spinner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"

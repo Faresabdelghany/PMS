@@ -1,6 +1,6 @@
 "use client"
 
-import { X } from "@phosphor-icons/react/dist/ssr"
+import { X } from "@phosphor-icons/react/dist/ssr/X"
 
 interface FilterChipProps {
   label: string

@@ -1,7 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { DotsThree, PencilSimple, Trash } from "@phosphor-icons/react/dist/ssr"
+import { DotsThree } from "@phosphor-icons/react/dist/ssr/DotsThree"
+import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
+import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
 import { toast } from "sonner"
 import {
   DropdownMenu,

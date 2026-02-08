@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useTransition } from "react"
-import { Star, PencilSimple } from "@phosphor-icons/react/dist/ssr"
+import { Star } from "@phosphor-icons/react/dist/ssr/Star"
+import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { SettingsPaneHeader } from "../setting-primitives"

@@ -2,13 +2,11 @@
 
 import { useState, useCallback } from "react"
 import { formatDistanceToNow } from "date-fns"
-import {
-  DotsThree,
-  PencilSimple,
-  Trash,
-  Smiley,
-  Paperclip,
-} from "@phosphor-icons/react/dist/ssr"
+import { DotsThree } from "@phosphor-icons/react/dist/ssr/DotsThree"
+import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
+import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
+import { Smiley } from "@phosphor-icons/react/dist/ssr/Smiley"
+import { Paperclip } from "@phosphor-icons/react/dist/ssr/Paperclip"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {

@@ -11,7 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Calendar } from "../../ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { cn } from "@/lib/utils";
-import { Target, Check, Question, CalendarBlank, Plus, Info, Trash } from "@phosphor-icons/react/dist/ssr";
+import { Target } from "@phosphor-icons/react/dist/ssr/Target"
+import { Check } from "@phosphor-icons/react/dist/ssr/Check"
+import { Question } from "@phosphor-icons/react/dist/ssr/Question"
+import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank"
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
+import { Info } from "@phosphor-icons/react/dist/ssr/Info"
+import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
 
 interface StepOutcomeProps {
   data: ProjectData;

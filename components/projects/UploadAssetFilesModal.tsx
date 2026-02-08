@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef } from "react"
-import { UploadSimple } from "@phosphor-icons/react/dist/ssr"
+import { UploadSimple } from "@phosphor-icons/react/dist/ssr/UploadSimple"
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"

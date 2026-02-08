@@ -3,7 +3,8 @@
 import type { Project } from "@/lib/data/projects"
 import { ProjectCard } from "@/components/project-card"
 import { ProjectCardActions } from "@/components/project-card-actions"
-import { Plus, FolderOpen } from "@phosphor-icons/react/dist/ssr"
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
+import { FolderOpen } from "@phosphor-icons/react/dist/ssr/FolderOpen"
 import { Skeleton } from "@/components/ui/skeleton"
 
 type ProjectCardsViewProps = {

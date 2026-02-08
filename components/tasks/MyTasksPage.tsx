@@ -1,7 +1,8 @@
 "use client"
 
 import { useMemo, useState, useCallback, useRef } from "react"
-import { Plus, Sparkle } from "@phosphor-icons/react/dist/ssr"
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
+import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 import {
   DndContext,
   type DragEndEvent,

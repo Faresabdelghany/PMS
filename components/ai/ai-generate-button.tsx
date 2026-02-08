@@ -1,7 +1,8 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { StarFour, CircleNotch } from "@phosphor-icons/react/dist/ssr"
+import { StarFour } from "@phosphor-icons/react/dist/ssr/StarFour"
+import { CircleNotch } from "@phosphor-icons/react/dist/ssr/CircleNotch"
 
 interface AIGenerateButtonProps {
   onClick: () => void

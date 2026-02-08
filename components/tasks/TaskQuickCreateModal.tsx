@@ -1,8 +1,17 @@
 'use client'
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import Image from 'next/image'
 import { format } from 'date-fns'
-import { CalendarBlank, ChartBar, Paperclip, Tag as TagIcon, Microphone, UserCircle, X, Folder, Rows } from '@phosphor-icons/react/dist/ssr'
+import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank"
+import { ChartBar } from "@phosphor-icons/react/dist/ssr/ChartBar"
+import { Paperclip } from "@phosphor-icons/react/dist/ssr/Paperclip"
+import { Tag as TagIcon } from "@phosphor-icons/react/dist/ssr/Tag"
+import { Microphone } from "@phosphor-icons/react/dist/ssr/Microphone"
+import { UserCircle } from "@phosphor-icons/react/dist/ssr/UserCircle"
+import { X } from "@phosphor-icons/react/dist/ssr/X"
+import { Folder } from "@phosphor-icons/react/dist/ssr/Folder"
+import { Rows } from "@phosphor-icons/react/dist/ssr/Rows"
 
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -496,9 +505,11 @@ export function TaskQuickCreateModal({
             renderItem={(item) => (
               <div className="flex items-center gap-2 w-full">
                 {item.avatar ? (
-                  <img
+                  <Image
                     src={item.avatar}
                     alt=""
+                    width={20}
+                    height={20}
                     className="size-5 rounded-full object-cover"
                   />
                 ) : (

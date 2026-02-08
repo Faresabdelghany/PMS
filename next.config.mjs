@@ -70,7 +70,6 @@ const nextConfig = {
     optimizePackageImports: [
       'lucide-react',
       '@phosphor-icons/react',
-      '@phosphor-icons/react/dist/ssr',
       'date-fns',
       '@radix-ui/react-icons',
       'react-day-picker',

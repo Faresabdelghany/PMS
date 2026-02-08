@@ -1,4 +1,4 @@
-import { Check } from "@phosphor-icons/react/dist/ssr";
+import { Check } from "@phosphor-icons/react/dist/ssr/Check"
 import { cn } from "@/lib/utils";
 
 interface StepperProps {

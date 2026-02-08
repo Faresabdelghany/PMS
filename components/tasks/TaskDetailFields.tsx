@@ -2,13 +2,11 @@
 
 import { useState } from "react"
 import { format } from "date-fns"
-import {
-  User as UserIcon,
-  Flag,
-  Calendar,
-  Tag as TagIcon,
-  Rows,
-} from "@phosphor-icons/react/dist/ssr"
+import { User as UserIcon } from "@phosphor-icons/react/dist/ssr/User"
+import { Flag } from "@phosphor-icons/react/dist/ssr/Flag"
+import { Calendar } from "@phosphor-icons/react/dist/ssr/Calendar"
+import { Tag as TagIcon } from "@phosphor-icons/react/dist/ssr/Tag"
+import { Rows } from "@phosphor-icons/react/dist/ssr/Rows"
 import { Button } from "@/components/ui/button"
 import {
   Popover,

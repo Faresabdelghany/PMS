@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useTransition } from "react"
 import { useTheme } from "next-themes"
-import { Copy, Check } from "@phosphor-icons/react/dist/ssr"
+import { Copy } from "@phosphor-icons/react/dist/ssr/Copy"
+import { Check } from "@phosphor-icons/react/dist/ssr/Check"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"

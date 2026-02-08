@@ -1,7 +1,13 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { DotsThree, MagnifyingGlass, Plus, PencilSimple, Trash, ArrowSquareOut, DownloadSimple } from "@phosphor-icons/react/dist/ssr"
+import { DotsThree } from "@phosphor-icons/react/dist/ssr/DotsThree"
+import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr/MagnifyingGlass"
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
+import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
+import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
+import { ArrowSquareOut } from "@phosphor-icons/react/dist/ssr/ArrowSquareOut"
+import { DownloadSimple } from "@phosphor-icons/react/dist/ssr/DownloadSimple"
 import { format } from "date-fns"
 import Image from "next/image"
 

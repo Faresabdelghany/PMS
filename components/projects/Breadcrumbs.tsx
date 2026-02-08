@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { CaretRight } from "@phosphor-icons/react/dist/ssr"
+import { CaretRight } from "@phosphor-icons/react/dist/ssr/CaretRight"
 
 export type BreadcrumbItem = {
   label: string

@@ -3,13 +3,11 @@
 import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import {
-  Plus,
-  MagnifyingGlass,
-  ChatCircle,
-  Trash,
-  Gear,
-} from "@phosphor-icons/react/dist/ssr"
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
+import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr/MagnifyingGlass"
+import { ChatCircle } from "@phosphor-icons/react/dist/ssr/ChatCircle"
+import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
+import { Gear } from "@phosphor-icons/react/dist/ssr/Gear"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"

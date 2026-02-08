@@ -1,4 +1,10 @@
-import { Star, User, PencilSimpleLine, CheckCircle, XCircle, Clock, Archive } from "@phosphor-icons/react/dist/ssr"
+import { Star } from "@phosphor-icons/react/dist/ssr/Star"
+import { User } from "@phosphor-icons/react/dist/ssr/User"
+import { PencilSimpleLine } from "@phosphor-icons/react/dist/ssr/PencilSimpleLine"
+import { CheckCircle } from "@phosphor-icons/react/dist/ssr/CheckCircle"
+import { XCircle } from "@phosphor-icons/react/dist/ssr/XCircle"
+import { Clock } from "@phosphor-icons/react/dist/ssr/Clock"
+import { Archive } from "@phosphor-icons/react/dist/ssr/Archive"
 
 import type { ProjectDetails } from "@/lib/data/project-details"
 import { Badge } from "@/components/ui/badge"

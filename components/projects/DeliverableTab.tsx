@@ -3,7 +3,10 @@
 import { useCallback, useState, useTransition } from "react"
 import dynamic from "next/dynamic"
 import { format } from "date-fns"
-import { Plus, Pencil, Trash, Package } from "@phosphor-icons/react/dist/ssr"
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
+import { Pencil } from "@phosphor-icons/react/dist/ssr/Pencil"
+import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
+import { Package } from "@phosphor-icons/react/dist/ssr/Package"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"

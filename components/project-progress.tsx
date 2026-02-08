@@ -1,6 +1,6 @@
 "use client"
 
-import { ListChecks } from "@phosphor-icons/react/dist/ssr"
+import { ListChecks } from "@phosphor-icons/react/dist/ssr/ListChecks"
 import type { Project } from "@/lib/data/projects"
 import { ProgressCircle } from "@/components/progress-circle"
 import { cn } from "@/lib/utils"

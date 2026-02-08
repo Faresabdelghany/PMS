@@ -2,7 +2,12 @@
 
 import { useMemo, useState, useCallback, useEffect, startTransition, memo } from "react"
 import dynamic from "next/dynamic"
-import { CaretDown, DotsSixVertical, DotsThreeVertical, PencilSimple, Plus, Trash } from "@phosphor-icons/react/dist/ssr"
+import { CaretDown } from "@phosphor-icons/react/dist/ssr/CaretDown"
+import { DotsSixVertical } from "@phosphor-icons/react/dist/ssr/DotsSixVertical"
+import { DotsThreeVertical } from "@phosphor-icons/react/dist/ssr/DotsThreeVertical"
+import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
+import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
 import {
   DndContext,
   type DragEndEvent,

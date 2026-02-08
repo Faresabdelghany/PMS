@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { startOfWeek, addWeeks, addDays, isSameDay, format } from "date-fns"
-import { CaretLeft, CaretRight, CalendarBlank, Plus } from "@phosphor-icons/react/dist/ssr"
+import { CaretLeft } from "@phosphor-icons/react/dist/ssr/CaretLeft"
+import { CaretRight } from "@phosphor-icons/react/dist/ssr/CaretRight"
+import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank"
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
 import {
   DndContext,
   type DragEndEvent,

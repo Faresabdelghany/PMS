@@ -1,7 +1,9 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Paperclip, UploadSimple, X } from "@phosphor-icons/react/dist/ssr"
+import { Paperclip } from "@phosphor-icons/react/dist/ssr/Paperclip"
+import { UploadSimple } from "@phosphor-icons/react/dist/ssr/UploadSimple"
+import { X } from "@phosphor-icons/react/dist/ssr/X"
 
 import type { ProjectFile, QuickLink, User } from "@/lib/data/project-details"
 import { Button } from "@/components/ui/button"

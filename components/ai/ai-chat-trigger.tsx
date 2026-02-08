@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react"
 import dynamic from "next/dynamic"
-import { Sparkle } from "@phosphor-icons/react/dist/ssr"
+import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 import { SidebarMenuButton } from "@/components/ui/sidebar"
 import { AnimatePresence } from "@/components/ui/motion-lazy"
 import { AIChatBubble } from "./ai-chat-bubble"
