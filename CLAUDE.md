@@ -48,6 +48,29 @@ TEST_USER_PASSWORD=<test-user-password>
 ```
 Note: The test user must already exist in Supabase auth—it is not created automatically by the test setup.
 
+### Performance Auditing
+
+```bash
+pnpm perf                    # Full audit: all pages + interactions + navigation
+pnpm perf:pages              # Page load metrics only (public + authenticated)
+pnpm perf:interactions       # Interactions + sidebar navigation only
+pnpm perf:lighthouse         # Lighthouse detailed audit on public pages
+pnpm perf:bundle             # Bundle size analysis with webpack analyzer
+```
+
+The perf audit uses Playwright to authenticate and test all 13+ pages:
+- **Public pages:** `/login`, `/signup`, `/forgot-password`
+- **Authenticated pages:** `/`, `/projects`, `/tasks`, `/clients`, `/inbox`, `/chat`, `/settings`, `/performance`
+- **Detail pages:** Project detail, client detail, chat conversation
+- **Interactions:** Command palette, create project wizard, new task, task detail panel
+- **Navigation:** All sidebar transitions
+
+Metrics per page: FCP, LCP, CLS, TTFB, DOM count, network requests, transfer size, JS/CSS/image bytes.
+
+Results are saved to `.lighthouseci/perf-audit-results.json` and compared against previous runs automatically.
+
+**Requires** `TEST_USER_EMAIL` and `TEST_USER_PASSWORD` in `.env.local` (same credentials as E2E tests).
+
 ### Supabase Commands
 
 ```bash

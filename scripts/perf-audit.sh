@@ -100,6 +100,11 @@ run_bundle() {
   echo "Running production build..."
 
   npm run build 2>&1 | grep -E "(Route|First Load|Size|─|┬|└|├)" || true
+
+  header "Bundle Analyzer (interactive treemap)"
+  echo "Opening bundle analyzer in browser..."
+
+  npm run build:analyze 2>&1 | grep -E "(Route|First Load|Size|─|┬|└|├|Analyzing)" || true
 }
 
 # Main

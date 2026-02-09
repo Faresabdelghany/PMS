@@ -1,16 +1,25 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { Button } from "@/components/ui/button"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { FilterChip } from "@/components/filter-chip"
-import { ViewOptionsPopover } from "@/components/view-options-popover"
-import { FilterPopover } from "@/components/filter-popover"
 import { ChipOverflow } from "@/components/chip-overflow"
 import { Link as LinkIcon } from "@phosphor-icons/react/dist/ssr/Link"
 import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
 import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 import type { FilterCounts } from "@/lib/data/projects"
 import type { FilterChip as FilterChipType, ViewOptions } from "@/lib/view-options"
+
+// Lazy-load heavy popovers — 615 LOC total, rarely needed on initial render
+const FilterPopover = dynamic(
+  () => import("@/components/filter-popover").then(m => ({ default: m.FilterPopover })),
+  { ssr: false }
+)
+const ViewOptionsPopover = dynamic(
+  () => import("@/components/view-options-popover").then(m => ({ default: m.ViewOptionsPopover })),
+  { ssr: false }
+)
 
 interface ProjectHeaderProps {
   filters: FilterChipType[]

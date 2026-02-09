@@ -69,7 +69,7 @@ async function cacheSessionInKV(userId: string): Promise<void> {
   if (!isKVConfigured()) return
   try {
     const { kv } = await import("@vercel/kv")
-    kv.set(`pms:session:validated:${userId}`, true, { ex: SESSION_CACHE_TTL }).catch(() => {})
+    await kv.set(`pms:session:validated:${userId}`, true, { ex: SESSION_CACHE_TTL })
   } catch {
     // Non-fatal
   }
@@ -125,7 +125,10 @@ export async function middleware(request: NextRequest) {
   // Fast redirect: for "/" and auth pages, redirect to /inbox immediately
   // after getSession() — skip expensive getUser() since the destination
   // page validates auth via the layout's cachedGetUser()
+  // Await KV cache write so the subsequent /inbox request hits the cache
+  // and skips the expensive getUser() call (~300-500ms savings)
   if (sessionUserId && shouldRedirectToInbox(pathname)) {
+    await cacheSessionInKV(sessionUserId)
     return redirectTo(request, "/inbox")
   }
 

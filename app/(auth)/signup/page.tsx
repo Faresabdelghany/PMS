@@ -99,7 +99,7 @@ export default function SignupPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
         <h1 className="text-3xl font-bold tracking-tight">Create your account</h1>
         <p className="text-muted-foreground">
           Start managing projects like a pro
@@ -118,7 +118,7 @@ export default function SignupPage() {
       </div>
 
       {/* Google Sign In */}
-      <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 delay-100">
+      <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 delay-75">
         <Button
           variant="outline"
           className="w-full h-12 text-base font-medium border-2 hover:bg-accent/50 transition-colors duration-200"
@@ -152,7 +152,7 @@ export default function SignupPage() {
       </div>
 
       {/* Divider */}
-      <div className="relative animate-in fade-in duration-500 delay-150">
+      <div className="relative animate-in fade-in duration-300 delay-100">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t border-border/60" />
         </div>
@@ -170,7 +170,7 @@ export default function SignupPage() {
             control={form.control}
             name="fullName"
             render={({ field }) => (
-              <FormItem className="animate-in fade-in slide-in-from-bottom-2 duration-500 delay-200">
+              <FormItem className="animate-in fade-in slide-in-from-bottom-2 duration-300 delay-100">
                 <FormLabel className="text-sm font-medium">Full name</FormLabel>
                 <FormControl>
                   <Input
@@ -190,7 +190,7 @@ export default function SignupPage() {
             control={form.control}
             name="email"
             render={({ field }) => (
-              <FormItem className="animate-in fade-in slide-in-from-bottom-2 duration-500 delay-250">
+              <FormItem className="animate-in fade-in slide-in-from-bottom-2 duration-300 delay-100">
                 <FormLabel className="text-sm font-medium">Email address</FormLabel>
                 <FormControl>
                   <Input
@@ -210,7 +210,7 @@ export default function SignupPage() {
             control={form.control}
             name="password"
             render={({ field }) => (
-              <FormItem className="animate-in fade-in slide-in-from-bottom-2 duration-500 delay-300">
+              <FormItem className="animate-in fade-in slide-in-from-bottom-2 duration-300 delay-100">
                 <FormLabel className="text-sm font-medium">Password</FormLabel>
                 <FormControl>
                   <PasswordInput
@@ -253,7 +253,7 @@ export default function SignupPage() {
             )}
           />
 
-          <div className="pt-2 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-400">
+          <div className="pt-2 animate-in fade-in slide-in-from-bottom-2 duration-300 delay-150">
             <Button
               type="submit"
               className="w-full h-12 text-base font-semibold bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-colors duration-200 group"
@@ -276,7 +276,7 @@ export default function SignupPage() {
       </Form>
 
       {/* Benefits list */}
-      <div className="space-y-3 pt-2 animate-in fade-in duration-500 delay-500">
+      <div className="space-y-3 pt-2 animate-in fade-in duration-300 delay-150">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">What you&apos;ll get:</p>
         <div className="grid grid-cols-2 gap-2">
           {[
@@ -294,7 +294,7 @@ export default function SignupPage() {
       </div>
 
       {/* Terms */}
-      <div className="text-center animate-in fade-in duration-500 delay-600">
+      <div className="text-center animate-in fade-in duration-300 delay-200">
         <p className="text-xs text-muted-foreground leading-relaxed">
           By creating an account, you agree to our{" "}
           <Link href="/terms" className="text-primary underline underline-offset-4 decoration-1 hover:decoration-2">
@@ -308,7 +308,7 @@ export default function SignupPage() {
       </div>
 
       {/* Footer */}
-      <div className="text-center animate-in fade-in duration-500 delay-700">
+      <div className="text-center animate-in fade-in duration-300 delay-200">
         <p className="text-sm text-muted-foreground">
           Already have an account?{" "}
           <Link
@@ -321,7 +321,7 @@ export default function SignupPage() {
       </div>
 
       {/* Trust badge */}
-      <div className="flex items-center justify-center gap-2 pt-2 animate-in fade-in duration-500 delay-800">
+      <div className="flex items-center justify-center gap-2 pt-2 animate-in fade-in duration-300 delay-200">
         <Sparkles className="h-4 w-4 text-muted-foreground" />
         <span className="text-xs text-muted-foreground">
           Free 14-day trial, no credit card required
