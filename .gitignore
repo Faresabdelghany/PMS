@@ -41,6 +41,9 @@ next-env.d.ts
 .next-docs/
 .playwright-mcp/
 
+# lighthouse ci
+.lighthouseci/
+
 # Windows artifacts
 nul
 

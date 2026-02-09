@@ -13,7 +13,9 @@
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
-    "test:e2e:codegen": "playwright codegen http://localhost:3000"
+    "test:e2e:codegen": "playwright codegen http://localhost:3000",
+    "lighthouse": "lhci autorun",
+    "lighthouse:local": "lhci autorun --collect.url=http://localhost:3000/login --collect.url=http://localhost:3000/signup"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -92,6 +94,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
+    "@lhci/cli": "^0.14.0",
     "@next/bundle-analyzer": "^16.1.6",
     "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4.1.9",

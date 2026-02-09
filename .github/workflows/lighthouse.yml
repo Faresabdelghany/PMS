@@ -1,0 +1,83 @@
+name: Lighthouse CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # On push to main: audit production URL directly
+  lighthouse-production:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install @lhci/cli
+        run: npm install -g @lhci/cli@0.14.x
+
+      - name: Run Lighthouse CI against production
+        run: |
+          lhci autorun \
+            --collect.url=https://pms-nine-gold.vercel.app/login \
+            --collect.url=https://pms-nine-gold.vercel.app/signup \
+            --collect.numberOfRuns=3 \
+            --collect.settings.preset=desktop
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+      - name: Upload Lighthouse results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-results-production
+          path: .lighthouseci/
+          retention-days: 30
+
+  # On PRs: wait for Vercel preview deployment, then audit
+  lighthouse-preview:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Wait for Vercel preview deployment
+        uses: patrickedqvist/wait-for-vercel-preview@v1.3.2
+        id: vercel_preview
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          max_timeout: 300
+          check_interval: 10
+
+      - name: Install @lhci/cli
+        run: npm install -g @lhci/cli@0.14.x
+
+      - name: Run Lighthouse CI against preview
+        run: |
+          lhci autorun \
+            --collect.url=${{ steps.vercel_preview.outputs.url }}/login \
+            --collect.url=${{ steps.vercel_preview.outputs.url }}/signup \
+            --collect.numberOfRuns=3 \
+            --collect.settings.preset=desktop
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+      - name: Upload Lighthouse results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-results-preview
+          path: .lighthouseci/
+          retention-days: 30
