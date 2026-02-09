@@ -221,6 +221,16 @@ export const getCachedUserAISettings = cache(async () => {
   return getAISettings()
 })
 
+/**
+ * Check if user has AI configured (request-level cached)
+ * Used by chat pages to pre-check AI status server-side,
+ * avoiding a client-side SWR roundtrip that delays LCP.
+ */
+export const getCachedAIConfigured = cache(async () => {
+  const { hasAIConfigured } = await import("./actions/user-settings")
+  return hasAIConfigured()
+})
+
 // ============================================
 // ACTIVE ORGANIZATION (for parallel fetching)
 // ============================================
@@ -382,9 +392,17 @@ export const getCachedAIContext = cache(async () => {
 // ============================================
 
 /**
- * Get performance metrics for an organization (request-level cached)
+ * Get performance metrics for an organization (request-level + KV cached)
+ * Uses KV cache with 2-minute TTL to avoid re-running expensive analytics
+ * queries (3 parallel DB queries + CPU-intensive calculations) on every request.
  */
 export const getCachedPerformanceMetrics = cache(async (orgId: string) => {
+  const { cacheGet, CacheKeys, CacheTTL } = await import("./cache")
   const { getPerformanceMetrics } = await import("./actions/analytics")
-  return getPerformanceMetrics(orgId)
+
+  return cacheGet(
+    CacheKeys.performanceMetrics(orgId),
+    () => getPerformanceMetrics(orgId),
+    CacheTTL.PROJECTS // 2 minutes — reasonable for analytics data
+  )
 })

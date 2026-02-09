@@ -34,6 +34,8 @@ interface ChatViewProps {
   initialMessages: ChatMessage[]
   context: ChatContext
   isLoadingContext?: boolean
+  /** Server-side pre-check: skip client-side AI status fetch when known */
+  initialAIConfigured?: boolean
 }
 
 // =============================================================================
@@ -103,8 +105,14 @@ export function ChatView({
   initialMessages,
   context,
   isLoadingContext,
+  initialAIConfigured,
 }: ChatViewProps) {
-  const { isConfigured, isLoading: isCheckingAI, refetch } = useAIStatus()
+  const { isConfigured: clientConfigured, isLoading: isCheckingAI, refetch } = useAIStatus()
+  // Use server-side pre-check if available to skip loading spinner on first paint
+  const isConfigured = initialAIConfigured !== undefined
+    ? (isCheckingAI ? initialAIConfigured : clientConfigured)
+    : clientConfigured
+  const showLoading = initialAIConfigured === undefined && isCheckingAI
   const { setTheme } = useTheme()
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -188,15 +196,15 @@ export function ChatView({
 
       {/* Content */}
       <div className="flex-1 flex flex-col min-h-0">
-        {/* Loading AI status */}
-        {isCheckingAI && (
+        {/* Loading AI status (only shown when no server-side pre-check) */}
+        {showLoading && (
           <div className="flex-1 flex items-center justify-center">
             <SpinnerGap className="size-8 animate-spin text-muted-foreground" />
           </div>
         )}
 
         {/* AI not configured - show setup prompt */}
-        {!isCheckingAI && !isConfigured && (
+        {!showLoading && !isConfigured && (
           <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 text-center">
             <div className="flex items-center justify-center size-16 rounded-2xl bg-violet-500/10">
               <StarFour weight="fill" className="size-10 text-violet-500/60" />
@@ -218,7 +226,7 @@ export function ChatView({
         )}
 
         {/* AI configured - show chat interface */}
-        {!isCheckingAI && isConfigured && (
+        {!showLoading && isConfigured && (
           <>
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4" aria-live="polite" aria-atomic="false">

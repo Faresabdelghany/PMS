@@ -76,6 +76,8 @@ interface ChatPageContentProps {
   conversation?: ChatConversation | null
   initialMessages: ChatMessage[]
   initialContext?: ChatContext
+  /** Server-side pre-check: skip client-side AI status fetch */
+  initialAIConfigured?: boolean
 }
 
 export function ChatPageContent({
@@ -84,6 +86,7 @@ export function ChatPageContent({
   conversation,
   initialMessages,
   initialContext,
+  initialAIConfigured,
 }: ChatPageContentProps) {
   const isMobile = useIsMobile()
   const [showHistory, setShowHistory] = useState(false)
@@ -180,6 +183,7 @@ export function ChatPageContent({
             conversation={conversation}
             initialMessages={initialMessages}
             context={chatContext}
+            initialAIConfigured={initialAIConfigured}
           />
         </div>
       </div>
