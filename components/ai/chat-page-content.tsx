@@ -17,10 +17,10 @@ import type { ChatConversation, ChatMessage } from "@/lib/supabase/types"
 import type { ChatContext } from "@/lib/actions/ai-types"
 
 // Lazy-load ChatView - heaviest component (~react-markdown, remark-gfm, SWR, AI hooks)
+// Loading placeholder includes the real H3 text so LCP paints during SSR, before hydration
 const ChatView = dynamic(
   () => import("./chat-view").then((mod) => ({ default: mod.ChatView })),
   {
-    ssr: false,
     loading: () => (
       <div className="flex flex-col flex-1 min-h-0">
         {/* Header placeholder */}
@@ -30,12 +30,30 @@ const ChatView = dynamic(
             <Skeleton className="h-4 w-24" />
           </div>
         </div>
-        {/* Empty state placeholder */}
+        {/* Empty state — real H3 text for LCP, not a skeleton */}
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center space-y-4">
-            <Skeleton className="h-16 w-16 rounded-2xl mx-auto" />
-            <Skeleton className="h-5 w-48 mx-auto" />
-            <Skeleton className="h-4 w-40 mx-auto" />
+          <div className="flex flex-col items-center justify-center gap-6 py-12">
+            <div className="flex items-center justify-center size-16 rounded-2xl bg-violet-500/10">
+              <div className="size-10 rounded-lg bg-violet-500/20" />
+            </div>
+            <div className="space-y-1.5 text-center">
+              <h3 className="text-lg font-medium text-foreground">
+                How can I help you today?
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Ask anything or try one of these
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2 max-w-md">
+              {["Create a task", "Show overdue", "Project status"].map((label) => (
+                <span
+                  key={label}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3.5 py-2 text-sm text-muted-foreground"
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
         {/* Input placeholder */}
