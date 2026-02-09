@@ -13,7 +13,7 @@ import { NotificationToastProviderLazy } from "@/components/providers/notificati
 import { SWRProvider } from "@/components/providers/swr-provider"
 import { PageSkeleton } from "@/components/ui/page-skeleton"
 import { ColorThemeSyncer } from "@/components/color-theme-syncer"
-import { getUserColorTheme } from "@/lib/actions/user-settings"
+import { getUserColorTheme, type ColorThemeType } from "@/lib/actions/user-settings"
 import type { OrganizationWithRole } from "@/hooks/use-organization"
 import type { Profile, Project } from "@/lib/supabase/types"
 import { Toaster } from "@/components/ui/sonner"
@@ -93,6 +93,19 @@ async function getUserProfile(
   )
 }
 
+async function getCachedColorTheme(
+  supabase: TypedSupabaseClient,
+  userId: string
+): Promise<ColorThemeType> {
+  return cacheGet(
+    CacheKeys.colorTheme(userId),
+    async () => {
+      return getUserColorTheme(supabase, userId)
+    },
+    CacheTTL.USER
+  )
+}
+
 export default async function DashboardLayout({
   children,
 }: {
@@ -109,8 +122,8 @@ export default async function DashboardLayout({
   // We start activeProjects query speculatively and check org access afterward
   const orgsPromise = getOrganizations(supabase, user.id)
   const profilePromise = getUserProfile(supabase, user.id)
-  // Pass supabase and userId to avoid duplicate auth call inside getUserColorTheme
-  const colorThemePromise = getUserColorTheme(supabase, user.id)
+  // KV-cached color theme (10 min TTL, same as profile)
+  const colorThemePromise = getCachedColorTheme(supabase, user.id)
 
   // Wait for orgs first to check if user has any (fast due to KV cache)
   const organizations = await orgsPromise

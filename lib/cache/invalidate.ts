@@ -167,6 +167,13 @@ export const invalidate = {
   },
 
   /**
+   * Invalidate color theme cache.
+   */
+  async colorTheme(userId: string): Promise<void> {
+    await this.key(CacheKeys.colorTheme(userId))
+  },
+
+  /**
    * Invalidate caches that include profile/avatar data.
    * Called when a user updates their profile (avatar, name, etc.)
    *

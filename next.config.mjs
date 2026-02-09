@@ -113,6 +113,14 @@ const nextConfig = {
       'react-hook-form',
       'sonner',
     ],
+    // Client-side router cache durations.
+    // Next.js 15+ defaults dynamic to 0s, causing a full server roundtrip on every
+    // client navigation. Setting staleTimes lets the router reuse prefetched data
+    // for repeat visits within the window, reducing redundant requests.
+    staleTimes: {
+      dynamic: 30,  // 30 seconds for dynamic pages
+      static: 300,  // 5 minutes for static pages
+    },
   },
 }
 

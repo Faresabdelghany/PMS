@@ -15,7 +15,7 @@ export async function warmUserCache(userId: string): Promise<void> {
 
   try {
     // Fetch all warmable data in parallel
-    const [orgsResult, profileResult] = await Promise.all([
+    const [orgsResult, profileResult, colorThemeResult] = await Promise.all([
       admin
         .from("organization_members")
         .select("role, organization:organizations(*)")
@@ -24,6 +24,11 @@ export async function warmUserCache(userId: string): Promise<void> {
         .from("profiles")
         .select("*")
         .eq("id", userId)
+        .single(),
+      admin
+        .from("user_settings")
+        .select("color_theme")
+        .eq("user_id", userId)
         .single(),
     ])
 
@@ -36,11 +41,15 @@ export async function warmUserCache(userId: string): Promise<void> {
         })) ?? []
 
     // Write user data to cache (non-blocking)
+    const colorTheme = colorThemeResult.data?.color_theme || "default"
     const writes: Promise<any>[] = [
       kv.set(CacheKeys.user(userId), profileResult.data, {
         ex: CacheTTL.USER,
       }),
       kv.set(CacheKeys.userOrgs(userId), orgs, { ex: CacheTTL.ORGS }),
+      kv.set(CacheKeys.colorTheme(userId), colorTheme, {
+        ex: CacheTTL.USER,
+      }),
     ]
 
     // Cache membership for each org

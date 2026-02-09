@@ -8,6 +8,7 @@ export const CacheKeys = {
   // User-scoped (TTL: 10 min)
   user: (userId: string) => `pms:user:${userId}`,
   userOrgs: (userId: string) => `pms:user:orgs:${userId}`,
+  colorTheme: (userId: string) => `pms:user:color-theme:${userId}`,
 
   // Org membership (TTL: 5 min)
   membership: (orgId: string, userId: string) =>

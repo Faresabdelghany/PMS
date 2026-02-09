@@ -328,7 +328,6 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
                     >
                       <Link
                         href={href}
-                        prefetch={false}
                         onMouseEnter={() => {
                           preloadHandlers[item.id]()
                           handlePrefetch(href)

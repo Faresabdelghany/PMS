@@ -608,6 +608,11 @@ export async function savePreferences(
       return { error: error.message }
     }
 
+    // Invalidate KV color theme cache if color_theme was updated
+    if (validation.data.color_theme) {
+      await invalidate.colorTheme(user.id)
+    }
+
     revalidatePath("/settings")
     return { data: { success: true } }
   } catch {
