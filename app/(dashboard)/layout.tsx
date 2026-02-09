@@ -16,6 +16,7 @@ import { ColorThemeSyncer } from "@/components/color-theme-syncer"
 import { getUserColorTheme } from "@/lib/actions/user-settings"
 import type { OrganizationWithRole } from "@/hooks/use-organization"
 import type { Profile, Project } from "@/lib/supabase/types"
+import { Toaster } from "@/components/ui/sonner"
 import { SIDEBAR_PROJECT_LIMIT } from "@/lib/constants"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/supabase/database.types"
@@ -143,6 +144,7 @@ export default async function DashboardLayout({
                     <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
                   </SidebarInset>
                 </SidebarProvider>
+                <Toaster richColors closeButton />
               </CommandPaletteProvider>
             </SettingsDialogProvider>
           </RealtimeProvider>

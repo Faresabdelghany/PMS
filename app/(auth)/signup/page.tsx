@@ -67,7 +67,7 @@ export default function SignupPage() {
       email: "",
       password: "",
     },
-    mode: "onChange",
+    mode: "onBlur",
   })
 
   function onSubmit(values: SignupFormValues) {
@@ -106,18 +106,22 @@ export default function SignupPage() {
         </p>
       </div>
 
-      {/* Error message */}
-      {formError && (
-        <div className="p-4 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl animate-in fade-in slide-in-from-top-1 duration-200">
-          {formError}
+      {/* Error message - always rendered to avoid layout shift */}
+      <div
+        className={`grid transition-[grid-template-rows,opacity] duration-200 ${formError ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+      >
+        <div className="overflow-hidden">
+          <div className="p-4 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl">
+            {formError}
+          </div>
         </div>
-      )}
+      </div>
 
       {/* Google Sign In */}
       <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 delay-100">
         <Button
           variant="outline"
-          className="w-full h-12 text-base font-medium border-2 hover:bg-accent/50 transition-all duration-200"
+          className="w-full h-12 text-base font-medium border-2 hover:bg-accent/50 transition-colors duration-200"
           onClick={handleGoogleSignIn}
           disabled={isLoading}
         >
@@ -220,26 +224,30 @@ export default function SignupPage() {
                     }}
                   />
                 </FormControl>
-                {/* Password strength indicator */}
-                {passwordValue && passwordStrength && (
-                  <div className="space-y-2 pt-2 animate-in fade-in slide-in-from-top-1 duration-200">
-                    <div className="flex gap-1">
-                      {[1, 2, 3, 4, 5].map((level) => (
-                        <div
-                          key={level}
-                          className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
-                            level <= passwordStrength.score
-                              ? passwordStrength.color
-                              : "bg-muted"
-                          }`}
-                        />
-                      ))}
+                {/* Password strength indicator - always rendered to avoid layout shift */}
+                <div
+                  className={`grid transition-[grid-template-rows,opacity] duration-200 ${passwordValue && passwordStrength ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+                >
+                  <div className="overflow-hidden">
+                    <div className="space-y-2 pt-2">
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((level) => (
+                          <div
+                            key={level}
+                            className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
+                              passwordStrength && level <= passwordStrength.score
+                                ? passwordStrength.color
+                                : "bg-muted"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Password strength: <span className="font-medium">{passwordStrength?.label ?? ""}</span>
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Password strength: <span className="font-medium">{passwordStrength.label}</span>
-                    </p>
                   </div>
-                )}
+                </div>
                 <FormMessage />
               </FormItem>
             )}
@@ -248,7 +256,7 @@ export default function SignupPage() {
           <div className="pt-2 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-400">
             <Button
               type="submit"
-              className="w-full h-12 text-base font-semibold bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all duration-200 group"
+              className="w-full h-12 text-base font-semibold bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-colors duration-200 group"
               disabled={isLoading || !isFormValid}
             >
               {isPending ? (

@@ -10,19 +10,19 @@ export default function AuthLayout({
     <div className="min-h-screen grid lg:grid-cols-2">
       {/* Left Panel - Animated Gradient Background */}
       <div className="relative hidden lg:flex flex-col items-center justify-center overflow-hidden bg-[#0a0a12]">
-        {/* Animated gradient orbs */}
+        {/* Animated gradient orbs - GPU composited */}
         <div className="absolute inset-0 overflow-hidden">
           <div
-            className="absolute -top-1/4 -left-1/4 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-violet-600/40 via-indigo-600/30 to-transparent blur-3xl animate-in fade-in zoom-in-90 duration-1000"
-            style={{ animation: 'float 8s ease-in-out infinite' }}
+            className="absolute -top-1/4 -left-1/4 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-violet-600/40 via-indigo-600/30 to-transparent blur-3xl"
+            style={{ animation: 'float 8s ease-in-out infinite', willChange: 'transform', contain: 'layout style' }}
           />
           <div
-            className="absolute top-1/2 -right-1/4 w-[500px] h-[500px] rounded-full bg-gradient-to-bl from-fuchsia-600/30 via-purple-600/20 to-transparent blur-3xl animate-in fade-in zoom-in-90 duration-1000 delay-200"
-            style={{ animation: 'float 10s ease-in-out infinite reverse' }}
+            className="absolute top-1/2 -right-1/4 w-[500px] h-[500px] rounded-full bg-gradient-to-bl from-fuchsia-600/30 via-purple-600/20 to-transparent blur-3xl"
+            style={{ animation: 'float 10s ease-in-out infinite reverse', willChange: 'transform', contain: 'layout style' }}
           />
           <div
-            className="absolute -bottom-1/4 left-1/3 w-[400px] h-[400px] rounded-full bg-gradient-to-tr from-blue-600/25 via-cyan-600/15 to-transparent blur-3xl animate-in fade-in zoom-in-90 duration-1000 delay-500"
-            style={{ animation: 'float 12s ease-in-out infinite' }}
+            className="absolute -bottom-1/4 left-1/3 w-[400px] h-[400px] rounded-full bg-gradient-to-tr from-blue-600/25 via-cyan-600/15 to-transparent blur-3xl"
+            style={{ animation: 'float 12s ease-in-out infinite', willChange: 'transform', contain: 'layout style' }}
           />
         </div>
 
@@ -36,17 +36,18 @@ export default function AuthLayout({
           }}
         />
 
-        {/* Floating geometric shapes */}
+        {/* Floating geometric shapes - reduced count, GPU composited */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {[...Array(6)].map((_, i) => (
+          {[0, 1, 2].map((i) => (
             <div
               key={i}
               className="absolute w-2 h-2 bg-white/10 rounded-full"
               style={{
-                left: `${15 + i * 15}%`,
-                top: `${20 + (i % 3) * 25}%`,
-                animation: `float ${6 + i * 2}s ease-in-out infinite`,
-                animationDelay: `${i * 0.5}s`
+                left: `${20 + i * 25}%`,
+                top: `${25 + (i % 2) * 30}%`,
+                animation: `float ${8 + i * 3}s ease-in-out infinite`,
+                animationDelay: `${i * 0.8}s`,
+                willChange: 'transform',
               }}
             />
           ))}

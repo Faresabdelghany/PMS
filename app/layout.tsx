@@ -1,7 +1,6 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
-import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AnalyticsWrapper } from "@/components/analytics-wrapper"
 import { ColorThemeProvider } from "@/components/color-theme-provider"
@@ -70,7 +69,6 @@ export default function RootLayout({
             <ServiceWorkerRegistration />
             {children}
             <AnalyticsWrapper />
-            <Toaster richColors closeButton />
           </ColorThemeProvider>
         </ThemeProvider>
       </body>

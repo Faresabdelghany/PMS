@@ -52,6 +52,7 @@ const nextConfig = {
   images: {
     // Enable Next.js image optimization for better performance
     // Supports automatic sizing, format conversion (WebP/AVIF), and caching
+    minimumCacheTTL: 86400, // 24 hours - override short upstream cache headers (e.g. Supabase Storage 1h)
     remotePatterns: [
       {
         protocol: 'https',
@@ -67,6 +68,31 @@ const nextConfig = {
         hostname: 'avatars.githubusercontent.com',
       },
     ],
+  },
+  // Cache headers for static assets and Supabase storage proxied images
+  async headers() {
+    return [
+      {
+        // Long cache for Next.js optimized images (/_next/image)
+        source: '/_next/image',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800',
+          },
+        ],
+      },
+      {
+        // Long cache for static assets
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+    ]
   },
   experimental: {
     // Optimize barrel imports for commonly used icon/utility libraries
@@ -84,6 +110,8 @@ const nextConfig = {
       '@tiptap/react',
       '@tiptap/starter-kit',
       'motion/react',
+      'react-hook-form',
+      'sonner',
     ],
   },
 }
