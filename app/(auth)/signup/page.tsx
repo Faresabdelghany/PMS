@@ -67,7 +67,7 @@ export default function SignupPage() {
       email: "",
       password: "",
     },
-    mode: "onBlur",
+    mode: "onChange",
   })
 
   function onSubmit(values: SignupFormValues) {

@@ -47,7 +47,7 @@ function LoginForm() {
       email: "",
       password: "",
     },
-    mode: "onBlur",
+    mode: "onChange",
   })
 
   function onSubmit(values: LoginFormValues) {
@@ -73,7 +73,7 @@ function LoginForm() {
   }
 
   const isLoading = isPending || isGooglePending
-  const isFormValid = form.formState.isValid && form.formState.isDirty
+  const isFormValid = form.formState.isValid
 
   return (
     <div className="space-y-8">
