@@ -62,3 +62,6 @@ export {
   PerformanceStatCardSkeleton,
   PerformancePageSkeleton,
 } from "./performance-skeletons"
+
+// Chat skeletons
+export { ChatPageSkeleton } from "./chat-skeletons"

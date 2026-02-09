@@ -1,22 +1,82 @@
 import { Suspense } from "react"
 import { redirect } from "next/navigation"
-import { cachedGetUserOrganizations } from "@/lib/request-cache"
-import { CachedProjectsList } from "@/components/dashboard"
+import { cachedGetUser } from "@/lib/request-cache"
+import { getCachedProjects, getCachedClients } from "@/lib/server-cache"
+import { cacheGet, CacheKeys, CacheTTL } from "@/lib/cache"
+import { ProjectsContent } from "@/components/projects-content"
 import { ProjectsListSkeleton } from "@/components/skeletons"
+import type { OrganizationWithRole } from "@/hooks/use-organization"
 
 export default async function Page() {
-  // Use cached orgs - shared with layout (no duplicate DB hit)
-  const orgsResult = await cachedGetUserOrganizations()
+  // Reuse layout's cached auth (React cache() dedup — ~0ms)
+  const { user, supabase } = await cachedGetUser()
 
-  if (orgsResult.error || !orgsResult.data?.length) {
+  if (!user) {
+    redirect("/login")
+  }
+
+  // Read org ID from KV cache — same key + shape as layout, so this is an instant cache hit
+  // Layout already populated this cache entry, avoiding a redundant DB query
+  const organizations = await cacheGet(
+    CacheKeys.userOrgs(user.id),
+    async () => {
+      const { data, error } = await supabase
+        .from("organization_members")
+        .select(`role, organization:organizations(*)`)
+        .eq("user_id", user.id)
+
+      if (error || !data) return []
+
+      return data
+        .filter((m) => m.organization)
+        .map((m) => ({
+          ...(m.organization as unknown as OrganizationWithRole),
+          role: m.role as "admin" | "member",
+        }))
+    },
+    CacheTTL.ORGS
+  )
+
+  if (!organizations.length) {
     redirect("/onboarding")
   }
 
-  const organization = orgsResult.data[0]
+  const orgId = organizations[0].id
+
+  // Start both fetches in parallel — no sequential waterfall
+  const projectsPromise = getCachedProjects(orgId)
+  const clientsPromise = getCachedClients(orgId)
 
   return (
     <Suspense fallback={<ProjectsListSkeleton />}>
-      <CachedProjectsList orgId={organization.id} />
+      <ProjectsListStreamed
+        projectsPromise={projectsPromise}
+        clientsPromise={clientsPromise}
+        orgId={orgId}
+      />
     </Suspense>
+  )
+}
+
+async function ProjectsListStreamed({
+  projectsPromise,
+  clientsPromise,
+  orgId,
+}: {
+  projectsPromise: ReturnType<typeof getCachedProjects>
+  clientsPromise: ReturnType<typeof getCachedClients>
+  orgId: string
+}) {
+  const [projectsResult, clientsResult] = await Promise.all([
+    projectsPromise,
+    clientsPromise,
+  ])
+
+  return (
+    <ProjectsContent
+      initialProjects={projectsResult.data ?? []}
+      clients={clientsResult.data ?? []}
+      organizationId={orgId}
+    />
   )
 }

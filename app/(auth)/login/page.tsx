@@ -174,7 +174,7 @@ function LoginForm() {
                   <FormLabel className="text-sm font-medium">Password</FormLabel>
                   <Link
                     href="/forgot-password"
-                    className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                    className="text-sm text-primary font-medium underline underline-offset-4 decoration-1 hover:decoration-2 transition-colors"
                   >
                     Forgot password?
                   </Link>
@@ -220,7 +220,7 @@ function LoginForm() {
           Don&apos;t have an account?{" "}
           <Link
             href="/signup"
-            className="text-primary hover:text-primary/80 font-semibold transition-colors"
+            className="text-primary font-semibold underline underline-offset-4 decoration-1 hover:decoration-2 transition-colors"
           >
             Create account
           </Link>

@@ -80,7 +80,7 @@ export default function ForgotPasswordPage() {
         </form>
       </CardContent>
       <CardFooter className="flex justify-center">
-        <Link href="/login" className="text-sm text-muted-foreground hover:text-primary">
+        <Link href="/login" className="text-sm text-muted-foreground underline underline-offset-4 decoration-1 hover:text-primary hover:decoration-2">
           Back to sign in
         </Link>
       </CardFooter>

@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { FolderSimple } from "@phosphor-icons/react/dist/ssr/FolderSimple"
-import { CheckSquare } from "@phosphor-icons/react/dist/ssr/CheckSquare"
-import { Users } from "@phosphor-icons/react/dist/ssr/Users"
-import { House } from "@phosphor-icons/react/dist/ssr/House"
-import { Gear } from "@phosphor-icons/react/dist/ssr/Gear"
-import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
-import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr/MagnifyingGlass"
+import {
+  FolderIcon,
+  CheckSquareIcon,
+  UsersIcon,
+  HomeIcon,
+  SettingsIcon,
+  PlusIcon,
+} from "lucide-react"
 
 import {
   CommandDialog,
@@ -24,6 +25,8 @@ import { globalSearch, type SearchResult } from "@/lib/actions/search"
 import { useOrganization } from "@/hooks/use-organization"
 
 type CommandPaletteProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
   onCreateProject?: () => void
   onCreateTask?: () => void
   onOpenSettings?: () => void
@@ -36,26 +39,12 @@ const EMPTY_RESULTS: {
   clients: SearchResult[]
 } = { projects: [], tasks: [], clients: [] }
 
-export function CommandPalette({ onCreateProject, onCreateTask, onOpenSettings }: CommandPaletteProps) {
-  const [open, setOpen] = useState(false)
+export function CommandPalette({ open, onOpenChange, onCreateProject, onCreateTask, onOpenSettings }: CommandPaletteProps) {
   const [query, setQuery] = useState("")
   const [results, setResults] = useState(EMPTY_RESULTS)
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
   const { organization } = useOrganization()
-
-  // Keyboard shortcut: Cmd+K or Ctrl+K
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        setOpen((open) => !open)
-      }
-    }
-
-    document.addEventListener("keydown", down)
-    return () => document.removeEventListener("keydown", down)
-  }, [])
 
   // Search when query changes
   useEffect(() => {
@@ -77,10 +66,10 @@ export function CommandPalette({ onCreateProject, onCreateTask, onOpenSettings }
   }, [query, organization])
 
   const runCommand = useCallback((command: () => void) => {
-    setOpen(false)
+    onOpenChange(false)
     setQuery("")
     command()
-  }, [])
+  }, [onOpenChange])
 
   const navigate = useCallback(
     (url: string) => {
@@ -95,7 +84,7 @@ export function CommandPalette({ onCreateProject, onCreateTask, onOpenSettings }
     results.clients.length > 0
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
+    <CommandDialog open={open} onOpenChange={onOpenChange}>
       <CommandInput
         placeholder="Search projects, tasks, clients..."
         value={query}
@@ -118,7 +107,7 @@ export function CommandPalette({ onCreateProject, onCreateTask, onOpenSettings }
                     onSelect={() => navigate(item.url)}
                     className="command-item-optimized"
                   >
-                    <FolderSimple className="size-4 text-blue-500" />
+                    <FolderIcon className="size-4 text-blue-500" />
                     <span>{item.title}</span>
                     {item.subtitle && (
                       <span className="text-muted-foreground text-xs ml-2">
@@ -139,7 +128,7 @@ export function CommandPalette({ onCreateProject, onCreateTask, onOpenSettings }
                     onSelect={() => navigate(item.url)}
                     className="command-item-optimized"
                   >
-                    <CheckSquare className="size-4 text-green-500" />
+                    <CheckSquareIcon className="size-4 text-green-500" />
                     <span>{item.title}</span>
                     {item.subtitle && (
                       <span className="text-muted-foreground text-xs ml-2">
@@ -160,7 +149,7 @@ export function CommandPalette({ onCreateProject, onCreateTask, onOpenSettings }
                     onSelect={() => navigate(item.url)}
                     className="command-item-optimized"
                   >
-                    <Users className="size-4 text-purple-500" />
+                    <UsersIcon className="size-4 text-purple-500" />
                     <span>{item.title}</span>
                     {item.subtitle && (
                       <span className="text-muted-foreground text-xs ml-2">
@@ -180,14 +169,14 @@ export function CommandPalette({ onCreateProject, onCreateTask, onOpenSettings }
         <CommandGroup heading="Quick Actions">
           {onCreateProject && (
             <CommandItem onSelect={() => runCommand(onCreateProject)}>
-              <Plus className="size-4" />
+              <PlusIcon className="size-4" />
               <span>Create New Project</span>
               <CommandShortcut>⌘N</CommandShortcut>
             </CommandItem>
           )}
           {onCreateTask && (
             <CommandItem onSelect={() => runCommand(onCreateTask)}>
-              <Plus className="size-4" />
+              <PlusIcon className="size-4" />
               <span>Create New Task</span>
               <CommandShortcut>⌘⇧N</CommandShortcut>
             </CommandItem>
@@ -199,23 +188,23 @@ export function CommandPalette({ onCreateProject, onCreateTask, onOpenSettings }
         {/* Navigation */}
         <CommandGroup heading="Navigation">
           <CommandItem onSelect={() => navigate("/projects")}>
-            <House className="size-4" />
+            <HomeIcon className="size-4" />
             <span>Go to Projects</span>
             <CommandShortcut>G P</CommandShortcut>
           </CommandItem>
           <CommandItem onSelect={() => navigate("/tasks")}>
-            <CheckSquare className="size-4" />
+            <CheckSquareIcon className="size-4" />
             <span>Go to My Tasks</span>
             <CommandShortcut>G T</CommandShortcut>
           </CommandItem>
           <CommandItem onSelect={() => navigate("/clients")}>
-            <Users className="size-4" />
+            <UsersIcon className="size-4" />
             <span>Go to Clients</span>
             <CommandShortcut>G C</CommandShortcut>
           </CommandItem>
           {onOpenSettings && (
             <CommandItem onSelect={() => runCommand(onOpenSettings)}>
-              <Gear className="size-4" />
+              <SettingsIcon className="size-4" />
               <span>Go to Settings</span>
               <CommandShortcut>G S</CommandShortcut>
             </CommandItem>

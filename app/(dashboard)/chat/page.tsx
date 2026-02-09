@@ -1,9 +1,11 @@
+import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { ChatPageContent } from "@/components/ai/chat-page-content"
 import { cachedGetUser, cachedGetUserOrganizations } from "@/lib/request-cache"
 import { getAIContext } from "@/lib/actions/ai-context"
+import { ChatPageSkeleton } from "@/components/skeletons/chat-skeletons"
 
-export default async function Page() {
+async function ChatContent() {
   // Fetch auth, orgs, and AI context in parallel
   const [userResult, orgsResult, contextResult] = await Promise.all([
     cachedGetUser(),
@@ -30,5 +32,13 @@ export default async function Page() {
       initialMessages={[]}
       initialContext={contextResult.data ?? undefined}
     />
+  )
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<ChatPageSkeleton />}>
+      <ChatContent />
+    </Suspense>
   )
 }

@@ -1,27 +1,28 @@
 "use client"
 
-import dynamic from "next/dynamic"
+import { LazyMotion, domAnimation, AnimatePresence } from "motion/react"
+import * as m from "motion/react-m"
 import type { ComponentProps } from "react"
 
-// Lazy-loaded motion components to reduce initial bundle size
-// These are loaded only when needed and skip SSR
+// Re-export the slim `m` components wrapped in LazyMotion for reduced bundle size.
+// Using `m` + `LazyMotion` reduces the motion bundle from ~34kb to ~4.6kb initial load.
+// `domAnimation` covers: animate, exit, initial, transition, variants
+// (no drag, layout animations, or scroll — use domMax if those are needed)
 
-export const MotionDiv = dynamic(
-  () => import("motion/react").then((mod) => {
-    const Component = mod.motion.div
-    return { default: Component }
-  }),
-  { ssr: false }
-) as React.ComponentType<ComponentProps<typeof import("motion/react").motion.div>>
+function MotionDiv(props: ComponentProps<typeof m.div>) {
+  return (
+    <LazyMotion features={domAnimation} strict>
+      <m.div {...props} />
+    </LazyMotion>
+  )
+}
 
-export const MotionSpan = dynamic(
-  () => import("motion/react").then((mod) => {
-    const Component = mod.motion.span
-    return { default: Component }
-  }),
-  { ssr: false }
-) as React.ComponentType<ComponentProps<typeof import("motion/react").motion.span>>
+function MotionSpan(props: ComponentProps<typeof m.span>) {
+  return (
+    <LazyMotion features={domAnimation} strict>
+      <m.span {...props} />
+    </LazyMotion>
+  )
+}
 
-// AnimatePresence needs to be imported directly as it's a wrapper component
-// that manages children lifecycle - dynamic import would break its functionality
-export { AnimatePresence } from "motion/react"
+export { MotionDiv, MotionSpan, AnimatePresence }

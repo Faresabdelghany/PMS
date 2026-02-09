@@ -297,11 +297,11 @@ export default function SignupPage() {
       <div className="text-center animate-in fade-in duration-500 delay-600">
         <p className="text-xs text-muted-foreground leading-relaxed">
           By creating an account, you agree to our{" "}
-          <Link href="/terms" className="text-primary hover:underline">
+          <Link href="/terms" className="text-primary underline underline-offset-4 decoration-1 hover:decoration-2">
             Terms of Service
           </Link>{" "}
           and{" "}
-          <Link href="/privacy" className="text-primary hover:underline">
+          <Link href="/privacy" className="text-primary underline underline-offset-4 decoration-1 hover:decoration-2">
             Privacy Policy
           </Link>
         </p>
@@ -313,7 +313,7 @@ export default function SignupPage() {
           Already have an account?{" "}
           <Link
             href="/login"
-            className="text-primary hover:text-primary/80 font-semibold transition-colors"
+            className="text-primary font-semibold underline underline-offset-4 decoration-1 hover:decoration-2 transition-colors"
           >
             Sign in
           </Link>
