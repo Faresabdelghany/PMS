@@ -44,10 +44,17 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Warm the KV cache with user's dashboard data (best-effort)
+      // Warm KV cache + session validation BEFORE redirect
+      // Session validation prevents middleware from calling getUser() (~300-500ms savings)
       try {
-        const { warmUserCache } = await import("@/lib/cache")
-        await warmUserCache(user.id)
+        const { warmUserCache, kv, isKVAvailable } = await import("@/lib/cache")
+        const { CacheKeys, CacheTTL } = await import("@/lib/cache/keys")
+        await Promise.allSettled([
+          warmUserCache(user.id),
+          isKVAvailable()
+            ? kv.set(CacheKeys.sessionValidated(user.id), true, { ex: CacheTTL.SESSION })
+            : Promise.resolve(),
+        ])
       } catch {
         // Non-fatal
       }

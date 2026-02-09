@@ -134,9 +134,15 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
     // Don't fail signup if org creation fails, user can create org later via onboarding
     await createPersonalOrganization(data.user.id, fullName || "My")
 
-    // Warm cache for the new user
-    const { warmUserCache } = await import("@/lib/cache")
-    warmUserCache(data.user.id).catch(() => {})
+    // Warm KV cache + session validation BEFORE redirect
+    const { warmUserCache, kv, isKVAvailable } = await import("@/lib/cache")
+    const { CacheKeys, CacheTTL } = await import("@/lib/cache/keys")
+    await Promise.allSettled([
+      warmUserCache(data.user.id),
+      isKVAvailable()
+        ? kv.set(CacheKeys.sessionValidated(data.user.id), true, { ex: CacheTTL.SESSION })
+        : Promise.resolve(),
+    ])
 
     revalidatePath("/", "layout")
     redirect("/inbox")
@@ -156,6 +162,16 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
 
     // Create personal organization (errors are non-fatal, user can create org later)
     await createPersonalOrganization(data.user.id, fullName || "My")
+
+    // Warm KV cache + session validation BEFORE redirect
+    const { warmUserCache, kv, isKVAvailable } = await import("@/lib/cache")
+    const { CacheKeys, CacheTTL } = await import("@/lib/cache/keys")
+    await Promise.allSettled([
+      warmUserCache(data.user.id),
+      isKVAvailable()
+        ? kv.set(CacheKeys.sessionValidated(data.user.id), true, { ex: CacheTTL.SESSION })
+        : Promise.resolve(),
+    ])
 
     revalidatePath("/", "layout")
     redirect("/inbox")
@@ -197,10 +213,20 @@ export async function signIn(formData: FormData): Promise<AuthResult> {
     return { error: error.message }
   }
 
-  // Warm the KV cache with user's dashboard data (non-blocking, best-effort)
+  // Warm KV cache BEFORE redirect so the dashboard layout gets cache hits
+  // instead of 4 fresh DB queries. Also pre-cache session validation so
+  // middleware skips the expensive getUser() call (~300-500ms savings).
   if (data.user) {
-    const { warmUserCache } = await import("@/lib/cache")
-    warmUserCache(data.user.id).catch(() => {})
+    const { warmUserCache, kv, isKVAvailable } = await import("@/lib/cache")
+    const { CacheKeys, CacheTTL } = await import("@/lib/cache/keys")
+
+    // Run both in parallel: warm dashboard data + cache session validation
+    await Promise.allSettled([
+      warmUserCache(data.user.id),
+      isKVAvailable()
+        ? kv.set(CacheKeys.sessionValidated(data.user.id), true, { ex: CacheTTL.SESSION })
+        : Promise.resolve(),
+    ])
   }
 
   // Targeted revalidation - only invalidate auth-related cache, not entire layout
