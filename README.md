@@ -86,6 +86,8 @@ High-level structure:
 
 - `supabase/migrations/` - Database schema migrations
 
+- `docs/` - Development notes, test progress, and runbooks
+
 - `e2e/` - Playwright E2E tests with Page Object Model
 
 ## Tech Stack
