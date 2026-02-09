@@ -20,6 +20,7 @@ import { createTaskComment } from "@/lib/actions/task-comments"
 import type {
   TaskTimelineItem,
   TaskCommentWithRelations,
+  TaskCommentReaction,
   Workstream,
   OrganizationTag,
 } from "@/lib/supabase/types"
@@ -34,6 +35,29 @@ export type TaskPanelMember = {
     email: string
     avatar_url: string | null
   }
+}
+
+function addReactionToItem(
+  item: TaskTimelineItem,
+  commentId: string,
+  reaction: TaskCommentReaction
+): TaskTimelineItem {
+  if (item.type !== "comment" || item.data.id !== commentId) return item
+  const comment = item.data as TaskCommentWithRelations
+  const existing = comment.reactions ?? []
+  if (existing.some((r) => r.id === reaction.id)) return item
+  return { type: "comment" as const, data: { ...comment, reactions: [...existing, reaction] } }
+}
+
+function removeReactionFromItem(
+  item: TaskTimelineItem,
+  commentId: string,
+  reactionId: string
+): TaskTimelineItem {
+  if (item.type !== "comment" || item.data.id !== commentId) return item
+  const comment = item.data as TaskCommentWithRelations
+  const filtered = (comment.reactions ?? []).filter((r) => r.id !== reactionId)
+  return { type: "comment" as const, data: { ...comment, reactions: filtered } }
 }
 
 interface TaskDetailPanelProps {
@@ -133,35 +157,10 @@ export function TaskDetailPanel({
       ])
     },
     onReactionInsert: (commentId, reaction) => {
-      setTimeline((prev) =>
-        prev.map((item) => {
-          if (item.type !== "comment" || item.data.id !== commentId) return item
-          const comment = item.data as TaskCommentWithRelations
-          const existing = comment.reactions ?? []
-          if (existing.some((r) => r.id === reaction.id)) return item
-          return {
-            type: "comment" as const,
-            data: { ...comment, reactions: [...existing, reaction] },
-          }
-        })
-      )
+      setTimeline((prev) => prev.map((item) => addReactionToItem(item, commentId, reaction)))
     },
     onReactionDelete: (commentId, reactionId) => {
-      setTimeline((prev) =>
-        prev.map((item) => {
-          if (item.type !== "comment" || item.data.id !== commentId) return item
-          const comment = item.data as TaskCommentWithRelations
-          return {
-            type: "comment" as const,
-            data: {
-              ...comment,
-              reactions: (comment.reactions ?? []).filter(
-                (r) => r.id !== reactionId
-              ),
-            },
-          }
-        })
-      )
+      setTimeline((prev) => prev.map((item) => removeReactionFromItem(item, commentId, reactionId)))
     },
   })
 
