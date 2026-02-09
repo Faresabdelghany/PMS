@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "build:analyze": "ANALYZE=true next build",
+    "build:analyze": "ANALYZE=true next build --no-turbopack",
     "dev": "next dev",
     "lint": "eslint . --max-warnings=-1",
     "start": "next start",
@@ -16,7 +16,9 @@
     "test:e2e:codegen": "playwright codegen http://localhost:3000",
     "lighthouse": "lhci autorun",
     "lighthouse:local": "lhci autorun --collect.url=http://localhost:3000/login --collect.url=http://localhost:3000/signup",
-    "perf": "bash scripts/perf-audit.sh",
+    "perf": "node --env-file=.env.local scripts/perf-audit.mjs",
+    "perf:pages": "node --env-file=.env.local scripts/perf-audit.mjs pages",
+    "perf:interactions": "node --env-file=.env.local scripts/perf-audit.mjs interactions",
     "perf:lighthouse": "bash scripts/perf-audit.sh lighthouse",
     "perf:bundle": "bash scripts/perf-audit.sh bundle"
   },
@@ -94,6 +96,13 @@
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^1.1.2",
     "zod": "3.25.76"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@tailwindcss/oxide",
+      "sharp",
+      "unrs-resolver"
+    ]
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
