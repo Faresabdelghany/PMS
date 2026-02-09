@@ -50,3 +50,9 @@ nul
 # MCP local config
 .mcp.json
 
+# AI tool configs
+.agent/
+.claude/
+.cursor/
+.opencode/
+
