@@ -16,10 +16,9 @@ import { useProjectRealtime } from "@/hooks/use-realtime"
 
 import type { ProjectFullDetails } from "@/lib/actions/projects"
 import type { TaskWithRelations } from "@/lib/actions/tasks"
-import {
-  transformProjectToUI,
-  type WorkstreamWithTasks,
-  type OrganizationMember,
+import type {
+  WorkstreamWithTasks,
+  OrganizationMember,
 } from "@/lib/transforms/project-details"
 import { Breadcrumbs } from "@/components/projects/Breadcrumbs"
 import { ProjectHeader } from "@/components/projects/ProjectHeader"
@@ -67,6 +66,7 @@ function TabSkeleton() {
 
 type ProjectDetailsPageProps = {
   projectId: string
+  project: ProjectDetails
   supabaseProject: ProjectFullDetails
   tasks?: TaskWithRelations[]
   workstreams?: WorkstreamWithTasks[]
@@ -77,6 +77,7 @@ type ProjectDetailsPageProps = {
 
 export function ProjectDetailsPage({
   projectId,
+  project,
   supabaseProject,
   tasks = [],
   workstreams = [],
@@ -115,11 +116,7 @@ export function ProjectDetailsPage({
   const [workstreamTaskContext, setWorkstreamTaskContext] = useState<CreateTaskContext | undefined>(undefined)
   const [editingWorkstreamTask, setEditingWorkstreamTask] = useState<TaskData | undefined>(undefined)
 
-  // Transform Supabase data to UI format using extracted utility
-  const project = useMemo<ProjectDetails>(
-    () => transformProjectToUI(supabaseProject, tasks, workstreams, organizationMembers),
-    [supabaseProject, tasks, workstreams, organizationMembers]
-  )
+  // project is now pre-computed on the server (page.tsx) to avoid blocking client render
 
   const copyLink = useCallback(async () => {
     if (!navigator.clipboard) {

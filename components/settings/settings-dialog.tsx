@@ -10,19 +10,21 @@ import { SettingsSidebar, type SettingsItemId } from "./settings-sidebar"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 import { Skeleton } from "@/components/ui/skeleton"
 
-// Lazy load all panes for better initial bundle size
-const AccountPane = lazy(() => import("./panes/account-pane").then(m => ({ default: m.AccountPane })))
-const NotificationsPane = lazy(() => import("./panes/notifications-pane").then(m => ({ default: m.NotificationsPane })))
-const PreferencesPane = lazy(() => import("./panes/preferences-pane").then(m => ({ default: m.PreferencesPane })))
-const TeammatesPane = lazy(() => import("./panes/teammates-pane").then(m => ({ default: m.TeammatesPane })))
-const IdentityPane = lazy(() => import("./panes/identity-pane").then(m => ({ default: m.IdentityPane })))
-const TypesPane = lazy(() => import("./panes/types-pane").then(m => ({ default: m.TypesPane })))
-const TagsPane = lazy(() => import("./panes/tags-pane").then(m => ({ default: m.TagsPane })))
-const BillingPane = lazy(() => import("./panes/billing-pane").then(m => ({ default: m.BillingPane })))
-const ImportPane = lazy(() => import("./panes/import-pane").then(m => ({ default: m.ImportPane })))
-const AgentsPane = lazy(() => import("./panes/agents-pane").then(m => ({ default: m.AgentsPane })))
-const SkillsPane = lazy(() => import("./panes/skills-pane").then(m => ({ default: m.SkillsPane })))
-const LabelsSettings = lazy(() => import("./labels-settings").then(m => ({ default: m.LabelsSettings })))
+// Lazy load all panes into separate webpack chunks for optimal code-splitting.
+// Each pane gets its own chunk (~5-10kB each) instead of one bundled chunk (~71kB).
+// webpackPrefetch on AccountPane loads the default pane in browser idle time.
+const AccountPane = lazy(() => import(/* webpackChunkName: "settings-account", webpackPrefetch: true */ "./panes/account-pane").then(m => ({ default: m.AccountPane })))
+const NotificationsPane = lazy(() => import(/* webpackChunkName: "settings-notifications" */ "./panes/notifications-pane").then(m => ({ default: m.NotificationsPane })))
+const PreferencesPane = lazy(() => import(/* webpackChunkName: "settings-preferences" */ "./panes/preferences-pane").then(m => ({ default: m.PreferencesPane })))
+const TeammatesPane = lazy(() => import(/* webpackChunkName: "settings-teammates" */ "./panes/teammates-pane").then(m => ({ default: m.TeammatesPane })))
+const IdentityPane = lazy(() => import(/* webpackChunkName: "settings-identity" */ "./panes/identity-pane").then(m => ({ default: m.IdentityPane })))
+const TypesPane = lazy(() => import(/* webpackChunkName: "settings-types" */ "./panes/types-pane").then(m => ({ default: m.TypesPane })))
+const TagsPane = lazy(() => import(/* webpackChunkName: "settings-tags" */ "./panes/tags-pane").then(m => ({ default: m.TagsPane })))
+const BillingPane = lazy(() => import(/* webpackChunkName: "settings-billing" */ "./panes/billing-pane").then(m => ({ default: m.BillingPane })))
+const ImportPane = lazy(() => import(/* webpackChunkName: "settings-import" */ "./panes/import-pane").then(m => ({ default: m.ImportPane })))
+const AgentsPane = lazy(() => import(/* webpackChunkName: "settings-agents" */ "./panes/agents-pane").then(m => ({ default: m.AgentsPane })))
+const SkillsPane = lazy(() => import(/* webpackChunkName: "settings-skills" */ "./panes/skills-pane").then(m => ({ default: m.SkillsPane })))
+const LabelsSettings = lazy(() => import(/* webpackChunkName: "settings-labels" */ "./labels-settings").then(m => ({ default: m.LabelsSettings })))
 
 // Loading skeleton for settings panes
 function SettingsPaneSkeleton() {

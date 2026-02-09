@@ -9,6 +9,7 @@ import {
   getCachedTags,
   getCachedActiveOrganizationId,
 } from "@/lib/server-cache"
+import { transformProjectToUI } from "@/lib/transforms/project-details"
 
 type PageProps = {
   params: Promise<{ id: string }>
@@ -74,14 +75,23 @@ export default async function Page({ params }: PageProps) {
     name: c.name,
   }))
 
+  const tasks = tasksResult.data || []
+  const workstreams = workstreamsResult.data || []
+  const organizationMembers = membersResult.data || []
+
+  // Pre-compute UI transform on the server to avoid blocking the client render.
+  // This eliminates a synchronous useMemo on the client that was adding ~100-200ms to LCP.
+  const project = transformProjectToUI(projectResult.data, tasks, workstreams, organizationMembers)
+
   return (
     <ProjectDetailsPage
       projectId={id}
+      project={project}
       supabaseProject={projectResult.data}
-      tasks={tasksResult.data || []}
-      workstreams={workstreamsResult.data || []}
+      tasks={tasks}
+      workstreams={workstreams}
       clients={clients}
-      organizationMembers={membersResult.data || []}
+      organizationMembers={organizationMembers}
       organizationTags={tagsResult.data || []}
     />
   )

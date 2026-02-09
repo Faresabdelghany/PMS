@@ -3,15 +3,6 @@
 import { useMemo, useState, useCallback, useRef } from "react"
 import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
 import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
-import {
-  DndContext,
-  type DragEndEvent,
-  closestCenter,
-  MeasuringStrategy,
-} from "@dnd-kit/core"
-import {
-  arrayMove,
-} from "@dnd-kit/sortable"
 
 import type { TaskWithRelations } from "@/lib/actions/tasks"
 import type { ProjectWithRelations } from "@/lib/actions/projects"
@@ -82,13 +73,19 @@ const TaskWeekBoardView = dynamic(
   () => import("@/components/tasks/TaskWeekBoardView").then(m => ({ default: m.TaskWeekBoardView })),
   { ssr: false, loading: () => <div className="flex items-center justify-center py-20 text-muted-foreground text-sm">Loading board view...</div> }
 )
+
+// Lazy-load DnD wrapper — keeps @dnd-kit/core + @dnd-kit/sortable out of the initial bundle (~25kB savings)
+const TaskListDndWrapper = dynamic(
+  () => import("@/components/tasks/TaskListDndWrapper").then(m => ({ default: m.TaskListDndWrapper })),
+  { ssr: false }
+)
+
 import {
-  ProjectTaskListView,
   filterTasksByChips,
   computeTaskFilterCounts,
   type TaskLike,
   type ProjectTaskGroup,
-} from "@/components/tasks/task-helpers"
+} from "@/components/tasks/task-filter-utils"
 import { Button } from "@/components/ui/button"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import {
@@ -493,47 +490,9 @@ export function MyTasksPage({
     setTaskToDelete(null)
   }, [taskToDelete])
 
-  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
-    const { active, over } = event
-
-    if (!over || active.id === over.id) return
-
-    // Find the group containing the active task
-    const activeGroupIndex = groups.findIndex((group) =>
-      group.tasks.some((task) => task.id === active.id)
-    )
-
-    if (activeGroupIndex === -1) return
-
-    const activeGroup = groups[activeGroupIndex]
-
-    // Find the group containing the over task
-    const overGroupIndex = groups.findIndex((group) =>
-      group.tasks.some((task) => task.id === over.id)
-    )
-
-    if (overGroupIndex === -1) return
-
-    // For now, only allow reordering within the same group
-    if (activeGroupIndex !== overGroupIndex) return
-
-    const activeIndex = activeGroup.tasks.findIndex((task) => task.id === active.id)
-    const overIndex = activeGroup.tasks.findIndex((task) => task.id === over.id)
-
-    if (activeIndex === -1 || overIndex === -1) return
-
-    const reorderedTasks = arrayMove(activeGroup.tasks, activeIndex, overIndex)
-    const taskIds = reorderedTasks.map(t => t.id)
-
-    // Optimistic update - update the sort order in local state
-    // The actual reordering happens via the reorderTasks action
-    const projectId = activeGroup.project.id
-    const task = tasks.find(t => t.id === active.id)
-
-    if (task) {
-      await reorderTasks(task.workstream_id || null, projectId, taskIds)
-    }
-  }, [groups, tasks])
+  const handleReorder = useCallback(async (workstreamId: string | null, projectId: string, taskIds: string[]) => {
+    await reorderTasks(workstreamId, projectId, taskIds)
+  }, [])
 
   if (!groups.length) {
     return (
@@ -636,23 +595,15 @@ export function MyTasksPage({
 
       <div className="flex-1 min-h-0 space-y-4 overflow-y-auto px-4 py-4">
         {viewOptions.viewType === "list" && (
-          <DndContext
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-            measuring={{
-              droppable: {
-                strategy: MeasuringStrategy.BeforeDragging,
-              },
-            }}
-          >
-            <ProjectTaskListView
-              groups={visibleGroups}
-              onToggleTask={toggleTask}
-              onAddTask={(context) => openCreateTask(context)}
-              onEditTask={openEditTask}
-              onDeleteTask={(taskId) => setTaskToDelete(taskId)}
-            />
-          </DndContext>
+          <TaskListDndWrapper
+            groups={visibleGroups}
+            allGroups={groups}
+            onToggleTask={toggleTask}
+            onAddTask={(context) => openCreateTask(context)}
+            onEditTask={openEditTask}
+            onDeleteTask={(taskId) => setTaskToDelete(taskId)}
+            onReorder={handleReorder}
+          />
         )}
         {viewOptions.viewType === "board" && (
           <TaskWeekBoardView
