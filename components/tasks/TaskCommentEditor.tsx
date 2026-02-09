@@ -94,6 +94,7 @@ export function TaskCommentEditor({
             role="button"
             tabIndex={0}
             onClick={() => setEditorActivated(true)}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setEditorActivated(true) }}
             onFocus={() => setEditorActivated(true)}
             className="min-h-[80px] max-h-[200px] px-3 py-2 text-sm text-muted-foreground cursor-text"
           >
