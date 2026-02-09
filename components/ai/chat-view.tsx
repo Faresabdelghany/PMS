@@ -188,15 +188,15 @@ export function ChatView({
 
       {/* Content */}
       <div className="flex-1 flex flex-col min-h-0">
-        {/* Loading AI status or context */}
-        {(isCheckingAI || isLoadingContext) && (
+        {/* Loading AI status */}
+        {isCheckingAI && (
           <div className="flex-1 flex items-center justify-center">
             <SpinnerGap className="size-8 animate-spin text-muted-foreground" />
           </div>
         )}
 
         {/* AI not configured - show setup prompt */}
-        {!isCheckingAI && !isLoadingContext && !isConfigured && (
+        {!isCheckingAI && !isConfigured && (
           <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 text-center">
             <div className="flex items-center justify-center size-16 rounded-2xl bg-violet-500/10">
               <StarFour weight="fill" className="size-10 text-violet-500/60" />
@@ -218,7 +218,7 @@ export function ChatView({
         )}
 
         {/* AI configured - show chat interface */}
-        {!isCheckingAI && !isLoadingContext && isConfigured && (
+        {!isCheckingAI && isConfigured && (
           <>
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4" aria-live="polite" aria-atomic="false">

@@ -3,7 +3,6 @@ import { redirect } from "next/navigation"
 import { ChatPageContent } from "@/components/ai/chat-page-content"
 import { cachedGetUser, cachedGetUserOrganizations } from "@/lib/request-cache"
 import { getConversationWithMessages } from "@/lib/actions/conversations"
-import { getCachedAIContext } from "@/lib/server-cache"
 import { ChatPageSkeleton } from "@/components/skeletons/chat-skeletons"
 
 type PageProps = {
@@ -11,12 +10,12 @@ type PageProps = {
 }
 
 async function ChatContent({ conversationId }: { conversationId: string }) {
-  // Fetch auth, orgs, conversation+messages (single RPC), and AI context in parallel (all request-level cached)
-  const [userResult, orgsResult, convResult, contextResult] = await Promise.all([
+  // Fetch auth, orgs, and conversation+messages in parallel
+  // AI context is loaded client-side to avoid blocking LCP
+  const [userResult, orgsResult, convResult] = await Promise.all([
     cachedGetUser(),
     cachedGetUserOrganizations(),
     getConversationWithMessages(conversationId),
-    getCachedAIContext(),
   ])
 
   const { user, error: authError } = userResult
@@ -42,7 +41,6 @@ async function ChatContent({ conversationId }: { conversationId: string }) {
       conversationId={conversationId}
       conversation={convResult.data.conversation}
       initialMessages={convResult.data.messages ?? []}
-      initialContext={contextResult.data ?? undefined}
     />
   )
 }

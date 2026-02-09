@@ -2,15 +2,13 @@ import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { ChatPageContent } from "@/components/ai/chat-page-content"
 import { cachedGetUser, cachedGetUserOrganizations } from "@/lib/request-cache"
-import { getCachedAIContext } from "@/lib/server-cache"
 import { ChatPageSkeleton } from "@/components/skeletons/chat-skeletons"
 
 async function ChatContent() {
-  // Fetch auth, orgs, and AI context in parallel (all request-level cached)
-  const [userResult, orgsResult, contextResult] = await Promise.all([
+  // Fetch auth and orgs only — AI context is loaded client-side to avoid blocking LCP
+  const [userResult, orgsResult] = await Promise.all([
     cachedGetUser(),
     cachedGetUserOrganizations(),
-    getCachedAIContext(),
   ])
 
   const { user, error: authError } = userResult
@@ -30,7 +28,6 @@ async function ChatContent() {
       organizationId={orgId}
       conversationId={null}
       initialMessages={[]}
-      initialContext={contextResult.data ?? undefined}
     />
   )
 }

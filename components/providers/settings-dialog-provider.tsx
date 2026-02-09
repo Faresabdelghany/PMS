@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react"
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react"
 import dynamic from "next/dynamic"
 import type { SettingsItemId } from "@/components/settings/settings-sidebar"
 
@@ -39,6 +39,17 @@ export function SettingsDialogProvider({ children }: SettingsDialogProviderProps
   const closeSettings = useCallback(() => {
     setIsOpen(false)
   }, [])
+
+  // Auto-open settings from URL param (e.g., /inbox?settings=account)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const section = params.get("settings")
+    if (section) {
+      openSettings(section as SettingsItemId)
+      // Clean up the URL without triggering a navigation
+      window.history.replaceState(null, "", window.location.pathname)
+    }
+  }, [openSettings])
 
   return (
     <SettingsDialogContext.Provider

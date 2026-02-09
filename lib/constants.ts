@@ -47,6 +47,12 @@ export const URGENCY_DAYS_CRITICAL = 3
 export const URGENCY_DAYS_WARNING = 7
 
 // ============================================
+// TASK LIST
+// ============================================
+/** Max tasks shown per project section before "Show more" button */
+export const INITIAL_VISIBLE_TASKS_PER_PROJECT = 5
+
+// ============================================
 // AI CONTEXT LIMITS
 // ============================================
 export const AI_CONTEXT_LIMITS = {

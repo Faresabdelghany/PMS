@@ -118,12 +118,19 @@ export async function middleware(request: NextRequest) {
     (r) => { supabaseResponse = r }
   )
 
-  // Check KV session cache before expensive getUser()
+  // getSession() reads from cookie locally (fast) and refreshes token if expired
   const { data: { session } } = await supabase.auth.getSession()
   const sessionUserId = session?.user?.id
 
+  // Fast redirect: for "/" and auth pages, redirect to /inbox immediately
+  // after getSession() — skip expensive getUser() since the destination
+  // page validates auth via the layout's cachedGetUser()
+  if (sessionUserId && shouldRedirectToInbox(pathname)) {
+    return redirectTo(request, "/inbox")
+  }
+
+  // Check KV session cache before expensive getUser()
   if (sessionUserId && await tryKVSessionCheck(sessionUserId)) {
-    if (shouldRedirectToInbox(pathname)) return redirectTo(request, "/inbox")
     return supabaseResponse
   }
 

@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { format } from "date-fns"
 import { ChartBar } from "@phosphor-icons/react/dist/ssr/ChartBar"
 import { DotsThreeVertical } from "@phosphor-icons/react/dist/ssr/DotsThreeVertical"
@@ -36,6 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
+import { INITIAL_VISIBLE_TASKS_PER_PROJECT } from "@/lib/constants"
 import type { FilterChip as FilterChipType } from "@/lib/view-options"
 import type { CreateTaskContext } from "@/components/tasks/TaskQuickCreateModal"
 
@@ -215,10 +217,16 @@ export type ProjectTasksSectionProps = {
 }
 
 export function ProjectTasksSection({ group, onToggleTask, onAddTask, onEditTask, onDeleteTask }: ProjectTasksSectionProps) {
+  const [expanded, setExpanded] = useState(false)
   const { project, tasks } = group
   const total = tasks.length
   const done = tasks.filter((t) => t.status === "done").length
   const percent = total ? Math.round((done / total) * 100) : 0
+
+  const visibleTasks = expanded || tasks.length <= INITIAL_VISIBLE_TASKS_PER_PROJECT
+    ? tasks
+    : tasks.slice(0, INITIAL_VISIBLE_TASKS_PER_PROJECT)
+  const hiddenCount = tasks.length - visibleTasks.length
 
   return (
     <section className="max-w-6xl mx-auto rounded-3xl border border-border bg-muted shadow-[var(--shadow-workstream)] p-3 space-y-2">
@@ -276,8 +284,8 @@ export function ProjectTasksSection({ group, onToggleTask, onAddTask, onEditTask
       </header>
 
       <div className="space-y-1 px-2 py-3 bg-background rounded-2xl border border-border">
-        <SortableContext items={tasks.map((task) => task.id)} strategy={verticalListSortingStrategy}>
-          {tasks.map((task) => (
+        <SortableContext items={visibleTasks.map((task) => task.id)} strategy={verticalListSortingStrategy}>
+          {visibleTasks.map((task) => (
             <TaskRowDnD
               key={task.id}
               task={task}
@@ -287,6 +295,15 @@ export function ProjectTasksSection({ group, onToggleTask, onAddTask, onEditTask
             />
           ))}
         </SortableContext>
+        {hiddenCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="w-full text-center py-2 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/60"
+          >
+            Show {hiddenCount} more task{hiddenCount !== 1 ? "s" : ""}
+          </button>
+        )}
       </div>
     </section>
   )

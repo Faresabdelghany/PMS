@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import dynamic from "next/dynamic"
 import { List } from "@phosphor-icons/react/dist/ssr/List"
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { getAIContext } from "@/lib/actions/ai-context"
 import type { ChatConversation, ChatMessage } from "@/lib/supabase/types"
 import type { ChatContext } from "@/lib/actions/ai-types"
 
@@ -86,6 +87,18 @@ export function ChatPageContent({
 }: ChatPageContentProps) {
   const isMobile = useIsMobile()
   const [showHistory, setShowHistory] = useState(false)
+  const [aiContext, setAIContext] = useState<ChatContext | undefined>(initialContext)
+
+  // Fetch AI context client-side to avoid blocking server-side LCP
+  useEffect(() => {
+    if (!initialContext) {
+      getAIContext().then((result) => {
+        if (result.data) setAIContext(result.data)
+      }).catch(() => {
+        // Context fetch failed — chat still works with minimal context
+      })
+    }
+  }, [initialContext])
 
   const toggleHistory = useCallback(() => {
     setShowHistory((prev) => !prev)
@@ -95,7 +108,7 @@ export function ChatPageContent({
     setShowHistory(false)
   }, [])
 
-  const chatContext: ChatContext = initialContext ?? {
+  const chatContext: ChatContext = aiContext ?? {
     pageType: "other",
     appData: {
       organization: { id: organizationId, name: "" },
