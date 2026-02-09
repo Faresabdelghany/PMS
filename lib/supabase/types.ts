@@ -1417,6 +1417,18 @@ export interface Database {
         Args: { org_id: string }
         Returns: void
       }
+      get_conversation_with_messages: {
+        Args: { p_conversation_id: string; p_message_limit?: number }
+        Returns: Json
+      }
+      get_dashboard_stats: {
+        Args: { p_org_id: string; p_user_id: string }
+        Returns: Json
+      }
+      get_ai_context_summary: {
+        Args: { p_org_id: string; p_user_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       project_status: ProjectStatus

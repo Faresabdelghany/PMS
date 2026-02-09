@@ -53,6 +53,18 @@ export const CacheKeys = {
   // Search (TTL: 30 sec)
   search: (orgId: string, queryHash: string) =>
     `pms:search:${orgId}:${queryHash}`,
+
+  // Conversations (TTL: 2 min)
+  conversations: (userId: string, orgId: string) =>
+    `pms:conversations:${userId}:${orgId}`,
+
+  // AI Context (TTL: 2 min)
+  aiContext: (userId: string, orgId: string) =>
+    `pms:ai-context:${userId}:${orgId}`,
+
+  // Dashboard stats (TTL: 30 sec)
+  dashboardStats: (userId: string, orgId: string) =>
+    `pms:dashboard-stats:${userId}:${orgId}`,
 } as const
 
 /**
@@ -71,6 +83,8 @@ export const CacheTTL = {
   TEAMS: 300, // 5 minutes
   TAGS: 300, // 5 minutes
   LABELS: 300, // 5 minutes
+  CONVERSATIONS: 120, // 2 minutes
+  AI_CONTEXT: 120, // 2 minutes
 
   // Session
   SESSION: 300, // 5 minutes
@@ -79,4 +93,5 @@ export const CacheTTL = {
   TASKS: 30, // 30 seconds
   WORKSTREAMS: 60, // 1 minute
   SEARCH: 30, // 30 seconds
+  DASHBOARD_STATS: 30, // 30 seconds
 } as const

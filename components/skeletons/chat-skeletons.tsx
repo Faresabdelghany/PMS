@@ -47,11 +47,12 @@ export function ChatPageSkeleton({ showMessages = false }: ChatPageSkeletonProps
           {/* Messages or empty state */}
           <div className="flex-1 flex flex-col min-h-0">
             {showMessages ? (
-              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-                {/* Assistant message */}
+              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+                {/* Assistant message - larger block for better LCP target */}
                 <div className="flex items-start gap-3 max-w-[85%]">
                   <Skeleton className="h-8 w-8 rounded-lg flex-shrink-0" />
                   <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-2/3" />
                   </div>
@@ -60,13 +61,26 @@ export function ChatPageSkeleton({ showMessages = false }: ChatPageSkeletonProps
                 <div className="flex justify-end">
                   <Skeleton className="h-10 w-48 rounded-2xl" />
                 </div>
-                {/* Another assistant message */}
+                {/* Another assistant message - larger for LCP */}
                 <div className="flex items-start gap-3 max-w-[85%]">
                   <Skeleton className="h-8 w-8 rounded-lg flex-shrink-0" />
                   <div className="flex-1 space-y-2">
                     <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-3/4" />
                     <Skeleton className="h-4 w-1/2" />
+                  </div>
+                </div>
+                {/* User message */}
+                <div className="flex justify-end">
+                  <Skeleton className="h-10 w-56 rounded-2xl" />
+                </div>
+                {/* Third assistant message */}
+                <div className="flex items-start gap-3 max-w-[85%]">
+                  <Skeleton className="h-8 w-8 rounded-lg flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-5/6" />
                   </div>
                 </div>
               </div>

@@ -323,7 +323,7 @@ export function AccountPane() {
           </form>
         </SettingRow>
         <SettingRow label="Email address" description="Notifications will be sent to this address.">
-          <Input value={profile.email} type="email" className="h-9 text-sm" readOnly />
+          <Input value={profile.email} type="email" className="h-9 text-sm" readOnly aria-label="Email address" />
         </SettingRow>
         <SettingRow label="Password" description="Keep your account secure with a strong password.">
           <div className="flex items-center justify-between gap-3 rounded-md border border-input bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
@@ -405,8 +405,8 @@ export function AccountPane() {
         </SettingRow>
         <SettingRow label="User ID" description="Share this ID if you contact support.">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Input value={user.id} readOnly className="font-mono text-sm" />
-            <Button variant="ghost" size="sm" onClick={handleCopyUserId}>
+            <Input value={user.id} readOnly className="font-mono text-sm" aria-label="User ID" />
+            <Button variant="ghost" size="sm" onClick={handleCopyUserId} aria-label="Copy user ID">
               {copiedId ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>

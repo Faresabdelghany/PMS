@@ -119,10 +119,9 @@ export default async function DashboardLayout({
   }
 
   // Start ALL queries in parallel - no waterfall!
-  // We start activeProjects query speculatively and check org access afterward
+  // Profile and colorTheme start immediately (don't depend on org ID)
   const orgsPromise = getOrganizations(supabase, user.id)
   const profilePromise = getUserProfile(supabase, user.id)
-  // KV-cached color theme (10 min TTL, same as profile)
   const colorThemePromise = getCachedColorTheme(supabase, user.id)
 
   // Wait for orgs first to check if user has any (fast due to KV cache)
@@ -132,10 +131,14 @@ export default async function DashboardLayout({
     redirect("/onboarding")
   }
 
-  // Now fetch profile, activeProjects, and colorTheme in parallel
+  // activeProjects needs org ID - start it immediately after orgs resolve
+  // Profile and colorTheme are already in-flight, so this is truly parallel
+  const activeProjectsPromise = getActiveProjects(supabase, organizations[0].id)
+
+  // Wait for all remaining queries - profile/colorTheme likely already resolved
   const [profile, activeProjects, colorTheme] = await Promise.all([
     profilePromise,
-    getActiveProjects(supabase, organizations[0].id),
+    activeProjectsPromise,
     colorThemePromise,
   ])
 

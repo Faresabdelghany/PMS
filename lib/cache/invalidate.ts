@@ -174,6 +174,27 @@ export const invalidate = {
   },
 
   /**
+   * Invalidate conversations cache for a user in an org.
+   */
+  async conversations(userId: string, orgId: string): Promise<void> {
+    await this.key(CacheKeys.conversations(userId, orgId))
+  },
+
+  /**
+   * Invalidate AI context cache for a user in an org.
+   */
+  async aiContext(userId: string, orgId: string): Promise<void> {
+    await this.key(CacheKeys.aiContext(userId, orgId))
+  },
+
+  /**
+   * Invalidate dashboard stats cache for a user in an org.
+   */
+  async dashboardStats(userId: string, orgId: string): Promise<void> {
+    await this.key(CacheKeys.dashboardStats(userId, orgId))
+  },
+
+  /**
    * Invalidate caches that include profile/avatar data.
    * Called when a user updates their profile (avatar, name, etc.)
    *

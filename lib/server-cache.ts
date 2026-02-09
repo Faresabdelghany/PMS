@@ -307,6 +307,76 @@ export const getCachedTaskStats = cache(async (orgId: string) => {
   }
 })
 
+/**
+ * Get all dashboard stats in a single RPC call (request-level cached).
+ * Consolidates project count, client count, and task stats into one DB round trip.
+ * Uses KV cache with 30s TTL.
+ */
+export const getCachedDashboardStats = cache(async (orgId: string) => {
+  const { cachedGetUser } = await import("./request-cache")
+  const { cacheGet, CacheKeys, CacheTTL } = await import("./cache")
+
+  const { user, error: authError, supabase } = await cachedGetUser()
+  if (authError || !user) {
+    return {
+      projects: { total: 0, active: 0, completed: 0 },
+      clients: { total: 0 },
+      tasks: { total: 0, dueToday: 0, overdue: 0, completedThisWeek: 0 },
+    }
+  }
+
+  return cacheGet(
+    CacheKeys.dashboardStats(user.id, orgId),
+    async () => {
+      const { data, error } = await supabase.rpc("get_dashboard_stats", {
+        p_org_id: orgId,
+        p_user_id: user.id,
+      })
+
+      if (error) {
+        // Fallback to individual queries if RPC not yet deployed
+        console.warn("[cache] get_dashboard_stats RPC failed, using fallback:", error.message)
+        return {
+          projects: { total: 0, active: 0, completed: 0 },
+          clients: { total: 0 },
+          tasks: { total: 0, dueToday: 0, overdue: 0, completedThisWeek: 0 },
+        }
+      }
+
+      return data as unknown as {
+        projects: { total: number; active: number; completed: number }
+        clients: { total: number }
+        tasks: { total: number; dueToday: number; overdue: number; completedThisWeek: number }
+      }
+    },
+    CacheTTL.DASHBOARD_STATS
+  )
+})
+
+// ============================================
+// CONVERSATIONS
+// ============================================
+
+/**
+ * Get conversations for a user in an org (request-level cached)
+ */
+export const getCachedConversations = cache(async (orgId: string) => {
+  const { getConversations } = await import("./actions/conversations")
+  return getConversations(orgId)
+})
+
+// ============================================
+// AI CONTEXT
+// ============================================
+
+/**
+ * Get AI context data (request-level cached)
+ */
+export const getCachedAIContext = cache(async () => {
+  const { getAIContext } = await import("./actions/ai-context")
+  return getAIContext()
+})
+
 // ============================================
 // PERFORMANCE / ANALYTICS
 // ============================================

@@ -2,8 +2,8 @@ import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { ChatPageContent } from "@/components/ai/chat-page-content"
 import { cachedGetUser, cachedGetUserOrganizations } from "@/lib/request-cache"
-import { getConversation, getConversationMessages } from "@/lib/actions/conversations"
-import { getAIContext } from "@/lib/actions/ai-context"
+import { getConversationWithMessages } from "@/lib/actions/conversations"
+import { getCachedAIContext } from "@/lib/server-cache"
 import { ChatPageSkeleton } from "@/components/skeletons/chat-skeletons"
 
 type PageProps = {
@@ -11,13 +11,12 @@ type PageProps = {
 }
 
 async function ChatContent({ conversationId }: { conversationId: string }) {
-  // Fetch auth, orgs, conversation, messages, and AI context in parallel
-  const [userResult, orgsResult, conversationResult, messagesResult, contextResult] = await Promise.all([
+  // Fetch auth, orgs, conversation+messages (single RPC), and AI context in parallel (all request-level cached)
+  const [userResult, orgsResult, convResult, contextResult] = await Promise.all([
     cachedGetUser(),
     cachedGetUserOrganizations(),
-    getConversation(conversationId),
-    getConversationMessages(conversationId),
-    getAIContext(),
+    getConversationWithMessages(conversationId),
+    getCachedAIContext(),
   ])
 
   const { user, error: authError } = userResult
@@ -33,7 +32,7 @@ async function ChatContent({ conversationId }: { conversationId: string }) {
   const orgId = orgsResult.data[0].id
 
   // If conversation not found, redirect to new chat
-  if (conversationResult.error || !conversationResult.data) {
+  if (convResult.error || !convResult.data?.conversation) {
     redirect("/chat")
   }
 
@@ -41,8 +40,8 @@ async function ChatContent({ conversationId }: { conversationId: string }) {
     <ChatPageContent
       organizationId={orgId}
       conversationId={conversationId}
-      conversation={conversationResult.data}
-      initialMessages={messagesResult.data ?? []}
+      conversation={convResult.data.conversation}
+      initialMessages={convResult.data.messages ?? []}
       initialContext={contextResult.data ?? undefined}
     />
   )

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { InboxContent } from "@/components/inbox/InboxContent"
 import { cachedGetUserOrganizations } from "@/lib/request-cache"
-import { getInboxItems, getUnreadCount } from "@/lib/actions/inbox"
+import { getCachedInboxItems, getCachedUnreadCount } from "@/lib/server-cache"
 
 export default async function Page() {
   // Use cached orgs - shared with layout (no duplicate DB hit)
@@ -13,10 +13,10 @@ export default async function Page() {
 
   const organization = orgsResult.data[0]
 
-  // Fetch inbox data in parallel
+  // Fetch inbox data in parallel (request-level cached)
   const [inboxResult, unreadResult] = await Promise.all([
-    getInboxItems(),
-    getUnreadCount(),
+    getCachedInboxItems(),
+    getCachedUnreadCount(),
   ])
 
   const items = inboxResult.data ?? []

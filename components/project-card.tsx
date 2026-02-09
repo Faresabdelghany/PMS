@@ -100,7 +100,6 @@ export const ProjectCard = memo(function ProjectCard({ project, actions, variant
     <div
       role="button"
       tabIndex={0}
-      aria-label={`Open project ${project.name}`}
       onClick={() => {
         if (isBoard && draggingRef.current) {
           draggingRef.current = false

@@ -1,6 +1,7 @@
 "use server"
 
 import { requireAuth } from "./auth-helpers"
+import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
 import type { ChatConversation, ChatMessage, ChatMessageInsert, Json } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 import { CONVERSATION_PAGE_SIZE, MESSAGE_PAGE_SIZE, SEARCH_CONVERSATION_LIMIT } from "@/lib/constants"
@@ -8,6 +9,7 @@ import { CONVERSATION_PAGE_SIZE, MESSAGE_PAGE_SIZE, SEARCH_CONVERSATION_LIMIT } 
 /**
  * Get all conversations for the current user in an organization.
  * Returns up to 50 conversations ordered by most recently updated.
+ * Uses KV cache with 2-minute TTL.
  */
 export async function getConversations(
   organizationId: string
@@ -15,19 +17,24 @@ export async function getConversations(
   try {
     const { user, supabase } = await requireAuth()
 
-    const { data, error } = await supabase
-      .from("chat_conversations")
-      .select("*")
-      .eq("organization_id", organizationId)
-      .eq("user_id", user.id)
-      .order("updated_at", { ascending: false })
-      .limit(CONVERSATION_PAGE_SIZE)
+    const conversations = await cacheGet(
+      CacheKeys.conversations(user.id, organizationId),
+      async () => {
+        const { data, error } = await supabase
+          .from("chat_conversations")
+          .select("*")
+          .eq("organization_id", organizationId)
+          .eq("user_id", user.id)
+          .order("updated_at", { ascending: false })
+          .limit(CONVERSATION_PAGE_SIZE)
 
-    if (error) {
-      return { error: error.message }
-    }
+        if (error) throw error
+        return data ?? []
+      },
+      CacheTTL.CONVERSATIONS
+    )
 
-    return { data: data ?? [] }
+    return { data: conversations }
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Failed to get conversations" }
   }
@@ -87,7 +94,44 @@ export async function getConversationMessages(
 }
 
 /**
+ * Get a conversation and its messages in a single database call.
+ * Uses the get_conversation_with_messages RPC function to eliminate
+ * 2 separate round trips (getConversation + getConversationMessages).
+ */
+export async function getConversationWithMessages(
+  conversationId: string
+): Promise<ActionResult<{ conversation: ChatConversation | null; messages: ChatMessage[] }>> {
+  try {
+    const { supabase } = await requireAuth()
+
+    const { data, error } = await supabase.rpc("get_conversation_with_messages", {
+      p_conversation_id: conversationId,
+      p_message_limit: MESSAGE_PAGE_SIZE,
+    })
+
+    if (error) {
+      return { error: error.message }
+    }
+
+    const result = data as unknown as {
+      conversation: ChatConversation | null
+      messages: ChatMessage[]
+    } | null
+
+    return {
+      data: {
+        conversation: result?.conversation ?? null,
+        messages: result?.messages ?? [],
+      },
+    }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to get conversation" }
+  }
+}
+
+/**
  * Create a new conversation.
+ * Invalidates conversation list cache after creation.
  */
 export async function createConversation(
   organizationId: string,
@@ -109,6 +153,9 @@ export async function createConversation(
     if (error) {
       return { error: error.message }
     }
+
+    // Invalidate conversations cache
+    await invalidate.conversations(user.id, organizationId)
 
     return { data }
   } catch (err) {
@@ -159,7 +206,7 @@ export async function addMessage(
 
 /**
  * Update action data on a message.
- * Used when action status changes (pending → executing → success/error).
+ * Used when action status changes (pending -> executing -> success/error).
  */
 export async function updateMessageActionData(
   messageId: string,
@@ -220,12 +267,25 @@ export async function updateConversationTitle(
 /**
  * Delete a conversation.
  * Messages are automatically deleted via cascade.
+ * Invalidates conversation list cache after deletion.
  */
 export async function deleteConversation(
-  conversationId: string
+  conversationId: string,
+  organizationId?: string
 ): Promise<ActionResult<void>> {
   try {
-    const { supabase } = await requireAuth()
+    const { user, supabase } = await requireAuth()
+
+    // If orgId provided, invalidate cache; otherwise fetch it first
+    let orgId = organizationId
+    if (!orgId) {
+      const { data: conv } = await supabase
+        .from("chat_conversations")
+        .select("organization_id")
+        .eq("id", conversationId)
+        .single()
+      orgId = conv?.organization_id
+    }
 
     const { error } = await supabase
       .from("chat_conversations")
@@ -234,6 +294,10 @@ export async function deleteConversation(
 
     if (error) {
       return { error: error.message }
+    }
+
+    if (orgId) {
+      await invalidate.conversations(user.id, orgId)
     }
 
     return {}

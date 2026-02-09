@@ -1,12 +1,8 @@
 "use server"
 
 import { requireAuth } from "./auth-helpers"
-import { getProjects } from "./projects"
-import { getClients } from "./clients"
-import { getOrganizationMembers, getOrganization, getUserOrganizations } from "./organizations"
-import { getTeams } from "./teams"
-import { getInboxItems } from "./inbox"
-import { getMyTasks } from "./tasks"
+import { getUserOrganizations } from "./organizations"
+import { cacheGet, CacheKeys, CacheTTL } from "@/lib/cache"
 import type { ActionResult } from "./types"
 import type { ChatContext, WorkloadInsights } from "./ai-types"
 
@@ -83,19 +79,19 @@ function calculateWorkloadInsights(
 }
 
 /**
- * Fetches all application data needed for AI chat context.
- * This is called when the user opens the AI chat from the sidebar.
+ * Fetches all application data needed for AI chat context using a single RPC call.
+ * Uses the get_ai_context_summary RPC function to consolidate 7 queries into 1.
+ * Result is cached in KV for 2 minutes.
  */
 export async function getAIContext(): Promise<ActionResult<ChatContext>> {
   try {
-    // Fetch auth and org in parallel - getUserOrganizations is cached, so if layout
-    // already called it, this is a cache hit (~0ms instead of ~100ms waterfall)
+    // Fetch auth and org in parallel
     const [authResult, orgsResult] = await Promise.all([
       requireAuth(),
       getUserOrganizations(),
     ])
 
-    const { user } = authResult
+    const { user, supabase } = authResult
 
     if (orgsResult.error || !orgsResult.data?.length) {
       return { error: "No organization found" }
@@ -103,81 +99,51 @@ export async function getAIContext(): Promise<ActionResult<ChatContext>> {
 
     const organizationId = orgsResult.data[0].id
 
-    // Fetch all data in parallel
-    const [
-      orgResult,
-      projectsResult,
-      clientsResult,
-      membersResult,
-      teamsResult,
-      inboxResult,
-      userTasksResult,
-    ] = await Promise.all([
-      getOrganization(organizationId),
-      getProjects(organizationId),
-      getClients(organizationId),
-      getOrganizationMembers(organizationId),
-      getTeams(organizationId),
-      getInboxItems(),
-      getMyTasks(organizationId),
-    ])
+    // Use KV cache for AI context (2 min TTL)
+    const rawData = await cacheGet(
+      CacheKeys.aiContext(user.id, organizationId),
+      async () => {
+        // Single RPC call replaces 7 separate queries
+        const { data, error } = await supabase.rpc("get_ai_context_summary", {
+          p_org_id: organizationId,
+          p_user_id: user.id,
+        })
 
-    // Build context
+        if (error) throw error
+        return data
+      },
+      CacheTTL.AI_CONTEXT
+    )
+
+    // Cast the RPC JSON result to the expected shape
+    const contextData = rawData as unknown as {
+      organization: { id: string; name: string }
+      projects: { id: string; name: string; status: string; clientName?: string; dueDate?: string }[]
+      clients: { id: string; name: string; status: string; projectCount: number }[]
+      members: { id: string; name: string; email: string; role: string }[]
+      teams: { id: string; name: string; memberCount: number }[]
+      inbox: { id: string; title: string; type: string; read: boolean; createdAt: string }[]
+      userTasks: { id: string; title: string; projectName: string; status: string; priority: string; dueDate?: string; projectId?: string }[]
+    } | null
+
+    // Build context from RPC result
+    const userTasks = (contextData?.userTasks ?? []).map((t) => ({
+      status: t.status,
+      priority: t.priority,
+      dueDate: t.dueDate,
+    }))
+
     const context: ChatContext = {
       pageType: "other",
       appData: {
-        organization: {
-          id: organizationId,
-          name: orgResult.data?.name || "",
-        },
-        projects: (projectsResult.data || []).map(p => ({
-          id: p.id,
-          name: p.name,
-          status: p.status,
-          clientName: p.client?.name,
-          dueDate: p.end_date || undefined,
-        })),
-        clients: (clientsResult.data || []).map(c => ({
-          id: c.id,
-          name: c.name,
-          status: c.status || "active",
-          projectCount: 0, // Project count not fetched in basic query
-        })),
-        teams: (teamsResult.data || []).map(t => ({
-          id: t.id,
-          name: t.name,
-          memberCount: 0, // Member count not available in basic teams query
-        })),
-        members: (membersResult.data || []).map(m => ({
-          id: m.user_id,
-          name: m.profile.full_name || m.profile.email,
-          email: m.profile.email,
-          role: m.role,
-        })),
-        userTasks: (userTasksResult.data || []).map(t => ({
-          id: t.id,
-          title: t.name,
-          status: t.status,
-          priority: t.priority,
-          projectId: t.project_id || undefined,
-          projectName: t.project?.name || "Unknown",
-          dueDate: t.end_date || undefined,
-        })),
-        inbox: (inboxResult.data || []).map(i => ({
-          id: i.id,
-          type: (i as { type?: string }).type || "notification",
-          title: i.title,
-          read: i.is_read,
-          createdAt: i.created_at,
-        })),
-        // Calculate workload insights for AI to understand user's situation
-        workloadInsights: calculateWorkloadInsights(
-          (userTasksResult.data || []).map(t => ({
-            status: t.status,
-            priority: t.priority,
-            dueDate: t.end_date || undefined,
-          }))
-        ),
+        organization: contextData?.organization ?? { id: organizationId, name: "" },
+        projects: contextData?.projects ?? [],
+        clients: contextData?.clients ?? [],
+        teams: contextData?.teams ?? [],
+        members: contextData?.members ?? [],
+        userTasks: contextData?.userTasks ?? [],
+        inbox: contextData?.inbox ?? [],
+        workloadInsights: calculateWorkloadInsights(userTasks),
       },
     }
 

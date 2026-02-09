@@ -6,7 +6,7 @@ import { resetPassword } from "@/lib/actions/auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card"
 
 export default function ForgotPasswordPage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -32,7 +32,7 @@ export default function ForgotPasswordPage() {
     return (
       <Card>
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Check your email</CardTitle>
+          <h2 className="text-2xl font-bold leading-none tracking-tight">Check your email</h2>
           <CardDescription>
             Check your email for a password reset link
           </CardDescription>
@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
   return (
     <Card>
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold">Forgot password</CardTitle>
+        <h2 className="text-2xl font-bold leading-none tracking-tight">Forgot password</h2>
         <CardDescription>
           Enter your email address and we&apos;ll send you a link to reset your password
         </CardDescription>

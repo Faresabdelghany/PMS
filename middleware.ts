@@ -130,7 +130,8 @@ export async function middleware(request: NextRequest) {
   // Full auth validation
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (user) await cacheSessionInKV(user.id)
+  // Fire-and-forget KV cache (non-critical, don't block response)
+  if (user) cacheSessionInKV(user.id)
 
   if (!user && !isPublic) return redirectTo(request, "/login", { redirect: pathname })
   if (user && shouldRedirectToInbox(pathname)) return redirectTo(request, "/inbox")

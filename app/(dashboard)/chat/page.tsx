@@ -2,15 +2,15 @@ import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { ChatPageContent } from "@/components/ai/chat-page-content"
 import { cachedGetUser, cachedGetUserOrganizations } from "@/lib/request-cache"
-import { getAIContext } from "@/lib/actions/ai-context"
+import { getCachedAIContext } from "@/lib/server-cache"
 import { ChatPageSkeleton } from "@/components/skeletons/chat-skeletons"
 
 async function ChatContent() {
-  // Fetch auth, orgs, and AI context in parallel
+  // Fetch auth, orgs, and AI context in parallel (all request-level cached)
   const [userResult, orgsResult, contextResult] = await Promise.all([
     cachedGetUser(),
     cachedGetUserOrganizations(),
-    getAIContext(),
+    getCachedAIContext(),
   ])
 
   const { user, error: authError } = userResult
