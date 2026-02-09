@@ -1,16 +1,11 @@
 import { Suspense } from "react"
-import dynamic from "next/dynamic"
 import { redirect } from "next/navigation"
 import { Breadcrumbs } from "@/components/projects/Breadcrumbs"
-import { PerformancePageSkeleton } from "@/components/skeletons/performance-skeletons"
+import { PerformancePageSkeleton, ChartsSkeleton } from "@/components/skeletons/performance-skeletons"
+import { PerformanceStatCards } from "@/components/performance/PerformanceStatCards"
+import { PerformanceCharts } from "@/components/performance/PerformanceCharts"
 import { cachedGetUserOrganizations } from "@/lib/request-cache"
 import { getCachedPerformanceMetrics } from "@/lib/server-cache"
-
-// Lazy-load recharts-heavy dashboard component
-const PerformanceDashboard = dynamic(
-  () => import("@/components/performance").then(m => ({ default: m.PerformanceDashboard })),
-  { loading: () => <PerformancePageSkeleton /> }
-)
 
 async function PerformanceContent({ orgId }: { orgId: string }) {
   const result = await getCachedPerformanceMetrics(orgId)
@@ -33,7 +28,19 @@ async function PerformanceContent({ orgId }: { orgId: string }) {
           { label: "Performance" },
         ]}
       />
-      <PerformanceDashboard metrics={result.data} />
+      {/* Header + stat cards render immediately for fast LCP (text-based) */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Performance</h1>
+        <p className="text-muted-foreground">
+          Track project progress, task completion, and team productivity
+        </p>
+      </div>
+      <PerformanceStatCards metrics={result.data} />
+
+      {/* Charts lazy-loaded separately — not on the LCP path */}
+      <Suspense fallback={<ChartsSkeleton />}>
+        <PerformanceCharts metrics={result.data} />
+      </Suspense>
     </div>
   )
 }

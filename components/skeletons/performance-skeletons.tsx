@@ -37,6 +37,21 @@ export function PerformanceStatCardSkeleton() {
 }
 
 /**
+ * Charts-only skeleton (used when header + stat cards are already rendered)
+ */
+export function ChartsSkeleton() {
+  return (
+    <>
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+        <ChartSkeleton height={300} />
+        <ChartSkeleton height={300} />
+      </div>
+      <ChartSkeleton height={350} />
+    </>
+  )
+}
+
+/**
  * Full performance page skeleton
  */
 export function PerformancePageSkeleton() {

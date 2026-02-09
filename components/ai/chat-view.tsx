@@ -287,9 +287,9 @@ export function ChatView({
                   </div>
                   {isLoading && !isStreaming ? (
                     <div className="flex items-center gap-1.5 rounded-2xl bg-muted/50 px-4 py-3">
-                      <span className="size-2 rounded-full bg-violet-400 animate-bounce [animation-delay:-0.3s]" />
-                      <span className="size-2 rounded-full bg-violet-400 animate-bounce [animation-delay:-0.15s]" />
-                      <span className="size-2 rounded-full bg-violet-400 animate-bounce" />
+                      <span className="size-2 rounded-full bg-violet-400 animate-chat-bounce [animation-delay:-0.3s]" />
+                      <span className="size-2 rounded-full bg-violet-400 animate-chat-bounce [animation-delay:-0.15s]" />
+                      <span className="size-2 rounded-full bg-violet-400 animate-chat-bounce" />
                     </div>
                   ) : (
                     <button

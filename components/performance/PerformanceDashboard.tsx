@@ -1,9 +1,7 @@
 "use client"
 
 import { PerformanceStatCards } from "./PerformanceStatCards"
-import { ProjectStatusPieChart } from "./ProjectStatusPieChart"
-import { TaskVelocityChart } from "./TaskVelocityChart"
-import { TeamProductivityChart } from "./TeamProductivityChart"
+import { PerformanceCharts } from "./PerformanceCharts"
 import type { PerformanceMetrics } from "@/lib/actions/analytics"
 
 type PerformanceDashboardProps = {
@@ -24,14 +22,8 @@ export function PerformanceDashboard({ metrics }: PerformanceDashboardProps) {
       {/* Stat Cards */}
       <PerformanceStatCards metrics={metrics} />
 
-      {/* Charts Row */}
-      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-        <ProjectStatusPieChart projectStats={metrics.projectStats} />
-        <TaskVelocityChart weeklyTrends={metrics.weeklyTrends} />
-      </div>
-
-      {/* Team Productivity Chart */}
-      <TeamProductivityChart teamProductivity={metrics.teamProductivity} />
+      {/* Charts (lazy-loaded) */}
+      <PerformanceCharts metrics={metrics} />
     </div>
   )
 }
