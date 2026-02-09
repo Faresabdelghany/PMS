@@ -21,6 +21,25 @@ if (!EMAIL || !PASS) {
   process.exit(1);
 }
 
+// --- Test Data Check ---
+// Verifies that test data (projects, clients, tasks) exists for detail page tests.
+// If missing, logs a warning so the user knows to create data in the app.
+async function checkTestData(page) {
+  // Check projects
+  await page.goto(BASE + '/projects', { waitUntil: 'networkidle', timeout: 20000 });
+  await page.waitForTimeout(1000);
+  const hasProjects = await page.$('[role="button"].rounded-2xl, [role="button"][tabindex="0"]');
+  console.log(hasProjects ? '  Projects: found' : '  Projects: NONE — create a project for full coverage');
+
+  // Check clients
+  await page.goto(BASE + '/clients', { waitUntil: 'networkidle', timeout: 20000 });
+  await page.waitForTimeout(1000);
+  const hasClients = await page.$('button[aria-label*="Actions for"]');
+  console.log(hasClients ? '  Clients: found' : '  Clients: NONE — create a client for full coverage');
+
+  console.log('');
+}
+
 // Perf observer — injected before every page load
 const INIT_SCRIPT = `
 window.__perf = { lcp: 0, cls: 0, lcpTag: '' };
@@ -187,6 +206,10 @@ async function main() {
   const authCookies = await ctx.cookies();
   const cookieHeader = authCookies.map(c => `${c.name}=${c.value}`).join('; ');
 
+  // ===== PHASE 2b: Check test data =====
+  console.log('Phase 2b: Checking test data...');
+  await checkTestData(page);
+
   // ===== PHASE 3: Authenticated pages =====
   if (TARGET === 'full' || TARGET === 'pages') {
     console.log('Phase 3: Authenticated Pages');
@@ -200,43 +223,49 @@ async function main() {
   if (TARGET === 'full' || TARGET === 'pages') {
     console.log('Phase 4: Detail Pages');
 
-    // Project detail
+    // Project detail — ProjectCard uses role="button" with onClick → router.push
     await page.goto(BASE + '/projects', { waitUntil: 'networkidle', timeout: 20000 });
-    const projCard = await page.$('[role="button"][aria-label*="Open project"]');
+    await page.waitForTimeout(1000);
+    // ProjectCard: <div role="button" ...> with project name inside
+    const projCard = await page.$('[role="button"].rounded-2xl') || await page.$('[role="button"][tabindex="0"]');
     if (projCard) {
       await projCard.click();
-      await page.waitForURL(/\/projects\//, { timeout: 10000 });
-      const projUrl = page.url();
-      results.push(await measurePage(page, projUrl, 'Project Detail'));
+      try {
+        await page.waitForURL(/\/projects\//, { timeout: 10000 });
+        const projUrl = page.url();
+        results.push(await measurePage(page, projUrl, 'Project Detail'));
+      } catch {
+        console.log('    Project Detail: SKIPPED (navigation failed)');
+        results.push({ name: 'Project Detail', status: 'skipped', error: 'navigation failed' });
+      }
     } else {
       console.log('    Project Detail: SKIPPED (no projects)');
       results.push({ name: 'Project Detail', status: 'skipped', error: 'no projects found' });
     }
 
-    // Client detail — find client link in the page
+    // Client detail — ClientTableRow has a dropdown menu with "View full page" link to /clients/[id]
     await page.goto(BASE + '/clients', { waitUntil: 'networkidle', timeout: 20000 });
     await page.waitForTimeout(1000);
-    // Try to find a client detail link or navigate via client name click
-    const clientLink = await page.$('a[href*="/clients/"]');
-    if (clientLink) {
-      const clientHref = await clientLink.getAttribute('href');
-      results.push(await measurePage(page, BASE + clientHref, 'Client Detail'));
-    } else {
-      // Try clicking a client row to trigger navigation
-      const clientName = await page.$('td button, tbody tr td:first-child');
-      if (clientName) {
-        await clientName.click();
-        await page.waitForTimeout(2000);
-        if (page.url().includes('/clients/')) {
-          results.push(await measurePage(page, page.url(), 'Client Detail'));
-        } else {
-          console.log('    Client Detail: SKIPPED (no navigation link found)');
-          results.push({ name: 'Client Detail', status: 'skipped', error: 'no navigation link' });
-        }
+    // Open the actions dropdown on the first client row
+    const actionsBtn = await page.$('button[aria-label*="Actions for"]');
+    if (actionsBtn) {
+      await actionsBtn.click();
+      await page.waitForTimeout(500);
+      // Click "View full page" menu item which contains a link to /clients/[id]
+      const viewLink = await page.$('a[href*="/clients/"]');
+      if (viewLink) {
+        const clientHref = await viewLink.getAttribute('href');
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(300);
+        results.push(await measurePage(page, BASE + clientHref, 'Client Detail'));
       } else {
-        console.log('    Client Detail: SKIPPED (no clients)');
-        results.push({ name: 'Client Detail', status: 'skipped', error: 'no clients found' });
+        await page.keyboard.press('Escape');
+        console.log('    Client Detail: SKIPPED (no "View full page" link)');
+        results.push({ name: 'Client Detail', status: 'skipped', error: 'no detail link in menu' });
       }
+    } else {
+      console.log('    Client Detail: SKIPPED (no clients)');
+      results.push({ name: 'Client Detail', status: 'skipped', error: 'no clients found' });
     }
 
     // Chat conversation detail
@@ -280,10 +309,13 @@ async function main() {
     await page.waitForTimeout(500);
 
     // Task detail panel — open from project detail page where TaskDetailPanel is used
-    const projLink = await page.$('a[href*="/projects/"]');
-    if (projLink) {
-      const href = await projLink.getAttribute('href');
-      await page.goto(BASE + href, { waitUntil: 'networkidle', timeout: 20000 });
+    await page.goto(BASE + '/projects', { waitUntil: 'networkidle', timeout: 20000 });
+    await page.waitForTimeout(1000);
+    const projCardForTask = await page.$('[role="button"].rounded-2xl') || await page.$('[role="button"][tabindex="0"]');
+    if (projCardForTask) {
+      await projCardForTask.click();
+      try { await page.waitForURL(/\/projects\//, { timeout: 10000 }); } catch {}
+      await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
       await page.waitForTimeout(1000);
       // Find a task title button (flex-1 truncate text-left)
       const taskTitle = await page.$('button.flex-1.truncate');
@@ -417,6 +449,7 @@ async function main() {
     try { fs.unlinkSync(headersFile); } catch {}
     console.log('');
   }
+
 
   // Load previous results for comparison
   let previous = null;
