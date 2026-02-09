@@ -18,7 +18,7 @@ import dynamic from "next/dynamic"
 
 const ProjectDescriptionEditor = dynamic(
   () => import("@/components/project-wizard/ProjectDescriptionEditor").then((m) => m.ProjectDescriptionEditor),
-  { ssr: false, loading: () => <div className="h-20 bg-muted/30 rounded animate-pulse" /> }
+  { ssr: false, loading: () => <div className="min-h-[80px] bg-muted/30 rounded animate-pulse" /> }
 )
 
 interface TaskCommentEditorProps {
@@ -39,6 +39,7 @@ export function TaskCommentEditor({
   const [content, setContent] = useState("")
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [attachments, setAttachments] = useState<File[]>([])
+  const [editorActivated, setEditorActivated] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const isEmpty = !content.trim() && attachments.length === 0
@@ -88,15 +89,27 @@ export function TaskCommentEditor({
     <div className="space-y-2">
       {/* Editor */}
       <div className="border rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background">
-        <div onKeyDown={handleKeyDown}>
-          <ProjectDescriptionEditor
-            value={content}
-            onChange={setContent}
-            placeholder={placeholder}
-            showTemplates={false}
-            className="min-h-[80px] max-h-[200px] overflow-y-auto border-0"
-          />
-        </div>
+        {!editorActivated ? (
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => setEditorActivated(true)}
+            onFocus={() => setEditorActivated(true)}
+            className="min-h-[80px] max-h-[200px] px-3 py-2 text-sm text-muted-foreground cursor-text"
+          >
+            {placeholder}
+          </div>
+        ) : (
+          <div onKeyDown={handleKeyDown}>
+            <ProjectDescriptionEditor
+              value={content}
+              onChange={setContent}
+              placeholder={placeholder}
+              showTemplates={false}
+              className="min-h-[80px] max-h-[200px] overflow-y-auto border-0"
+            />
+          </div>
+        )}
 
         {/* Attachments preview */}
         {attachments.length > 0 && (

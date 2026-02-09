@@ -19,6 +19,7 @@ import { getTaskTimeline } from "@/lib/actions/task-activities"
 import { createTaskComment } from "@/lib/actions/task-comments"
 import type {
   TaskTimelineItem,
+  TaskCommentWithRelations,
   Workstream,
   OrganizationTag,
 } from "@/lib/supabase/types"
@@ -130,6 +131,37 @@ export function TaskDetailPanel({
         ...prev,
         { type: "activity", data: activity },
       ])
+    },
+    onReactionInsert: (commentId, reaction) => {
+      setTimeline((prev) =>
+        prev.map((item) => {
+          if (item.type !== "comment" || item.data.id !== commentId) return item
+          const comment = item.data as TaskCommentWithRelations
+          const existing = comment.reactions ?? []
+          if (existing.some((r) => r.id === reaction.id)) return item
+          return {
+            type: "comment" as const,
+            data: { ...comment, reactions: [...existing, reaction] },
+          }
+        })
+      )
+    },
+    onReactionDelete: (commentId, reactionId) => {
+      setTimeline((prev) =>
+        prev.map((item) => {
+          if (item.type !== "comment" || item.data.id !== commentId) return item
+          const comment = item.data as TaskCommentWithRelations
+          return {
+            type: "comment" as const,
+            data: {
+              ...comment,
+              reactions: (comment.reactions ?? []).filter(
+                (r) => r.id !== reactionId
+              ),
+            },
+          }
+        })
+      )
     },
   })
 

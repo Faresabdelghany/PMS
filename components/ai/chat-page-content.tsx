@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useCallback } from "react"
 import { List } from "@phosphor-icons/react/dist/ssr/List"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
@@ -10,7 +10,6 @@ import {
   SheetContent,
 } from "@/components/ui/sheet"
 import { useIsMobile } from "@/hooks/use-mobile"
-import { getAIContext } from "@/lib/actions/ai-context"
 import { ChatHistorySidebar } from "./chat-history-sidebar"
 import { ChatView } from "./chat-view"
 import type { ChatConversation, ChatMessage } from "@/lib/supabase/types"
@@ -21,6 +20,7 @@ interface ChatPageContentProps {
   conversationId: string | null
   conversation?: ChatConversation | null
   initialMessages: ChatMessage[]
+  initialContext?: ChatContext
 }
 
 export function ChatPageContent({
@@ -28,24 +28,10 @@ export function ChatPageContent({
   conversationId,
   conversation,
   initialMessages,
+  initialContext,
 }: ChatPageContentProps) {
   const isMobile = useIsMobile()
   const [showHistory, setShowHistory] = useState(false)
-  const [context, setContext] = useState<ChatContext | null>(null)
-  const [isLoadingContext, setIsLoadingContext] = useState(true)
-
-  // Fetch AI context on mount
-  useEffect(() => {
-    async function loadContext() {
-      setIsLoadingContext(true)
-      const result = await getAIContext()
-      if (result.data) {
-        setContext(result.data)
-      }
-      setIsLoadingContext(false)
-    }
-    loadContext()
-  }, [])
 
   const toggleHistory = useCallback(() => {
     setShowHistory((prev) => !prev)
@@ -55,8 +41,7 @@ export function ChatPageContent({
     setShowHistory(false)
   }, [])
 
-  // Default empty context while loading
-  const chatContext: ChatContext = context ?? {
+  const chatContext: ChatContext = initialContext ?? {
     pageType: "other",
     appData: {
       organization: { id: organizationId, name: "" },
@@ -128,7 +113,6 @@ export function ChatPageContent({
             conversation={conversation}
             initialMessages={initialMessages}
             context={chatContext}
-            isLoadingContext={isLoadingContext}
           />
         </div>
       </div>

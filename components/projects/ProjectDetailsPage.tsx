@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useState, Suspense, startTransition, useTransition } from "react"
+import { useCallback, useMemo, useState, useRef, Suspense, startTransition, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
 import {
@@ -93,12 +93,20 @@ export function ProjectDetailsPage({
   const [, startTabTransition] = useTransition()
 
   // Real-time subscription for project updates (e.g., from AI chat)
-  // Use startTransition to mark refresh as non-urgent, improving INP
+  // Debounce rapid updates (e.g., AI making multiple changes) and use
+  // startTransition to mark refresh as non-urgent, improving INP
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useProjectRealtime(projectId, {
     onUpdate: useCallback(() => {
-      startTransition(() => {
-        router.refresh()
-      })
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current)
+      }
+      refreshTimerRef.current = setTimeout(() => {
+        refreshTimerRef.current = null
+        startTransition(() => {
+          router.refresh()
+        })
+      }, 300)
     }, [router]),
   })
 
@@ -222,10 +230,10 @@ export function ProjectDetailsPage({
 
             <div
               className={
-                "mt-0 grid grid-cols-1 gap-15 transition-[grid-template-columns] duration-150 ease-out " +
+                "mt-0 grid grid-cols-1 gap-15 " +
                 (showMeta
                   ? "lg:grid-cols-[minmax(0,2fr)_minmax(0,320px)]"
-                  : "lg:grid-cols-[minmax(0,1fr)_minmax(0,0px)]")
+                  : "")
               }
             >
               <div className="space-y-6 pt-4">
@@ -267,15 +275,17 @@ export function ProjectDetailsPage({
                   </TabsContent>
 
                   <TabsContent value="tasks">
-                    <ProjectTasksTabLazy
-                      projectId={projectId}
-                      projectName={supabaseProject.name}
-                      organizationId={supabaseProject.organization_id}
-                      initialTasks={tasks}
-                      workstreams={workstreams.map(ws => ({ id: ws.id, name: ws.name }))}
-                      organizationMembers={organizationMembers}
-                      organizationTags={organizationTags}
-                    />
+                    <Suspense fallback={<TabSkeleton />}>
+                      <ProjectTasksTabLazy
+                        projectId={projectId}
+                        projectName={supabaseProject.name}
+                        organizationId={supabaseProject.organization_id}
+                        initialTasks={tasks}
+                        workstreams={workstreams.map(ws => ({ id: ws.id, name: ws.name }))}
+                        organizationMembers={organizationMembers}
+                        organizationTags={organizationTags}
+                      />
+                    </Suspense>
                   </TabsContent>
 
                   <TabsContent value="notes">
@@ -308,20 +318,18 @@ export function ProjectDetailsPage({
                 </Tabs>
               </div>
 
-              <div
-                className={`lg:border-l lg:border-border lg:pl-6 transition-all duration-150 ease-out ${
-                  showMeta ? "opacity-100" : "opacity-0 pointer-events-none"
-                }`}
-              >
-                {/* Side panel - lazy hydrated */}
-                <LazyRightMetaPanel
-                  time={project.time}
-                  backlog={project.backlog}
-                  quickLinks={project.quickLinks}
-                  client={supabaseProject.client}
-                  onUploadClick={() => setIsFileModalOpen(true)}
-                />
-              </div>
+              {showMeta && (
+                <div className="lg:border-l lg:border-border lg:pl-6 animate-in fade-in duration-150">
+                  {/* Side panel - lazy hydrated, conditionally rendered to avoid hydration when collapsed */}
+                  <LazyRightMetaPanel
+                    time={project.time}
+                    backlog={project.backlog}
+                    quickLinks={project.quickLinks}
+                    client={supabaseProject.client}
+                    onUploadClick={() => setIsFileModalOpen(true)}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>

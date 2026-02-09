@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useCallback } from "react"
+import { useMemo, useState, useCallback, memo } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { DotsThreeVertical } from "@phosphor-icons/react/dist/ssr/DotsThreeVertical"
 import { DotsSixVertical } from "@phosphor-icons/react/dist/ssr/DotsSixVertical"
@@ -480,14 +480,16 @@ export function ProjectTasksTab({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Task Detail Panel */}
-      <TaskDetailPanel
-        projectId={projectId}
-        organizationId={organizationId}
-        organizationMembers={organizationMembers}
-        workstreams={workstreams.map((w) => ({ id: w.id, name: w.name }) as Workstream)}
-        tags={organizationTags}
-      />
+      {/* Task Detail Panel — only mount when ?task= param is present */}
+      {searchParams.get("task") && (
+        <TaskDetailPanel
+          projectId={projectId}
+          organizationId={organizationId}
+          organizationMembers={organizationMembers}
+          workstreams={workstreams.map((w) => ({ id: w.id, name: w.name }) as Workstream)}
+          tags={organizationTags}
+        />
+      )}
     </section>
   )
 }
@@ -548,7 +550,7 @@ type TaskRowDnDProps = {
   onDelete?: (taskId: string) => void
 }
 
-function TaskRowDnD({ task, onToggle, onTitleClick, onEdit, onDelete }: TaskRowDnDProps) {
+const TaskRowDnD = memo(function TaskRowDnD({ task, onToggle, onTitleClick, onEdit, onDelete }: TaskRowDnDProps) {
   const isDone = task.status === "done"
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -644,4 +646,17 @@ function TaskRowDnD({ task, onToggle, onTitleClick, onEdit, onDelete }: TaskRowD
       />
     </div>
   )
-}
+}, (prev, next) =>
+  prev.task.id === next.task.id &&
+  prev.task.status === next.task.status &&
+  prev.task.name === next.task.name &&
+  prev.task.priority === next.task.priority &&
+  prev.task.assignee?.name === next.task.assignee?.name &&
+  prev.task.tag === next.task.tag &&
+  prev.task.dueLabel === next.task.dueLabel &&
+  prev.task.workstreamName === next.task.workstreamName &&
+  prev.onToggle === next.onToggle &&
+  prev.onTitleClick === next.onTitleClick &&
+  prev.onEdit === next.onEdit &&
+  prev.onDelete === next.onDelete
+)

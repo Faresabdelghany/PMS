@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import type {
   TaskCommentWithRelations,
   TaskActivityWithRelations,
+  TaskCommentReaction,
 } from "@/lib/supabase/types"
 
 interface UseTaskTimelineRealtimeCallbacks {
@@ -12,7 +13,8 @@ interface UseTaskTimelineRealtimeCallbacks {
   onCommentUpdate?: (comment: TaskCommentWithRelations) => void
   onCommentDelete?: (commentId: string) => void
   onActivityInsert?: (activity: TaskActivityWithRelations) => void
-  onReactionChange?: (commentId: string) => void
+  onReactionInsert?: (commentId: string, reaction: TaskCommentReaction) => void
+  onReactionDelete?: (commentId: string, reactionId: string) => void
 }
 
 export function useTaskTimelineRealtime(
@@ -61,9 +63,9 @@ export function useTaskTimelineRealtime(
 
     const supabase = createClient()
 
-    // Subscribe to task_comments changes
-    const commentsChannel = supabase
-      .channel(`task-comments-${taskId}`)
+    // Single channel with multiple listeners for comments, activities, and reactions
+    const channel = supabase
+      .channel(`task-timeline-${taskId}`)
       .on(
         "postgres_changes",
         {
@@ -90,11 +92,6 @@ export function useTaskTimelineRealtime(
           }
         }
       )
-      .subscribe()
-
-    // Subscribe to task_activities changes
-    const activitiesChannel = supabase
-      .channel(`task-activities-${taskId}`)
       .on(
         "postgres_changes",
         {
@@ -113,38 +110,47 @@ export function useTaskTimelineRealtime(
           }
         }
       )
-      .subscribe()
-
-    // Subscribe to reaction changes
-    const reactionsChannel = supabase
-      .channel(`task-reactions-${taskId}`)
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
           schema: "public",
           table: "task_comment_reactions",
         },
-        async (payload) => {
-          // Get the comment_id from either new or old record
-          const newRecord = payload.new as { comment_id?: string } | undefined
-          const oldRecord = payload.old as { comment_id?: string } | undefined
-          const commentId = newRecord?.comment_id || oldRecord?.comment_id
-          if (commentId) {
-            // Refetch the comment to get updated reactions
-            const comment = await fetchCommentWithRelations(commentId)
-            if (comment) {
-              callbacksRef.current.onCommentUpdate?.(comment)
-            }
+        (payload) => {
+          const reaction = payload.new as TaskCommentReaction | undefined
+          if (reaction?.comment_id) {
+            callbacksRef.current.onReactionInsert?.(
+              reaction.comment_id,
+              reaction
+            )
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "task_comment_reactions",
+        },
+        (payload) => {
+          const oldReaction = payload.old as {
+            id?: string
+            comment_id?: string
+          } | undefined
+          if (oldReaction?.comment_id && oldReaction?.id) {
+            callbacksRef.current.onReactionDelete?.(
+              oldReaction.comment_id,
+              oldReaction.id
+            )
           }
         }
       )
       .subscribe()
 
     return () => {
-      supabase.removeChannel(commentsChannel)
-      supabase.removeChannel(activitiesChannel)
-      supabase.removeChannel(reactionsChannel)
+      supabase.removeChannel(channel)
     }
   }, [taskId, fetchCommentWithRelations, fetchActivityWithRelations])
 }

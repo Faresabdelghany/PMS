@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { ChatPageContent } from "@/components/ai/chat-page-content"
 import { cachedGetUser, cachedGetUserOrganizations } from "@/lib/request-cache"
 import { getConversation, getConversationMessages } from "@/lib/actions/conversations"
+import { getAIContext } from "@/lib/actions/ai-context"
 import { Skeleton } from "@/components/ui/skeleton"
 
 type PageProps = {
@@ -10,13 +11,13 @@ type PageProps = {
 }
 
 async function ChatContent({ conversationId }: { conversationId: string }) {
-  // Fetch auth, orgs, conversation, and messages in parallel
-  // All cached functions dedupe with layout, and conversation/messages are independent
-  const [userResult, orgsResult, conversationResult, messagesResult] = await Promise.all([
+  // Fetch auth, orgs, conversation, messages, and AI context in parallel
+  const [userResult, orgsResult, conversationResult, messagesResult, contextResult] = await Promise.all([
     cachedGetUser(),
     cachedGetUserOrganizations(),
     getConversation(conversationId),
     getConversationMessages(conversationId),
+    getAIContext(),
   ])
 
   const { user, error: authError } = userResult
@@ -42,6 +43,7 @@ async function ChatContent({ conversationId }: { conversationId: string }) {
       conversationId={conversationId}
       conversation={conversationResult.data}
       initialMessages={messagesResult.data ?? []}
+      initialContext={contextResult.data ?? undefined}
     />
   )
 }

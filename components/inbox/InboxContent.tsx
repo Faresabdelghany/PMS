@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, memo } from "react"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -54,6 +54,102 @@ const itemTypeColors: Record<InboxItemType, string> = {
   project_milestone: "text-purple-500",
   system: "text-zinc-500",
 }
+
+interface InboxItemRowProps {
+  item: InboxItemWithRelations
+  onMarkAsRead: (id: string) => void
+  onDelete: (id: string) => void
+}
+
+const InboxItemRow = memo(function InboxItemRow({ item, onMarkAsRead, onDelete }: InboxItemRowProps) {
+  const Icon = itemTypeIcons[item.item_type]
+  const iconColor = itemTypeColors[item.item_type]
+
+  return (
+    <div
+      className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/50 transition-colors group ${
+        !item.is_read ? "bg-primary/5" : ""
+      }`}
+    >
+      <div className="relative flex-shrink-0">
+        {item.actor ? (
+          <Avatar className="h-9 w-9">
+            <AvatarImage src={item.actor.avatar_url || undefined} alt={item.actor.full_name || "User"} />
+            <AvatarFallback className="text-xs">
+              {item.actor.full_name
+                ?.split(" ")
+                .map((n) => n[0])
+                .join("")
+                .toUpperCase()
+                .slice(0, 2) || "?"}
+            </AvatarFallback>
+          </Avatar>
+        ) : (
+          <div className={`h-9 w-9 rounded-full flex items-center justify-center bg-muted ${iconColor}`}>
+            <Icon className="h-4 w-4" />
+          </div>
+        )}
+        {!item.is_read && (
+          <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary border-2 border-background" />
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className={`text-sm ${!item.is_read ? "font-medium" : ""} text-foreground line-clamp-1`}>
+              {item.title}
+            </p>
+            {item.message && (
+              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                {item.message}
+              </p>
+            )}
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[11px] text-muted-foreground">
+                {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
+              </span>
+              {item.project && (
+                <>
+                  <span className="text-muted-foreground">·</span>
+                  <Link
+                    href={`/projects/${item.project.id}`}
+                    className="text-[11px] text-muted-foreground hover:text-foreground"
+                  >
+                    {item.project.name}
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {!item.is_read && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="h-7 w-7"
+                onClick={() => onMarkAsRead(item.id)}
+                title="Mark as read"
+              >
+                <Check className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+              onClick={() => onDelete(item.id)}
+              title="Delete"
+            >
+              <Trash className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+})
 
 interface InboxContentProps {
   initialItems: InboxItemWithRelations[]
@@ -299,96 +395,14 @@ export function InboxContent({ initialItems, initialUnreadCount, organizationId 
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {filtered.map((item) => {
-              const Icon = itemTypeIcons[item.item_type]
-              const iconColor = itemTypeColors[item.item_type]
-
-              return (
-                <div
-                  key={item.id}
-                  className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/50 transition-colors group ${
-                    !item.is_read ? "bg-primary/5" : ""
-                  }`}
-                >
-                  <div className="relative flex-shrink-0">
-                    {item.actor ? (
-                      <Avatar className="h-9 w-9">
-                        <AvatarImage src={item.actor.avatar_url || undefined} alt={item.actor.full_name || "User"} />
-                        <AvatarFallback className="text-xs">
-                          {item.actor.full_name
-                            ?.split(" ")
-                            .map((n) => n[0])
-                            .join("")
-                            .toUpperCase()
-                            .slice(0, 2) || "?"}
-                        </AvatarFallback>
-                      </Avatar>
-                    ) : (
-                      <div className={`h-9 w-9 rounded-full flex items-center justify-center bg-muted ${iconColor}`}>
-                        <Icon className="h-4 w-4" />
-                      </div>
-                    )}
-                    {!item.is_read && (
-                      <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary border-2 border-background" />
-                    )}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className={`text-sm ${!item.is_read ? "font-medium" : ""} text-foreground line-clamp-1`}>
-                          {item.title}
-                        </p>
-                        {item.message && (
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                            {item.message}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[11px] text-muted-foreground">
-                            {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
-                          </span>
-                          {item.project && (
-                            <>
-                              <span className="text-muted-foreground">·</span>
-                              <Link
-                                href={`/projects/${item.project.id}`}
-                                className="text-[11px] text-muted-foreground hover:text-foreground"
-                              >
-                                {item.project.name}
-                              </Link>
-                            </>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {!item.is_read && (
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="h-7 w-7"
-                            onClick={() => handleMarkAsRead(item.id)}
-                            title="Mark as read"
-                          >
-                            <Check className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                          onClick={() => handleDelete(item.id)}
-                          title="Delete"
-                        >
-                          <Trash className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
+            {filtered.map((item) => (
+              <InboxItemRow
+                key={item.id}
+                item={item}
+                onMarkAsRead={handleMarkAsRead}
+                onDelete={handleDelete}
+              />
+            ))}
           </div>
         )}
       </div>

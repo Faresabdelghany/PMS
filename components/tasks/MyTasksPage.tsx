@@ -284,17 +284,22 @@ export function MyTasksPage({
     }))
   }, [organizationMembers])
 
-  // Extract unique tags from tasks for filter
-  const filterTags = useMemo<TagOption[]>(() => {
+  // Extract unique tag strings from tasks (stable when tags don't change)
+  const uniqueTagStrings = useMemo(() => {
     const tagSet = new Set<string>()
     for (const task of tasks) {
       if (task.tag) tagSet.add(task.tag)
     }
-    return Array.from(tagSet).map((tag) => ({
+    return tagSet
+  }, [tasks])
+
+  // Map tag strings to TagOption objects (only re-runs when the Set changes)
+  const filterTags = useMemo<TagOption[]>(() => {
+    return Array.from(uniqueTagStrings).map((tag) => ({
       id: tag.toLowerCase(),
       label: tag,
     }))
-  }, [tasks])
+  }, [uniqueTagStrings])
 
   const visibleGroups = useMemo<ProjectTaskGroup[]>(() => {
     if (!filters.length) return groups
