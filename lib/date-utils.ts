@@ -1,5 +1,3 @@
-import { format } from "date-fns"
-
 /**
  * Format a date into a human-readable "due" label
  * Returns labels like "Overdue", "Today", "Tomorrow", "3 days", or a formatted date
@@ -25,11 +23,4 @@ export function getDueTone(date: Date): "danger" | "warning" | "muted" {
   if (diffDays < 0) return "danger" // Overdue
   if (diffDays <= 1) return "warning" // Today or Tomorrow
   return "muted" // Future
-}
-
-/**
- * Format a date as "Start: DD/MM"
- */
-export function formatStartLabel(date: Date): string {
-  return `Start: ${format(date, "dd/MM")}`
 }

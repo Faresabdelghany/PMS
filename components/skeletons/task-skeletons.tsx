@@ -1,4 +1,3 @@
-import { Card } from "@/components/ui/card"
 import {
   Skeleton,
   SkeletonAvatar,
@@ -30,54 +29,6 @@ export function TaskListSkeleton({ count = 8 }: { count?: number }) {
     <div className="border rounded-lg">
       {Array.from({ length: count }).map((_, i) => (
         <TaskRowSkeleton key={i} />
-      ))}
-    </div>
-  )
-}
-
-/**
- * Kanban card skeleton
- */
-export function KanbanCardSkeleton() {
-  return (
-    <Card className="p-3">
-      <Skeleton className="h-4 w-full mb-2" />
-      <Skeleton className="h-3 w-3/4 mb-3" />
-      <div className="flex items-center gap-2">
-        <SkeletonAvatar size="sm" />
-        <SkeletonBadge />
-      </div>
-    </Card>
-  )
-}
-
-/**
- * Kanban column skeleton
- */
-export function KanbanColumnSkeleton() {
-  return (
-    <div className="w-72 flex-shrink-0">
-      <div className="flex items-center justify-between mb-3">
-        <Skeleton className="h-5 w-24" />
-        <Skeleton className="h-5 w-6 rounded-full" />
-      </div>
-      <div className="space-y-2">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <KanbanCardSkeleton key={i} />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-/**
- * Kanban board skeleton
- */
-export function KanbanBoardSkeleton() {
-  return (
-    <div className="flex gap-4 overflow-x-auto pb-4">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <KanbanColumnSkeleton key={i} />
       ))}
     </div>
   )

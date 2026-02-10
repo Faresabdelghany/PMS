@@ -16,7 +16,6 @@ const nextConfig = {
   // - Request-level deduplication: React cache() in lib/request-cache.ts
   // - KV caching: lib/cache/ with Redis/Vercel KV (tags, labels, teams, memberships)
   // - Tag-based invalidation: revalidateTag() in server actions
-  // - SWR client-side caching: hooks/use-swr-data.ts for background revalidation
   // - Suspense streaming: Component-level loading states
   //
   // Custom cache profiles (for future use when PPR becomes more flexible)
