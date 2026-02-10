@@ -11,9 +11,6 @@ export {
 export {
   TaskRowSkeleton,
   TaskListSkeleton,
-  KanbanCardSkeleton,
-  KanbanColumnSkeleton,
-  KanbanBoardSkeleton,
   MyTasksSkeleton,
   TaskDetailSkeleton,
 } from "./task-skeletons"
@@ -65,3 +62,10 @@ export {
 
 // Chat skeletons
 export { ChatPageSkeleton } from "./chat-skeletons"
+
+// Report skeletons
+export {
+  ReportListItemSkeleton,
+  ReportsListSkeleton,
+  ReportDetailSkeleton,
+} from "./report-skeletons"

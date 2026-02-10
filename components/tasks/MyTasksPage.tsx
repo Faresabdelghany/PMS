@@ -364,6 +364,7 @@ export function MyTasksPage({
         workstream_id: task.workstreamId || null,
         assignee_id: null,
         sort_order: 0,
+        source_report_id: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         project: { id: projectId, name: projectName },

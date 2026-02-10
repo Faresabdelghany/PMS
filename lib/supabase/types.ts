@@ -58,6 +58,15 @@ export type FileType = "pdf" | "zip" | "fig" | "doc" | "file" | "image" | "video
 export type PaymentStatus = "unpaid" | "invoiced" | "paid"
 export type InboxItemType = "comment" | "task_update" | "client_update" | "project_milestone" | "system"
 export type LabelCategory = "type" | "duration" | "group" | "badge"
+// Report enum types
+export type ReportPeriodType = 'weekly' | 'monthly' | 'custom'
+export type ReportProjectStatus = 'on_track' | 'behind' | 'at_risk' | 'halted' | 'completed'
+export type ClientSatisfaction = 'satisfied' | 'neutral' | 'dissatisfied'
+export type RiskType = 'blocker' | 'risk'
+export type RiskSeverity = 'low' | 'medium' | 'high' | 'critical'
+export type RiskStatus = 'open' | 'mitigated' | 'resolved'
+export type ReportHighlightType = 'highlight' | 'decision'
+
 export type TaskActivityAction =
   | "created"
   | "status_changed"
@@ -474,6 +483,7 @@ export interface Database {
           start_date: string | null
           end_date: string | null
           sort_order: number
+          source_report_id: string | null
           created_at: string
           updated_at: string
         }
@@ -490,6 +500,7 @@ export interface Database {
           start_date?: string | null
           end_date?: string | null
           sort_order?: number
+          source_report_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -506,6 +517,7 @@ export interface Database {
           start_date?: string | null
           end_date?: string | null
           sort_order?: number
+          source_report_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -1279,6 +1291,280 @@ export interface Database {
           }
         ]
       }
+      reports: {
+        Row: {
+          id: string
+          organization_id: string
+          created_by: string
+          title: string
+          period_type: ReportPeriodType
+          period_start: string
+          period_end: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          created_by: string
+          title: string
+          period_type?: ReportPeriodType
+          period_start: string
+          period_end: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          created_by?: string
+          title?: string
+          period_type?: ReportPeriodType
+          period_start?: string
+          period_end?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      report_projects: {
+        Row: {
+          id: string
+          report_id: string
+          project_id: string
+          status: ReportProjectStatus
+          previous_status: ReportProjectStatus | null
+          client_satisfaction: ClientSatisfaction
+          previous_satisfaction: ClientSatisfaction | null
+          progress_percent: number
+          previous_progress: number | null
+          narrative: string | null
+          team_contributions: Json
+          tasks_completed: number
+          tasks_in_progress: number
+          tasks_overdue: number
+          financial_notes: string | null
+          sort_order: number
+        }
+        Insert: {
+          id?: string
+          report_id: string
+          project_id: string
+          status?: ReportProjectStatus
+          previous_status?: ReportProjectStatus | null
+          client_satisfaction?: ClientSatisfaction
+          previous_satisfaction?: ClientSatisfaction | null
+          progress_percent?: number
+          previous_progress?: number | null
+          narrative?: string | null
+          team_contributions?: Json
+          tasks_completed?: number
+          tasks_in_progress?: number
+          tasks_overdue?: number
+          financial_notes?: string | null
+          sort_order?: number
+        }
+        Update: {
+          id?: string
+          report_id?: string
+          project_id?: string
+          status?: ReportProjectStatus
+          previous_status?: ReportProjectStatus | null
+          client_satisfaction?: ClientSatisfaction
+          previous_satisfaction?: ClientSatisfaction | null
+          progress_percent?: number
+          previous_progress?: number | null
+          narrative?: string | null
+          team_contributions?: Json
+          tasks_completed?: number
+          tasks_in_progress?: number
+          tasks_overdue?: number
+          financial_notes?: string | null
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_projects_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_projects_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      report_risks: {
+        Row: {
+          id: string
+          report_id: string
+          project_id: string | null
+          type: RiskType
+          description: string
+          severity: RiskSeverity
+          status: RiskStatus
+          mitigation_notes: string | null
+          originated_report_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          report_id: string
+          project_id?: string | null
+          type?: RiskType
+          description: string
+          severity?: RiskSeverity
+          status?: RiskStatus
+          mitigation_notes?: string | null
+          originated_report_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          report_id?: string
+          project_id?: string | null
+          type?: RiskType
+          description?: string
+          severity?: RiskSeverity
+          status?: RiskStatus
+          mitigation_notes?: string | null
+          originated_report_id?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_risks_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_risks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_risks_originated_report_id_fkey"
+            columns: ["originated_report_id"]
+            isOneToOne: false
+            referencedRelation: "reports"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      report_highlights: {
+        Row: {
+          id: string
+          report_id: string
+          project_id: string | null
+          type: ReportHighlightType
+          description: string
+          sort_order: number
+        }
+        Insert: {
+          id?: string
+          report_id: string
+          project_id?: string | null
+          type?: ReportHighlightType
+          description: string
+          sort_order?: number
+        }
+        Update: {
+          id?: string
+          report_id?: string
+          project_id?: string | null
+          type?: ReportHighlightType
+          description?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_highlights_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_highlights_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      report_attachments: {
+        Row: {
+          id: string
+          report_project_id: string
+          file_name: string
+          file_path: string
+          file_size: number
+          content_type: string | null
+          uploaded_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          report_project_id: string
+          file_name: string
+          file_path: string
+          file_size?: number
+          content_type?: string | null
+          uploaded_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          report_project_id?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          content_type?: string | null
+          uploaded_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_attachments_report_project_id_fkey"
+            columns: ["report_project_id"]
+            isOneToOne: false
+            referencedRelation: "report_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       user_settings: {
         Row: {
           id: string
@@ -1443,6 +1729,13 @@ export interface Database {
       note_status: NoteStatus
       file_type: FileType
       inbox_item_type: InboxItemType
+      report_period_type: ReportPeriodType
+      report_project_status: ReportProjectStatus
+      client_satisfaction: ClientSatisfaction
+      risk_type: RiskType
+      risk_severity: RiskSeverity
+      risk_status: RiskStatus
+      report_highlight_type: ReportHighlightType
     }
   }
 }
@@ -1523,19 +1816,14 @@ export type TaskWithRelations = Task & {
 
 // Project extended data types
 export type ProjectDeliverable = Database["public"]["Tables"]["project_deliverables"]["Row"]
-export type ProjectDeliverableInsert = Database["public"]["Tables"]["project_deliverables"]["Insert"]
 
 export type ProjectMetric = Database["public"]["Tables"]["project_metrics"]["Row"]
-export type ProjectMetricInsert = Database["public"]["Tables"]["project_metrics"]["Insert"]
 
 export type ProjectScope = Database["public"]["Tables"]["project_scope"]["Row"]
-export type ProjectScopeInsert = Database["public"]["Tables"]["project_scope"]["Insert"]
 
 export type ProjectOutcome = Database["public"]["Tables"]["project_outcomes"]["Row"]
-export type ProjectOutcomeInsert = Database["public"]["Tables"]["project_outcomes"]["Insert"]
 
 export type ProjectFeature = Database["public"]["Tables"]["project_features"]["Row"]
-export type ProjectFeatureInsert = Database["public"]["Tables"]["project_features"]["Insert"]
 
 export type InboxItem = Database["public"]["Tables"]["inbox_items"]["Row"]
 export type InboxItemInsert = Database["public"]["Tables"]["inbox_items"]["Insert"]
@@ -1615,3 +1903,46 @@ export type TaskActivityWithRelations = TaskActivity & {
 export type TaskTimelineItem =
   | { type: 'comment'; data: TaskCommentWithRelations }
   | { type: 'activity'; data: TaskActivityWithRelations }
+
+// Report types
+export type Report = Database['public']['Tables']['reports']['Row']
+export type ReportInsert = Database['public']['Tables']['reports']['Insert']
+export type ReportUpdate = Database['public']['Tables']['reports']['Update']
+
+export type ReportProject = Database['public']['Tables']['report_projects']['Row']
+export type ReportProjectInsert = Database['public']['Tables']['report_projects']['Insert']
+export type ReportProjectUpdate = Database['public']['Tables']['report_projects']['Update']
+
+export type ReportRisk = Database['public']['Tables']['report_risks']['Row']
+export type ReportRiskInsert = Database['public']['Tables']['report_risks']['Insert']
+export type ReportRiskUpdate = Database['public']['Tables']['report_risks']['Update']
+
+export type ReportHighlight = Database['public']['Tables']['report_highlights']['Row']
+export type ReportHighlightInsert = Database['public']['Tables']['report_highlights']['Insert']
+export type ReportHighlightUpdate = Database['public']['Tables']['report_highlights']['Update']
+
+export type ReportAttachment = Database['public']['Tables']['report_attachments']['Row']
+export type ReportAttachmentInsert = Database['public']['Tables']['report_attachments']['Insert']
+
+// Report with relations
+export type ReportWithAuthor = Report & {
+  author: ProfileMinimal
+}
+
+export type ReportProjectWithRelations = ReportProject & {
+  project: Pick<Project, 'id' | 'name' | 'client_id' | 'status' | 'progress'>
+  attachments?: ReportAttachment[]
+}
+
+export type ReportWithFullRelations = Report & {
+  author: ProfileMinimal
+  report_projects: ReportProjectWithRelations[]
+  report_risks: ReportRisk[]
+  report_highlights: ReportHighlight[]
+}
+
+// Team contribution entry (JSONB shape)
+export type TeamContributionEntry = {
+  member_id: string
+  contribution_text: string
+}

@@ -1,0 +1,260 @@
+-- ============================================
+-- Weekly Reports Module
+-- Migration: 20260210000002_create_reports_tables
+-- ============================================
+-- Creates tables for the weekly reports feature:
+-- reports, report_projects, report_risks, report_highlights, report_attachments
+-- Adds source_report_id to tasks table for action items
+
+-- ============================================
+-- ENUMS
+-- ============================================
+
+CREATE TYPE report_period_type AS ENUM ('weekly', 'monthly', 'custom');
+CREATE TYPE report_project_status AS ENUM ('on_track', 'behind', 'at_risk', 'halted', 'completed');
+CREATE TYPE client_satisfaction AS ENUM ('satisfied', 'neutral', 'dissatisfied');
+CREATE TYPE risk_type AS ENUM ('blocker', 'risk');
+CREATE TYPE risk_severity AS ENUM ('low', 'medium', 'high', 'critical');
+CREATE TYPE risk_status AS ENUM ('open', 'mitigated', 'resolved');
+CREATE TYPE report_highlight_type AS ENUM ('highlight', 'decision');
+
+-- ============================================
+-- TABLES
+-- ============================================
+
+-- Reports (main report record)
+CREATE TABLE reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations ON DELETE CASCADE,
+  created_by UUID NOT NULL REFERENCES profiles ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  period_type report_period_type NOT NULL DEFAULT 'weekly',
+  period_start DATE NOT NULL,
+  period_end DATE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+-- Report Projects (per-project snapshot)
+CREATE TABLE report_projects (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  report_id UUID NOT NULL REFERENCES reports ON DELETE CASCADE,
+  project_id UUID NOT NULL REFERENCES projects ON DELETE CASCADE,
+  status report_project_status NOT NULL DEFAULT 'on_track',
+  previous_status report_project_status,
+  client_satisfaction client_satisfaction NOT NULL DEFAULT 'neutral',
+  previous_satisfaction client_satisfaction,
+  progress_percent INTEGER NOT NULL DEFAULT 0 CHECK (progress_percent >= 0 AND progress_percent <= 100),
+  previous_progress INTEGER,
+  narrative TEXT,
+  team_contributions JSONB DEFAULT '[]'::jsonb,
+  tasks_completed INTEGER NOT NULL DEFAULT 0,
+  tasks_in_progress INTEGER NOT NULL DEFAULT 0,
+  tasks_overdue INTEGER NOT NULL DEFAULT 0,
+  financial_notes TEXT,
+  sort_order INTEGER DEFAULT 0 NOT NULL,
+  UNIQUE(report_id, project_id)
+);
+
+-- Report Risks (blockers and future risks)
+CREATE TABLE report_risks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  report_id UUID NOT NULL REFERENCES reports ON DELETE CASCADE,
+  project_id UUID REFERENCES projects ON DELETE SET NULL,
+  type risk_type NOT NULL DEFAULT 'risk',
+  description TEXT NOT NULL,
+  severity risk_severity NOT NULL DEFAULT 'medium',
+  status risk_status NOT NULL DEFAULT 'open',
+  mitigation_notes TEXT,
+  originated_report_id UUID REFERENCES reports ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+-- Report Highlights (highlights and decisions)
+CREATE TABLE report_highlights (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  report_id UUID NOT NULL REFERENCES reports ON DELETE CASCADE,
+  project_id UUID REFERENCES projects ON DELETE SET NULL,
+  type report_highlight_type NOT NULL DEFAULT 'highlight',
+  description TEXT NOT NULL,
+  sort_order INTEGER DEFAULT 0 NOT NULL
+);
+
+-- Report Attachments (files linked to report project sections)
+CREATE TABLE report_attachments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  report_project_id UUID NOT NULL REFERENCES report_projects ON DELETE CASCADE,
+  file_name TEXT NOT NULL,
+  file_path TEXT NOT NULL,
+  file_size BIGINT DEFAULT 0 NOT NULL,
+  content_type TEXT,
+  uploaded_by UUID REFERENCES profiles ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+-- Add source_report_id to tasks table for action items
+ALTER TABLE tasks ADD COLUMN source_report_id UUID REFERENCES reports ON DELETE SET NULL;
+
+-- ============================================
+-- INDEXES
+-- ============================================
+
+-- Reports
+CREATE INDEX idx_reports_org ON reports(organization_id);
+CREATE INDEX idx_reports_created_by ON reports(created_by);
+CREATE INDEX idx_reports_period ON reports(period_start, period_end);
+CREATE INDEX idx_reports_org_period ON reports(organization_id, period_start DESC);
+
+-- Report Projects
+CREATE INDEX idx_report_projects_report ON report_projects(report_id);
+CREATE INDEX idx_report_projects_project ON report_projects(project_id);
+
+-- Report Risks
+CREATE INDEX idx_report_risks_report ON report_risks(report_id);
+CREATE INDEX idx_report_risks_status ON report_risks(status);
+CREATE INDEX idx_report_risks_originated ON report_risks(originated_report_id);
+
+-- Report Highlights
+CREATE INDEX idx_report_highlights_report ON report_highlights(report_id);
+
+-- Report Attachments
+CREATE INDEX idx_report_attachments_report_project ON report_attachments(report_project_id);
+
+-- Tasks source report
+CREATE INDEX idx_tasks_source_report ON tasks(source_report_id) WHERE source_report_id IS NOT NULL;
+
+-- ============================================
+-- ROW LEVEL SECURITY
+-- ============================================
+
+ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE report_projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE report_risks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE report_highlights ENABLE ROW LEVEL SECURITY;
+ALTER TABLE report_attachments ENABLE ROW LEVEL SECURITY;
+
+-- Reports: any org member can CRUD
+CREATE POLICY "reports_select" ON reports
+  FOR SELECT USING (is_org_member(organization_id));
+
+CREATE POLICY "reports_insert" ON reports
+  FOR INSERT WITH CHECK (is_org_member(organization_id));
+
+CREATE POLICY "reports_update" ON reports
+  FOR UPDATE USING (is_org_member(organization_id));
+
+CREATE POLICY "reports_delete" ON reports
+  FOR DELETE USING (is_org_member(organization_id));
+
+-- Report Projects: access via report's org membership
+CREATE POLICY "report_projects_select" ON report_projects
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM reports WHERE reports.id = report_projects.report_id AND is_org_member(reports.organization_id))
+  );
+
+CREATE POLICY "report_projects_insert" ON report_projects
+  FOR INSERT WITH CHECK (
+    EXISTS (SELECT 1 FROM reports WHERE reports.id = report_projects.report_id AND is_org_member(reports.organization_id))
+  );
+
+CREATE POLICY "report_projects_update" ON report_projects
+  FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM reports WHERE reports.id = report_projects.report_id AND is_org_member(reports.organization_id))
+  );
+
+CREATE POLICY "report_projects_delete" ON report_projects
+  FOR DELETE USING (
+    EXISTS (SELECT 1 FROM reports WHERE reports.id = report_projects.report_id AND is_org_member(reports.organization_id))
+  );
+
+-- Report Risks: access via report's org membership
+CREATE POLICY "report_risks_select" ON report_risks
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM reports WHERE reports.id = report_risks.report_id AND is_org_member(reports.organization_id))
+  );
+
+CREATE POLICY "report_risks_insert" ON report_risks
+  FOR INSERT WITH CHECK (
+    EXISTS (SELECT 1 FROM reports WHERE reports.id = report_risks.report_id AND is_org_member(reports.organization_id))
+  );
+
+CREATE POLICY "report_risks_update" ON report_risks
+  FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM reports WHERE reports.id = report_risks.report_id AND is_org_member(reports.organization_id))
+  );
+
+CREATE POLICY "report_risks_delete" ON report_risks
+  FOR DELETE USING (
+    EXISTS (SELECT 1 FROM reports WHERE reports.id = report_risks.report_id AND is_org_member(reports.organization_id))
+  );
+
+-- Report Highlights: access via report's org membership
+CREATE POLICY "report_highlights_select" ON report_highlights
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM reports WHERE reports.id = report_highlights.report_id AND is_org_member(reports.organization_id))
+  );
+
+CREATE POLICY "report_highlights_insert" ON report_highlights
+  FOR INSERT WITH CHECK (
+    EXISTS (SELECT 1 FROM reports WHERE reports.id = report_highlights.report_id AND is_org_member(reports.organization_id))
+  );
+
+CREATE POLICY "report_highlights_update" ON report_highlights
+  FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM reports WHERE reports.id = report_highlights.report_id AND is_org_member(reports.organization_id))
+  );
+
+CREATE POLICY "report_highlights_delete" ON report_highlights
+  FOR DELETE USING (
+    EXISTS (SELECT 1 FROM reports WHERE reports.id = report_highlights.report_id AND is_org_member(reports.organization_id))
+  );
+
+-- Report Attachments: access via report project's report's org membership
+CREATE POLICY "report_attachments_select" ON report_attachments
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM report_projects rp
+      JOIN reports r ON r.id = rp.report_id
+      WHERE rp.id = report_attachments.report_project_id
+      AND is_org_member(r.organization_id)
+    )
+  );
+
+CREATE POLICY "report_attachments_insert" ON report_attachments
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM report_projects rp
+      JOIN reports r ON r.id = rp.report_id
+      WHERE rp.id = report_attachments.report_project_id
+      AND is_org_member(r.organization_id)
+    )
+  );
+
+CREATE POLICY "report_attachments_update" ON report_attachments
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM report_projects rp
+      JOIN reports r ON r.id = rp.report_id
+      WHERE rp.id = report_attachments.report_project_id
+      AND is_org_member(r.organization_id)
+    )
+  );
+
+CREATE POLICY "report_attachments_delete" ON report_attachments
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM report_projects rp
+      JOIN reports r ON r.id = rp.report_id
+      WHERE rp.id = report_attachments.report_project_id
+      AND is_org_member(r.organization_id)
+    )
+  );
+
+-- ============================================
+-- TRIGGERS
+-- ============================================
+
+-- Auto-update updated_at on reports
+CREATE TRIGGER set_reports_updated_at
+  BEFORE UPDATE ON reports
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

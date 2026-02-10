@@ -276,6 +276,7 @@ export function ProjectTasksTab({
       workstream_id: task.workstreamId || null,
       assignee_id: task.assignee?.id || null,
       sort_order: tasks.length,
+      source_report_id: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       project: { id: projectId, name: projectName },
