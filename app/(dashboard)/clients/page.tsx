@@ -2,8 +2,7 @@ import type { Metadata } from "next"
 import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { ClientsContent } from "@/components/clients-content"
-import { cachedGetUserOrganizations } from "@/lib/request-cache"
-import { getCachedClientsWithProjectCounts } from "@/lib/server-cache"
+import { getCachedClientsWithProjectCounts, getCachedActiveOrgFromKV } from "@/lib/server-cache"
 import { ClientsListSkeleton } from "@/components/skeletons"
 
 export const metadata: Metadata = {
@@ -17,14 +16,14 @@ async function ClientsList({ orgId }: { orgId: string }) {
 }
 
 export default async function Page() {
-  // Use cached orgs - shared with layout (no duplicate DB hit)
-  const orgsResult = await cachedGetUserOrganizations()
+  // Use KV-cached org - instant hit from layout's cache warming (~5ms)
+  const org = await getCachedActiveOrgFromKV()
 
-  if (orgsResult.error || !orgsResult.data?.length) {
+  if (!org) {
     redirect("/login")
   }
 
-  const organizationId = orgsResult.data[0].id
+  const organizationId = org.id
 
   return (
     <Suspense fallback={<ClientsListSkeleton />}>

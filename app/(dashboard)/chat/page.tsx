@@ -2,8 +2,8 @@ import type { Metadata } from "next"
 import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { ChatPageContent } from "@/components/ai/chat-page-content"
-import { cachedGetUser, cachedGetUserOrganizations } from "@/lib/request-cache"
-import { getCachedAIConfigured } from "@/lib/server-cache"
+import { cachedGetUser } from "@/lib/request-cache"
+import { getCachedAIConfigured, getCachedActiveOrgFromKV } from "@/lib/server-cache"
 import { ChatPageSkeleton } from "@/components/skeletons/chat-skeletons"
 
 export const metadata: Metadata = {
@@ -11,11 +11,11 @@ export const metadata: Metadata = {
 }
 
 async function ChatContent() {
-  // Fetch auth, orgs, and AI config check in parallel
+  // Fetch auth, org, and AI config check in parallel
   // AI config pre-check eliminates client-side SWR roundtrip for LCP
-  const [userResult, orgsResult, aiConfigResult] = await Promise.all([
+  const [userResult, org, aiConfigResult] = await Promise.all([
     cachedGetUser(),
-    cachedGetUserOrganizations(),
+    getCachedActiveOrgFromKV(),
     getCachedAIConfigured(),
   ])
 
@@ -25,11 +25,11 @@ async function ChatContent() {
     redirect("/login")
   }
 
-  if (orgsResult.error || !orgsResult.data?.length) {
+  if (!org) {
     redirect("/onboarding")
   }
 
-  const orgId = orgsResult.data[0].id
+  const orgId = org.id
 
   return (
     <ChatPageContent

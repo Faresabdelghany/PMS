@@ -16,6 +16,7 @@ import { requireAuth } from "./auth-helpers"
 import { notifyMentions } from "./notifications"
 import { cachedGetUser } from "@/lib/request-cache"
 import { removeStorageFile } from "@/lib/supabase/storage-utils"
+import { sanitizeSearchInput } from "@/lib/search-utils"
 
 
 // Extended note type with author info
@@ -288,9 +289,12 @@ export async function getProjectNotes(
   }
 
   if (filters?.search) {
-    query = query.or(
-      `title.ilike.%${filters.search}%,content.ilike.%${filters.search}%`
-    )
+    const sanitized = sanitizeSearchInput(filters.search)
+    if (sanitized.length >= 2) {
+      query = query.or(
+        `title.ilike.%${sanitized}%,content.ilike.%${sanitized}%`
+      )
+    }
   }
 
   const { data, error } = await query.order("updated_at", { ascending: false })

@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { ProjectDetailsPage } from "@/components/projects/ProjectDetailsPage"
+import { ProjectDetailsSkeleton } from "@/components/skeletons"
 import {
   getCachedProjectWithDetails,
   getCachedTasks,
@@ -44,14 +46,51 @@ async function fetchOrgData() {
 export default async function Page({ params }: PageProps) {
   const { id } = await params
 
-  // Start ALL queries in parallel - no waterfall!
-  // Project data fetches in parallel with org data (which internally chains: activeOrgId → org queries)
-  // This is faster than: await project → await org data
+  // Start ALL queries as promises WITHOUT awaiting — Suspense streams data in
+  const projectPromise = getCachedProjectWithDetails(id)
+  const tasksPromise = getCachedTasks(id)
+  const workstreamsPromise = getCachedWorkstreamsWithTasks(id)
+  const orgDataPromise = fetchOrgData()
+
+  return (
+    <Suspense fallback={
+      <div className="flex flex-1 flex-col min-w-0 m-2 border border-border rounded-lg">
+        <div className="flex-1 bg-background px-6 py-4 rounded-b-lg">
+          <div className="mx-auto w-full max-w-7xl">
+            <ProjectDetailsSkeleton />
+          </div>
+        </div>
+      </div>
+    }>
+      <ProjectDetailStreamed
+        projectPromise={projectPromise}
+        tasksPromise={tasksPromise}
+        workstreamsPromise={workstreamsPromise}
+        orgDataPromise={orgDataPromise}
+        projectId={id}
+      />
+    </Suspense>
+  )
+}
+
+async function ProjectDetailStreamed({
+  projectPromise,
+  tasksPromise,
+  workstreamsPromise,
+  orgDataPromise,
+  projectId,
+}: {
+  projectPromise: ReturnType<typeof getCachedProjectWithDetails>
+  tasksPromise: ReturnType<typeof getCachedTasks>
+  workstreamsPromise: ReturnType<typeof getCachedWorkstreamsWithTasks>
+  orgDataPromise: ReturnType<typeof fetchOrgData>
+  projectId: string
+}) {
   const [projectResult, tasksResult, workstreamsResult, orgData] = await Promise.all([
-    getCachedProjectWithDetails(id),
-    getCachedTasks(id),
-    getCachedWorkstreamsWithTasks(id),
-    fetchOrgData(),
+    projectPromise,
+    tasksPromise,
+    workstreamsPromise,
+    orgDataPromise,
   ])
 
   if (projectResult.error || !projectResult.data) {
@@ -88,12 +127,11 @@ export default async function Page({ params }: PageProps) {
   const organizationMembers = membersResult.data || []
 
   // Pre-compute UI transform on the server to avoid blocking the client render.
-  // This eliminates a synchronous useMemo on the client that was adding ~100-200ms to LCP.
   const project = transformProjectToUI(projectResult.data, tasks, workstreams, organizationMembers)
 
   return (
     <ProjectDetailsPage
-      projectId={id}
+      projectId={projectId}
       project={project}
       supabaseProject={projectResult.data}
       tasks={tasks}

@@ -106,6 +106,15 @@ async function getCachedColorTheme(
   )
 }
 
+async function SidebarWithData({
+  activeProjectsPromise,
+}: {
+  activeProjectsPromise: Promise<Project[]>
+}) {
+  const activeProjects = await activeProjectsPromise
+  return <AppSidebar activeProjects={activeProjects} />
+}
+
 export default async function DashboardLayout({
   children,
 }: {
@@ -131,14 +140,12 @@ export default async function DashboardLayout({
     redirect("/onboarding")
   }
 
-  // activeProjects needs org ID - start it immediately after orgs resolve
-  // Profile and colorTheme are already in-flight, so this is truly parallel
+  // activeProjects needs org ID - start it but DON'T block layout render
   const activeProjectsPromise = getActiveProjects(supabase, organizations[0].id)
 
-  // Wait for all remaining queries - profile/colorTheme likely already resolved
-  const [profile, activeProjects, colorTheme] = await Promise.all([
+  // Only await profile and colorTheme (they started in parallel, likely already resolved)
+  const [profile, colorTheme] = await Promise.all([
     profilePromise,
-    activeProjectsPromise,
     colorThemePromise,
   ])
 
@@ -155,7 +162,9 @@ export default async function DashboardLayout({
                 <ColorThemeSyncer serverTheme={colorTheme} />
                 <NotificationToastProviderLazy userId={user.id} />
                 <SidebarProvider>
-                  <AppSidebar activeProjects={activeProjects} />
+                  <Suspense fallback={<AppSidebar activeProjects={[]} />}>
+                    <SidebarWithData activeProjectsPromise={activeProjectsPromise} />
+                  </Suspense>
                   <SidebarInset>
                     <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
                   </SidebarInset>

@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { cacheGet, CacheKeys, CacheTTL, hashQuery } from "@/lib/cache"
 import { SEARCH_RESULTS_PER_CATEGORY } from "@/lib/constants"
+import { sanitizeSearchInput } from "@/lib/search-utils"
 import type { ActionResult } from "./types"
 
 export type SearchResult = {
@@ -17,19 +18,6 @@ export type SearchResults = {
   projects: SearchResult[]
   tasks: SearchResult[]
   clients: SearchResult[]
-}
-
-/**
- * Sanitize search input to prevent PostgREST filter injection.
- * Escapes special characters used in PostgREST filter syntax.
- */
-function sanitizeSearchInput(input: string): string {
-  // Remove or escape characters that have special meaning in PostgREST filters
-  // These include: . , ( ) and potentially others
-  return input
-    .replace(/[%_]/g, "\\$&") // Escape SQL LIKE wildcards
-    .replace(/[.,()]/g, "") // Remove PostgREST special characters
-    .trim()
 }
 
 /**

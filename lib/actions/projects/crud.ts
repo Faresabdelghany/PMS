@@ -13,6 +13,7 @@ import type { ActionResult } from "../types"
 import type { GuidedProjectInput, ProjectFilters, ProjectWithRelations } from "./types"
 import { createProjectSchema } from "./validation"
 import { notify } from "../notifications"
+import { sanitizeSearchInput } from "@/lib/search-utils"
 
 // Create project (supports both quick create and guided wizard)
 export async function createProject(
@@ -322,7 +323,10 @@ export async function getProjects(
   }
 
   if (filters?.search) {
-    query = query.or(`name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`)
+    const sanitized = sanitizeSearchInput(filters.search)
+    if (sanitized.length >= 2) {
+      query = query.or(`name.ilike.%${sanitized}%,description.ilike.%${sanitized}%`)
+    }
   }
 
   const { data, error } = await query.order("updated_at", { ascending: false })

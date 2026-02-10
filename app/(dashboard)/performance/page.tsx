@@ -5,8 +5,7 @@ import { Breadcrumbs } from "@/components/projects/Breadcrumbs"
 import { PerformancePageSkeleton, ChartsSkeleton } from "@/components/skeletons/performance-skeletons"
 import { PerformanceStatCards } from "@/components/performance/PerformanceStatCards"
 import { PerformanceCharts } from "@/components/performance/PerformanceCharts"
-import { cachedGetUserOrganizations } from "@/lib/request-cache"
-import { getCachedPerformanceMetrics } from "@/lib/server-cache"
+import { getCachedPerformanceMetrics, getCachedActiveOrgFromKV } from "@/lib/server-cache"
 
 export const metadata: Metadata = {
   title: "Performance - PMS",
@@ -51,14 +50,14 @@ async function PerformanceContent({ orgId }: { orgId: string }) {
 }
 
 export default async function PerformancePage() {
-  // Use cached orgs - shared with layout (no duplicate DB hit)
-  const orgsResult = await cachedGetUserOrganizations()
+  // Use KV-cached org - instant hit from layout's cache warming (~5ms)
+  const org = await getCachedActiveOrgFromKV()
 
-  if (orgsResult.error || !orgsResult.data?.length) {
+  if (!org) {
     redirect("/login")
   }
 
-  const organizationId = orgsResult.data[0].id
+  const organizationId = org.id
 
   return (
     <Suspense fallback={<PerformancePageSkeleton />}>

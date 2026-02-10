@@ -8,6 +8,7 @@ import { CacheTags, revalidateTag } from "@/lib/cache-tags"
 import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
 import { uuidSchema, validate } from "@/lib/validations"
 import { cachedGetUser } from "@/lib/request-cache"
+import { sanitizeSearchInput } from "@/lib/search-utils"
 import {
   TASK_STATUSES,
   TASK_PRIORITIES,
@@ -199,7 +200,10 @@ export async function getTasks(
   }
 
   if (filters?.search) {
-    query = query.or(`name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`)
+    const sanitized = sanitizeSearchInput(filters.search)
+    if (sanitized.length >= 2) {
+      query = query.or(`name.ilike.%${sanitized}%,description.ilike.%${sanitized}%`)
+    }
   }
 
   const { data, error } = await query.order("sort_order")
@@ -277,7 +281,10 @@ export async function getMyTasks(
   }
 
   if (filters?.search) {
-    query = query.or(`name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`)
+    const sanitized = sanitizeSearchInput(filters.search)
+    if (sanitized.length >= 2) {
+      query = query.or(`name.ilike.%${sanitized}%,description.ilike.%${sanitized}%`)
+    }
   }
 
   const { data, error } = await query.order("updated_at", { ascending: false })

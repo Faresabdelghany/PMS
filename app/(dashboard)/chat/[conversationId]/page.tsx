@@ -1,9 +1,9 @@
 import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { ChatPageContent } from "@/components/ai/chat-page-content"
-import { cachedGetUser, cachedGetUserOrganizations } from "@/lib/request-cache"
+import { cachedGetUser } from "@/lib/request-cache"
 import { getConversationWithMessages } from "@/lib/actions/conversations"
-import { getCachedAIConfigured } from "@/lib/server-cache"
+import { getCachedAIConfigured, getCachedActiveOrgFromKV } from "@/lib/server-cache"
 import { ChatPageSkeleton } from "@/components/skeletons/chat-skeletons"
 
 type PageProps = {
@@ -11,11 +11,11 @@ type PageProps = {
 }
 
 async function ChatContent({ conversationId }: { conversationId: string }) {
-  // Fetch auth, orgs, conversation+messages, and AI config in parallel
+  // Fetch auth, org, conversation+messages, and AI config in parallel
   // AI config pre-check eliminates client-side SWR roundtrip for LCP
-  const [userResult, orgsResult, convResult, aiConfigResult] = await Promise.all([
+  const [userResult, org, convResult, aiConfigResult] = await Promise.all([
     cachedGetUser(),
-    cachedGetUserOrganizations(),
+    getCachedActiveOrgFromKV(),
     getConversationWithMessages(conversationId),
     getCachedAIConfigured(),
   ])
@@ -26,11 +26,11 @@ async function ChatContent({ conversationId }: { conversationId: string }) {
     redirect("/login")
   }
 
-  if (orgsResult.error || !orgsResult.data?.length) {
+  if (!org) {
     redirect("/onboarding")
   }
 
-  const orgId = orgsResult.data[0].id
+  const orgId = org.id
 
   // If conversation not found, redirect to new chat
   if (convResult.error || !convResult.data?.conversation) {

@@ -1,4 +1,6 @@
 import { cache } from "react"
+import { cachedGetUser } from "./request-cache"
+import { cacheGet, CacheKeys, CacheTTL } from "./cache"
 
 /**
  * Centralized Cache Layer
@@ -131,6 +133,39 @@ export const getCachedOrganization = cache(async (orgId: string) => {
 export const getCachedUserOrganizations = cache(async () => {
   const { getUserOrganizations } = await import("./actions/organizations")
   return getUserOrganizations()
+})
+
+/**
+ * Get user's active organization using KV cache (matches layout's cache key).
+ * The dashboard layout populates CacheKeys.userOrgs() on every request,
+ * so pages using this helper get instant KV cache hits (~5ms) instead of
+ * redundant DB queries (~50-100ms).
+ */
+export const getCachedActiveOrgFromKV = cache(async () => {
+  const { user, supabase } = await cachedGetUser()
+  if (!user) return null
+
+  const orgs = await cacheGet(
+    CacheKeys.userOrgs(user.id),
+    async () => {
+      const { data, error } = await supabase
+        .from("organization_members")
+        .select(`role, organization:organizations(*)`)
+        .eq("user_id", user.id)
+
+      if (error || !data) return []
+
+      return data
+        .filter((m: any) => m.organization)
+        .map((m: any) => ({
+          ...m.organization,
+          role: m.role,
+        }))
+    },
+    CacheTTL.ORGS
+  )
+
+  return orgs.length > 0 ? orgs[0] : null
 })
 
 // ============================================

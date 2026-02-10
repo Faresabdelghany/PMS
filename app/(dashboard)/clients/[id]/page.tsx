@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { notFound, redirect } from "next/navigation"
 import { getClientWithProjects } from "@/lib/actions/clients"
 import { ClientDetailsContent } from "@/components/clients/ClientDetailsContent"
-import { cachedGetUserOrganizations } from "@/lib/request-cache"
+import { getCachedActiveOrgFromKV } from "@/lib/server-cache"
 
 type PageProps = {
   params: Promise<{ id: string }>
@@ -19,13 +19,13 @@ export default async function Page({ params }: PageProps) {
   const { id } = await params
 
   // Parallel fetch - both requests are independent
-  // Use cached orgs - shared with layout (no duplicate DB hit)
-  const [orgsResult, result] = await Promise.all([
-    cachedGetUserOrganizations(),
+  // Use KV-cached org - instant hit from layout's cache warming (~5ms)
+  const [org, result] = await Promise.all([
+    getCachedActiveOrgFromKV(),
     getClientWithProjects(id),
   ])
 
-  if (orgsResult.error || !orgsResult.data?.length) {
+  if (!org) {
     redirect("/login")
   }
 

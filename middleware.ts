@@ -12,11 +12,11 @@ import { NextResponse, type NextRequest } from "next/server"
  *
  * Performance optimizations:
  * - Prefetch requests skip getUser() entirely (browser link preloads)
- * - KV session caching: recently validated sessions skip getUser() for 5 minutes
+ * - KV session caching: recently validated sessions skip getUser() for 30 minutes
  * - Fast cookie check: no auth cookie → redirect without network call
  */
 
-const SESSION_CACHE_TTL = 300 // 5 minutes (tokens expire in 1 hour, so 55-min buffer)
+const SESSION_CACHE_TTL = 1800 // 30 minutes (tokens expire in 1 hour, so 30-min buffer)
 
 function isPrefetchRequest(request: NextRequest): boolean {
   return (
@@ -48,10 +48,6 @@ function redirectTo(request: NextRequest, path: string, query?: Record<string, s
     }
   }
   return NextResponse.redirect(url)
-}
-
-function shouldRedirectToInbox(pathname: string): boolean {
-  return pathname === "/login" || pathname === "/signup" || pathname === "/"
 }
 
 async function tryKVSessionCheck(sessionUserId: string): Promise<boolean> {
@@ -122,12 +118,16 @@ export async function middleware(request: NextRequest) {
   const { data: { session } } = await supabase.auth.getSession()
   const sessionUserId = session?.user?.id
 
-  // Fast redirect: for "/" and auth pages, redirect to /inbox immediately
-  // after getSession() — skip expensive getUser() since the destination
-  // page validates auth via the layout's cachedGetUser()
-  // Await KV cache write so the subsequent /inbox request hits the cache
-  // and skips the expensive getUser() call (~300-500ms savings)
-  if (sessionUserId && shouldRedirectToInbox(pathname)) {
+  // Rewrite "/" to /inbox (no round trip — saves ~300ms)
+  if (sessionUserId && pathname === '/') {
+    await cacheSessionInKV(sessionUserId)
+    const url = request.nextUrl.clone()
+    url.pathname = '/inbox'
+    return NextResponse.rewrite(url)
+  }
+
+  // Redirect /login and /signup to /inbox (URL change is desired here)
+  if (sessionUserId && (pathname === '/login' || pathname === '/signup')) {
     await cacheSessionInKV(sessionUserId)
     return redirectTo(request, "/inbox")
   }
@@ -144,7 +144,12 @@ export async function middleware(request: NextRequest) {
   if (user) cacheSessionInKV(user.id)
 
   if (!user && !isPublic) return redirectTo(request, "/login", { redirect: pathname })
-  if (user && shouldRedirectToInbox(pathname)) return redirectTo(request, "/inbox")
+  if (user && (pathname === '/login' || pathname === '/signup')) return redirectTo(request, "/inbox")
+  if (user && pathname === '/') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/inbox'
+    return NextResponse.rewrite(url)
+  }
 
   return supabaseResponse
 }

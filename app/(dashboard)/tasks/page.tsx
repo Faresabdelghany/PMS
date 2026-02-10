@@ -1,7 +1,10 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { MyTasksPage } from "@/components/tasks/MyTasksPage"
-import { cachedGetUser, cachedGetUserOrganizations, cachedGetOrganizationMembers, cachedGetProjects, cachedGetMyTasks, cachedGetTags } from "@/lib/request-cache"
+import { MyTasksSkeleton } from "@/components/skeletons"
+import { cachedGetUser, cachedGetOrganizationMembers, cachedGetProjects, cachedGetMyTasks, cachedGetTags } from "@/lib/request-cache"
+import { getCachedActiveOrgFromKV } from "@/lib/server-cache"
 import type { TaskWithRelations } from "@/lib/actions/tasks"
 import type { ProjectWithRelations } from "@/lib/actions/projects"
 
@@ -17,21 +20,55 @@ export default async function Page() {
     redirect("/login")
   }
 
-  // Use cached orgs - shared with layout (no duplicate DB hit)
-  const orgsResult = await cachedGetUserOrganizations()
+  // Use KV-cached org - instant hit from layout's cache warming (~5ms)
+  const org = await getCachedActiveOrgFromKV()
 
-  if (orgsResult.error || !orgsResult.data?.length) {
+  if (!org) {
     redirect("/onboarding")
   }
 
-  const orgId = orgsResult.data[0].id
+  const orgId = org.id
 
-  // Fetch all data in parallel (these are specific to this page)
+  // Start ALL 4 data promises WITHOUT awaiting — Suspense streams data in
+  const tasksPromise = cachedGetMyTasks(orgId)
+  const projectsPromise = cachedGetProjects(orgId)
+  const membersPromise = cachedGetOrganizationMembers(orgId)
+  const tagsPromise = cachedGetTags(orgId)
+
+  return (
+    <Suspense fallback={<MyTasksSkeleton />}>
+      <TasksStreamed
+        tasksPromise={tasksPromise}
+        projectsPromise={projectsPromise}
+        membersPromise={membersPromise}
+        tagsPromise={tagsPromise}
+        orgId={orgId}
+        userId={user.id}
+      />
+    </Suspense>
+  )
+}
+
+async function TasksStreamed({
+  tasksPromise,
+  projectsPromise,
+  membersPromise,
+  tagsPromise,
+  orgId,
+  userId,
+}: {
+  tasksPromise: ReturnType<typeof cachedGetMyTasks>
+  projectsPromise: ReturnType<typeof cachedGetProjects>
+  membersPromise: ReturnType<typeof cachedGetOrganizationMembers>
+  tagsPromise: ReturnType<typeof cachedGetTags>
+  orgId: string
+  userId: string
+}) {
   const [tasksResult, projectsResult, membersResult, tagsResult] = await Promise.all([
-    cachedGetMyTasks(orgId),
-    cachedGetProjects(orgId),
-    cachedGetOrganizationMembers(orgId),
-    cachedGetTags(orgId),
+    tasksPromise,
+    projectsPromise,
+    membersPromise,
+    tagsPromise,
   ])
 
   // Map to minimal shapes to reduce RSC serialization payload
@@ -58,7 +95,7 @@ export default async function Page() {
       initialTasks={(tasksResult.data || []) as TaskWithRelations[]}
       projects={(projectsResult.data || []) as ProjectWithRelations[]}
       organizationId={orgId}
-      userId={user.id}
+      userId={userId}
       organizationMembers={members}
       organizationTags={tags}
     />
