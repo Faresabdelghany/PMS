@@ -101,6 +101,8 @@ interface ChatPageContentProps {
   initialContext?: ChatContext
   /** Server-side pre-check: skip client-side AI status fetch */
   initialAIConfigured?: boolean
+  /** Server-fetched conversations to eliminate CLS from client-side loading */
+  initialConversations?: ChatConversation[]
 }
 
 export function ChatPageContent({
@@ -110,6 +112,7 @@ export function ChatPageContent({
   initialMessages,
   initialContext,
   initialAIConfigured,
+  initialConversations,
 }: ChatPageContentProps) {
   const isMobile = useIsMobile()
   const [showHistory, setShowHistory] = useState(false)
@@ -153,6 +156,7 @@ export function ChatPageContent({
       organizationId={organizationId}
       activeConversationId={conversationId}
       onConversationSelect={isMobile ? closeHistory : undefined}
+      initialConversations={initialConversations}
     />
   )
 

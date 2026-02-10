@@ -2,7 +2,7 @@ import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { ChatPageContent } from "@/components/ai/chat-page-content"
 import { cachedGetUser } from "@/lib/request-cache"
-import { getConversationWithMessages } from "@/lib/actions/conversations"
+import { getConversationWithMessages, getConversations } from "@/lib/actions/conversations"
 import { getCachedAIConfigured, getCachedActiveOrgFromKV } from "@/lib/server-cache"
 import { ChatPageSkeleton } from "@/components/skeletons/chat-skeletons"
 
@@ -37,6 +37,9 @@ async function ChatContent({ conversationId }: { conversationId: string }) {
     redirect("/chat")
   }
 
+  // Server-fetch conversations to eliminate sidebar CLS
+  const conversationsResult = await getConversations(orgId)
+
   return (
     <ChatPageContent
       organizationId={orgId}
@@ -44,6 +47,7 @@ async function ChatContent({ conversationId }: { conversationId: string }) {
       conversation={convResult.data.conversation}
       initialMessages={convResult.data.messages ?? []}
       initialAIConfigured={aiConfigResult.data ?? false}
+      initialConversations={conversationsResult.data ?? []}
     />
   )
 }

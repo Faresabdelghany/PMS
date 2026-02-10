@@ -148,6 +148,7 @@ const nextConfig = {
       'react-markdown',
       'remark-gfm',
       'swr',
+      '@tanstack/react-virtual',
     ],
     // Client-side router cache durations.
     // Next.js 15+ defaults dynamic to 0s, causing a full server roundtrip on every

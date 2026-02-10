@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { ChatPageContent } from "@/components/ai/chat-page-content"
 import { cachedGetUser } from "@/lib/request-cache"
 import { getCachedAIConfigured, getCachedActiveOrgFromKV } from "@/lib/server-cache"
+import { getConversations } from "@/lib/actions/conversations"
 import { ChatPageSkeleton } from "@/components/skeletons/chat-skeletons"
 
 export const metadata: Metadata = {
@@ -11,8 +12,8 @@ export const metadata: Metadata = {
 }
 
 async function ChatContent() {
-  // Fetch auth, org, and AI config check in parallel
-  // AI config pre-check eliminates client-side SWR roundtrip for LCP
+  // Fetch auth, org, AI config, and conversations in parallel
+  // Server-fetching conversations eliminates client-side CLS from sidebar loading
   const [userResult, org, aiConfigResult] = await Promise.all([
     cachedGetUser(),
     getCachedActiveOrgFromKV(),
@@ -31,12 +32,16 @@ async function ChatContent() {
 
   const orgId = org.id
 
+  // Fetch conversations after auth check (needs authenticated user)
+  const conversationsResult = await getConversations(orgId)
+
   return (
     <ChatPageContent
       organizationId={orgId}
       conversationId={null}
       initialMessages={[]}
       initialAIConfigured={aiConfigResult.data ?? false}
+      initialConversations={conversationsResult.data ?? []}
     />
   )
 }

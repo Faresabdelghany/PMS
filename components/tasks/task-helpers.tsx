@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { INITIAL_VISIBLE_TASKS_PER_PROJECT } from "@/lib/constants"
+import { LazySection } from "@/components/tasks/LazySection"
 import type { CreateTaskContext } from "@/components/tasks/TaskQuickCreateModal"
 
 // Re-export types and utilities from task-filter-utils for backward compatibility
@@ -325,16 +326,25 @@ export type ProjectTaskListViewProps = {
 export function ProjectTaskListView({ groups, onToggleTask, onAddTask, onEditTask, onDeleteTask }: ProjectTaskListViewProps) {
   return (
     <>
-      {groups.map((group) => (
-        <ProjectTasksSection
-          key={group.project.id}
-          group={group}
-          onToggleTask={onToggleTask}
-          onAddTask={onAddTask}
-          onEditTask={onEditTask}
-          onDeleteTask={onDeleteTask}
-        />
-      ))}
+      {groups.map((group, index) => {
+        const section = (
+          <ProjectTasksSection
+            key={group.project.id}
+            group={group}
+            onToggleTask={onToggleTask}
+            onAddTask={onAddTask}
+            onEditTask={onEditTask}
+            onDeleteTask={onDeleteTask}
+          />
+        )
+        // First section renders immediately; subsequent ones defer until near-viewport
+        if (index === 0) return section
+        return (
+          <LazySection key={group.project.id} estimatedHeight={220}>
+            {section}
+          </LazySection>
+        )
+      })}
     </>
   )
 }

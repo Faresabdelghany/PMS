@@ -19,6 +19,8 @@ interface ChatHistorySidebarProps {
   organizationId: string
   activeConversationId: string | null
   onConversationSelect?: () => void
+  /** Server-fetched conversations to eliminate CLS from client-side loading */
+  initialConversations?: ChatConversation[]
 }
 
 interface ConversationGroup {
@@ -81,16 +83,18 @@ export function ChatHistorySidebar({
   organizationId,
   activeConversationId,
   onConversationSelect,
+  initialConversations,
 }: ChatHistorySidebarProps) {
   const router = useRouter()
   const { openSettings } = useSettingsDialog()
-  const [conversations, setConversations] = useState<ChatConversation[]>([])
+  const [conversations, setConversations] = useState<ChatConversation[]>(initialConversations ?? [])
   const [searchQuery, setSearchQuery] = useState("")
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(!initialConversations)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  // Fetch conversations on mount
+  // Fetch conversations on mount only if not server-provided
   useEffect(() => {
+    if (initialConversations) return
     async function loadConversations() {
       setIsLoading(true)
       const result = await getConversations(organizationId)
@@ -100,7 +104,7 @@ export function ChatHistorySidebar({
       setIsLoading(false)
     }
     loadConversations()
-  }, [organizationId])
+  }, [organizationId, initialConversations])
 
   // Filter conversations by search query
   const filteredConversations = useMemo(() => {
