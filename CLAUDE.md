@@ -283,6 +283,14 @@ export default async function Page({ params }: PageProps) {
 - Comment editor with @mentions and emoji reactions
 - Click task title in any task list to open panel
 
+**RSC Serialization:** When passing data from Server Components to Client Components, map to minimal shapes to reduce payload size. Strip fields like `organization_id`, `created_at`, `updated_at` that the UI doesn't need:
+```typescript
+// In page.tsx — map before passing to client
+const tags = (tagsResult.data || []).map(t => ({ id: t.id, name: t.name, color: t.color }))
+// In client component — use Pick types
+type OrganizationTag = Pick<FullOrganizationTag, "id" | "name" | "color">
+```
+
 **Rate Limiting:** Production uses Upstash + Vercel KV for rate limiting in `lib/rate-limit/`:
 - `rateLimiters.auth` - 5 requests per 15 min (brute force protection)
 - `rateLimiters.ai` - 50 requests per 24h (cost control)
@@ -363,6 +371,8 @@ KV_REST_API_TOKEN=<vercel-kv-token>
 - Icons: Lucide, Phosphor Icons
 - E2E Testing: Playwright with Page Object Model
 - Rate Limiting: Upstash + Vercel KV
+
+**Note:** `pnpm.overrides` in `package.json` pins `tar>=7.5.7` to patch CVEs in the `@tailwindcss/oxide` dependency chain.
 
 ## Deployment
 

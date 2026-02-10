@@ -1,19 +1,20 @@
 # PMS Application Audit — Issues List
 
 **Date:** 2026-02-10
+**Updated:** 2026-02-10
 **Audited by:** Claude Opus 4.6 (SAST, Dependency, React/Next.js Best Practices)
-**Total findings:** 30
+**Total findings:** 30 | **Fixed:** 12 | **Remaining:** 18
 
 ---
 
 ## Summary
 
-| Category | Critical | High | Medium | Low | Total |
-|----------|----------|------|--------|-----|-------|
-| Security (SAST) | 3 | 7 | 5 | 0 | 15 |
-| Dependencies | 0 | 1 | 3 | 2 | 6 |
-| React/Next.js Performance | 0 | 0 | 6 | 3 | 9 |
-| **Total** | **3** | **8** | **14** | **5** | **30** |
+| Category | Critical | High | Medium | Low | Total | Fixed |
+|----------|----------|------|--------|-----|-------|-------|
+| Security (SAST) | 3 | 7 | 5 | 0 | 15 | 0 |
+| Dependencies | 0 | 1 | 3 | 2 | 6 | 4 |
+| React/Next.js Performance | 0 | 0 | 6 | 3 | 9 | 8 |
+| **Total** | **3** | **8** | **14** | **5** | **30** | **12** |
 
 ---
 
@@ -205,20 +206,16 @@
 
 ---
 
-### DEP-01: `tar` CVEs via `@tailwindcss/oxide` (3 HIGH advisories)
+### DEP-01: `tar` CVEs via `@tailwindcss/oxide` (3 HIGH advisories) — FIXED
 
+- **Status:** Fixed in `7752da2` (GitHub #17)
 - **Category:** Dependencies
 - **Package:** `tar` 7.5.2 (via `@tailwindcss/postcss` > `@tailwindcss/oxide`)
 - **Advisories:**
   - GHSA-8qq5-rm4j-mr97 — Arbitrary File Overwrite + Symlink Poisoning
   - GHSA-r6q2-hw4h-h46w — Race Condition via Unicode Ligature Collisions
   - GHSA-34x7-hfp2-rc4v — Hardlink Path Traversal
-- **User impact:** Dev-only (build step), but could compromise CI pipeline.
-- **Fix:** Update `tailwindcss` and `@tailwindcss/postcss` from 4.1.9 to 4.1.18, or add:
-  ```json
-  "pnpm": { "overrides": { "tar": ">=7.5.7" } }
-  ```
-- **Effort:** 10 minutes
+- **Resolution:** Added `pnpm.overrides` for `"tar": ">=7.5.7"` in `package.json`. Resolved version: 7.5.7.
 
 ---
 
@@ -279,202 +276,117 @@
 
 ---
 
-### PERF-01: Sequential query waterfalls in server actions
+### PERF-01: Sequential query waterfalls in server actions — FIXED
 
+- **Status:** Fixed in `678c7fb`
 - **Category:** Performance
-- **Files:**
-  - `lib/actions/tasks.ts:556-575` — `deleteTask()`: sequential task + project queries
-  - `lib/actions/tasks.ts:640-658` — `moveTaskToWorkstream()`: sequential task + project queries
-  - `lib/actions/tasks.ts:363-399` — `updateTask()`: sequential profile lookups for activity
-  - `lib/actions/workstreams.ts:193-223` — `updateWorkstream()`: sequential auth + project queries
-- **Description:** Multiple sequential `await` calls fetch data that could be retrieved in a single query (via joins) or in parallel (via `Promise.all()`).
-- **User impact:** Each waterfall adds ~100-200ms latency per operation.
-- **Fix:** Use Supabase joins for related data, and `Promise.all()` for independent queries:
-  ```ts
-  // Instead of 2 queries:
-  const { data: task } = await supabase
-    .from("tasks")
-    .select("project_id, assignee_id, project:projects(organization_id)")
-    .eq("id", id)
-    .single()
-  ```
-- **Effort:** 1 hour
+- **Resolution:** Replaced sequential queries with Supabase joins (e.g., `select("*, project:projects(organization_id)")`) in `deleteTask()`, `moveTaskToWorkstream()`, and related functions.
 
 ---
 
-### PERF-02: Barrel file imports slowing builds
+### PERF-02: Barrel file imports slowing builds — PARTIALLY FIXED
 
+- **Status:** Partially fixed in `678c7fb`
 - **Category:** Performance
-- **Files:**
-  - `lib/actions/projects.ts` — re-exports from `./projects/index` (5 sub-modules)
-  - `lib/actions/ai.ts` — re-exports from `./ai/index.ts` (4 sub-modules)
-  - `components/skeletons/index.ts` — re-exports ~67 named exports from 7 sub-modules
-- **Description:** Components that import through these barrels force the bundler to resolve the entire module graph even when only 1-2 exports are used. Slows HMR in development.
-- **Fix:** Import directly from sub-modules:
-  ```ts
-  // Before
-  import { ProjectsListSkeleton } from "@/components/skeletons"
-  // After
-  import { ProjectsListSkeleton } from "@/components/skeletons/dashboard-skeletons"
-  ```
-- **Effort:** 1 hour
+- **Resolution:** Some barrel imports replaced with direct sub-module imports. Mixed usage remains — some files still import through barrels.
 
 ---
 
-### PERF-03: Excessive data serialization to client components
+### PERF-03: Excessive data serialization to client components — FIXED
 
+- **Status:** Fixed in `7752da2`
 - **Category:** Performance
-- **File:** `app/(dashboard)/tasks/page.tsx:33-40`
-- **Description:** The `MyTasksPage` client component receives full `organizationMembers` and `organizationTags` arrays with all fields. Only names, IDs, and avatars are needed for filter dropdowns.
-- **User impact:** Larger RSC payload = slower navigation.
-- **Fix:** Map to minimal shapes before passing to client:
-  ```ts
-  organizationMembers={(members || []).map(m => ({
-    id: m.user_id,
-    name: m.profiles?.full_name ?? m.profiles?.email ?? "",
-    avatarUrl: m.profiles?.avatar_url ?? null,
-    role: m.role,
-  }))}
-  ```
-- **Effort:** 30 minutes
+- **Resolution:** Mapped `organizationMembers` to `{id, user_id, role, profile.{id, full_name, email, avatar_url}}` and `organizationTags` to `{id, name, color}` in `tasks/page.tsx`. Updated downstream components (`MyTasksPage`, `TaskQuickCreateModal`, `TaskWeekBoardView`, `TaskBoardCard`) to use `Pick<OrganizationTag, "id" | "name" | "color">` type.
 
 ---
 
-### PERF-04: Missing `error.tsx` boundaries in dashboard routes
+### PERF-04: Missing `error.tsx` boundaries in dashboard routes — FIXED
 
+- **Status:** Fixed in `678c7fb`
 - **Category:** UX / Resilience
-- **File:** `app/(dashboard)/` — no per-segment error boundaries
-- **Description:** Only `app/error.tsx` and `app/global-error.tsx` exist. If any dashboard section crashes (network failure, invalid data), the entire app unmounts including sidebar and navigation.
-- **User impact:** Full-page error instead of graceful degradation of just the affected section.
-- **Fix:** Add `error.tsx` to `app/(dashboard)/` and key sub-routes.
-- **Effort:** 15 minutes
+- **Resolution:** Added `app/(dashboard)/error.tsx` boundary so dashboard crashes show inline error instead of unmounting the entire layout.
 
 ---
 
-### PERF-05: Missing page metadata on dashboard pages
+### PERF-05: Missing page metadata on dashboard pages — FIXED
 
+- **Status:** Fixed in `678c7fb`
 - **Category:** Accessibility / UX
-- **Files:** All pages under `app/(dashboard)/`
-- **Description:** No dashboard pages export `metadata` or `generateMetadata`. All browser tabs show the same title. Screen readers can't announce the current page.
-- **User impact:** Poor tab management, reduced accessibility for screen reader users, unhelpful bookmarks.
-- **Fix:** Add static metadata to each page:
-  ```ts
-  export const metadata = { title: "Projects - PM Tools" }
-  ```
-- **Effort:** 20 minutes
+- **Resolution:** Added `export const metadata` to all dashboard pages and auth pages with descriptive titles.
 
 ---
 
-### PERF-06: No `content-visibility` on long lists
+### PERF-06: No `content-visibility` on long lists — FIXED
 
+- **Status:** Fixed in `678c7fb`
 - **Category:** Performance
-- **Description:** Task lists, project lists, and inbox items render all DOM nodes without `content-visibility: auto`. With 100+ items, the browser lays out everything on initial paint.
-- **User impact:** Janky scrolling and delayed initial paint on large datasets.
-- **Fix:** Add to list row CSS:
-  ```css
-  .task-row {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 52px;
-  }
-  ```
-- **Effort:** 15 minutes
+- **Resolution:** Added `content-visibility: auto` with `contain-intrinsic-size` to `TaskRowBase`, `InboxContent`, and `globals.css`.
 
 ---
 
-### DEP-02: 11 unused packages in `package.json`
+### DEP-02: 11 unused packages in `package.json` — FIXED
 
+- **Status:** Fixed in `678c7fb`
 - **Category:** Dependencies
-- **Packages:**
-  - `autoprefixer` — not referenced; Tailwind CSS 4 handles prefixing internally
-  - `tailwindcss-animate` — replaced by `tw-animate-css`
-  - `embla-carousel-react` — not imported in any file
-  - `input-otp` — not imported in any file
-  - `vaul` — not imported in any file
-  - `react-resizable-panels` — not imported in any file
-  - `@radix-ui/react-aspect-ratio` — no consumer
-  - `@radix-ui/react-hover-card` — no consumer
-  - `@radix-ui/react-menubar` — no consumer
-  - `@radix-ui/react-navigation-menu` — no consumer
-  - `@radix-ui/react-context-menu` — no consumer
-- **User impact:** Slower installs, larger `node_modules`, unnecessary CI time.
-- **Fix:** `pnpm remove autoprefixer tailwindcss-animate embla-carousel-react input-otp vaul react-resizable-panels @radix-ui/react-aspect-ratio @radix-ui/react-hover-card @radix-ui/react-menubar @radix-ui/react-navigation-menu @radix-ui/react-context-menu`
-- **Effort:** 10 minutes
+- **Resolution:** Removed all 11 unused packages from `package.json`.
 
 ---
 
-### DEP-03: Supply chain risk — `next-lazy-hydration-on-scroll`
+### DEP-03: Supply chain risk — `next-lazy-hydration-on-scroll` — FIXED
 
+- **Status:** Fixed in `678c7fb`
 - **Category:** Dependencies
-- **Package:** `next-lazy-hydration-on-scroll` 1.2.0
-- **Description:** Single maintainer, 6 total versions ever published, 12.5 KB. Only used in 1 file. Small user base = higher supply chain risk.
-- **Fix:** Inline the core logic (~20 lines using IntersectionObserver) or use `next/dynamic` + `Suspense`.
-- **Effort:** 30 minutes
+- **Resolution:** Removed the package and replaced with `next/dynamic` + `Suspense`.
 
 ---
 
-### DEP-04: `@types/react-syntax-highlighter` in wrong section
+### DEP-04: `@types/react-syntax-highlighter` in wrong section — FIXED
 
+- **Status:** Fixed in `678c7fb`
 - **Category:** Dependencies
-- **Package:** `@types/react-syntax-highlighter` 15.5.13
-- **Description:** Type definition package placed in `dependencies` instead of `devDependencies`. Gets installed in production unnecessarily.
-- **Fix:** `pnpm remove @types/react-syntax-highlighter && pnpm add -D @types/react-syntax-highlighter`
-- **Effort:** 2 minutes
+- **Resolution:** Moved `@types/react-syntax-highlighter` from `dependencies` to `devDependencies`.
 
 ---
 
 ## LOW
 
-### PERF-07: Duplicate motion libraries in bundle
+### PERF-07: Duplicate motion libraries in bundle — FIXED
 
+- **Status:** Fixed in `678c7fb`
 - **Category:** Performance / Bundle
-- **Packages:** Both `framer-motion` and `motion` (its successor) are installed.
-- **User impact:** ~40KB of duplicate JavaScript shipped to users.
-- **Fix:** Migrate all imports to `motion/react` and remove `framer-motion`.
-- **Effort:** 1 hour
+- **Resolution:** Migrated all imports to `motion/react` and removed `framer-motion`. Only `motion` 12.23.24 remains.
 
 ---
 
-### PERF-08: Auth pages are fully client-side unnecessarily
+### PERF-08: Auth pages are fully client-side unnecessarily — PARTIALLY FIXED
 
+- **Status:** Partially fixed in `678c7fb`
 - **Category:** Performance / Bundle
-- **Files:** `app/(auth)/login/page.tsx`, `app/(auth)/signup/page.tsx`, `app/(auth)/forgot-password/page.tsx`
-- **Description:** These pages have `"use client"` at the top level. Only the form needs interactivity — headings, layout, and decorative elements could be server-rendered.
-- **Fix:** Extract the interactive form into a client component, keep the page wrapper as a Server Component.
-- **Effort:** 1 hour
+- **Resolution:** Login page extracted to Server Component wrapper + client form. Signup and forgot-password pages may still need the same treatment.
 
 ---
 
-### PERF-09: Effect-based data fetching instead of SWR
+### PERF-09: Effect-based data fetching instead of SWR — FIXED
 
+- **Status:** Fixed in `678c7fb`
 - **Category:** UX
-- **File:** `components/settings/panes/preferences-pane.tsx:53-67`
-- **Description:** Uses `useEffect` + manual `isLoading` state for data fetching. The project already has SWR configured — this should use it for free caching, deduplication, and stale-while-revalidate.
-- **Fix:**
-  ```ts
-  const { data: preferences, isLoading } = useSWR("user-preferences", () =>
-    getPreferences().then(r => r.data ?? null)
-  )
-  ```
-- **Effort:** 15 minutes
+- **Resolution:** Replaced `useEffect` + manual state with `useSWR("user-preferences", ...)` in preferences pane.
 
 ---
 
-### DEP-05: Radix UI packages significantly outdated
+### DEP-05: Radix UI packages significantly outdated — FIXED
 
+- **Status:** Fixed in `678c7fb`
 - **Category:** Dependencies
-- **Description:** Most `@radix-ui/*` packages are pinned to old versions (e.g., 1.1.x when latest is 1.2.x+). Radix frequently releases accessibility fixes and bug patches.
-- **Fix:** Batch-update all Radix UI packages together to avoid peer dependency conflicts.
-- **Effort:** 30 minutes
+- **Resolution:** Batch-updated all Radix UI packages to latest versions.
 
 ---
 
-### PERF-10: Derived state computed in effects
+### PERF-10: Derived state computed in effects — FIXED
 
+- **Status:** Fixed in `678c7fb`
 - **Category:** Performance
-- **File:** `components/project-wizard/steps/StepOwnership.tsx:84-107`
-- **Description:** Three `useEffect` hooks set default values for wizard fields on mount, causing unnecessary re-renders. Defaults should be set in the wizard's initial state.
-- **Fix:** Set default values in the parent wizard's initial data object instead of effects.
-- **Effort:** 15 minutes
+- **Resolution:** Removed `useEffect` hooks and computed defaults inline in `StepOwnership.tsx`.
 
 ---
 
@@ -499,7 +411,7 @@ The audit also found many areas of strong implementation:
 
 ---
 
-## Recommended Fix Order
+## Recommended Fix Order (remaining 18 issues)
 
 ### Phase 1 — Critical (do today, ~1 hour)
 1. SEC-01: Add DOMPurify sanitization
@@ -509,18 +421,23 @@ The audit also found many areas of strong implementation:
 ### Phase 2 — High priority (this week, ~4 hours)
 4. SEC-04: Add auth checks to server actions
 5. SEC-05: Restrict invitations to admins
-6. SEC-06: Fix Origin header in OAuth/password reset
+6. SEC-06: Fix Origin header in OAuth/password reset (partially done — still reads Origin first)
 7. SEC-07: Add MIME type allowlist for uploads
 8. SEC-08: Reduce signed URL expiry
 9. SEC-09: Rate limit password reset
 10. SEC-10: Sanitize PostgREST search inputs
-11. DEP-01: Patch `tar` CVEs
 
-### Phase 3 — Medium priority (next sprint, ~5 hours)
-12. SEC-11 through SEC-15: Remaining security hardening
-13. PERF-01 through PERF-06: Performance optimizations
-14. DEP-02 through DEP-04: Dependency cleanup
+### Phase 3 — Medium priority (next sprint, ~2 hours)
+11. SEC-11: Batch task update project authorization
+12. SEC-12: Auth check on `createInboxItemsForUsers`
+13. SEC-13: CSV import size limit
+14. SEC-14: Replace `Math.random()` with `crypto.randomUUID()`
+15. SEC-15: Wire up invite rate limiter
 
 ### Phase 4 — Low priority (when convenient)
-15. PERF-07 through PERF-10: Bundle and UX polish
-16. DEP-05: Radix UI updates
+16. PERF-02: Finish replacing remaining barrel imports
+17. PERF-08: Extract signup/forgot-password pages to Server Components
+
+### Already Fixed (12 issues)
+- ~~DEP-01~~, ~~DEP-02~~, ~~DEP-03~~, ~~DEP-04~~, ~~DEP-05~~ — Dependency cleanup
+- ~~PERF-01~~, ~~PERF-03~~, ~~PERF-04~~, ~~PERF-05~~, ~~PERF-06~~, ~~PERF-07~~, ~~PERF-09~~, ~~PERF-10~~ — Performance fixes
