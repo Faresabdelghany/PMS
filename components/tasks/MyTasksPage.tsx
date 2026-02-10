@@ -75,9 +75,10 @@ const TaskWeekBoardView = dynamic(
 )
 
 // Lazy-load DnD wrapper — keeps @dnd-kit/core + @dnd-kit/sortable out of the initial bundle (~25kB savings)
+// Loading skeleton prevents CLS while chunk loads
 const TaskListDndWrapper = dynamic(
   () => import("@/components/tasks/TaskListDndWrapper").then(m => ({ default: m.TaskListDndWrapper })),
-  { ssr: false }
+  { ssr: false, loading: () => <div className="space-y-4 animate-pulse" /> }
 )
 
 import {
@@ -597,7 +598,7 @@ export function MyTasksPage({
         </div>
       </header>
 
-      <div className="flex-1 min-h-0 space-y-4 overflow-y-auto px-4 py-4">
+      <div className="flex-1 min-h-0 space-y-4 overflow-y-auto px-4 py-4" style={{ contain: "strict" }}>
         {viewOptions.viewType === "list" && (
           <TaskListDndWrapper
             groups={visibleGroups}

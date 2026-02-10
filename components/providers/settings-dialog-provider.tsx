@@ -4,9 +4,10 @@ import { createContext, useContext, useState, useCallback, useEffect, type React
 import dynamic from "next/dynamic"
 import type { SettingsItemId } from "@/components/settings/settings-sidebar"
 
-// Lazy load SettingsDialog - it's a heavy component that's only needed when opened
+// Lazy load SettingsDialog - it's a heavy component that's only needed when opened.
+// webpackPrefetch preloads the chunk during browser idle time so it's ready when /settings redirects here.
 const SettingsDialog = dynamic(
-  () => import("@/components/settings/settings-dialog").then((mod) => mod.SettingsDialog),
+  () => import(/* webpackPrefetch: true */ "@/components/settings/settings-dialog").then((mod) => mod.SettingsDialog),
   { ssr: false }
 )
 

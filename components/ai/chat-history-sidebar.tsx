@@ -171,11 +171,13 @@ export function ChatHistorySidebar({
         </div>
       </div>
 
-      {/* Conversation List */}
-      <div className="flex-1 overflow-y-auto px-2">
+      {/* Conversation List — min-h prevents CLS when loading/empty */}
+      <div className="flex-1 overflow-y-auto px-2 min-h-[200px]">
         {isLoading && (
-          <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-            Loading...
+          <div className="space-y-2 py-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-12 rounded-lg bg-muted/50 animate-pulse" />
+            ))}
           </div>
         )}
         {!isLoading && groupedConversations.length === 0 && (

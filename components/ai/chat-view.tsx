@@ -228,8 +228,8 @@ export function ChatView({
         {/* AI configured - show chat interface */}
         {!showLoading && isConfigured && (
           <>
-            {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4" aria-live="polite" aria-atomic="false">
+            {/* Messages Area — contain: content limits reflow to this subtree */}
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4" style={{ contain: "content" }} aria-live="polite" aria-atomic="false">
               {/* Empty state with quick actions */}
               {messages.length === 0 && !isLoading && (
                 <div className="flex flex-col items-center justify-center h-full gap-6 py-12">

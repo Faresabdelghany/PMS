@@ -78,10 +78,15 @@ const ChatHistorySidebar = dynamic(
         <div className="px-3 pb-2">
           <Skeleton className="h-8 w-full rounded-lg" />
         </div>
-        <div className="flex-1 px-2 py-2 space-y-2">
+        {/* min-h matches real sidebar to prevent CLS */}
+        <div className="flex-1 px-2 py-2 space-y-2 min-h-[200px]">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-12 w-full rounded-lg" />
           ))}
+        </div>
+        {/* Footer placeholder — matches AI Settings button */}
+        <div className="border-t border-border/60 p-2">
+          <Skeleton className="h-9 w-full rounded-lg" />
         </div>
       </aside>
     ),

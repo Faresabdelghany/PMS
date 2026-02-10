@@ -430,12 +430,8 @@ export function ClientsContent({ initialClients = [], organizationId }: ClientsC
                   </TabsTrigger>
                 ))}
               </TabsList>
-              {/* Hidden TabsContent elements for aria-controls accessibility */}
-              <TabsContent value="all" forceMount className="hidden" />
-              <TabsContent value="active" forceMount className="hidden" />
-              <TabsContent value="prospect" forceMount className="hidden" />
-              <TabsContent value="on_hold" forceMount className="hidden" />
-              <TabsContent value="archived" forceMount className="hidden" />
+              {/* Single hidden TabsContent — required by Radix to associate triggers with content panels */}
+              <TabsContent value={statusFilter} forceMount className="hidden" />
             </Tabs>
           </div>
 
@@ -676,9 +672,11 @@ export function ClientsContent({ initialClients = [], organizationId }: ClientsC
           />
         </Suspense>
       )}
-      <Suspense fallback={null}>
-        <ClientDetailsDrawer clientId={activeClientId} onClose={() => setActiveClientId(null)} />
-      </Suspense>
+      {activeClientId && (
+        <Suspense fallback={null}>
+          <ClientDetailsDrawer clientId={activeClientId} onClose={() => setActiveClientId(null)} />
+        </Suspense>
+      )}
     </div>
   )
 }
