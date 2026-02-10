@@ -8,18 +8,17 @@ import { Stepper } from "@/components/project-wizard/Stepper"
 import { CaretLeft } from "@phosphor-icons/react/dist/ssr/CaretLeft"
 import { CaretRight } from "@phosphor-icons/react/dist/ssr/CaretRight"
 import { X } from "@phosphor-icons/react/dist/ssr/X"
-import { getProjects } from "@/lib/actions/projects"
-import { getOrganizationMembers } from "@/lib/actions/organizations"
-import { getProjectMembers } from "@/lib/actions/projects"
-import { getDeliverables } from "@/lib/actions/deliverables"
 import {
-  getPreviousReportData,
-  getOpenActionItems,
+  getReportWizardData,
   getReport,
   createReport,
   updateReport,
 } from "@/lib/actions/reports"
-import type { CreateReportInput } from "@/lib/actions/reports"
+import type {
+  CreateReportInput,
+  ReportWizardProject,
+  ReportWizardMember,
+} from "@/lib/actions/reports"
 import type {
   ReportWizardData,
   RiskEntry,
@@ -42,18 +41,9 @@ interface ReportWizardProps {
   editingReportId?: string | null
 }
 
-type ProjectInfo = {
-  id: string
-  name: string
-  clientName?: string
-}
+type ProjectInfo = ReportWizardProject
 
-type OrgMember = {
-  id: string
-  full_name: string | null
-  email: string
-  avatar_url: string | null
-}
+type OrgMember = ReportWizardMember
 
 // ============================================
 // Helpers
@@ -158,11 +148,9 @@ export function ReportWizard({
   const [orgMembers, setOrgMembers] = useState<OrgMember[]>([])
   const [projectMembers, setProjectMembers] = useState<Record<string, string[]>>({})
   const [actionItems, setActionItems] = useState<ActionItem[]>([])
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- reserved for Step 3 (Financials)
-  const [deliverables, setDeliverables] = useState<Record<string, any[]>>({})
   const [isLoading, setIsLoading] = useState(true)
 
-  // --- Data fetching on mount ---
+  // --- Data fetching on mount (single server action call) ---
 
   useEffect(() => {
     let cancelled = false
@@ -171,73 +159,28 @@ export function ReportWizard({
       setIsLoading(true)
 
       try {
-        // Phase 1: Fetch projects, members, previous report, action items in parallel
-        const [projectsResult, membersResult, prevReportResult, actionItemsResult] =
-          await Promise.all([
-            getProjects(organizationId),
-            getOrganizationMembers(organizationId),
-            getPreviousReportData(organizationId),
-            getOpenActionItems(organizationId),
-          ])
+        // Single server action: 1 auth check, all DB queries in parallel
+        const [wizardResult, editResult] = await Promise.all([
+          getReportWizardData(organizationId),
+          editingReportId ? getReport(editingReportId) : null,
+        ])
 
         if (cancelled) return
 
-        const activeProjects: ProjectInfo[] = (projectsResult.data ?? [])
-          .filter((p: any) => p.status !== "completed" && p.status !== "archived")
-          .map((p: any) => ({
-            id: p.id,
-            name: p.name,
-            clientName: p.client?.name ?? undefined,
-          }))
-
-        setProjects(activeProjects)
-
-        const members: OrgMember[] = (membersResult.data ?? []).map((m: any) => ({
-          id: m.profile?.id ?? m.user_id ?? m.id,
-          full_name: m.profile?.full_name ?? m.full_name ?? null,
-          email: m.profile?.email ?? m.email ?? "",
-          avatar_url: m.profile?.avatar_url ?? m.avatar_url ?? null,
-        }))
-        setOrgMembers(members)
-
-        setActionItems((actionItemsResult.data ?? []) as ActionItem[])
-
-        // Phase 2: Fetch project members for each active project in parallel
-        const memberPromises = activeProjects.map(async (p) => {
-          const result = await getProjectMembers(p.id)
-          const memberIds = (result.data ?? []).map(
-            (pm: any) => pm.profile?.id ?? pm.user_id,
-          )
-          return { projectId: p.id, memberIds }
-        })
-
-        const memberResults = await Promise.all(memberPromises)
-        if (cancelled) return
-
-        const membersMap: Record<string, string[]> = {}
-        for (const { projectId, memberIds } of memberResults) {
-          membersMap[projectId] = memberIds
+        if (wizardResult.error || !wizardResult.data) {
+          toast.error(wizardResult.error ?? "Failed to load report data.")
+          return
         }
-        setProjectMembers(membersMap)
 
-        // Phase 3: Fetch deliverables for each active project in parallel
-        const deliverablePromises = activeProjects.map(async (p) => {
-          const result = await getDeliverables(p.id)
-          return { projectId: p.id, deliverables: result.data ?? [] }
-        })
+        const wd = wizardResult.data
+        setProjects(wd.projects)
+        setOrgMembers(wd.orgMembers)
+        setProjectMembers(wd.projectMembers)
+        setActionItems(wd.actionItems as ActionItem[])
 
-        const deliverableResults = await Promise.all(deliverablePromises)
-        if (cancelled) return
-
-        const deliverablesMap: Record<string, any[]> = {}
-        for (const { projectId, deliverables: dels } of deliverableResults) {
-          deliverablesMap[projectId] = dels
-        }
-        setDeliverables(deliverablesMap)
-
-        // --- Apply carry-over from previous report ---
-        const prevData = prevReportResult.data
-        if (prevData?.report) {
+        // Apply carry-over from previous report
+        const prevData = wd.previousReport
+        if (prevData.report) {
           setData((prev) => {
             const carriedRisks: RiskEntry[] = (prevData.risks ?? [])
               .filter((r) => r.status === "open" || r.status === "mitigated")
@@ -273,7 +216,7 @@ export function ReportWizard({
             const prevProjectIds = (prevData.projects ?? []).map(
               (rp: any) => rp.project_id,
             )
-            const selectedIds = activeProjects
+            const selectedIds = wd.projects
               .filter((p) => prevProjectIds.includes(p.id))
               .map((p) => p.id)
 
@@ -286,76 +229,71 @@ export function ReportWizard({
           })
         }
 
-        // --- If editing, load existing report ---
-        if (editingReportId) {
-          const reportResult = await getReport(editingReportId)
-          if (cancelled) return
+        // If editing, apply existing report data
+        if (editResult?.data) {
+          const report = editResult.data
+          const editProjectData: Record<string, any> = {}
+          const selectedIds: string[] = []
 
-          if (reportResult.data) {
-            const report = reportResult.data
-            const editProjectData: Record<string, any> = {}
-            const selectedIds: string[] = []
-
-            for (const rp of report.report_projects ?? []) {
-              selectedIds.push(rp.project_id)
-              editProjectData[rp.project_id] = {
-                status: rp.status,
-                previousStatus: rp.previous_status,
-                clientSatisfaction: rp.client_satisfaction,
-                previousSatisfaction: rp.previous_satisfaction,
-                progressPercent: rp.progress_percent,
-                previousProgress: rp.previous_progress,
-                narrative: rp.narrative ?? "",
-                teamContributions: rp.team_contributions ?? [],
-                financialNotes: rp.financial_notes ?? "",
-              }
+          for (const rp of report.report_projects ?? []) {
+            selectedIds.push(rp.project_id)
+            editProjectData[rp.project_id] = {
+              status: rp.status,
+              previousStatus: rp.previous_status,
+              clientSatisfaction: rp.client_satisfaction,
+              previousSatisfaction: rp.previous_satisfaction,
+              progressPercent: rp.progress_percent,
+              previousProgress: rp.previous_progress,
+              narrative: rp.narrative ?? "",
+              teamContributions: rp.team_contributions ?? [],
+              financialNotes: rp.financial_notes ?? "",
             }
-
-            const editRisks: RiskEntry[] = (report.report_risks ?? []).map(
-              (r: any) => ({
-                id: crypto.randomUUID(),
-                projectId: r.project_id,
-                type: r.type,
-                description: r.description,
-                severity: r.severity,
-                status: r.status,
-                mitigationNotes: r.mitigation_notes ?? "",
-                originatedReportId: r.originated_report_id,
-                isCarriedOver: r.originated_report_id !== report.id,
-              }),
-            )
-
-            const editHighlights = (report.report_highlights ?? [])
-              .filter((h: any) => h.type === "highlight")
-              .map((h: any) => ({
-                id: crypto.randomUUID(),
-                projectId: h.project_id,
-                description: h.description,
-              }))
-
-            const editDecisions = (report.report_highlights ?? [])
-              .filter((h: any) => h.type === "decision")
-              .map((h: any) => ({
-                id: crypto.randomUUID(),
-                projectId: h.project_id,
-                description: h.description,
-              }))
-
-            setData({
-              title: report.title,
-              periodType: report.period_type,
-              periodStart: report.period_start,
-              periodEnd: report.period_end,
-              selectedProjectIds: selectedIds,
-              projectData: editProjectData,
-              risks: editRisks,
-              highlights: editHighlights,
-              decisions: editDecisions,
-            })
-
-            // When editing, allow jumping to any step
-            setMaxStepReached(STEPS.length - 1)
           }
+
+          const editRisks: RiskEntry[] = (report.report_risks ?? []).map(
+            (r: any) => ({
+              id: crypto.randomUUID(),
+              projectId: r.project_id,
+              type: r.type,
+              description: r.description,
+              severity: r.severity,
+              status: r.status,
+              mitigationNotes: r.mitigation_notes ?? "",
+              originatedReportId: r.originated_report_id,
+              isCarriedOver: r.originated_report_id !== report.id,
+            }),
+          )
+
+          const editHighlights = (report.report_highlights ?? [])
+            .filter((h: any) => h.type === "highlight")
+            .map((h: any) => ({
+              id: crypto.randomUUID(),
+              projectId: h.project_id,
+              description: h.description,
+            }))
+
+          const editDecisions = (report.report_highlights ?? [])
+            .filter((h: any) => h.type === "decision")
+            .map((h: any) => ({
+              id: crypto.randomUUID(),
+              projectId: h.project_id,
+              description: h.description,
+            }))
+
+          setData({
+            title: report.title,
+            periodType: report.period_type,
+            periodStart: report.period_start,
+            periodEnd: report.period_end,
+            selectedProjectIds: selectedIds,
+            projectData: editProjectData,
+            risks: editRisks,
+            highlights: editHighlights,
+            decisions: editDecisions,
+          })
+
+          // When editing, allow jumping to any step
+          setMaxStepReached(STEPS.length - 1)
         }
       } catch (error) {
         toast.error("Failed to load report data. Please try again.")

@@ -535,6 +535,185 @@ export async function getPreviousReportData(
 }
 
 // ============================================
+// Combined wizard data fetch (single round-trip)
+// ============================================
+
+export type ReportWizardProject = {
+  id: string
+  name: string
+  status: string
+  clientName?: string
+}
+
+export type ReportWizardMember = {
+  id: string
+  full_name: string | null
+  email: string
+  avatar_url: string | null
+}
+
+export type ReportWizardDataResult = {
+  projects: ReportWizardProject[]
+  orgMembers: ReportWizardMember[]
+  projectMembers: Record<string, string[]>
+  actionItems: any[]
+  previousReport: {
+    report: Report | null
+    projects: ReportProject[]
+    risks: ReportRisk[]
+  }
+}
+
+/**
+ * Fetches all data the report wizard needs in a single server action call.
+ * Replaces 4 + 2N separate server action calls with 1 call and 1 auth check.
+ * All DB queries run in parallel using Promise.all.
+ */
+export async function getReportWizardData(
+  orgId: string
+): Promise<ActionResult<ReportWizardDataResult>> {
+  // Single auth + org membership check
+  let supabase: Awaited<ReturnType<typeof requireOrgMember>>["supabase"]
+  try {
+    const ctx = await requireOrgMember(orgId)
+    supabase = ctx.supabase
+  } catch {
+    return { error: "You must be an organization member" }
+  }
+
+  // Phase 1: Fetch projects, members, previous report, and action items in parallel
+  const [projectsResult, membersResult, prevReportResult, actionItemsResult] =
+    await Promise.all([
+      // Minimal project fields - only what the wizard needs
+      supabase
+        .from("projects")
+        .select("id, name, status, client:clients(name)")
+        .eq("organization_id", orgId)
+        .neq("status", "completed")
+        .neq("status", "cancelled")
+        .order("updated_at", { ascending: false }),
+      // Org members
+      supabase
+        .from("organization_members")
+        .select("user_id, profile:profiles(id, full_name, email, avatar_url)")
+        .eq("organization_id", orgId),
+      // Previous report + sub-entities
+      supabase
+        .from("reports")
+        .select("*")
+        .eq("organization_id", orgId)
+        .order("period_start", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      // Open action items from past reports
+      supabase
+        .from("tasks")
+        .select(`
+          id, name, description, status, priority, end_date, created_at,
+          source_report_id,
+          assignee:profiles!tasks_assignee_id_fkey(id, full_name, email, avatar_url),
+          project:projects!tasks_project_id_fkey(id, name)
+        `)
+        .not("source_report_id", "is", null)
+        .neq("status", "done")
+        .order("created_at", { ascending: true }),
+    ])
+
+  // Check for errors from Phase 1 queries
+  if (projectsResult.error) return { error: `Failed to load projects: ${projectsResult.error.message}` }
+  if (membersResult.error) return { error: `Failed to load members: ${membersResult.error.message}` }
+  if (actionItemsResult.error) return { error: `Failed to load action items: ${actionItemsResult.error.message}` }
+
+  // Build active projects list
+  const activeProjects: ReportWizardProject[] = (projectsResult.data ?? []).map(
+    (p: any) => ({
+      id: p.id,
+      name: p.name,
+      status: p.status,
+      clientName: p.client?.name ?? undefined,
+    })
+  )
+
+  // Build org members list
+  const orgMembers: ReportWizardMember[] = (membersResult.data ?? []).map(
+    (m: any) => ({
+      id: m.profile?.id ?? m.user_id,
+      full_name: m.profile?.full_name ?? null,
+      email: m.profile?.email ?? "",
+      avatar_url: m.profile?.avatar_url ?? null,
+    })
+  )
+
+  // Phase 2: Fetch project members (single query) + previous report sub-entities in parallel
+  const prevReport = prevReportResult.data
+  const projectIds = activeProjects.map((p) => p.id)
+
+  const prevSubEntitiesPromise = prevReport
+    ? Promise.all([
+        supabase
+          .from("report_projects")
+          .select("*")
+          .eq("report_id", prevReport.id)
+          .order("sort_order"),
+        supabase
+          .from("report_risks")
+          .select("*")
+          .eq("report_id", prevReport.id)
+          .in("status", ["open", "mitigated"]),
+      ])
+    : Promise.resolve(null)
+
+  // Single query for all project members instead of N separate queries
+  const [allProjectMembersResult, prevSubEntities] = await Promise.all([
+    projectIds.length > 0
+      ? supabase
+          .from("project_members")
+          .select("project_id, user_id")
+          .in("project_id", projectIds)
+      : Promise.resolve({ data: [], error: null }),
+    prevSubEntitiesPromise,
+  ])
+
+  // Build project members map from single query result
+  const projectMembersMap: Record<string, string[]> = {}
+  for (const id of projectIds) {
+    projectMembersMap[id] = []
+  }
+  for (const pm of allProjectMembersResult.data ?? []) {
+    if (projectMembersMap[pm.project_id]) {
+      projectMembersMap[pm.project_id].push(pm.user_id)
+    }
+  }
+
+  // Calculate weeks open for action items
+  const now = new Date()
+  const actionItems = (actionItemsResult.data ?? []).map((task: any) => {
+    const createdAt = new Date(task.created_at)
+    const weeksOpen = Math.floor(
+      (now.getTime() - createdAt.getTime()) / (7 * 24 * 60 * 60 * 1000)
+    )
+    return { ...task, weeks_open: weeksOpen }
+  })
+
+  // Build previous report data
+  const previousReport = {
+    report: prevReport ?? null,
+    projects: prevSubEntities?.[0]?.data ?? [],
+    risks: prevSubEntities?.[1]?.data ?? [],
+  }
+
+  return {
+    data: {
+      projects: activeProjects,
+      orgMembers,
+      projectMembers: projectMembersMap,
+      actionItems,
+      previousReport,
+    },
+  }
+}
+
+// ============================================
 // Create action item (task from report)
 // ============================================
 
