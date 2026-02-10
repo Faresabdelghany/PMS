@@ -3,12 +3,28 @@ import { createPersonalOrganization } from "@/lib/actions/auth"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
+/**
+ * Sanitize redirect path to prevent open redirect attacks.
+ * Only allows relative paths starting with / (no protocol-relative or absolute URLs).
+ */
+function sanitizeRedirectPath(path: string): string {
+  // Reject protocol-relative URLs (//evil.com) and URLs with protocols (http://...)
+  if (path.startsWith("//") || path.includes("://")) {
+    return "/"
+  }
+  // Ensure path starts with /
+  if (!path.startsWith("/")) {
+    return "/"
+  }
+  return path
+}
+
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get("code")
   const error = requestUrl.searchParams.get("error")
   const errorDescription = requestUrl.searchParams.get("error_description")
-  const next = requestUrl.searchParams.get("next") ?? "/"
+  const next = sanitizeRedirectPath(requestUrl.searchParams.get("next") ?? "/")
   const origin = requestUrl.origin
 
   // Handle OAuth errors from the provider

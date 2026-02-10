@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
+import DOMPurify from "dompurify"
 import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
 import { Check } from "@phosphor-icons/react/dist/ssr/Check"
 import { X } from "@phosphor-icons/react/dist/ssr/X"
@@ -40,7 +41,7 @@ export function TaskDetailDescription({
     return (
       <div
         className="prose prose-sm max-w-none text-foreground prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground"
-        dangerouslySetInnerHTML={{ __html: html }}
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }}
       />
     )
   }

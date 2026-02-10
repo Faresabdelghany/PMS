@@ -1,19 +1,19 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
 import type { OrganizationLabel, OrganizationLabelUpdate, LabelCategory } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
+import { requireAuth, requireOrgMember } from "./auth-helpers"
 
 // Get all labels for an organization, optionally filtered by category (with KV caching)
 export async function getLabels(
   orgId: string,
   category?: LabelCategory
 ): Promise<ActionResult<OrganizationLabel[]>> {
-  const supabase = await createClient()
-
   try {
+    const { supabase } = await requireOrgMember(orgId)
+
     // Cache all labels for the org, then filter by category client-side
     const allLabels = await cacheGet(
       CacheKeys.labels(orgId),
@@ -45,51 +45,55 @@ export async function createLabel(
   orgId: string,
   input: { category: LabelCategory; name: string; description?: string; color: string }
 ): Promise<ActionResult<OrganizationLabel>> {
-  const supabase = await createClient()
+  try {
+    const { supabase } = await requireOrgMember(orgId)
 
-  const name = input.name?.trim()
-  const description = input.description?.trim() || null
-  const color = input.color
-  const category = input.category
+    const name = input.name?.trim()
+    const description = input.description?.trim() || null
+    const color = input.color
+    const category = input.category
 
-  if (!["type", "duration", "group", "badge"].includes(category)) {
-    return { error: "Invalid label category" }
-  }
-
-  if (!name || name.length < 1 || name.length > 50) {
-    return { error: "Label name must be between 1 and 50 characters" }
-  }
-
-  if (description && description.length > 200) {
-    return { error: "Description must be less than 200 characters" }
-  }
-
-  if (!color || !color.match(/^#[0-9a-fA-F]{6}$/)) {
-    return { error: "Invalid color format" }
-  }
-
-  const { data, error } = await supabase
-    .from("organization_labels")
-    .insert({
-      organization_id: orgId,
-      category,
-      name,
-      description,
-      color,
-    })
-    .select()
-    .single()
-
-  if (error) {
-    if (error.code === "23505") {
-      return { error: "A label with this name already exists in this category" }
+    if (!["type", "duration", "group", "badge"].includes(category)) {
+      return { error: "Invalid label category" }
     }
-    return { error: error.message }
-  }
 
-  revalidatePath("/settings")
-  invalidate.labels(orgId)
-  return { data }
+    if (!name || name.length < 1 || name.length > 50) {
+      return { error: "Label name must be between 1 and 50 characters" }
+    }
+
+    if (description && description.length > 200) {
+      return { error: "Description must be less than 200 characters" }
+    }
+
+    if (!color || !color.match(/^#[0-9a-fA-F]{6}$/)) {
+      return { error: "Invalid color format" }
+    }
+
+    const { data, error } = await supabase
+      .from("organization_labels")
+      .insert({
+        organization_id: orgId,
+        category,
+        name,
+        description,
+        color,
+      })
+      .select()
+      .single()
+
+    if (error) {
+      if (error.code === "23505") {
+        return { error: "A label with this name already exists in this category" }
+      }
+      return { error: error.message }
+    }
+
+    revalidatePath("/settings")
+    invalidate.labels(orgId)
+    return { data }
+  } catch {
+    return { error: "Not authorized" }
+  }
 }
 
 // Update a label
@@ -97,66 +101,74 @@ export async function updateLabel(
   labelId: string,
   input: { name?: string; description?: string; color?: string }
 ): Promise<ActionResult<OrganizationLabel>> {
-  const supabase = await createClient()
+  try {
+    const { supabase } = await requireAuth()
 
-  const updates: OrganizationLabelUpdate = {}
+    const updates: OrganizationLabelUpdate = {}
 
-  if (input.name !== undefined) {
-    const name = input.name.trim()
-    if (name.length < 1 || name.length > 50) {
-      return { error: "Label name must be between 1 and 50 characters" }
+    if (input.name !== undefined) {
+      const name = input.name.trim()
+      if (name.length < 1 || name.length > 50) {
+        return { error: "Label name must be between 1 and 50 characters" }
+      }
+      updates.name = name
     }
-    updates.name = name
-  }
 
-  if (input.description !== undefined) {
-    const description = input.description.trim()
-    if (description.length > 200) {
-      return { error: "Description must be less than 200 characters" }
+    if (input.description !== undefined) {
+      const description = input.description.trim()
+      if (description.length > 200) {
+        return { error: "Description must be less than 200 characters" }
+      }
+      updates.description = description || null
     }
-    updates.description = description || null
-  }
 
-  if (input.color !== undefined) {
-    if (!input.color.match(/^#[0-9a-fA-F]{6}$/)) {
-      return { error: "Invalid color format" }
+    if (input.color !== undefined) {
+      if (!input.color.match(/^#[0-9a-fA-F]{6}$/)) {
+        return { error: "Invalid color format" }
+      }
+      updates.color = input.color
     }
-    updates.color = input.color
-  }
 
-  const { data, error } = await supabase
-    .from("organization_labels")
-    .update(updates)
-    .eq("id", labelId)
-    .select()
-    .single()
+    const { data, error } = await supabase
+      .from("organization_labels")
+      .update(updates)
+      .eq("id", labelId)
+      .select()
+      .single()
 
-  if (error) {
-    if (error.code === "23505") {
-      return { error: "A label with this name already exists in this category" }
+    if (error) {
+      if (error.code === "23505") {
+        return { error: "A label with this name already exists in this category" }
+      }
+      return { error: error.message }
     }
-    return { error: error.message }
-  }
 
-  revalidatePath("/settings")
-  if (data) invalidate.labels(data.organization_id)
-  return { data }
+    revalidatePath("/settings")
+    if (data) invalidate.labels(data.organization_id)
+    return { data }
+  } catch {
+    return { error: "Not authenticated" }
+  }
 }
 
 // Delete a label
 export async function deleteLabel(labelId: string, orgId?: string): Promise<ActionResult> {
-  const supabase = await createClient()
+  try {
+    const { supabase } = await requireAuth()
 
-  const { error } = await supabase
-    .from("organization_labels")
-    .delete()
-    .eq("id", labelId)
+    const { error } = await supabase
+      .from("organization_labels")
+      .delete()
+      .eq("id", labelId)
 
-  if (error) {
-    return { error: error.message }
+    if (error) {
+      return { error: error.message }
+    }
+
+    revalidatePath("/settings")
+    if (orgId) invalidate.labels(orgId)
+    return {}
+  } catch {
+    return { error: "Not authenticated" }
   }
-
-  revalidatePath("/settings")
-  if (orgId) invalidate.labels(orgId)
-  return {}
 }

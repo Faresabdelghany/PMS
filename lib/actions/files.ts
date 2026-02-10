@@ -1,6 +1,5 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import type {
   ProjectFile,
@@ -8,7 +7,7 @@ import type {
   FileType,
 } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
-import { requireAuth } from "./auth-helpers"
+import { requireAuth } from "@/lib/actions/auth-helpers"
 import { getStoragePublicUrl, removeStorageFile } from "@/lib/supabase/storage-utils"
 
 
@@ -28,6 +27,41 @@ export type FileMetadata = {
   description?: string
   fileType?: FileType
 }
+
+// Allowed MIME types for file uploads (SEC-07)
+const ALLOWED_MIME_TYPES = new Set([
+  // Documents
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "text/plain",
+  "text/csv",
+  // Archives
+  "application/zip",
+  "application/x-zip-compressed",
+  // Images
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+  "image/svg+xml",
+  // Video
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+  // Audio
+  "audio/mpeg",
+  "audio/wav",
+  "audio/ogg",
+  "audio/mp4",
+  "audio/x-m4a",
+  // Misc
+  "application/octet-stream", // Figma and generic binary files
+])
 
 // Bucket configuration
 const BUCKET_CONFIG: Record<string, { bucket: string; maxSize: number }> = {
@@ -331,92 +365,104 @@ function detectFileTypeFromUrl(url: string): FileType {
 
 // Delete a file
 export async function deleteFile(fileId: string): Promise<ActionResult> {
-  const supabase = await createClient()
+  try {
+    const { supabase } = await requireAuth()
 
-  // Get file record first
-  const { data: file, error: fetchError } = await supabase
-    .from("project_files")
-    .select("id, project_id, storage_path, file_type")
-    .eq("id", fileId)
-    .single()
+    // Get file record first
+    const { data: file, error: fetchError } = await supabase
+      .from("project_files")
+      .select("id, project_id, storage_path, file_type")
+      .eq("id", fileId)
+      .single()
 
-  if (fetchError || !file) {
-    return { error: "File not found" }
+    if (fetchError || !file) {
+      return { error: "File not found" }
+    }
+
+    // If there's a storage path, delete from storage
+    if (file.storage_path) {
+      const bucket = getBucketForFileType(file.file_type)
+      // Continue to delete database record even if storage delete fails
+      await removeStorageFile(supabase, bucket, [file.storage_path])
+    }
+
+    // Delete database record
+    const { error: dbError } = await supabase
+      .from("project_files")
+      .delete()
+      .eq("id", fileId)
+
+    if (dbError) {
+      return { error: `Failed to delete file record: ${dbError.message}` }
+    }
+
+    revalidatePath(`/projects/${file.project_id}`)
+    return {}
+  } catch {
+    return { error: "Not authenticated" }
   }
-
-  // If there's a storage path, delete from storage
-  if (file.storage_path) {
-    const bucket = getBucketForFileType(file.file_type)
-    // Continue to delete database record even if storage delete fails
-    await removeStorageFile(supabase, bucket, [file.storage_path])
-  }
-
-  // Delete database record
-  const { error: dbError } = await supabase
-    .from("project_files")
-    .delete()
-    .eq("id", fileId)
-
-  if (dbError) {
-    return { error: `Failed to delete file record: ${dbError.message}` }
-  }
-
-  revalidatePath(`/projects/${file.project_id}`)
-  return {}
 }
 
 // Get all files for a project
 export async function getProjectFiles(
   projectId: string
 ): Promise<ActionResult<ProjectFileWithUploader[]>> {
-  const supabase = await createClient()
+  try {
+    const { supabase } = await requireAuth()
 
-  const { data, error } = await supabase
-    .from("project_files")
-    .select(`
-      *,
-      uploader:profiles!project_files_added_by_id_fkey(
-        id,
-        full_name,
-        email,
-        avatar_url
-      )
-    `)
-    .eq("project_id", projectId)
-    .order("created_at", { ascending: false })
+    const { data, error } = await supabase
+      .from("project_files")
+      .select(`
+        *,
+        uploader:profiles!project_files_added_by_id_fkey(
+          id,
+          full_name,
+          email,
+          avatar_url
+        )
+      `)
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false })
 
-  if (error) {
-    return { error: error.message }
+    if (error) {
+      return { error: error.message }
+    }
+
+    return { data: data as ProjectFileWithUploader[] }
+  } catch {
+    return { error: "Not authenticated" }
   }
-
-  return { data: data as ProjectFileWithUploader[] }
 }
 
 // Get a single file
 export async function getFile(
   fileId: string
 ): Promise<ActionResult<ProjectFileWithUploader>> {
-  const supabase = await createClient()
+  try {
+    const { supabase } = await requireAuth()
 
-  const { data, error } = await supabase
-    .from("project_files")
-    .select(`
-      *,
-      uploader:profiles!project_files_added_by_id_fkey(
-        id,
-        full_name,
-        email,
-        avatar_url
-      )
-    `)
-    .eq("id", fileId)
-    .single()
+    const { data, error } = await supabase
+      .from("project_files")
+      .select(`
+        *,
+        uploader:profiles!project_files_added_by_id_fkey(
+          id,
+          full_name,
+          email,
+          avatar_url
+        )
+      `)
+      .eq("id", fileId)
+      .single()
 
-  if (error) {
-    return { error: error.message }
+    if (error) {
+      return { error: error.message }
+    }
+
+    return { data: data as ProjectFileWithUploader }
+  } catch {
+    return { error: "Not authenticated" }
   }
-
-  return { data: data as ProjectFileWithUploader }
 }
 
 // Get a fresh signed URL for a file (for downloads)
@@ -425,23 +471,27 @@ export async function getFileUrl(
   fileType: FileType = "file",
   expiresIn: number = 3600 // 1 hour default
 ): Promise<ActionResult<string>> {
-  const supabase = await createClient()
+  try {
+    const { supabase } = await requireAuth()
 
-  if (!storagePath) {
-    return { error: "No storage path provided" }
+    if (!storagePath) {
+      return { error: "No storage path provided" }
+    }
+
+    const bucket = getBucketForFileType(fileType)
+
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .createSignedUrl(storagePath, expiresIn)
+
+    if (error) {
+      return { error: `Failed to generate download URL: ${error.message}` }
+    }
+
+    return { data: data.signedUrl }
+  } catch {
+    return { error: "Not authenticated" }
   }
-
-  const bucket = getBucketForFileType(fileType)
-
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .createSignedUrl(storagePath, expiresIn)
-
-  if (error) {
-    return { error: `Failed to generate download URL: ${error.message}` }
-  }
-
-  return { data: data.signedUrl }
 }
 
 // Download a file (returns blob)
@@ -449,21 +499,25 @@ export async function downloadFile(
   storagePath: string,
   fileType: FileType = "file"
 ): Promise<ActionResult<Blob>> {
-  const supabase = await createClient()
+  try {
+    const { supabase } = await requireAuth()
 
-  if (!storagePath) {
-    return { error: "No storage path provided" }
+    if (!storagePath) {
+      return { error: "No storage path provided" }
+    }
+
+    const bucket = getBucketForFileType(fileType)
+
+    const { data, error } = await supabase.storage.from(bucket).download(storagePath)
+
+    if (error) {
+      return { error: `Failed to download file: ${error.message}` }
+    }
+
+    return { data }
+  } catch {
+    return { error: "Not authenticated" }
   }
-
-  const bucket = getBucketForFileType(fileType)
-
-  const { data, error } = await supabase.storage.from(bucket).download(storagePath)
-
-  if (error) {
-    return { error: `Failed to download file: ${error.message}` }
-  }
-
-  return { data }
 }
 
 // Update file metadata (name, description)
@@ -471,37 +525,45 @@ export async function updateFile(
   fileId: string,
   data: { name?: string; description?: string }
 ): Promise<ActionResult<ProjectFile>> {
-  const supabase = await createClient()
+  try {
+    const { supabase } = await requireAuth()
 
-  const { data: file, error } = await supabase
-    .from("project_files")
-    .update(data)
-    .eq("id", fileId)
-    .select()
-    .single()
+    const { data: file, error } = await supabase
+      .from("project_files")
+      .update(data)
+      .eq("id", fileId)
+      .select()
+      .single()
 
-  if (error) {
-    return { error: error.message }
+    if (error) {
+      return { error: error.message }
+    }
+
+    revalidatePath(`/projects/${file.project_id}`)
+    return { data: file }
+  } catch {
+    return { error: "Not authenticated" }
   }
-
-  revalidatePath(`/projects/${file.project_id}`)
-  return { data: file }
 }
 
 // Get files count for a project
 export async function getProjectFilesCount(
   projectId: string
 ): Promise<ActionResult<number>> {
-  const supabase = await createClient()
+  try {
+    const { supabase } = await requireAuth()
 
-  const { count, error } = await supabase
-    .from("project_files")
-    .select("*", { count: "exact", head: true })
-    .eq("project_id", projectId)
+    const { count, error } = await supabase
+      .from("project_files")
+      .select("*", { count: "exact", head: true })
+      .eq("project_id", projectId)
 
-  if (error) {
-    return { error: error.message }
+    if (error) {
+      return { error: error.message }
+    }
+
+    return { data: count || 0 }
+  } catch {
+    return { error: "Not authenticated" }
   }
-
-  return { data: count || 0 }
 }

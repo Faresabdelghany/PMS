@@ -12,6 +12,7 @@ import { SkipBack } from "@phosphor-icons/react/dist/ssr/SkipBack"
 import { SkipForward } from "@phosphor-icons/react/dist/ssr/SkipForward"
 import { CircleNotch } from "@phosphor-icons/react/dist/ssr/CircleNotch"
 import { format } from "date-fns"
+import DOMPurify from "dompurify"
 
 import type { ProjectNote, TranscriptSegment } from "@/lib/data/project-details"
 import { Button } from "@/components/ui/button"
@@ -145,7 +146,7 @@ export function NotePreviewModal({
                                 note.content ? (
                                     <div
                                         className="prose prose-sm max-w-none text-foreground"
-                                        dangerouslySetInnerHTML={{ __html: note.content }}
+                                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(note.content) }}
                                     />
                                 ) : (
                                     <div className="text-sm text-muted-foreground">

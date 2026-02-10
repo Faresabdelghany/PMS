@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
+import DOMPurify from "dompurify"
 import { formatDistanceToNow } from "date-fns"
 import { DotsThree } from "@phosphor-icons/react/dist/ssr/DotsThree"
 import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
@@ -81,7 +82,7 @@ export function TaskCommentItem({
     return (
       <div
         className="prose prose-sm max-w-none text-foreground prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-muted"
-        dangerouslySetInnerHTML={{ __html: html }}
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }}
       />
     )
   }
