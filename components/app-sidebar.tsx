@@ -49,6 +49,7 @@ import { useInboxRealtime } from "@/hooks/use-realtime"
 import type { Project } from "@/lib/supabase/types"
 import { useCommandPalette } from "@/components/command-palette"
 import { useSettingsDialog } from "@/components/providers/settings-dialog-provider"
+import { cn } from "@/lib/utils"
 import { PROGRESS_THRESHOLDS, BADGE_CAP } from "@/lib/constants"
 
 // Navigation items defined inline (no mock data dependency)
@@ -353,9 +354,17 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
                         <span>{item.label}</span>
                       </Link>
                     </SidebarMenuButton>
-                    {item.id === "inbox" && unreadCount > 0 && (
-                      <SidebarMenuBadge className="bg-muted text-muted-foreground rounded-full px-2">
-                        {unreadCount > BADGE_CAP ? `${BADGE_CAP}+` : unreadCount}
+                    {item.id === "inbox" && (
+                      <SidebarMenuBadge
+                        className={cn(
+                          "rounded-full px-2 transition-opacity",
+                          unreadCount > 0
+                            ? "bg-muted text-muted-foreground opacity-100"
+                            : "opacity-0 pointer-events-none"
+                        )}
+                        aria-hidden={unreadCount === 0}
+                      >
+                        {unreadCount > 0 ? (unreadCount > BADGE_CAP ? `${BADGE_CAP}+` : unreadCount) : "0"}
                       </SidebarMenuBadge>
                     )}
                   </SidebarMenuItem>

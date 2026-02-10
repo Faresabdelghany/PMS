@@ -95,7 +95,7 @@ export async function getReports(
     .select(`
       *,
       author:profiles!reports_created_by_fkey(id, full_name, email, avatar_url),
-      report_projects(project_id, status)
+      report_projects!report_projects_report_id_fkey(project_id, status)
     `)
     .eq("organization_id", orgId)
     .order("period_start", { ascending: false })
@@ -146,13 +146,13 @@ export async function getReport(
     .select(`
       *,
       author:profiles!reports_created_by_fkey(id, full_name, email, avatar_url),
-      report_projects(
+      report_projects!report_projects_report_id_fkey(
         *,
-        project:projects(id, name, client_id, status, progress, currency),
-        attachments:report_attachments(*)
+        project:projects!report_projects_project_id_fkey(id, name, client_id, status, progress, currency),
+        attachments:report_attachments!report_attachments_report_project_id_fkey(*)
       ),
-      report_risks(*),
-      report_highlights(*)
+      report_risks!report_risks_report_id_fkey(*),
+      report_highlights!report_highlights_report_id_fkey(*)
     `)
     .eq("id", reportId)
     .single()

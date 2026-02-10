@@ -67,7 +67,7 @@ const InboxItemRow = memo(function InboxItemRow({ item, onMarkAsRead, onDelete }
 
   return (
     <div
-      className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/50 transition-colors group [content-visibility:auto] [contain-intrinsic-size:auto_72px] ${
+      className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/50 transition-colors group [content-visibility:auto] [contain-intrinsic-size:auto_80px] ${
         !item.is_read ? "bg-primary/5" : ""
       }`}
     >

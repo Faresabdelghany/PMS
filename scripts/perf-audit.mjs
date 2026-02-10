@@ -72,6 +72,7 @@ const AUTH_PAGES = [
   { name: 'Chat', path: '/chat' },
   { name: 'Settings', path: '/settings' },
   { name: 'Performance', path: '/performance' },
+  { name: 'Reports', path: '/reports' },
 ];
 
 // --- Thresholds ---
@@ -289,6 +290,18 @@ async function main() {
       results.push({ name: 'Chat Conversation', status: 'skipped', error: 'no conversations found' });
     }
 
+    // Report detail — click first report link on /reports
+    await page.goto(BASE + '/reports', { waitUntil: 'networkidle', timeout: 20000 });
+    await page.waitForTimeout(1000);
+    const reportLink = await page.$('a[href*="/reports/"]');
+    if (reportLink) {
+      const reportHref = await reportLink.getAttribute('href');
+      results.push(await measurePage(page, BASE + reportHref, 'Report Detail'));
+    } else {
+      console.log('    Report Detail: SKIPPED (no reports)');
+      results.push({ name: 'Report Detail', status: 'skipped', error: 'no reports found' });
+    }
+
     console.log('');
   }
 
@@ -375,6 +388,23 @@ async function main() {
       }));
     }
 
+    // Create Report wizard (lazy-loaded)
+    await page.goto(BASE + '/reports', { waitUntil: 'networkidle', timeout: 20000 });
+    await page.waitForTimeout(2000);
+    const createReportBtn = await page.$('button:has-text("Create Report")');
+    if (createReportBtn) {
+      results.push(await measureInteraction(page, 'Create Report Wizard (open)', async () => {
+        await createReportBtn.click();
+        // Wizard opens as a dialog
+        await page.waitForSelector('[role="dialog"], .fixed.inset-0, [data-state="open"]', { timeout: 8000 });
+      }));
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(500);
+    } else {
+      console.log('    Create Report Wizard: SKIPPED (button not found)');
+      results.push({ name: 'Create Report Wizard (open)', type: 'interaction', status: 'skipped' });
+    }
+
     console.log('');
   }
 
@@ -387,7 +417,8 @@ async function main() {
       { from: '/tasks', to: 'a[href="/projects"]', label: 'Tasks -> Projects' },
       { from: '/projects', to: 'a[href="/clients"]', label: 'Projects -> Clients' },
       { from: '/clients', to: 'a[href="/chat"]', label: 'Clients -> Chat' },
-      { from: '/chat', to: 'a[href="/performance"]', label: 'Chat -> Performance' },
+      { from: '/chat', to: 'a[href="/reports"]', label: 'Chat -> Reports' },
+      { from: '/reports', to: 'a[href="/performance"]', label: 'Reports -> Performance' },
       { from: '/performance', to: 'a[href="/inbox"]', label: 'Performance -> Inbox' },
     ];
 

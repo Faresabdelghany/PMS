@@ -60,9 +60,9 @@ pnpm perf:bundle             # Bundle size analysis with webpack analyzer
 
 The perf audit uses Playwright to authenticate and test all 13+ pages:
 - **Public pages:** `/login`, `/signup`, `/forgot-password`
-- **Authenticated pages:** `/`, `/projects`, `/tasks`, `/clients`, `/inbox`, `/chat`, `/settings`, `/performance`
-- **Detail pages:** Project detail, client detail, chat conversation
-- **Interactions:** Command palette, create project wizard, new task, task detail panel
+- **Authenticated pages:** `/`, `/projects`, `/tasks`, `/clients`, `/inbox`, `/chat`, `/settings`, `/performance`, `/reports`
+- **Detail pages:** Project detail, client detail, chat conversation, report detail
+- **Interactions:** Command palette, create project wizard, new task, task detail panel, create report wizard
 - **Navigation:** All sidebar transitions
 
 Metrics per page: FCP, LCP, CLS, TTFB, DOM count, network requests, transfer size, JS/CSS/image bytes.

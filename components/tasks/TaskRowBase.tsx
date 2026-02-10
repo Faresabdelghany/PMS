@@ -31,7 +31,7 @@ export const TaskRowBase = memo(function TaskRowBase({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted/60 [content-visibility:auto] [contain-intrinsic-size:auto_40px]",
+        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted/60 [content-visibility:auto] [contain-intrinsic-size:auto_48px]",
         className,
       )}
     >

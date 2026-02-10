@@ -262,10 +262,9 @@ export function ReportDetailContent({ report }: ReportDetailContentProps) {
                 {rp.narrative && (
                   <div>
                     <h4 className="text-sm font-medium mb-2">Summary</h4>
-                    <div
-                      className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground"
-                      dangerouslySetInnerHTML={{ __html: rp.narrative }}
-                    />
+                    <p className="text-sm text-muted-foreground whitespace-pre-line">
+                      {rp.narrative}
+                    </p>
                   </div>
                 )}
 
