@@ -1,8 +1,13 @@
+import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { MyTasksPage } from "@/components/tasks/MyTasksPage"
 import { cachedGetUser, cachedGetUserOrganizations, cachedGetOrganizationMembers, cachedGetProjects, cachedGetMyTasks, cachedGetTags } from "@/lib/request-cache"
 import type { TaskWithRelations } from "@/lib/actions/tasks"
 import type { ProjectWithRelations } from "@/lib/actions/projects"
+
+export const metadata: Metadata = {
+  title: "My Tasks - PMS",
+}
 
 export default async function Page() {
   // Use cached auth - shared with layout (no duplicate DB hit)

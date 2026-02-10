@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { cachedGetUser } from "@/lib/request-cache"
@@ -6,6 +7,10 @@ import { cacheGet, CacheKeys, CacheTTL } from "@/lib/cache"
 import { ProjectsContent } from "@/components/projects-content"
 import { ProjectsListSkeleton } from "@/components/skeletons"
 import type { OrganizationWithRole } from "@/hooks/use-organization"
+
+export const metadata: Metadata = {
+  title: "Projects - PMS",
+}
 
 export default async function Page() {
   // Reuse layout's cached auth (React cache() dedup — ~0ms)

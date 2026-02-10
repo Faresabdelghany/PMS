@@ -359,38 +359,31 @@ export async function updateTask(
       )
     }
 
-    // Track assignee change
+    // Track assignee change — batch-fetch all needed profiles in one query
     if (data.assignee_id !== undefined && data.assignee_id !== oldTask.assignee_id) {
+      const profileIds = [data.assignee_id, oldTask.assignee_id].filter((id): id is string => !!id)
+      const { data: profiles } = profileIds.length > 0
+        ? await supabase.from("profiles").select("id, full_name, email").in("id", profileIds)
+        : { data: [] as { id: string; full_name: string | null; email: string }[] }
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) ?? [])
+
       if (data.assignee_id && !oldTask.assignee_id) {
-        // Assigned (need to get assignee name)
-        const { data: assignee } = await supabase
-          .from("profiles")
-          .select("full_name, email")
-          .eq("id", data.assignee_id)
-          .single()
+        const assignee = profileMap.get(data.assignee_id)
         activityPromises.push(
           createTaskActivity(id, "assignee_changed", null, data.assignee_id, {
             new_assignee_name: assignee?.full_name || assignee?.email || "Unknown",
           })
         )
       } else if (!data.assignee_id && oldTask.assignee_id) {
-        // Unassigned
-        const { data: oldAssignee } = await supabase
-          .from("profiles")
-          .select("full_name, email")
-          .eq("id", oldTask.assignee_id)
-          .single()
+        const oldAssignee = profileMap.get(oldTask.assignee_id)
         activityPromises.push(
           createTaskActivity(id, "assignee_removed", oldTask.assignee_id, null, {
             old_assignee_name: oldAssignee?.full_name || oldAssignee?.email || "Unknown",
           })
         )
       } else if (data.assignee_id && oldTask.assignee_id) {
-        // Reassigned
-        const [{ data: oldAssignee }, { data: newAssignee }] = await Promise.all([
-          supabase.from("profiles").select("full_name, email").eq("id", oldTask.assignee_id).single(),
-          supabase.from("profiles").select("full_name, email").eq("id", data.assignee_id).single(),
-        ])
+        const oldAssignee = profileMap.get(oldTask.assignee_id)
+        const newAssignee = profileMap.get(data.assignee_id)
         activityPromises.push(
           createTaskActivity(id, "assignee_changed", oldTask.assignee_id, data.assignee_id, {
             old_assignee_name: oldAssignee?.full_name || oldAssignee?.email || "Unknown",
@@ -556,23 +549,14 @@ export async function updateTaskAssignee(
 export async function deleteTask(id: string): Promise<ActionResult> {
   const supabase = await createClient()
 
-  // Get task info for revalidation and cache invalidation
+  // Get task info + org_id in a single join query (eliminates 1 sequential query)
   const { data: task } = await supabase
     .from("tasks")
-    .select("project_id, assignee_id")
+    .select("project_id, assignee_id, project:projects(organization_id)")
     .eq("id", id)
     .single()
 
-  // Get orgId from project for cache invalidation
-  let orgId = ""
-  if (task?.project_id) {
-    const { data: project } = await supabase
-      .from("projects")
-      .select("organization_id")
-      .eq("id", task.project_id)
-      .single()
-    orgId = project?.organization_id ?? ""
-  }
+  const orgId = (task?.project as { organization_id?: string } | null)?.organization_id ?? ""
 
   const { error } = await supabase.from("tasks").delete().eq("id", id)
 
@@ -639,10 +623,10 @@ export async function moveTaskToWorkstream(
 ): Promise<ActionResult> {
   const supabase = await createClient()
 
-  // Get task's project_id and assignee_id
+  // Get task's project_id, assignee_id, and org_id in a single join query (eliminates 1 sequential query)
   const { data: task } = await supabase
     .from("tasks")
-    .select("project_id, assignee_id")
+    .select("project_id, assignee_id, project:projects(organization_id)")
     .eq("id", taskId)
     .single()
 
@@ -650,12 +634,7 @@ export async function moveTaskToWorkstream(
     return { error: "Task not found" }
   }
 
-  // Get orgId from project for cache invalidation
-  const { data: project } = await supabase
-    .from("projects")
-    .select("organization_id")
-    .eq("id", task.project_id)
-    .single()
+  const orgId = (task.project as { organization_id?: string } | null)?.organization_id ?? ""
 
   // Update task's workstream and sort_order
   const { error } = await supabase
@@ -675,7 +654,7 @@ export async function moveTaskToWorkstream(
     revalidateTag(CacheTags.task(taskId))
     revalidateTag(CacheTags.tasks(task.project_id))
     // KV cache invalidation
-    await invalidate.task(task.project_id, task.assignee_id, project?.organization_id ?? "")
+    await invalidate.task(task.project_id, task.assignee_id, orgId)
   })
 
   return {}

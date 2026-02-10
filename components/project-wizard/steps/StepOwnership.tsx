@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ProjectData, OwnershipEntry } from "../types";
 import { Label } from "../../ui/label";
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "../../ui/select";
@@ -76,47 +76,20 @@ export function StepOwnership({ data, updateData, currentUserId, organizationMem
     return [];
   }, [organizationMembers]);
 
-  // Default owner is the current user
+  // Derive owner from data or current user (no effect needed)
   const defaultOwnerId = currentUserId || accounts[0]?.id;
   const ownerId = data.ownerId ?? defaultOwnerId;
 
-  // Set owner to current user on mount if not already set
-  useEffect(() => {
-    if (!data.ownerId && defaultOwnerId) {
-      updateData({ ownerId: defaultOwnerId });
-    }
-  }, [data.ownerId, defaultOwnerId, updateData]);
-
-  // Initialize empty contributor/stakeholder lists (no mock data)
-  useEffect(() => {
-    if (data.contributorOwnerships === undefined) {
-      updateData({
-        contributorOwnerships: [],
-        contributorIds: [],
-      });
-    }
-  }, [data.contributorOwnerships, updateData]);
-
-  useEffect(() => {
-    if (data.stakeholderOwnerships === undefined) {
-      updateData({
-        stakeholderOwnerships: [],
-        stakeholderIds: [],
-      });
-    }
-  }, [data.stakeholderOwnerships, updateData]);
-
+  // Derive from data with fallback defaults (no effects needed)
   const contributorOwnerships: OwnershipEntry[] =
-    data.contributorOwnerships ?? data.contributorIds.map<OwnershipEntry>((id) => ({
-      accountId: id,
-      access: "can_edit",
-    }));
+    data.contributorOwnerships ?? (data.contributorIds?.length
+      ? data.contributorIds.map<OwnershipEntry>((id) => ({ accountId: id, access: "can_edit" }))
+      : []);
 
   const stakeholderOwnerships: OwnershipEntry[] =
-    data.stakeholderOwnerships ?? data.stakeholderIds.map<OwnershipEntry>((id) => ({
-      accountId: id,
-      access: "can_view",
-    }));
+    data.stakeholderOwnerships ?? (data.stakeholderIds?.length
+      ? data.stakeholderIds.map<OwnershipEntry>((id) => ({ accountId: id, access: "can_view" }))
+      : []);
 
   const ownerAccount = useMemo(
     () => accounts.find((a) => a.id === ownerId) ?? accounts[0],

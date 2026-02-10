@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useTransition } from "react"
 import { useTheme } from "next-themes"
+import useSWR from "swr"
 import { Copy } from "@phosphor-icons/react/dist/ssr/Copy"
 import { Check } from "@phosphor-icons/react/dist/ssr/Check"
 import { Input } from "@/components/ui/input"
@@ -45,26 +46,22 @@ export function PreferencesPane() {
   const [copied, setCopied] = useState(false)
   const [isPending, startTransition] = useTransition()
 
-  // Preference state
-  const [preferences, setPreferences] = useState<UserSettingsWithPreferences | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  // Fetch preferences with SWR (auto-dedup, caching, revalidation)
+  const { data: preferences, isLoading, mutate } = useSWR(
+    "user-preferences",
+    () => getPreferences().then(r => r.data ?? null),
+    {
+      onSuccess(data) {
+        if (data?.color_theme && data.color_theme !== colorTheme) {
+          setColorTheme(data.color_theme as ColorTheme)
+        }
+      },
+    }
+  )
 
-  // Load preferences on mount
   useEffect(() => {
     setIsMounted(true)
-    const loadPreferences = async () => {
-      const result = await getPreferences()
-      if (result.data) {
-        setPreferences(result.data)
-        // Sync color theme from server preferences
-        if (result.data.color_theme && result.data.color_theme !== colorTheme) {
-          setColorTheme(result.data.color_theme as ColorTheme)
-        }
-      }
-      setIsLoading(false)
-    }
-    loadPreferences()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (!copied) return
@@ -86,19 +83,21 @@ export function PreferencesPane() {
     if (!preferences) return
 
     const updated = { ...preferences, [key]: value }
-    setPreferences(updated)
 
     // Immediately update color theme for instant feedback
     if (key === 'color_theme') {
       setColorTheme(value as ColorTheme)
     }
 
+    // Optimistic update via SWR
+    mutate(updated, false)
+
     startTransition(async () => {
       const result = await savePreferences({ [key]: value })
       if (result.error) {
         toast.error(result.error)
         // Revert on error
-        setPreferences(preferences)
+        mutate(preferences, false)
         if (key === 'color_theme') {
           setColorTheme(preferences.color_theme as ColorTheme)
         }

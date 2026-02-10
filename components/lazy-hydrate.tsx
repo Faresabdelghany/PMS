@@ -1,7 +1,6 @@
 "use client"
 
-import { lazyHydrate } from "next-lazy-hydration-on-scroll"
-import type { ReactNode, ComponentType } from "react"
+import React, { useRef, useState, useEffect, lazy, Suspense, type ReactNode, type ComponentType } from "react"
 
 interface LazyHydrateWrapperProps {
   children: ReactNode
@@ -16,24 +15,13 @@ export function LazyHydrateWrapper({ children }: LazyHydrateWrapperProps) {
 }
 
 /**
- * Create a lazy-hydrated version of a component using next-lazy-hydration-on-scroll.
+ * Create a lazy-hydrated version of a component using IntersectionObserver.
  *
- * This HOC defers JavaScript hydration until the component is near the viewport,
- * reducing Total Blocking Time (TBT) by up to 70%.
- *
- * @example
- * ```tsx
- * // Create lazy version at module level:
- * const LazyChart = createLazyHydratedComponent(
- *   () => import('./Chart'),
- *   { rootMargin: '200px' }
- * )
- *
- * // Usage in component:
- * <LazyChart data={data} />
- * ```
+ * Defers JavaScript loading and hydration until the component is near the viewport,
+ * reducing Total Blocking Time (TBT).
  */
 export function createLazyHydratedComponent(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   importFn: () => Promise<{ default: ComponentType<any> }>,
   options?: {
     rootMargin?: string
@@ -41,11 +29,43 @@ export function createLazyHydratedComponent(
     LoadingComponent?: ComponentType
   }
 ) {
-  return lazyHydrate(importFn, {
-    rootMargin: options?.rootMargin ?? "200px",
-    wrapperElement: options?.wrapperElement ?? "div",
-    LoadingComponent: options?.LoadingComponent,
-  })
+  const LazyComponent = lazy(importFn)
+  const Wrapper = (options?.wrapperElement ?? "div") as React.ElementType
+  const rootMargin = options?.rootMargin ?? "200px"
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return function LazyHydrated(props: any) {
+    const ref = useRef<HTMLElement>(null)
+    const [visible, setVisible] = useState(false)
+
+    useEffect(() => {
+      const el = ref.current
+      if (!el) return
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            setVisible(true)
+            observer.disconnect()
+          }
+        },
+        { rootMargin }
+      )
+      observer.observe(el)
+      return () => observer.disconnect()
+    }, [])
+
+    return (
+      <Wrapper ref={ref as any}>
+        {visible ? (
+          <Suspense fallback={options?.LoadingComponent ? <options.LoadingComponent /> : null}>
+            <LazyComponent {...props} />
+          </Suspense>
+        ) : (
+          options?.LoadingComponent ? <options.LoadingComponent /> : null
+        )}
+      </Wrapper>
+    )
+  }
 }
 
 // Lazy-hydrated below-fold components for ProjectDetailsPage

@@ -1,9 +1,14 @@
+import type { Metadata } from "next"
 import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { ClientsContent } from "@/components/clients-content"
 import { cachedGetUserOrganizations } from "@/lib/request-cache"
 import { getCachedClientsWithProjectCounts } from "@/lib/server-cache"
 import { ClientsListSkeleton } from "@/components/skeletons"
+
+export const metadata: Metadata = {
+  title: "Clients - PMS",
+}
 
 async function ClientsList({ orgId }: { orgId: string }) {
   const result = await getCachedClientsWithProjectCounts(orgId)

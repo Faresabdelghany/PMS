@@ -1,9 +1,14 @@
+import type { Metadata } from "next"
 import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { ChatPageContent } from "@/components/ai/chat-page-content"
 import { cachedGetUser, cachedGetUserOrganizations } from "@/lib/request-cache"
 import { getCachedAIConfigured } from "@/lib/server-cache"
 import { ChatPageSkeleton } from "@/components/skeletons/chat-skeletons"
+
+export const metadata: Metadata = {
+  title: "Chat - PMS",
+}
 
 async function ChatContent() {
   // Fetch auth, orgs, and AI config check in parallel

@@ -1,7 +1,12 @@
+import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { InboxContent } from "@/components/inbox/InboxContent"
 import { cachedGetUserOrganizations } from "@/lib/request-cache"
 import { getCachedInboxItems, getCachedUnreadCount } from "@/lib/server-cache"
+
+export const metadata: Metadata = {
+  title: "Inbox - PMS",
+}
 
 export default async function Page() {
   // Use cached orgs - shared with layout (no duplicate DB hit)

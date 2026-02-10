@@ -201,21 +201,20 @@ export async function updateWorkstream(
     return { error: "Workstream not found" }
   }
 
-  // Require project membership
-  try {
-    await requireProjectMember(current.project_id)
-  } catch {
+  // Run auth check and project end_date fetch in parallel (eliminates 1 waterfall)
+  const [authResult, projectResult] = await Promise.all([
+    requireProjectMember(current.project_id).catch(() => null),
+    input.endDate
+      ? supabase.from("projects").select("end_date").eq("id", current.project_id).single()
+      : Promise.resolve({ data: null }),
+  ])
+
+  if (!authResult) {
     return { error: "You must be a project member to update workstreams" }
   }
 
-  // Get project to validate end_date
   if (input.endDate) {
-    const { data: project } = await supabase
-      .from("projects")
-      .select("end_date")
-      .eq("id", current.project_id)
-      .single()
-
+    const project = projectResult.data
     if (project?.end_date && new Date(input.endDate) > new Date(project.end_date)) {
       return {
         error: `Workstream end date cannot be after project end date (${project.end_date})`

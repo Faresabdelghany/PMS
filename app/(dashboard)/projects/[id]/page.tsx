@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { ProjectDetailsPage } from "@/components/projects/ProjectDetailsPage"
 import {
@@ -13,6 +14,13 @@ import { transformProjectToUI } from "@/lib/transforms/project-details"
 
 type PageProps = {
   params: Promise<{ id: string }>
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params
+  const result = await getCachedProjectWithDetails(id)
+  const name = result.data?.name ?? "Project"
+  return { title: `${name} - PMS` }
 }
 
 /**

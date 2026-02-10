@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { Breadcrumbs } from "@/components/projects/Breadcrumbs"
@@ -6,6 +7,10 @@ import { PerformanceStatCards } from "@/components/performance/PerformanceStatCa
 import { PerformanceCharts } from "@/components/performance/PerformanceCharts"
 import { cachedGetUserOrganizations } from "@/lib/request-cache"
 import { getCachedPerformanceMetrics } from "@/lib/server-cache"
+
+export const metadata: Metadata = {
+  title: "Performance - PMS",
+}
 
 async function PerformanceContent({ orgId }: { orgId: string }) {
   const result = await getCachedPerformanceMetrics(orgId)
