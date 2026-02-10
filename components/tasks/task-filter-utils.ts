@@ -3,9 +3,23 @@ import type { FilterChip as FilterChipType } from "@/lib/view-options"
 import type { TaskStatus } from "@/lib/constants/status"
 
 // Hoisted regex patterns for performance (avoid recreating on each call)
-const HTML_TAG_REGEX = /<[^>]+>/g
 const WHITESPACE_REGEX = /\s+/g
 const WHITESPACE_TO_DASH_REGEX = /\s+/g
+
+/** Strip HTML tags using indexOf loop — avoids regex backtracking (S5852). */
+function stripHtmlTags(input: string): string {
+  let result = ""
+  let pos = 0
+  let tagStart = input.indexOf("<", pos)
+  while (tagStart !== -1) {
+    result += input.substring(pos, tagStart) + " "
+    const tagEnd = input.indexOf(">", tagStart + 1)
+    pos = tagEnd === -1 ? input.length : tagEnd + 1
+    tagStart = input.indexOf("<", pos)
+  }
+  result += input.substring(pos)
+  return result
+}
 
 // Generic task type that works with both mock data and Supabase data
 export type TaskLike = {
@@ -157,6 +171,6 @@ export function computeTaskFilterCounts(tasks: TaskLike[]): FilterCounts {
 
 export function getTaskDescriptionSnippet(task: TaskLike): string {
   if (!task.description) return ""
-  const plain = task.description.replace(HTML_TAG_REGEX, " ").replace(WHITESPACE_REGEX, " ").trim()
+  const plain = stripHtmlTags(task.description).replace(WHITESPACE_REGEX, " ").trim()
   return plain
 }
