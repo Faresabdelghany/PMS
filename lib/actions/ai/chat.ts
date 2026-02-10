@@ -88,45 +88,59 @@ export async function sendChatMessage(
   return parseChatResponse(result.data!.text)
 }
 
+/**
+ * Extract a trailing JSON block from content after a given marker.
+ * Uses string indexOf + JSON.parse instead of regex to avoid
+ * ReDoS (super-linear backtracking) from patterns like [\s\S]*? (S5852).
+ */
+function extractJsonSuffix(
+  content: string,
+  marker: string
+): { parsed: unknown; rest: string } | null {
+  const idx = content.lastIndexOf(marker)
+  if (idx === -1) return null
+  const jsonStr = content.substring(idx + marker.length).trim()
+  if (!jsonStr) return null
+  try {
+    const parsed = JSON.parse(jsonStr)
+    return { parsed, rest: content.substring(0, idx).trim() }
+  } catch {
+    return null
+  }
+}
+
 function parseChatResponse(text: string): ActionResult<ChatResponse> {
   let content = text
   let actions: ProposedAction[] | undefined
   let action: ProposedAction | undefined
   let suggestedActions: SuggestedAction[] | undefined
 
-  // Try to match suggested actions (SUGGESTED_ACTIONS: [...])
-  const suggestionsMatch = content.match(/SUGGESTED_ACTIONS:\s*(\[[\s\S]*?\])(?=\s*$|\s*\n|$)/m)
-  if (suggestionsMatch) {
-    try {
-      suggestedActions = JSON.parse(suggestionsMatch[1]) as SuggestedAction[]
-      content = content.replace(/SUGGESTED_ACTIONS:\s*\[[\s\S]*?\](?=\s*$|\s*\n|$)/m, "").trim()
-    } catch {
-      // Ignore parse errors for suggestions
-    }
+  // Extract SUGGESTED_ACTIONS: [...] from end of content
+  const suggestionsResult = extractJsonSuffix(content, "SUGGESTED_ACTIONS:")
+  if (suggestionsResult && Array.isArray(suggestionsResult.parsed)) {
+    suggestedActions = suggestionsResult.parsed as SuggestedAction[]
+    content = suggestionsResult.rest
   }
 
-  // Try to match multiple actions first (ACTIONS_JSON: [...])
-  const actionsMatch = content.match(/ACTIONS_JSON:\s*(\[[\s\S]*?\])(?=\s*$|\s*\n|$)/m)
-  if (actionsMatch) {
-    try {
-      actions = JSON.parse(actionsMatch[1]) as ProposedAction[]
-      content = content.replace(/ACTIONS_JSON:\s*\[[\s\S]*?\](?=\s*$|\s*\n|$)/m, "").trim()
-      return { data: { content, actions, suggestedActions } }
-    } catch {
-      // Fall through to single action check
-    }
+  // Extract ACTIONS_JSON: [...] from end of content
+  const actionsResult = extractJsonSuffix(content, "ACTIONS_JSON:")
+  if (actionsResult && Array.isArray(actionsResult.parsed)) {
+    actions = actionsResult.parsed as ProposedAction[]
+    content = actionsResult.rest
+    return { data: { content, actions, suggestedActions } }
   }
 
-  // Try to match single action (ACTION_JSON: {...})
-  const actionMatch = content.match(/ACTION_JSON:\s*(\{[\s\S]*?\})(?=\s*$|\s*\n|$)/m)
-  if (actionMatch) {
-    try {
-      action = JSON.parse(actionMatch[1]) as ProposedAction
-      content = content.replace(/ACTION_JSON:\s*\{[\s\S]*?\}(?=\s*$|\s*\n|$)/m, "").trim()
-      return { data: { content, action, suggestedActions } }
-    } catch {
-      return { data: { content, suggestedActions } }
-    }
+  // Extract ACTION_JSON: {...} from end of content
+  const actionResult = extractJsonSuffix(content, "ACTION_JSON:")
+  if (
+    actionResult &&
+    typeof actionResult.parsed === "object" &&
+    actionResult.parsed !== null &&
+    !Array.isArray(actionResult.parsed)
+  ) {
+    action = actionResult.parsed as ProposedAction
+    content = actionResult.rest
+    return { data: { content, action, suggestedActions } }
   }
 
   return { data: { content, suggestedActions } }

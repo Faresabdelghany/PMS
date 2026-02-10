@@ -5,7 +5,7 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 
 // --- Config ---
 const BASE = process.env.BASE_URL || 'https://pms-nine-gold.vercel.app';
@@ -81,6 +81,16 @@ const THRESHOLDS = {
   cls: 0.1,
   ttfb: 800,   // ms
 };
+
+// --- Security: validate shell arguments (defense in depth for S4721) ---
+// All values are derived from hardcoded page arrays + env vars, not user input.
+// This validation prevents shell metacharacter injection as an extra safeguard.
+const SHELL_META = /[`$;&|<>!\n\r{}]/;
+function assertSafeShellArg(value, label) {
+  if (SHELL_META.test(value)) {
+    throw new Error(`Unsafe characters detected in ${label}: ${value}`);
+  }
+}
 
 // --- Helpers ---
 async function collectMetrics(page) {
@@ -411,11 +421,19 @@ async function main() {
       const outArg = outPath.replace(/\\/g, '/');
 
       process.stdout.write(`    ${p.name}... `);
+      // Validate dynamic args before shell execution (defense in depth — S4721)
+      assertSafeShellArg(url, 'url');
+      assertSafeShellArg(outArg, 'output path');
+      assertSafeShellArg(headersArg, 'headers path');
       try {
-        execSync(
-          `npx lighthouse "${url}" --output=json --output-path="${outArg}" --preset=desktop --chrome-flags="--headless=new" --extra-headers="${headersArg}"`,
-          { timeout: 120000, stdio: 'pipe' }
-        );
+        // spawnSync with array args + validated inputs.
+        // shell: true required on Windows for npx (.cmd batch file).
+        spawnSync('npx', [
+          'lighthouse', url,
+          '--output=json', `--output-path=${outArg}`,
+          '--preset=desktop', '--chrome-flags=--headless=new',
+          `--extra-headers=${headersArg}`
+        ], { timeout: 120000, stdio: 'pipe', shell: true });
       } catch (e) {
         // Lighthouse exits with code 1 on Windows due to Chrome temp dir cleanup — harmless
       }
