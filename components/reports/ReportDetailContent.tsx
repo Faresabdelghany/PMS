@@ -1,34 +1,20 @@
 "use client"
 
-import { useState, useCallback, useTransition, startTransition } from "react"
+import { useState, useCallback, useMemo, useTransition, startTransition } from "react"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
+import Image from "next/image"
+import { format } from "date-fns"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Breadcrumbs } from "@/components/projects/Breadcrumbs"
+import { QuickCreateModalLayout } from "@/components/QuickCreateModalLayout"
+import { GenericPicker, DatePicker } from "@/components/project-wizard/steps/StepQuickCreate"
 import { getOptimizedAvatarUrl } from "@/lib/assets/avatars"
 import { createReportActionItem } from "@/lib/actions/reports"
 import { cn } from "@/lib/utils"
@@ -46,6 +32,8 @@ import { ChartBar } from "@phosphor-icons/react/dist/ssr/ChartBar"
 import { CheckCircle } from "@phosphor-icons/react/dist/ssr/CheckCircle"
 import { Circle } from "@phosphor-icons/react/dist/ssr/Circle"
 import { Clock } from "@phosphor-icons/react/dist/ssr/Clock"
+import { Folder } from "@phosphor-icons/react/dist/ssr/Folder"
+import { X } from "@phosphor-icons/react/dist/ssr/X"
 
 import type { ReportProjectStatus, ClientSatisfaction, RiskSeverity, RiskStatus } from "@/lib/supabase/types"
 
@@ -87,11 +75,12 @@ const PERIOD_TYPE_LABELS: Record<string, string> = {
   quarterly: "Quarterly",
 }
 
-const PRIORITY_OPTIONS = [
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-  { value: "urgent", label: "Urgent" },
+const ACTION_PRIORITY_OPTIONS = [
+  { id: "no-priority", label: "No priority" },
+  { id: "low", label: "Low" },
+  { id: "medium", label: "Medium" },
+  { id: "high", label: "High" },
+  { id: "urgent", label: "Urgent" },
 ]
 
 const TASK_STATUS_CONFIG: Record<string, { label: string; color: string; Icon: typeof CheckCircle }> = {
@@ -192,17 +181,15 @@ export function ReportDetailContent({ report, organizationMembers, actionItems }
   const [activeTab, setActiveTab] = useState("overview")
   const [, startTabTransition] = useTransition()
 
-  // Action item dialog state
-  const [showActionDialog, setShowActionDialog] = useState(false)
+  // Action item modal state (matches TaskQuickCreateModal pattern)
+  const [showActionModal, setShowActionModal] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
-  const [actionForm, setActionForm] = useState({
-    projectId: "",
-    name: "",
-    description: "",
-    assigneeId: "",
-    priority: "medium",
-    dueDate: "",
-  })
+  const [actionTitle, setActionTitle] = useState("")
+  const [actionDescription, setActionDescription] = useState("")
+  const [actionProjectId, setActionProjectId] = useState<string | undefined>(undefined)
+  const [actionAssignee, setActionAssignee] = useState<{ id: string; name: string; avatar?: string | null } | undefined>(undefined)
+  const [actionPriority, setActionPriority] = useState<{ id: string; label: string }>(ACTION_PRIORITY_OPTIONS[1])
+  const [actionDueDate, setActionDueDate] = useState<Date | undefined>(undefined)
 
   const reportProjects = report.report_projects || []
   const risks = report.report_risks || []
@@ -237,8 +224,27 @@ export function ReportDetailContent({ report, organizationMembers, actionItems }
     setShowWizard(true)
   }, [])
 
+  // Convert org members to picker format (same as TaskQuickCreateModal)
+  const assigneeOptions = useMemo(() =>
+    organizationMembers.map((m) => ({
+      id: m.id,
+      name: m.name,
+      avatar: m.avatarUrl,
+    })),
+    [organizationMembers]
+  )
+
+  // Convert report projects to picker format
+  const projectOptions = useMemo(() =>
+    reportProjects.map((rp: any) => ({
+      id: rp.project?.id || "",
+      label: rp.project?.name || "Unknown",
+    })),
+    [reportProjects]
+  )
+
   const handleAddActionItem = useCallback(async () => {
-    if (!actionForm.name.trim() || !actionForm.projectId) {
+    if (!actionTitle.trim() || !actionProjectId) {
       toast.error("Please provide a task name and select a project")
       return
     }
@@ -246,12 +252,12 @@ export function ReportDetailContent({ report, organizationMembers, actionItems }
     setActionLoading(true)
     const result = await createReportActionItem({
       reportId: report.id,
-      projectId: actionForm.projectId,
-      name: actionForm.name.trim(),
-      description: actionForm.description.trim() || undefined,
-      assigneeId: actionForm.assigneeId || undefined,
-      priority: actionForm.priority,
-      dueDate: actionForm.dueDate || undefined,
+      projectId: actionProjectId,
+      name: actionTitle.trim(),
+      description: actionDescription.trim() || undefined,
+      assigneeId: actionAssignee?.id || undefined,
+      priority: actionPriority.id === "no-priority" ? "medium" : actionPriority.id,
+      dueDate: actionDueDate ? actionDueDate.toISOString().split("T")[0] : undefined,
     })
     setActionLoading(false)
 
@@ -261,18 +267,28 @@ export function ReportDetailContent({ report, organizationMembers, actionItems }
     }
 
     toast.success("Action item created")
-    setShowActionDialog(false)
-    setActionForm({ projectId: "", name: "", description: "", assigneeId: "", priority: "medium", dueDate: "" })
+    setShowActionModal(false)
+    // Reset form
+    setActionTitle("")
+    setActionDescription("")
+    setActionProjectId(undefined)
+    setActionAssignee(undefined)
+    setActionPriority(ACTION_PRIORITY_OPTIONS[1])
+    setActionDueDate(undefined)
     startTransition(() => router.refresh())
-  }, [actionForm, report.id, router])
+  }, [actionTitle, actionDescription, actionProjectId, actionAssignee, actionPriority, actionDueDate, report.id, router])
 
-  const openActionDialog = useCallback(() => {
+  const openActionModal = useCallback(() => {
     // Pre-select first project if only one
     if (reportProjects.length === 1) {
-      setActionForm(prev => ({ ...prev, projectId: reportProjects[0].project?.id || "" }))
+      setActionProjectId(reportProjects[0].project?.id || undefined)
     }
-    setShowActionDialog(true)
+    setShowActionModal(true)
   }, [reportProjects])
+
+  const closeActionModal = useCallback(() => {
+    setShowActionModal(false)
+  }, [])
 
   return (
     <div className="flex flex-1 flex-col min-w-0 m-2 border border-border rounded-lg">
@@ -578,7 +594,7 @@ export function ReportDetailContent({ report, organizationMembers, actionItems }
                         <p className="text-sm text-muted-foreground">
                           Tasks created from this report appear on the Tasks page with a &quot;report-action&quot; tag.
                         </p>
-                        <Button variant="outline" size="sm" onClick={openActionDialog}>
+                        <Button variant="outline" size="sm" onClick={openActionModal}>
                           <Plus className="h-3.5 w-3.5" />
                           Add Action Item
                         </Button>
@@ -587,7 +603,7 @@ export function ReportDetailContent({ report, organizationMembers, actionItems }
                       {actionItems.length === 0 ? (
                         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12 text-center">
                           <p className="text-sm text-muted-foreground">No action items yet.</p>
-                          <Button variant="outline" size="sm" className="mt-3" onClick={openActionDialog}>
+                          <Button variant="outline" size="sm" className="mt-3" onClick={openActionModal}>
                             <Plus className="h-3.5 w-3.5" />
                             Create first action item
                           </Button>
@@ -759,117 +775,158 @@ export function ReportDetailContent({ report, organizationMembers, actionItems }
           />
         )}
 
-        {/* Add Action Item Dialog */}
-        <Dialog open={showActionDialog} onOpenChange={setShowActionDialog}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Add Action Item</DialogTitle>
-              <DialogDescription>
-                Create a task linked to this report. It will appear on the Tasks page with a &quot;report-action&quot; tag.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-2">
-              <div className="space-y-2">
-                <Label htmlFor="action-project">Project *</Label>
-                <Select
-                  value={actionForm.projectId}
-                  onValueChange={(v) => setActionForm(prev => ({ ...prev, projectId: v }))}
-                >
-                  <SelectTrigger id="action-project">
-                    <SelectValue placeholder="Select a project" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {reportProjects.map((rp: any) => (
-                      <SelectItem key={rp.project?.id} value={rp.project?.id || ""}>
-                        {rp.project?.name || "Unknown"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="action-name">Task Name *</Label>
-                <Input
-                  id="action-name"
-                  placeholder="e.g., Follow up on client feedback"
-                  value={actionForm.name}
-                  onChange={(e) => setActionForm(prev => ({ ...prev, name: e.target.value }))}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="action-description">Description</Label>
-                <Textarea
-                  id="action-description"
-                  placeholder="Optional details..."
-                  rows={3}
-                  value={actionForm.description}
-                  onChange={(e) => setActionForm(prev => ({ ...prev, description: e.target.value }))}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="action-assignee">Assignee</Label>
-                  <Select
-                    value={actionForm.assigneeId}
-                    onValueChange={(v) => setActionForm(prev => ({ ...prev, assigneeId: v }))}
+        {/* Add Action Item Modal - matches TaskQuickCreateModal design */}
+        <QuickCreateModalLayout
+          open={showActionModal}
+          onClose={closeActionModal}
+          onSubmitShortcut={handleAddActionItem}
+        >
+          {/* Context row - project picker + close button */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <GenericPicker
+                items={projectOptions}
+                selectedId={actionProjectId}
+                onSelect={(item) => setActionProjectId(item.id)}
+                placeholder="Choose project..."
+                renderItem={(item) => (
+                  <div className="flex items-center justify-between w-full gap-2">
+                    <span>{item.label}</span>
+                  </div>
+                )}
+                trigger={
+                  <button
+                    className="bg-background flex gap-2 h-7 items-center px-2 py-1 rounded-lg border border-background hover:border-primary/50 transition-colors text-xs disabled:opacity-60"
                   >
-                    <SelectTrigger id="action-assignee">
-                      <SelectValue placeholder="Unassigned" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {organizationMembers.map((m) => (
-                        <SelectItem key={m.id} value={m.id}>
-                          {m.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="action-priority">Priority</Label>
-                  <Select
-                    value={actionForm.priority}
-                    onValueChange={(v) => setActionForm(prev => ({ ...prev, priority: v }))}
-                  >
-                    <SelectTrigger id="action-priority">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PRIORITY_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="action-due-date">Due Date</Label>
-                <Input
-                  id="action-due-date"
-                  type="date"
-                  value={actionForm.dueDate}
-                  onChange={(e) => setActionForm(prev => ({ ...prev, dueDate: e.target.value }))}
-                />
-              </div>
+                    <Folder className="size-4 text-muted-foreground" />
+                    <span className="truncate max-w-[160px] font-medium text-foreground">
+                      {projectOptions.find((p: { id: string; label: string }) => p.id === actionProjectId)?.label ?? "Choose project"}
+                    </span>
+                  </button>
+                }
+              />
             </div>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowActionDialog(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleAddActionItem} disabled={actionLoading}>
-                {actionLoading ? "Creating..." : "Create Action Item"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={closeActionModal}
+              className="h-8 w-8 rounded-full opacity-70 hover:opacity-100"
+            >
+              <X className="h-4 w-4 text-muted-foreground" />
+            </Button>
+          </div>
+
+          {/* Title */}
+          <div className="flex flex-col gap-2 w-full shrink-0 mt-1">
+            <div className="flex gap-1 h-10 items-center w-full">
+              <input
+                type="text"
+                value={actionTitle}
+                onChange={(e) => setActionTitle(e.target.value)}
+                placeholder="Action item title"
+                className="w-full font-normal leading-7 text-foreground placeholder:text-muted-foreground text-xl outline-none bg-transparent border-none p-0"
+                autoComplete="off"
+                autoFocus
+              />
+            </div>
+          </div>
+
+          {/* Description */}
+          <div className="w-full">
+            <textarea
+              value={actionDescription}
+              onChange={(e) => setActionDescription(e.target.value)}
+              placeholder="Briefly describe this action item..."
+              rows={3}
+              className="w-full text-sm leading-6 text-foreground placeholder:text-muted-foreground outline-none bg-transparent border-none p-0 resize-none"
+            />
+          </div>
+
+          {/* Properties row - pill buttons matching TaskQuickCreateModal */}
+          <div className="flex flex-wrap gap-2.5 items-start w-full shrink-0">
+            {/* Assignee */}
+            {assigneeOptions.length > 0 && (
+              <GenericPicker
+                items={assigneeOptions}
+                onSelect={setActionAssignee}
+                selectedId={actionAssignee?.id}
+                placeholder="Assign owner..."
+                renderItem={(item) => (
+                  <div className="flex items-center gap-2 w-full">
+                    {item.avatar ? (
+                      <Image
+                        src={item.avatar}
+                        alt=""
+                        width={20}
+                        height={20}
+                        className="size-5 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="size-5 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
+                        {item.name.charAt(0)}
+                      </div>
+                    )}
+                    <span className="flex-1">{item.name}</span>
+                  </div>
+                )}
+                trigger={
+                  <button className="bg-muted flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:border-primary/50 transition-colors">
+                    <div className="size-4 rounded-full bg-background flex items-center justify-center text-[10px] font-medium">
+                      {actionAssignee?.name.charAt(0) ?? "?"}
+                    </div>
+                    <span className="font-medium text-foreground text-sm leading-5">
+                      {actionAssignee?.name ?? "Assignee"}
+                    </span>
+                  </button>
+                }
+              />
+            )}
+
+            {/* Due date */}
+            <DatePicker
+              date={actionDueDate}
+              onSelect={setActionDueDate}
+              trigger={
+                <button className="bg-background flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:bg-black/5 transition-colors">
+                  <CalendarBlank className="size-4 text-muted-foreground" />
+                  <span className="font-medium text-foreground text-sm leading-5">
+                    {actionDueDate ? format(actionDueDate, "dd/MM/yyyy") : "Due date"}
+                  </span>
+                </button>
+              }
+            />
+
+            {/* Priority */}
+            <GenericPicker
+              items={ACTION_PRIORITY_OPTIONS}
+              onSelect={setActionPriority}
+              selectedId={actionPriority?.id}
+              placeholder="Set priority..."
+              renderItem={(item) => (
+                <div className="flex items-center gap-2 w-full">
+                  <span className="flex-1">{item.label}</span>
+                </div>
+              )}
+              trigger={
+                <button className="bg-background flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:bg-black/5 transition-colors">
+                  <ChartBar className="size-4 text-muted-foreground" />
+                  <span className="font-medium text-foreground text-sm leading-5">
+                    {actionPriority?.label ?? "Priority"}
+                  </span>
+                </button>
+              }
+            />
+          </div>
+
+          {/* Footer - matches TaskQuickCreateModal */}
+          <div className="flex items-center justify-end mt-auto w-full pt-4 shrink-0">
+            <Button type="button" onClick={handleAddActionItem} disabled={actionLoading} className="h-10 px-4 rounded-xl">
+              {actionLoading ? "Creating..." : "Create Action Item"}
+            </Button>
+          </div>
+        </QuickCreateModalLayout>
       </div>
     </div>
   )
