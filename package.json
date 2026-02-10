@@ -89,7 +89,10 @@
       "@tailwindcss/oxide",
       "sharp",
       "unrs-resolver"
-    ]
+    ],
+    "overrides": {
+      "tar": ">=7.5.7"
+    }
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",

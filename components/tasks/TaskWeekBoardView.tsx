@@ -30,7 +30,10 @@ import { Button } from "@/components/ui/button"
 import type { ProjectTask } from "@/lib/data/project-details"
 import { TaskBoardCard } from "@/components/tasks/TaskBoardCard"
 import type { CreateTaskContext } from "@/components/tasks/TaskQuickCreateModal"
-import type { OrganizationTag } from "@/lib/supabase/types"
+import type { OrganizationTag as FullOrganizationTag } from "@/lib/supabase/types"
+
+// Minimal tag shape — only fields used by UI
+type OrganizationTag = Pick<FullOrganizationTag, "id" | "name" | "color">
 import { cn } from "@/lib/utils"
 
 type DayColumn = {

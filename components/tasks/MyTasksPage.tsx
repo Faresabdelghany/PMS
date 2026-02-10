@@ -102,7 +102,10 @@ import { FilterPopover, type MemberOption, type TagOption } from "@/components/f
 import { ChipOverflow } from "@/components/chip-overflow"
 import { ViewOptionsPopover } from "@/components/view-options-popover"
 import { TaskQuickCreateModal, type CreateTaskContext } from "@/components/tasks/TaskQuickCreateModal"
-import type { OrganizationTag } from "@/lib/supabase/types"
+import type { OrganizationTag as FullOrganizationTag } from "@/lib/supabase/types"
+
+// Minimal tag shape for RSC serialization — only fields used by UI
+type OrganizationTag = Pick<FullOrganizationTag, "id" | "name" | "color">
 import { formatDueLabel } from "@/lib/date-utils"
 import { toast } from "sonner"
 import { usePooledRealtime } from "@/hooks/realtime-context"

@@ -34,14 +34,33 @@ export default async function Page() {
     cachedGetTags(orgId),
   ])
 
+  // Map to minimal shapes to reduce RSC serialization payload
+  const members = (membersResult.data || []).map(m => ({
+    id: m.id,
+    user_id: m.user_id,
+    role: m.role,
+    profile: {
+      id: m.profile?.id ?? "",
+      full_name: m.profile?.full_name ?? null,
+      email: m.profile?.email ?? "",
+      avatar_url: m.profile?.avatar_url ?? null,
+    },
+  }))
+
+  const tags = (tagsResult.data || []).map(t => ({
+    id: t.id,
+    name: t.name,
+    color: t.color,
+  }))
+
   return (
     <MyTasksPage
       initialTasks={(tasksResult.data || []) as TaskWithRelations[]}
       projects={(projectsResult.data || []) as ProjectWithRelations[]}
       organizationId={orgId}
       userId={user.id}
-      organizationMembers={membersResult.data || []}
-      organizationTags={tagsResult.data || []}
+      organizationMembers={members}
+      organizationTags={tags}
     />
   )
 }
