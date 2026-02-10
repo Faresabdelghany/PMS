@@ -610,6 +610,29 @@ export async function createReportActionItem(input: {
 }
 
 // ============================================
+// Get action items for a specific report
+// ============================================
+
+export async function getReportActionItems(
+  reportId: string
+): Promise<ActionResult<any[]>> {
+  const { supabase } = await requireAuth()
+
+  const { data, error } = await supabase
+    .from("tasks")
+    .select(`
+      id, name, description, status, priority, end_date, created_at,
+      assignee:profiles!tasks_assignee_id_fkey(id, full_name, avatar_url),
+      project:projects!tasks_project_id_fkey(id, name)
+    `)
+    .eq("source_report_id", reportId)
+    .order("created_at", { ascending: true })
+
+  if (error) return { error: error.message }
+  return { data: data ?? [] }
+}
+
+// ============================================
 // Get open action items (for wizard Step 5)
 // ============================================
 
