@@ -983,6 +983,7 @@ export interface Database {
           name: string
           description: string | null
           color: string
+          is_system: boolean
           created_at: string
           updated_at: string
         }
@@ -992,6 +993,7 @@ export interface Database {
           name: string
           description?: string | null
           color: string
+          is_system?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -1001,6 +1003,7 @@ export interface Database {
           name?: string
           description?: string | null
           color?: string
+          is_system?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -1312,6 +1315,11 @@ export interface Database {
           tasks_in_progress: number
           tasks_overdue: number
           financial_notes: string | null
+          financial_total_value: number
+          financial_paid_amount: number
+          financial_invoiced_amount: number
+          financial_unpaid_amount: number
+          financial_currency: string
           created_at: string
           updated_at: string
         }
@@ -1335,6 +1343,11 @@ export interface Database {
           tasks_in_progress?: number
           tasks_overdue?: number
           financial_notes?: string | null
+          financial_total_value?: number
+          financial_paid_amount?: number
+          financial_invoiced_amount?: number
+          financial_unpaid_amount?: number
+          financial_currency?: string
           created_at?: string
           updated_at?: string
         }
@@ -1358,6 +1371,11 @@ export interface Database {
           tasks_in_progress?: number
           tasks_overdue?: number
           financial_notes?: string | null
+          financial_total_value?: number
+          financial_paid_amount?: number
+          financial_invoiced_amount?: number
+          financial_unpaid_amount?: number
+          financial_currency?: string
           created_at?: string
           updated_at?: string
         }

@@ -13,6 +13,8 @@ import {
 import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
 import { X } from "@phosphor-icons/react/dist/ssr/X"
 import { CheckCircle } from "@phosphor-icons/react/dist/ssr/CheckCircle"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { getOptimizedAvatarUrl } from "@/lib/assets/avatars"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { suggestReportHighlights } from "@/lib/actions/report-ai"
@@ -408,7 +410,10 @@ export function ReportWizardStep5({
               return (
                 <div
                   key={item.id}
-                  className="rounded-xl bg-background p-4"
+                  className={cn(
+                    "rounded-xl bg-background p-4",
+                    overdue && "ring-1 ring-red-200 dark:ring-red-900/50",
+                  )}
                 >
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex-1 min-w-0 space-y-1">
@@ -436,7 +441,18 @@ export function ReportWizardStep5({
                         )}
                       </div>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        <span>{assigneeName}</span>
+                        <div className="flex items-center gap-1.5">
+                          <Avatar className="h-4 w-4">
+                            <AvatarImage
+                              src={getOptimizedAvatarUrl(item.assignee?.avatar_url, 16) || undefined}
+                              alt={assigneeName}
+                            />
+                            <AvatarFallback className="text-[8px]">
+                              {assigneeName.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span>{assigneeName}</span>
+                        </div>
                         {item.end_date && (
                           <>
                             <span className="text-muted-foreground/40">|</span>

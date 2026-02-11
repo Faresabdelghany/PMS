@@ -38,6 +38,7 @@ const createTaskSchema = z.object({
   start_date: z.string().optional().nullable(),
   end_date: z.string().optional().nullable(),
   tag: z.string().max(50).optional().nullable(),
+  source_report_id: z.string().uuid().optional().nullable(),
 })
 
 const updateTaskSchema = createTaskSchema.partial()

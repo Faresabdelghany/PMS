@@ -3,9 +3,7 @@
 import { useState, useCallback, useMemo, useTransition, startTransition } from "react"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
-import Image from "next/image"
 import Link from "next/link"
-import { format } from "date-fns"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -13,10 +11,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Breadcrumbs } from "@/components/projects/Breadcrumbs"
-import { QuickCreateModalLayout } from "@/components/QuickCreateModalLayout"
-import { GenericPicker, DatePicker } from "@/components/project-wizard/steps/StepQuickCreate"
+import { TaskQuickCreateModal } from "@/components/tasks/TaskQuickCreateModal"
 import { getOptimizedAvatarUrl } from "@/lib/assets/avatars"
-import { createReportActionItem } from "@/lib/actions/reports"
 import { cn } from "@/lib/utils"
 
 import { LinkSimple } from "@phosphor-icons/react/dist/ssr/LinkSimple"
@@ -34,7 +30,6 @@ import { Circle } from "@phosphor-icons/react/dist/ssr/Circle"
 import { Clock } from "@phosphor-icons/react/dist/ssr/Clock"
 import { Folder } from "@phosphor-icons/react/dist/ssr/Folder"
 import { ArrowSquareOut } from "@phosphor-icons/react/dist/ssr/ArrowSquareOut"
-import { X } from "@phosphor-icons/react/dist/ssr/X"
 
 import type { ReportProjectStatus, ClientSatisfaction, RiskSeverity, RiskStatus } from "@/lib/supabase/types"
 
@@ -76,18 +71,18 @@ const PERIOD_TYPE_LABELS: Record<string, string> = {
   quarterly: "Quarterly",
 }
 
-const ACTION_PRIORITY_OPTIONS = [
-  { id: "no-priority", label: "No priority" },
-  { id: "low", label: "Low" },
-  { id: "medium", label: "Medium" },
-  { id: "high", label: "High" },
-  { id: "urgent", label: "Urgent" },
-]
-
 const TASK_STATUS_CONFIG: Record<string, { label: string; color: string; Icon: typeof CheckCircle }> = {
   todo: { label: "To Do", color: "text-muted-foreground", Icon: Circle },
   "in-progress": { label: "In Progress", color: "text-blue-600", Icon: Clock },
   done: { label: "Done", color: "text-emerald-600", Icon: CheckCircle },
+}
+
+const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
+  urgent: { label: "Urgent", color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" },
+  high: { label: "High", color: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" },
+  medium: { label: "Medium", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300" },
+  low: { label: "Low", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" },
+  "no-priority": { label: "None", color: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" },
 }
 
 // ============================================
@@ -103,6 +98,15 @@ function formatDateRange(start: string, end: string): string {
     return `${startMonth} ${s.getDate()} \u2013 ${e.getDate()}, ${s.getFullYear()}`
   }
   return `${startMonth} ${s.getDate()} \u2013 ${endMonth} ${e.getDate()}, ${s.getFullYear()}`
+}
+
+function formatCurrency(amount: number, currency: string = "USD"): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount)
 }
 
 function StatusChangeIndicator({ current, previous }: { current: string; previous: string | null }) {
@@ -146,11 +150,16 @@ function ProgressDelta({ current, previous }: { current: number; previous: numbe
 // Types
 // ============================================
 
-type OrgMember = {
+type OrganizationMember = {
   id: string
-  name: string
-  email: string
-  avatarUrl: string | null
+  user_id: string
+  role: string
+  profile: {
+    id: string
+    full_name: string | null
+    email: string
+    avatar_url: string | null
+  }
 }
 
 type ActionItem = {
@@ -160,6 +169,7 @@ type ActionItem = {
   status: string
   priority: string
   end_date: string | null
+  tag: string | null
   created_at: string
   assignee: { id: string; full_name: string; avatar_url: string | null } | null
   project: { id: string; name: string } | null
@@ -167,30 +177,31 @@ type ActionItem = {
 
 interface ReportDetailContentProps {
   report: any
-  organizationMembers: OrgMember[]
+  organizationMembers: OrganizationMember[]
   actionItems: ActionItem[]
   /** When rendered under a project, use project-scoped breadcrumbs */
   projectId?: string
+  organizationTags?: { id: string; name: string; color: string }[]
+  projectWorkstreams?: { id: string; name: string }[]
 }
 
 // ============================================
 // Main Component
 // ============================================
 
-export function ReportDetailContent({ report, organizationMembers, actionItems, projectId }: ReportDetailContentProps) {
+export function ReportDetailContent({
+  report,
+  organizationMembers,
+  actionItems,
+  projectId,
+  organizationTags = [],
+  projectWorkstreams = [],
+}: ReportDetailContentProps) {
   const router = useRouter()
   const [showMeta, setShowMeta] = useState(true)
   const [showWizard, setShowWizard] = useState(false)
+  const [showTaskModal, setShowTaskModal] = useState(false)
   const [, startTabTransition] = useTransition()
-
-  // Action item modal state
-  const [showActionModal, setShowActionModal] = useState(false)
-  const [actionLoading, setActionLoading] = useState(false)
-  const [actionTitle, setActionTitle] = useState("")
-  const [actionDescription, setActionDescription] = useState("")
-  const [actionAssignee, setActionAssignee] = useState<{ id: string; name: string; avatar?: string | null } | undefined>(undefined)
-  const [actionPriority, setActionPriority] = useState<{ id: string; label: string }>(ACTION_PRIORITY_OPTIONS[1])
-  const [actionDueDate, setActionDueDate] = useState<Date | undefined>(undefined)
 
   // Flat data from report
   const risks = report.report_risks || []
@@ -234,56 +245,31 @@ export function ReportDetailContent({ report, organizationMembers, actionItems, 
     setShowWizard(true)
   }, [])
 
-  // Convert org members to picker format
-  const assigneeOptions = useMemo(() =>
-    organizationMembers.map((m) => ({
-      id: m.id,
-      name: m.name,
-      avatar: m.avatarUrl,
-    })),
-    [organizationMembers]
-  )
+  // Build TaskQuickCreateModal project data
+  const modalProjects = useMemo(() => {
+    if (!effectiveProjectId || !report.project) return []
+    return [{
+      id: effectiveProjectId,
+      name: report.project.name,
+      workstreams: projectWorkstreams,
+    }]
+  }, [effectiveProjectId, report.project, projectWorkstreams])
 
-  const handleAddActionItem = useCallback(async () => {
-    if (!actionTitle.trim() || !report.project?.id) {
-      toast.error("Please provide a task name")
-      return
-    }
-
-    setActionLoading(true)
-    const result = await createReportActionItem({
-      reportId: report.id,
-      projectId: report.project.id,
-      name: actionTitle.trim(),
-      description: actionDescription.trim() || undefined,
-      assigneeId: actionAssignee?.id || undefined,
-      priority: actionPriority.id === "no-priority" ? "medium" : actionPriority.id,
-      dueDate: actionDueDate ? actionDueDate.toISOString().split("T")[0] : undefined,
-    })
-    setActionLoading(false)
-
-    if (result.error) {
-      toast.error(result.error)
-      return
-    }
-
-    toast.success("Action item created")
-    setShowActionModal(false)
-    setActionTitle("")
-    setActionDescription("")
-    setActionAssignee(undefined)
-    setActionPriority(ACTION_PRIORITY_OPTIONS[1])
-    setActionDueDate(undefined)
+  const handleTaskCreated = useCallback(() => {
+    setShowTaskModal(false)
     startTransition(() => router.refresh())
-  }, [actionTitle, actionDescription, actionAssignee, actionPriority, actionDueDate, report.id, report.project, router])
+  }, [router])
 
-  const openActionModal = useCallback(() => {
-    setShowActionModal(true)
-  }, [])
+  // Financial data
+  const financialTotalValue = report.financial_total_value ?? 0
+  const financialPaid = report.financial_paid_amount ?? 0
+  const financialInvoiced = report.financial_invoiced_amount ?? 0
+  const financialUnpaid = report.financial_unpaid_amount ?? 0
+  const financialCurrency = report.financial_currency || "USD"
+  const hasFinancialData = financialTotalValue > 0 || financialPaid > 0 || financialInvoiced > 0 || financialUnpaid > 0
 
-  const closeActionModal = useCallback(() => {
-    setShowActionModal(false)
-  }, [])
+  // Overdue detection for action items
+  const today = new Date().toISOString().split("T")[0]
 
   return (
     <div className="flex flex-1 flex-col min-w-0 m-2 border border-border rounded-lg">
@@ -417,22 +403,44 @@ export function ReportDetailContent({ report, organizationMembers, actionItems, 
                   </section>
                 )}
 
+                {/* Financial Summary */}
+                {(hasFinancialData || report.financial_notes) && (
+                  <section>
+                    <h3 className="text-base font-semibold mb-3">Financial Summary</h3>
+                    {hasFinancialData && (
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-4">
+                        <div className="rounded-xl border bg-background p-4 text-center">
+                          <p className="text-xs text-muted-foreground">Total Value</p>
+                          <p className="text-lg font-semibold mt-1">{formatCurrency(financialTotalValue, financialCurrency)}</p>
+                        </div>
+                        <div className="rounded-xl border bg-background p-4 text-center">
+                          <p className="text-xs text-emerald-600">Collected</p>
+                          <p className="text-lg font-semibold mt-1 text-emerald-700 dark:text-emerald-400">{formatCurrency(financialPaid, financialCurrency)}</p>
+                        </div>
+                        <div className="rounded-xl border bg-background p-4 text-center">
+                          <p className="text-xs text-yellow-600">Invoiced</p>
+                          <p className="text-lg font-semibold mt-1 text-yellow-700 dark:text-yellow-400">{formatCurrency(financialInvoiced, financialCurrency)}</p>
+                        </div>
+                        <div className="rounded-xl border bg-background p-4 text-center">
+                          <p className="text-xs text-red-600">Outstanding</p>
+                          <p className="text-lg font-semibold mt-1 text-red-700 dark:text-red-400">{formatCurrency(financialUnpaid, financialCurrency)}</p>
+                        </div>
+                      </div>
+                    )}
+                    {report.financial_notes && (
+                      <p className="text-sm text-muted-foreground whitespace-pre-line">
+                        {report.financial_notes}
+                      </p>
+                    )}
+                  </section>
+                )}
+
                 {/* Narrative */}
                 {report.narrative && (
                   <section>
                     <h3 className="text-base font-semibold mb-3">Summary</h3>
                     <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
                       {report.narrative}
-                    </p>
-                  </section>
-                )}
-
-                {/* Financial Notes */}
-                {report.financial_notes && (
-                  <section>
-                    <h3 className="text-base font-semibold mb-3">Financial Notes</h3>
-                    <p className="text-sm text-muted-foreground whitespace-pre-line">
-                      {report.financial_notes}
                     </p>
                   </section>
                 )}
@@ -560,69 +568,86 @@ export function ReportDetailContent({ report, organizationMembers, actionItems, 
                 {/* Action Items */}
                 <section>
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-base font-semibold">Action Items</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-semibold">Action Items</h3>
+                      <Badge variant="secondary" className="text-xs">{actionItems.length}</Badge>
+                    </div>
                     {report.project && (
-                      <Button variant="outline" size="sm" onClick={openActionModal}>
+                      <Button variant="outline" size="sm" onClick={() => setShowTaskModal(true)}>
                         <Plus className="h-3.5 w-3.5" />
                         Add Action Item
                       </Button>
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground mb-4">
-                    Tasks created from this report appear on the Tasks page with a &quot;report-action&quot; tag.
+                    Tasks created from this report appear on the Tasks page with the &quot;Action Item&quot; tag.
                   </p>
 
                   {actionItems.length === 0 ? (
                     <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12 text-center">
                       <p className="text-sm text-muted-foreground">No action items yet.</p>
                       {report.project && (
-                        <Button variant="outline" size="sm" className="mt-3" onClick={openActionModal}>
+                        <Button variant="outline" size="sm" className="mt-3" onClick={() => setShowTaskModal(true)}>
                           <Plus className="h-3.5 w-3.5" />
                           Create first action item
                         </Button>
                       )}
                     </div>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="rounded-md border divide-y">
                       {actionItems.map((item) => {
                         const taskStatusConfig = TASK_STATUS_CONFIG[item.status] || TASK_STATUS_CONFIG.todo
                         const StatusIcon = taskStatusConfig.Icon
+                        const priorityConfig = PRIORITY_CONFIG[item.priority] || PRIORITY_CONFIG["no-priority"]
+                        const isOverdue = item.end_date && item.end_date < today && item.status !== "done"
+
                         return (
                           <div
                             key={item.id}
-                            className="flex items-center gap-3 rounded-lg border p-4 hover:bg-muted/50 transition-colors"
+                            className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer"
+                            onClick={() => {
+                              if (effectiveProjectId) {
+                                router.push(`/projects/${effectiveProjectId}?task=${item.id}`)
+                              }
+                            }}
                           >
                             <StatusIcon className={cn("h-4 w-4 shrink-0", taskStatusConfig.color)} />
-                            <div className="flex-1 min-w-0">
-                              <p className={cn("text-sm font-medium truncate", item.status === "done" && "line-through text-muted-foreground")}>
-                                {item.name}
-                              </p>
-                              <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
-                                {item.priority && (
-                                  <span className="capitalize">{item.priority}</span>
-                                )}
-                                {item.end_date && (
-                                  <>
-                                    <span className="text-muted-foreground/40">&middot;</span>
-                                    <span>Due {new Date(item.end_date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
-                                  </>
-                                )}
-                              </div>
+                            <span className={cn(
+                              "text-sm font-medium truncate min-w-0",
+                              item.status === "done" && "line-through text-muted-foreground"
+                            )}>
+                              {item.name}
+                            </span>
+                            <div className="flex items-center gap-2 ml-auto shrink-0">
+                              <Badge variant="secondary" className={cn("text-[10px] font-medium", priorityConfig.color)}>
+                                {priorityConfig.label}
+                              </Badge>
+                              {item.assignee && (
+                                <Avatar className="h-6 w-6">
+                                  <AvatarImage
+                                    src={getOptimizedAvatarUrl(item.assignee.avatar_url, 24) || undefined}
+                                    alt={item.assignee.full_name}
+                                  />
+                                  <AvatarFallback className="text-[9px]">
+                                    {item.assignee.full_name?.charAt(0) || "?"}
+                                  </AvatarFallback>
+                                </Avatar>
+                              )}
+                              {item.end_date && (
+                                <span className={cn(
+                                  "text-xs whitespace-nowrap",
+                                  isOverdue ? "text-red-600 font-medium" : "text-muted-foreground"
+                                )}>
+                                  {isOverdue && "Overdue \u2022 "}
+                                  {new Date(item.end_date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                                </span>
+                              )}
+                              {item.tag && (
+                                <Badge variant="outline" className="text-[10px]">
+                                  {item.tag}
+                                </Badge>
+                              )}
                             </div>
-                            {item.assignee && (
-                              <Avatar className="h-6 w-6 shrink-0">
-                                <AvatarImage
-                                  src={getOptimizedAvatarUrl(item.assignee.avatar_url, 24) || undefined}
-                                  alt={item.assignee.full_name}
-                                />
-                                <AvatarFallback className="text-[9px]">
-                                  {item.assignee.full_name?.charAt(0) || "?"}
-                                </AvatarFallback>
-                              </Avatar>
-                            )}
-                            <Badge variant="outline" className={cn("text-xs shrink-0", taskStatusConfig.color)}>
-                              {taskStatusConfig.label}
-                            </Badge>
                           </div>
                         )
                       })}
@@ -750,145 +775,19 @@ export function ReportDetailContent({ report, organizationMembers, actionItems, 
           />
         )}
 
-        {/* Add Action Item Modal */}
-        <QuickCreateModalLayout
-          open={showActionModal}
-          onClose={closeActionModal}
-          onSubmitShortcut={handleAddActionItem}
-        >
-          {/* Context row */}
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 flex-wrap">
-              {report.project && (
-                <div className="bg-background flex gap-2 h-7 items-center px-2 py-1 rounded-lg border border-border text-xs">
-                  <Folder className="size-4 text-muted-foreground" />
-                  <span className="truncate max-w-[160px] font-medium text-foreground">
-                    {report.project.name}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={closeActionModal}
-              className="h-8 w-8 rounded-full opacity-70 hover:opacity-100"
-            >
-              <X className="h-4 w-4 text-muted-foreground" />
-            </Button>
-          </div>
-
-          {/* Title */}
-          <div className="flex flex-col gap-2 w-full shrink-0 mt-1">
-            <div className="flex gap-1 h-10 items-center w-full">
-              <input
-                type="text"
-                value={actionTitle}
-                onChange={(e) => setActionTitle(e.target.value)}
-                placeholder="Action item title"
-                className="w-full font-normal leading-7 text-foreground placeholder:text-muted-foreground text-xl outline-none bg-transparent border-none p-0"
-                autoComplete="off"
-                autoFocus
-              />
-            </div>
-          </div>
-
-          {/* Description */}
-          <div className="w-full">
-            <textarea
-              value={actionDescription}
-              onChange={(e) => setActionDescription(e.target.value)}
-              placeholder="Briefly describe this action item..."
-              rows={3}
-              className="w-full text-sm leading-6 text-foreground placeholder:text-muted-foreground outline-none bg-transparent border-none p-0 resize-none"
-            />
-          </div>
-
-          {/* Properties row */}
-          <div className="flex flex-wrap gap-2.5 items-start w-full shrink-0">
-            {/* Assignee */}
-            {assigneeOptions.length > 0 && (
-              <GenericPicker
-                items={assigneeOptions}
-                onSelect={setActionAssignee}
-                selectedId={actionAssignee?.id}
-                placeholder="Assign owner..."
-                renderItem={(item) => (
-                  <div className="flex items-center gap-2 w-full">
-                    {item.avatar ? (
-                      <Image
-                        src={item.avatar}
-                        alt=""
-                        width={20}
-                        height={20}
-                        className="size-5 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="size-5 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
-                        {item.name.charAt(0)}
-                      </div>
-                    )}
-                    <span className="flex-1">{item.name}</span>
-                  </div>
-                )}
-                trigger={
-                  <button className="bg-muted flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:border-primary/50 transition-colors">
-                    <div className="size-4 rounded-full bg-background flex items-center justify-center text-[10px] font-medium">
-                      {actionAssignee?.name.charAt(0) ?? "?"}
-                    </div>
-                    <span className="font-medium text-foreground text-sm leading-5">
-                      {actionAssignee?.name ?? "Assignee"}
-                    </span>
-                  </button>
-                }
-              />
-            )}
-
-            {/* Due date */}
-            <DatePicker
-              date={actionDueDate}
-              onSelect={setActionDueDate}
-              trigger={
-                <button className="bg-background flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:bg-black/5 transition-colors">
-                  <CalendarBlank className="size-4 text-muted-foreground" />
-                  <span className="font-medium text-foreground text-sm leading-5">
-                    {actionDueDate ? format(actionDueDate, "dd/MM/yyyy") : "Due date"}
-                  </span>
-                </button>
-              }
-            />
-
-            {/* Priority */}
-            <GenericPicker
-              items={ACTION_PRIORITY_OPTIONS}
-              onSelect={setActionPriority}
-              selectedId={actionPriority?.id}
-              placeholder="Set priority..."
-              renderItem={(item) => (
-                <div className="flex items-center gap-2 w-full">
-                  <span className="flex-1">{item.label}</span>
-                </div>
-              )}
-              trigger={
-                <button className="bg-background flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:bg-black/5 transition-colors">
-                  <ChartBar className="size-4 text-muted-foreground" />
-                  <span className="font-medium text-foreground text-sm leading-5">
-                    {actionPriority?.label ?? "Priority"}
-                  </span>
-                </button>
-              }
-            />
-          </div>
-
-          {/* Footer */}
-          <div className="flex items-center justify-end mt-auto w-full pt-4 shrink-0">
-            <Button type="button" onClick={handleAddActionItem} disabled={actionLoading} className="h-10 px-4 rounded-xl">
-              {actionLoading ? "Creating..." : "Create Action Item"}
-            </Button>
-          </div>
-        </QuickCreateModalLayout>
+        {/* Add Action Item via TaskQuickCreateModal */}
+        <TaskQuickCreateModal
+          open={showTaskModal}
+          onClose={() => setShowTaskModal(false)}
+          onTaskCreated={handleTaskCreated}
+          context={{ projectId: effectiveProjectId }}
+          projects={modalProjects}
+          organizationMembers={organizationMembers}
+          tags={organizationTags}
+          defaultTag="Action Item"
+          defaultTagLocked
+          sourceReportId={report.id}
+        />
       </div>
     </div>
   )

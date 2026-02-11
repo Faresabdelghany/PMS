@@ -2,9 +2,11 @@ import type { Metadata } from "next"
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { getReport, getReportActionItems } from "@/lib/actions/reports"
+import { getTags } from "@/lib/actions/tags"
 import { getCachedOrganizationMembers } from "@/lib/server-cache"
 import { ReportDetailContent } from "@/components/reports/ReportDetailContent"
 import { ReportDetailSkeleton } from "@/components/skeletons"
+import { createClient } from "@/lib/supabase/server"
 
 export const metadata: Metadata = {
   title: "Report - PMS",
@@ -23,25 +25,43 @@ async function ReportDetail({ projectId, reportId }: { projectId: string; report
 
   const report = result.data
 
-  // Fetch org members in parallel with already-started action items
-  const [membersResult, actionItemsResult] = await Promise.all([
+  // Fetch org members, action items, tags, and workstreams in parallel
+  const [membersResult, actionItemsResult, tagsResult, workstreamsResult] = await Promise.all([
     getCachedOrganizationMembers(report.organization_id),
     actionItemsPromise,
+    getTags(report.organization_id),
+    createClient().then((supabase) =>
+      supabase
+        .from("workstreams")
+        .select("id, name")
+        .eq("project_id", projectId)
+        .order("sort_order")
+    ),
   ])
 
-  const members = (membersResult.data || []).map((m: any) => ({
-    id: m.user_id,
-    name: m.profile?.full_name || m.profile?.email || "Unknown",
-    email: m.profile?.email || "",
-    avatarUrl: m.profile?.avatar_url || null,
+  // Pass raw org members (full format for TaskQuickCreateModal)
+  const rawMembers = membersResult.data || []
+
+  // Minimal tags for client component
+  const tags = (tagsResult.data || []).map((t) => ({
+    id: t.id,
+    name: t.name,
+    color: t.color,
+  }))
+
+  const workstreams = (workstreamsResult.data || []).map((ws) => ({
+    id: ws.id,
+    name: ws.name,
   }))
 
   return (
     <ReportDetailContent
       report={report}
-      organizationMembers={members}
+      organizationMembers={rawMembers}
       actionItems={actionItemsResult.data || []}
       projectId={projectId}
+      organizationTags={tags}
+      projectWorkstreams={workstreams}
     />
   )
 }

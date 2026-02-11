@@ -84,6 +84,12 @@ interface TaskQuickCreateModalProps {
   projects?: ProjectOption[]
   organizationMembers?: OrganizationMember[]
   tags?: OrganizationTag[]
+  /** Pre-select a tag by name on open */
+  defaultTag?: string
+  /** Link created tasks to a report */
+  sourceReportId?: string
+  /** Disable the tag picker (show as read-only) */
+  defaultTagLocked?: boolean
 }
 
 type TaskStatusId = 'todo' | 'in-progress' | 'done'
@@ -136,6 +142,9 @@ export function TaskQuickCreateModal({
   projects = [],
   organizationMembers = [],
   tags = [],
+  defaultTag,
+  sourceReportId,
+  defaultTagLocked,
 }: TaskQuickCreateModalProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState<string | undefined>(undefined)
@@ -228,8 +237,10 @@ export function TaskQuickCreateModal({
     setStartDate(new Date())
     setTargetDate(undefined)
     setPriority(PRIORITY_OPTIONS[0])
-    setSelectedTag(undefined)
-  }, [open, context?.projectId, context?.workstreamId, context?.workstreamName, editingTask, assigneeOptions, getWorkstreamsForProject, tags])
+    // Pre-select tag from defaultTag prop
+    const defaultTagOption = defaultTag ? tags.find((t) => t.name === defaultTag) : undefined
+    setSelectedTag(defaultTagOption)
+  }, [open, context?.projectId, context?.workstreamId, context?.workstreamName, editingTask, assigneeOptions, getWorkstreamsForProject, tags, defaultTag])
 
   const projectOptions = useMemo(
     () => projects.map((p) => ({ id: p.id, label: p.name })),
@@ -350,6 +361,7 @@ export function TaskQuickCreateModal({
         end_date: targetDate?.toISOString().split('T')[0] || null,
         workstream_id: effectiveWorkstreamId,
         assignee_id: assignee?.id || null,
+        source_report_id: sourceReportId || null,
       })
 
       if (result.error) {
@@ -607,7 +619,7 @@ export function TaskQuickCreateModal({
         />
 
         {/* Tag */}
-        {tags.length > 0 && (
+        {tags.length > 0 && !defaultTagLocked && (
           <GenericPicker
             items={tags}
             onSelect={setSelectedTag}
@@ -637,6 +649,17 @@ export function TaskQuickCreateModal({
               </button>
             }
           />
+        )}
+        {defaultTagLocked && selectedTag && (
+          <div className="bg-background flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border opacity-70 cursor-default">
+            <div
+              className="size-3 rounded-full"
+              style={{ backgroundColor: selectedTag.color }}
+            />
+            <span className="font-medium text-foreground text-sm leading-5">
+              {selectedTag.name}
+            </span>
+          </div>
         )}
       </div>
 

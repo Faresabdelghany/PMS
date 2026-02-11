@@ -114,6 +114,17 @@ export async function updateTag(
       updates.color = input.color
     }
 
+    // Block edits to system tags
+    const { data: existing } = await supabase
+      .from("organization_tags")
+      .select("is_system")
+      .eq("id", tagId)
+      .single()
+
+    if (existing?.is_system) {
+      return { error: "System tags cannot be edited" }
+    }
+
     const { data, error } = await supabase
       .from("organization_tags")
       .update(updates)
@@ -140,6 +151,17 @@ export async function updateTag(
 export async function deleteTag(tagId: string, orgId?: string): Promise<ActionResult> {
   try {
     const { supabase } = await requireAuth()
+
+    // Block deletion of system tags
+    const { data: existing } = await supabase
+      .from("organization_tags")
+      .select("is_system")
+      .eq("id", tagId)
+      .single()
+
+    if (existing?.is_system) {
+      return { error: "System tags cannot be deleted" }
+    }
 
     const { error } = await supabase
       .from("organization_tags")

@@ -53,6 +53,11 @@ export type CreateReportInput = {
   previous_progress?: number | null
   narrative?: string | null
   financial_notes?: string | null
+  financial_total_value?: number
+  financial_paid_amount?: number
+  financial_invoiced_amount?: number
+  financial_unpaid_amount?: number
+  financial_currency?: string
   risks: ReportRiskInput[]
   highlights: ReportHighlightInput[]
 }
@@ -169,6 +174,11 @@ export async function createReport(
       tasks_in_progress: tasksInProgress,
       tasks_overdue: tasksOverdue,
       financial_notes: input.financial_notes ?? null,
+      financial_total_value: input.financial_total_value ?? 0,
+      financial_paid_amount: input.financial_paid_amount ?? 0,
+      financial_invoiced_amount: input.financial_invoiced_amount ?? 0,
+      financial_unpaid_amount: input.financial_unpaid_amount ?? 0,
+      financial_currency: input.financial_currency ?? "USD",
     } satisfies ReportInsert)
     .select()
     .single()
@@ -293,6 +303,11 @@ export async function updateReport(
       tasks_in_progress: tasksInProgress,
       tasks_overdue: tasksOverdue,
       financial_notes: input.financial_notes ?? null,
+      financial_total_value: input.financial_total_value ?? 0,
+      financial_paid_amount: input.financial_paid_amount ?? 0,
+      financial_invoiced_amount: input.financial_invoiced_amount ?? 0,
+      financial_unpaid_amount: input.financial_unpaid_amount ?? 0,
+      financial_currency: input.financial_currency ?? "USD",
     })
     .eq("id", reportId)
     .select()
@@ -592,7 +607,7 @@ export async function createReportActionItem(input: {
         : "medium") as "no-priority" | "low" | "medium" | "high" | "urgent",
       end_date: input.dueDate ?? null,
       status: "todo",
-      tag: "report-action",
+      tag: "Action Item",
       source_report_id: input.reportId,
       sort_order: sortOrder,
     })
@@ -632,7 +647,7 @@ export async function getReportActionItems(
   const { data, error } = await supabase
     .from("tasks")
     .select(`
-      id, name, description, status, priority, end_date, created_at,
+      id, name, description, status, priority, end_date, tag, created_at,
       assignee:profiles!tasks_assignee_id_fkey(id, full_name, avatar_url),
       project:projects!tasks_project_id_fkey(id, name)
     `)

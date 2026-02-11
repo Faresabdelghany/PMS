@@ -375,6 +375,11 @@ export function ReportWizard({
         previous_progress: data.previousProgress,
         narrative: data.narrative || null,
         financial_notes: data.financialNotes || null,
+        financial_total_value: projectStats?.totalValue ?? 0,
+        financial_paid_amount: projectStats?.paidAmount ?? 0,
+        financial_invoiced_amount: projectStats?.invoicedAmount ?? 0,
+        financial_unpaid_amount: projectStats?.unpaidAmount ?? 0,
+        financial_currency: projectStats?.currency ?? "USD",
         risks: data.risks.map((r) => ({
           type: r.type,
           description: r.description,
