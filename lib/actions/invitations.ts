@@ -16,14 +16,15 @@ async function clearOrgMembershipCache() {
 }
 
 
-// Invite member to organization
+// Invite member to organization (requires admin role)
 export async function inviteMember(
   orgId: string,
   email: string,
   role: OrgMemberRole = "member"
 ): Promise<ActionResult<Invitation>> {
   try {
-    const { user, supabase } = await requireAuth()
+    // Verify user is an admin of the organization before doing any work
+    const { user, supabase } = await requireOrgMember(orgId, true)
 
     // Parallel fetch: members and pending invite (eliminates waterfall)
     const [membersResult, inviteResult] = await Promise.all([
@@ -256,10 +257,10 @@ export async function cancelInvitation(id: string): Promise<ActionResult> {
   }
 }
 
-// Resend invitation (create new token)
+// Resend invitation (create new token, requires admin role)
 export async function resendInvitation(id: string): Promise<ActionResult<Invitation>> {
   try {
-    const { user, supabase } = await requireAuth()
+    const { supabase } = await requireAuth()
 
     // Get existing invitation
     const { data: existing, error: existingError } = await supabase
@@ -272,10 +273,10 @@ export async function resendInvitation(id: string): Promise<ActionResult<Invitat
       return { error: "Invitation not found" }
     }
 
-    // Cancel old invitation
-    await supabase.from("invitations").update({ status: "cancelled" }).eq("id", id)
+    // Verify user is an admin of the organization
+    const { user } = await requireOrgMember(existing.organization_id, true)
 
-    // Create new invitation
+    // Create new invitation first, then cancel old one (avoids race condition)
     const { data, error } = await supabase
       .from("invitations")
       .insert({
@@ -291,9 +292,12 @@ export async function resendInvitation(id: string): Promise<ActionResult<Invitat
       return { error: error.message }
     }
 
+    // Only cancel old invitation after new one is successfully created
+    await supabase.from("invitations").update({ status: "cancelled" }).eq("id", id)
+
     revalidatePath("/", "layout")
     return { data }
   } catch {
-    return { error: "Not authenticated" }
+    return { error: "Not authorized to resend invitations" }
   }
 }

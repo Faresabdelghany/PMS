@@ -2,6 +2,7 @@
 
 import { requireAuth } from "./auth-helpers"
 import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
+import { sanitizeSearchInput } from "@/lib/search-utils"
 import type { ChatConversation, ChatMessage, ChatMessageInsert, Json } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 import { CONVERSATION_PAGE_SIZE, MESSAGE_PAGE_SIZE, SEARCH_CONVERSATION_LIMIT } from "@/lib/constants"
@@ -317,12 +318,17 @@ export async function searchConversations(
   try {
     const { user, supabase } = await requireAuth()
 
+    const sanitized = sanitizeSearchInput(query)
+    if (sanitized.length < 2) {
+      return { data: [] }
+    }
+
     const { data, error } = await supabase
       .from("chat_conversations")
       .select("*")
       .eq("organization_id", organizationId)
       .eq("user_id", user.id)
-      .ilike("title", `%${query}%`)
+      .ilike("title", `%${sanitized}%`)
       .order("updated_at", { ascending: false })
       .limit(SEARCH_CONVERSATION_LIMIT)
 

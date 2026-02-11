@@ -8,6 +8,7 @@ import { CacheTags, revalidateTag } from "@/lib/cache-tags"
 import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
 import { uuidSchema, validate } from "@/lib/validations"
 import { cachedGetUser } from "@/lib/request-cache"
+import { requireAuth } from "./auth-helpers"
 import { sanitizeSearchInput } from "@/lib/search-utils"
 import {
   TASK_STATUSES,
@@ -91,8 +92,8 @@ export async function createTask(
 
   const validatedData = validation.data
 
-  // Use cached auth - deduplicates with other calls in the same request
-  const { user, supabase } = await cachedGetUser()
+  // Use requireAuth to ensure user is authenticated (throws if not)
+  const { user, supabase } = await requireAuth()
 
   // Build sort_order query based on workstream
   const sortOrderQuery = validatedData.workstream_id
@@ -323,8 +324,8 @@ export async function updateTask(
   id: string,
   data: TaskUpdate
 ): Promise<ActionResult<Task>> {
-  // Use cached auth - deduplicates with other calls in the same request
-  const { user, supabase } = await cachedGetUser()
+  // Use requireAuth to ensure user is authenticated (throws if not)
+  const { user, supabase } = await requireAuth()
 
   // Get old task state for comparison (needed for notifications)
   const { data: oldTask } = await supabase

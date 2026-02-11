@@ -82,13 +82,13 @@ export type ReportListItem = Report & {
 export async function getReports(
   orgId: string
 ): Promise<ActionResult<ReportListItem[]>> {
+  let supabase: Awaited<ReturnType<typeof requireOrgMember>>["supabase"]
   try {
-    await requireOrgMember(orgId)
+    const ctx = await requireOrgMember(orgId)
+    supabase = ctx.supabase
   } catch {
     return { error: "You must be an organization member to view reports" }
   }
-
-  const { supabase } = await requireAuth()
 
   const { data: reports, error } = await supabase
     .from("reports")
@@ -140,6 +140,23 @@ export async function getReport(
   reportId: string
 ): Promise<ActionResult<any>> {
   const { supabase } = await requireAuth()
+
+  // Verify user has access to this report's organization
+  const { data: reportCheck, error: reportCheckError } = await supabase
+    .from("reports")
+    .select("organization_id")
+    .eq("id", reportId)
+    .single()
+
+  if (reportCheckError || !reportCheck) {
+    return { error: "Report not found" }
+  }
+
+  try {
+    await requireOrgMember(reportCheck.organization_id)
+  } catch {
+    return { error: "You must be an organization member to view this report" }
+  }
 
   const { data: report, error } = await supabase
     .from("reports")
@@ -490,13 +507,13 @@ export async function getPreviousReportData(
   projects: ReportProject[]
   risks: ReportRisk[]
 }>> {
+  let supabase: Awaited<ReturnType<typeof requireOrgMember>>["supabase"]
   try {
-    await requireOrgMember(orgId)
+    const ctx = await requireOrgMember(orgId)
+    supabase = ctx.supabase
   } catch {
     return { error: "You must be an organization member" }
   }
-
-  const { supabase } = await requireAuth()
 
   // Get most recent report
   const { data: prevReport, error } = await supabase
@@ -756,7 +773,9 @@ export async function createReportActionItem(input: {
       name: input.name,
       description: input.description ?? null,
       assignee_id: input.assigneeId ?? null,
-      priority: (input.priority as any) ?? "medium",
+      priority: (["no-priority", "low", "medium", "high", "urgent"].includes(input.priority ?? "")
+        ? input.priority
+        : "medium") as "no-priority" | "low" | "medium" | "high" | "urgent",
       end_date: input.dueDate ?? null,
       status: "todo",
       tag: "report-action",
@@ -818,13 +837,13 @@ export async function getReportActionItems(
 export async function getOpenActionItems(
   orgId: string
 ): Promise<ActionResult<any[]>> {
+  let supabase: Awaited<ReturnType<typeof requireOrgMember>>["supabase"]
   try {
-    await requireOrgMember(orgId)
+    const ctx = await requireOrgMember(orgId)
+    supabase = ctx.supabase
   } catch {
     return { error: "You must be an organization member" }
   }
-
-  const { supabase } = await requireAuth()
 
   const { data, error } = await supabase
     .from("tasks")

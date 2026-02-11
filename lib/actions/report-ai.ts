@@ -2,6 +2,7 @@
 
 import { generateText } from "./ai/generation"
 import { requireAuth } from "./auth-helpers"
+import { checkRateLimit, rateLimiters, rateLimitError } from "@/lib/rate-limit"
 import type { ActionResult } from "./types"
 
 // ============================================
@@ -17,7 +18,11 @@ export async function generateReportNarrative(params: {
   previousProgress?: number | null
   teamContributions: { memberName: string; contribution: string }[]
 }): Promise<ActionResult<string>> {
-  const { supabase } = await requireAuth()
+  const { user, supabase } = await requireAuth()
+
+  // Rate limit AI generation
+  const rl = await checkRateLimit(rateLimiters.ai, user.id)
+  if (!rl.success) return rateLimitError(rl.reset)
 
   // Fetch recent task activity for this project
   const today = new Date()
@@ -108,6 +113,10 @@ export async function suggestReportRisks(params: {
     }[]
   >
 > {
+  const { user: riskUser } = await requireAuth()
+  const rl = await checkRateLimit(rateLimiters.ai, riskUser.id)
+  if (!rl.success) return rateLimitError(rl.reset)
+
   const projectSummaries = params.projects
     .map(
       (p) =>
@@ -180,6 +189,10 @@ export async function suggestReportHighlights(params: {
   }[]
   existingHighlights: string[]
 }): Promise<ActionResult<{ description: string; projectName?: string }[]>> {
+  const { user: highlightUser } = await requireAuth()
+  const hlRl = await checkRateLimit(rateLimiters.ai, highlightUser.id)
+  if (!hlRl.success) return rateLimitError(hlRl.reset)
+
   const projectSummaries = params.projects
     .map((p) => {
       const delta =
