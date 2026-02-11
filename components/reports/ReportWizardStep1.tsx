@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useState, useTransition } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -20,13 +20,15 @@ import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank"
 import { ClockCounterClockwise } from "@phosphor-icons/react/dist/ssr/ClockCounterClockwise"
 import { Calendar as CalendarIcon } from "@phosphor-icons/react/dist/ssr/Calendar"
 import { Sliders } from "@phosphor-icons/react/dist/ssr/Sliders"
-import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 import { Smiley } from "@phosphor-icons/react/dist/ssr/Smiley"
 import { SmileyMeh } from "@phosphor-icons/react/dist/ssr/SmileyMeh"
 import { SmileySad } from "@phosphor-icons/react/dist/ssr/SmileySad"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { generateReportNarrative } from "@/lib/actions/report-ai"
+import { AIGenerateButton } from "@/components/ai/ai-generate-button"
+import { AISetupPrompt } from "@/components/ai/ai-setup-prompt"
+import { useAIStatus } from "@/hooks/use-ai-status"
 import type { ReportWizardData } from "./report-wizard-types"
 import type {
   ReportPeriodType,
@@ -202,6 +204,30 @@ const SATISFACTION_OPTIONS: {
 ]
 
 export function ReportWizardStep1({ data, updateData, projects }: ReportWizardStep1Props) {
+  const { isConfigured, refetch: refetchAIStatus } = useAIStatus()
+  const [narrativeFocused, setNarrativeFocused] = useState(false)
+  const narrativeContainerRef = useRef<HTMLDivElement>(null)
+
+  // Handle click outside narrative container to reset focus
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        narrativeContainerRef.current &&
+        !narrativeContainerRef.current.contains(event.target as Node)
+      ) {
+        setNarrativeFocused(false)
+      }
+    }
+
+    if (narrativeFocused) {
+      document.addEventListener("mousedown", handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [narrativeFocused])
+
   // --- Period type handlers ---
 
   const setPeriodType = useCallback(
@@ -656,30 +682,53 @@ export function ReportWizardStep1({ data, updateData, projects }: ReportWizardSt
             </div>
           </div>
 
-          {/* --- Narrative with AI Assist --- */}
+          {/* --- Narrative with inline AI Assist --- */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Narrative
-              </Label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 gap-1 text-xs"
-                disabled={isAiLoading}
-                onClick={handleAiAssist}
-              >
-                <Sparkle className={cn("h-3.5 w-3.5", isAiLoading && "animate-spin")} />
-                {isAiLoading ? "Generating..." : "Write with AI"}
-              </Button>
+            <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Narrative
+            </Label>
+            <div
+              ref={narrativeContainerRef}
+              className={cn(
+                "relative rounded-xl bg-background transition-all overflow-hidden",
+                narrativeFocused && "ring-[3px] ring-ring/50 border-ring",
+              )}
+            >
+              <Textarea
+                value={data.narrative}
+                onChange={(e) => updateData({ narrative: e.target.value })}
+                onFocus={() => setNarrativeFocused(true)}
+                placeholder="Summarize project progress..."
+                className="min-h-[100px] resize-y border-0 bg-background text-sm shadow-none focus-visible:ring-0 focus-visible:border-transparent"
+              />
+              {(narrativeFocused || data.narrative) && (
+                <div className="px-3 pb-2.5 animate-in fade-in duration-200">
+                  <div className="h-px w-full bg-border mb-2.5" />
+                  <div className="flex justify-end">
+                    {isConfigured ? (
+                      <AIGenerateButton
+                        onClick={handleAiAssist}
+                        isLoading={isAiLoading}
+                        label="Write with AI"
+                        loadingLabel="Writing..."
+                        size="sm"
+                      />
+                    ) : (
+                      <AISetupPrompt onSetupComplete={() => {
+                        refetchAIStatus()
+                        setTimeout(handleAiAssist, 100)
+                      }}>
+                        <AIGenerateButton
+                          onClick={() => {}}
+                          label="Write with AI"
+                          size="sm"
+                        />
+                      </AISetupPrompt>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
-            <Textarea
-              value={data.narrative}
-              onChange={(e) => updateData({ narrative: e.target.value })}
-              placeholder="Summarize project progress..."
-              className="min-h-[80px] resize-y text-sm"
-            />
           </div>
 
           {/* --- Financial Notes --- */}
@@ -691,7 +740,7 @@ export function ReportWizardStep1({ data, updateData, projects }: ReportWizardSt
               value={data.financialNotes}
               onChange={(e) => updateData({ financialNotes: e.target.value })}
               placeholder="Add financial notes..."
-              className="min-h-[60px] resize-y text-sm"
+              className="min-h-[60px] resize-y bg-background text-sm"
             />
           </div>
         </div>

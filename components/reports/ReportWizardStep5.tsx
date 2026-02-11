@@ -10,13 +10,15 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip"
-import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
 import { X } from "@phosphor-icons/react/dist/ssr/X"
 import { CheckCircle } from "@phosphor-icons/react/dist/ssr/CheckCircle"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { suggestReportHighlights } from "@/lib/actions/report-ai"
+import { AIGenerateButton } from "@/components/ai/ai-generate-button"
+import { AISetupPrompt } from "@/components/ai/ai-setup-prompt"
+import { useAIStatus } from "@/hooks/use-ai-status"
 import type { ReportWizardData, HighlightEntry, DecisionEntry } from "./report-wizard-types"
 
 interface ReportWizardStep5Props {
@@ -104,6 +106,8 @@ export function ReportWizardStep5({
   projects,
   actionItems,
 }: ReportWizardStep5Props) {
+  const { isConfigured, refetch: refetchAIStatus } = useAIStatus()
+
   // --- Highlights CRUD ---
 
   const addHighlight = useCallback(() => {
@@ -232,17 +236,26 @@ export function ReportWizardStep5({
               Key wins and achievements from this period.
             </p>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 gap-1 text-xs"
-            disabled={isAiLoading}
-            onClick={handleAiSuggestHighlights}
-          >
-            <Sparkle className={cn("h-3.5 w-3.5", isAiLoading && "animate-spin")} />
-            {isAiLoading ? "Analyzing..." : "AI Suggest"}
-          </Button>
+          {isConfigured ? (
+            <AIGenerateButton
+              onClick={handleAiSuggestHighlights}
+              isLoading={isAiLoading}
+              label="AI Suggest"
+              loadingLabel="Analyzing..."
+              size="sm"
+            />
+          ) : (
+            <AISetupPrompt onSetupComplete={() => {
+              refetchAIStatus()
+              setTimeout(handleAiSuggestHighlights, 100)
+            }}>
+              <AIGenerateButton
+                onClick={() => {}}
+                label="AI Suggest"
+                size="sm"
+              />
+            </AISetupPrompt>
+          )}
         </div>
 
         {data.highlights.length === 0 ? (

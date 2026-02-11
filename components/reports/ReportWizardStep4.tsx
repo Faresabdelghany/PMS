@@ -12,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
 import { X } from "@phosphor-icons/react/dist/ssr/X"
 import { ArrowsClockwise } from "@phosphor-icons/react/dist/ssr/ArrowsClockwise"
@@ -20,6 +19,9 @@ import { Check } from "@phosphor-icons/react/dist/ssr/Check"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { suggestReportRisks } from "@/lib/actions/report-ai"
+import { AIGenerateButton } from "@/components/ai/ai-generate-button"
+import { AISetupPrompt } from "@/components/ai/ai-setup-prompt"
+import { useAIStatus } from "@/hooks/use-ai-status"
 import type { ReportWizardData, RiskEntry } from "./report-wizard-types"
 import type { RiskSeverity, RiskStatus } from "@/lib/supabase/types"
 
@@ -84,6 +86,7 @@ export function ReportWizardStep4({
   updateData,
   projects,
 }: ReportWizardStep4Props) {
+  const { isConfigured, refetch: refetchAIStatus } = useAIStatus()
   const [activeTab, setActiveTab] = useState<TabValue>("blockers")
 
   const blockers = useMemo(
@@ -243,17 +246,26 @@ export function ReportWizardStep4({
             })}
           </div>
 
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 gap-1 text-xs"
-            disabled={isAiLoading}
-            onClick={handleAiSuggest}
-          >
-            <Sparkle className={cn("h-3.5 w-3.5", isAiLoading && "animate-spin")} />
-            {isAiLoading ? "Analyzing..." : "AI Suggest"}
-          </Button>
+          {isConfigured ? (
+            <AIGenerateButton
+              onClick={handleAiSuggest}
+              isLoading={isAiLoading}
+              label="AI Suggest"
+              loadingLabel="Analyzing..."
+              size="sm"
+            />
+          ) : (
+            <AISetupPrompt onSetupComplete={() => {
+              refetchAIStatus()
+              setTimeout(handleAiSuggest, 100)
+            }}>
+              <AIGenerateButton
+                onClick={() => {}}
+                label="AI Suggest"
+                size="sm"
+              />
+            </AISetupPrompt>
+          )}
         </div>
       </div>
 
@@ -332,7 +344,7 @@ export function ReportWizardStep4({
                         ? "Describe what is currently blocked..."
                         : "Describe the potential risk..."
                     }
-                    className="min-h-[60px] resize-y text-sm"
+                    className="min-h-[60px] resize-y bg-background text-sm"
                   />
                 </div>
 
@@ -404,7 +416,7 @@ export function ReportWizardStep4({
                       updateRisk(entry.id, { mitigationNotes: e.target.value })
                     }
                     placeholder="What actions are being taken to address this?"
-                    className="min-h-[50px] resize-y text-sm"
+                    className="min-h-[50px] resize-y bg-background text-sm"
                   />
                 </div>
               </div>
