@@ -194,8 +194,14 @@ export function ReportDetailContent({ report, organizationMembers, actionItems }
   const risks = report.report_risks || []
   const highlights = (report.report_highlights || []).filter((h: any) => h.type === "highlight")
   const decisions = (report.report_highlights || []).filter((h: any) => h.type === "decision")
-  const statusConfig = PROJECT_STATUS_CONFIG[report.status as ReportProjectStatus] ?? PROJECT_STATUS_CONFIG.on_track
-  const satisfactionConfig = SATISFACTION_CONFIG[report.client_satisfaction as ClientSatisfaction] ?? SATISFACTION_CONFIG.satisfied
+  const statusConfig = report.status in PROJECT_STATUS_CONFIG
+    ? PROJECT_STATUS_CONFIG[report.status as ReportProjectStatus]
+    : (console.warn(`[Report ${report.id}] Unknown status: "${report.status}"`),
+       { label: "Unknown", color: "text-muted-foreground", bg: "bg-muted" })
+  const satisfactionConfig = report.client_satisfaction in SATISFACTION_CONFIG
+    ? SATISFACTION_CONFIG[report.client_satisfaction as ClientSatisfaction]
+    : (console.warn(`[Report ${report.id}] Unknown satisfaction: "${report.client_satisfaction}"`),
+       { label: "Unknown", color: "text-muted-foreground" })
 
   const breadcrumbs = [
     { label: "Reports", href: "/reports" },
@@ -619,7 +625,7 @@ export function ReportDetailContent({ report, organizationMembers, actionItems }
               {/* Right Meta Panel */}
               {showMeta && (
                 <div className="lg:border-l lg:border-border lg:pl-6 animate-in fade-in duration-150">
-                  <aside className="flex flex-col gap-10 p-4 pt-8 lg:sticky lg:self-start">
+                  <aside className="flex flex-col gap-10 p-4 pt-8 lg:sticky lg:top-4 lg:self-start">
                     {/* Report Info */}
                     <div className="space-y-4">
                       <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Report Info</h3>
