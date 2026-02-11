@@ -27,7 +27,6 @@ interface ReportWizardStep4Props {
   data: ReportWizardData
   updateData: (updates: Partial<ReportWizardData>) => void
   projects: { id: string; name: string }[]
-  projectData?: Record<string, { status: string; progressPercent: number; narrative?: string }>
 }
 
 // --- Severity config ---
@@ -84,7 +83,6 @@ export function ReportWizardStep4({
   data,
   updateData,
   projects,
-  projectData,
 }: ReportWizardStep4Props) {
   const [activeTab, setActiveTab] = useState<TabValue>("blockers")
 
@@ -125,7 +123,6 @@ export function ReportWizardStep4({
     (type: "blocker" | "risk") => {
       const newEntry: RiskEntry = {
         id: crypto.randomUUID(),
-        projectId: null,
         type,
         description: "",
         severity: "medium",
@@ -143,17 +140,14 @@ export function ReportWizardStep4({
   const [, startTransition] = useTransition()
 
   const handleAiSuggest = useCallback(() => {
-    setIsAiLoading(true)
+    // Find the selected project
+    const selectedProject = projects.find((p) => p.id === data.selectedProjectId)
+    if (!selectedProject) {
+      toast.error("Please select a project first")
+      return
+    }
 
-    const projectsContext = projects
-      .filter((p) => data.selectedProjectIds.includes(p.id))
-      .map((p) => ({
-        id: p.id,
-        name: p.name,
-        status: projectData?.[p.id]?.status ?? "on_track",
-        progressPercent: projectData?.[p.id]?.progressPercent ?? 0,
-        narrative: projectData?.[p.id]?.narrative,
-      }))
+    setIsAiLoading(true)
 
     const existingRisks = data.risks.map((r) => ({
       description: r.description,
@@ -164,29 +158,29 @@ export function ReportWizardStep4({
     startTransition(async () => {
       try {
         const result = await suggestReportRisks({
-          projects: projectsContext,
+          project: {
+            id: selectedProject.id,
+            name: selectedProject.name,
+            status: data.status,
+            progressPercent: data.progressPercent,
+            narrative: data.narrative || undefined,
+          },
           existingRisks,
         })
 
         if (result.error) {
           toast.error(result.error)
         } else if (result.data && result.data.length > 0) {
-          const newRisks: RiskEntry[] = result.data.map((suggestion) => {
-            const matchedProject = projects.find(
-              (p) => p.name === suggestion.projectName,
-            )
-            return {
-              id: crypto.randomUUID(),
-              projectId: matchedProject?.id ?? null,
-              type: suggestion.type,
-              description: suggestion.description,
-              severity: suggestion.severity,
-              status: "open" as const,
-              mitigationNotes: "",
-              originatedReportId: null,
-              isCarriedOver: false,
-            }
-          })
+          const newRisks: RiskEntry[] = result.data.map((suggestion) => ({
+            id: crypto.randomUUID(),
+            type: suggestion.type,
+            description: suggestion.description,
+            severity: suggestion.severity,
+            status: "open" as const,
+            mitigationNotes: "",
+            originatedReportId: null,
+            isCarriedOver: false,
+          }))
           updateData({ risks: [...data.risks, ...newRisks] })
           toast.success(`Added ${newRisks.length} suggested risks`)
         } else {
@@ -198,7 +192,7 @@ export function ReportWizardStep4({
         setIsAiLoading(false)
       }
     })
-  }, [projects, data.selectedProjectIds, data.risks, projectData, updateData])
+  }, [projects, data.selectedProjectId, data.risks, data.status, data.progressPercent, data.narrative, updateData])
 
   return (
     <div className="flex flex-col space-y-6">
@@ -342,8 +336,8 @@ export function ReportWizardStep4({
                   />
                 </div>
 
-                {/* Severity, Status, Project — inside bg-background card */}
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 rounded-xl bg-background p-4">
+                {/* Severity + Status row (2-col, no project dropdown) */}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 rounded-xl bg-background p-4">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                       Severity
@@ -392,32 +386,6 @@ export function ReportWizardStep4({
                         {STATUS_OPTIONS.map((opt) => (
                           <SelectItem key={opt.value} value={opt.value}>
                             {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Project
-                    </Label>
-                    <Select
-                      value={entry.projectId ?? "__none__"}
-                      onValueChange={(val) =>
-                        updateRisk(entry.id, {
-                          projectId: val === "__none__" ? null : val,
-                        })
-                      }
-                    >
-                      <SelectTrigger className="h-8 text-sm">
-                        <SelectValue placeholder="None" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">None</SelectItem>
-                        {projects.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name}
                           </SelectItem>
                         ))}
                       </SelectContent>

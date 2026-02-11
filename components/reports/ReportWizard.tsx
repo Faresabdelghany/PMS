@@ -8,6 +8,7 @@ import { Stepper } from "@/components/project-wizard/Stepper"
 import { CaretLeft } from "@phosphor-icons/react/dist/ssr/CaretLeft"
 import { CaretRight } from "@phosphor-icons/react/dist/ssr/CaretRight"
 import { X } from "@phosphor-icons/react/dist/ssr/X"
+import { cn } from "@/lib/utils"
 import {
   getReportWizardData,
   getReport,
@@ -17,7 +18,6 @@ import {
 import type {
   CreateReportInput,
   ReportWizardProject,
-  ReportWizardMember,
 } from "@/lib/actions/reports"
 import type {
   ReportWizardData,
@@ -25,7 +25,6 @@ import type {
 } from "./report-wizard-types"
 
 import { ReportWizardStep1 } from "./ReportWizardStep1"
-import { ReportWizardStep2 } from "./ReportWizardStep2"
 import { ReportWizardStep4 } from "./ReportWizardStep4"
 import { ReportWizardStep5 } from "./ReportWizardStep5"
 import type { ActionItem } from "./ReportWizardStep5"
@@ -42,8 +41,6 @@ interface ReportWizardProps {
 }
 
 type ProjectInfo = ReportWizardProject
-
-type OrgMember = ReportWizardMember
 
 // ============================================
 // Helpers
@@ -100,8 +97,15 @@ function createDefaultWizardData(): ReportWizardData {
     periodType: "weekly",
     periodStart,
     periodEnd,
-    selectedProjectIds: [],
-    projectData: {},
+    selectedProjectId: null,
+    status: "on_track",
+    previousStatus: null,
+    clientSatisfaction: "satisfied",
+    previousSatisfaction: null,
+    progressPercent: 0,
+    previousProgress: null,
+    narrative: "",
+    financialNotes: "",
     risks: [],
     highlights: [],
     decisions: [],
@@ -113,19 +117,15 @@ function createDefaultWizardData(): ReportWizardData {
 // ============================================
 
 const STEPS = [
-  "Report scope",
-  "Project status",
-  "Financials",
+  "Scope & status",
   "Risks & blockers",
   "Highlights & review",
 ]
 
 const STEP_TITLES: Record<number, string> = {
-  0: "What period does this report cover?",
-  1: "How are projects performing?",
-  2: "Financial overview",
-  3: "What are the risks and blockers?",
-  4: "Highlights, decisions, and review",
+  0: "Define scope and project status",
+  1: "What are the risks and blockers?",
+  2: "Highlights, decisions, and review",
 }
 
 // ============================================
@@ -145,8 +145,6 @@ export function ReportWizard({
 
   // Data loaded on mount
   const [projects, setProjects] = useState<ProjectInfo[]>([])
-  const [orgMembers, setOrgMembers] = useState<OrgMember[]>([])
-  const [projectMembers, setProjectMembers] = useState<Record<string, string[]>>({})
   const [actionItems, setActionItems] = useState<ActionItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -174,11 +172,9 @@ export function ReportWizard({
 
         const wd = wizardResult.data
         setProjects(wd.projects)
-        setOrgMembers(wd.orgMembers)
-        setProjectMembers(wd.projectMembers)
         setActionItems(wd.actionItems as ActionItem[])
 
-        // Apply carry-over from previous report
+        // Apply carry-over from previous report (flat fields)
         const prevData = wd.previousReport
         if (prevData.report) {
           setData((prev) => {
@@ -186,7 +182,6 @@ export function ReportWizard({
               .filter((r) => r.status === "open" || r.status === "mitigated")
               .map((r) => ({
                 id: crypto.randomUUID(),
-                projectId: r.project_id,
                 type: r.type,
                 description: r.description,
                 severity: r.severity,
@@ -196,34 +191,23 @@ export function ReportWizard({
                 isCarriedOver: true,
               }))
 
-            // Pre-fill project statuses from previous report
-            const projectData = { ...prev.projectData }
-            for (const rp of prevData.projects ?? []) {
-              projectData[rp.project_id] = {
-                status: rp.status,
-                previousStatus: rp.status,
-                clientSatisfaction: rp.client_satisfaction,
-                previousSatisfaction: rp.client_satisfaction,
-                progressPercent: rp.progress_percent,
-                previousProgress: rp.progress_percent,
-                narrative: "",
-                teamContributions: [],
-                financialNotes: "",
-              }
-            }
+            const prevReport = prevData.report!
 
-            // Auto-select projects that were in the previous report
-            const prevProjectIds = (prevData.projects ?? []).map(
-              (rp: any) => rp.project_id,
-            )
-            const selectedIds = wd.projects
-              .filter((p) => prevProjectIds.includes(p.id))
-              .map((p) => p.id)
+            // Auto-select the same project from previous report
+            const prevProjectId = prevReport.project_id
+            const projectExists = prevProjectId
+              ? wd.projects.some((p) => p.id === prevProjectId)
+              : false
 
             return {
               ...prev,
-              selectedProjectIds: selectedIds.length > 0 ? selectedIds : prev.selectedProjectIds,
-              projectData,
+              selectedProjectId: projectExists ? prevProjectId : prev.selectedProjectId,
+              status: (prevReport.status as ReportWizardData["status"]) ?? prev.status,
+              previousStatus: (prevReport.status as ReportWizardData["status"]) ?? null,
+              clientSatisfaction: (prevReport.client_satisfaction as ReportWizardData["clientSatisfaction"]) ?? prev.clientSatisfaction,
+              previousSatisfaction: (prevReport.client_satisfaction as ReportWizardData["clientSatisfaction"]) ?? null,
+              progressPercent: prevReport.progress_percent ?? prev.progressPercent,
+              previousProgress: prevReport.progress_percent ?? null,
               risks: carriedRisks,
             }
           })
@@ -232,28 +216,10 @@ export function ReportWizard({
         // If editing, apply existing report data
         if (editResult?.data) {
           const report = editResult.data
-          const editProjectData: Record<string, any> = {}
-          const selectedIds: string[] = []
-
-          for (const rp of report.report_projects ?? []) {
-            selectedIds.push(rp.project_id)
-            editProjectData[rp.project_id] = {
-              status: rp.status,
-              previousStatus: rp.previous_status,
-              clientSatisfaction: rp.client_satisfaction,
-              previousSatisfaction: rp.previous_satisfaction,
-              progressPercent: rp.progress_percent,
-              previousProgress: rp.previous_progress,
-              narrative: rp.narrative ?? "",
-              teamContributions: rp.team_contributions ?? [],
-              financialNotes: rp.financial_notes ?? "",
-            }
-          }
 
           const editRisks: RiskEntry[] = (report.report_risks ?? []).map(
             (r: any) => ({
               id: crypto.randomUUID(),
-              projectId: r.project_id,
               type: r.type,
               description: r.description,
               severity: r.severity,
@@ -268,7 +234,6 @@ export function ReportWizard({
             .filter((h: any) => h.type === "highlight")
             .map((h: any) => ({
               id: crypto.randomUUID(),
-              projectId: h.project_id,
               description: h.description,
             }))
 
@@ -276,7 +241,6 @@ export function ReportWizard({
             .filter((h: any) => h.type === "decision")
             .map((h: any) => ({
               id: crypto.randomUUID(),
-              projectId: h.project_id,
               description: h.description,
             }))
 
@@ -285,8 +249,15 @@ export function ReportWizard({
             periodType: report.period_type,
             periodStart: report.period_start,
             periodEnd: report.period_end,
-            selectedProjectIds: selectedIds,
-            projectData: editProjectData,
+            selectedProjectId: report.project_id ?? null,
+            status: report.status ?? "on_track",
+            previousStatus: report.previous_status ?? null,
+            clientSatisfaction: report.client_satisfaction ?? "satisfied",
+            previousSatisfaction: report.previous_satisfaction ?? null,
+            progressPercent: report.progress_percent ?? 0,
+            previousProgress: report.previous_progress ?? null,
+            narrative: report.narrative ?? "",
+            financialNotes: report.financial_notes ?? "",
             risks: editRisks,
             highlights: editHighlights,
             decisions: editDecisions,
@@ -351,39 +322,30 @@ export function ReportWizard({
       toast.error("Please provide a report title.")
       return
     }
-    if (data.selectedProjectIds.length === 0) {
-      toast.error("Please select at least one project.")
+    if (!data.selectedProjectId) {
+      toast.error("Please select a project.")
       return
     }
 
     setIsPublishing(true)
 
     try {
-      // Build the input payload
+      // Build the flat input payload
       const input: CreateReportInput = {
         title: data.title,
         period_type: data.periodType,
         period_start: data.periodStart,
         period_end: data.periodEnd,
-        projects: data.selectedProjectIds.map((projectId, index) => {
-          const pd = data.projectData[projectId]
-          return {
-            project_id: projectId,
-            status: pd?.status ?? "on_track",
-            previous_status: pd?.previousStatus ?? null,
-            client_satisfaction: pd?.clientSatisfaction ?? "satisfied",
-            previous_satisfaction: pd?.previousSatisfaction ?? null,
-            progress_percent: pd?.progressPercent ?? 0,
-            previous_progress: pd?.previousProgress ?? null,
-            narrative: pd?.narrative || null,
-            team_contributions: pd?.teamContributions ?? [],
-            financial_notes: pd?.financialNotes || null,
-            sort_order: index,
-          }
-        }),
+        project_id: data.selectedProjectId,
+        status: data.status,
+        previous_status: data.previousStatus,
+        client_satisfaction: data.clientSatisfaction,
+        previous_satisfaction: data.previousSatisfaction,
+        progress_percent: data.progressPercent,
+        previous_progress: data.previousProgress,
+        narrative: data.narrative || null,
+        financial_notes: data.financialNotes || null,
         risks: data.risks.map((r) => ({
-          id: r.id,
-          project_id: r.projectId,
           type: r.type,
           description: r.description,
           severity: r.severity,
@@ -393,13 +355,11 @@ export function ReportWizard({
         })),
         highlights: [
           ...data.highlights.map((h, i) => ({
-            project_id: h.projectId,
             type: "highlight" as const,
             description: h.description,
             sort_order: i,
           })),
           ...data.decisions.map((d, i) => ({
-            project_id: d.projectId,
             type: "decision" as const,
             description: d.description,
             sort_order: data.highlights.length + i,
@@ -479,6 +439,32 @@ export function ReportWizard({
             </Button>
           </div>
 
+          {/* Mobile Step Indicator */}
+          <div className="flex items-center gap-2 px-8 pb-3 md:hidden">
+            <div className="flex items-center gap-1.5">
+              {STEPS.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => i <= maxStepReached && jumpToStep(i)}
+                  disabled={i > maxStepReached}
+                  className={cn(
+                    "h-2 w-2 rounded-full transition-colors",
+                    i === step
+                      ? "bg-primary"
+                      : i <= maxStepReached
+                        ? "bg-primary/30"
+                        : "bg-muted",
+                  )}
+                  aria-label={`Go to step ${i + 1}: ${STEPS[i]}`}
+                />
+              ))}
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {step + 1}/{STEPS.length} {STEPS[step]}
+            </span>
+          </div>
+
           {/* Scrollable Content Area */}
           <div className="flex-1 overflow-y-auto px-8 pb-8 pt-0" style={{ maxHeight: "60vh" }}>
             {isLoading ? (
@@ -502,26 +488,14 @@ export function ReportWizard({
                     <ReportWizardStep1
                       data={data}
                       updateData={updateData}
-                      projects={projects}
+                      projects={projects.map((p) => ({
+                        id: p.id,
+                        name: p.name,
+                        clientName: p.clientName,
+                      }))}
                     />
                   )}
                   {step === 1 && (
-                    <ReportWizardStep2
-                      data={data}
-                      updateData={updateData}
-                      projects={projects}
-                      orgMembers={orgMembers}
-                      projectMembers={projectMembers}
-                    />
-                  )}
-                  {step === 2 && (
-                    <ReportWizardStep3Placeholder
-                      data={data}
-                      updateData={updateData}
-                      projects={projects}
-                    />
-                  )}
-                  {step === 3 && (
                     <ReportWizardStep4
                       data={data}
                       updateData={updateData}
@@ -529,10 +503,9 @@ export function ReportWizard({
                         id: p.id,
                         name: p.name,
                       }))}
-                      projectData={data.projectData}
                     />
                   )}
-                  {step === 4 && (
+                  {step === 2 && (
                     <ReportWizardStep5
                       data={data}
                       updateData={updateData}
@@ -541,7 +514,6 @@ export function ReportWizard({
                         name: p.name,
                       }))}
                       actionItems={actionItems}
-                      projectData={data.projectData}
                     />
                   )}
                 </MotionDiv>
@@ -585,89 +557,6 @@ export function ReportWizard({
           </div>
         </div>
       </MotionDiv>
-    </div>
-  )
-}
-
-// ============================================
-// Step 3 placeholder (Financials)
-// ============================================
-
-function ReportWizardStep3Placeholder({
-  data,
-  updateData,
-  projects,
-}: {
-  data: ReportWizardData
-  updateData: (updates: Partial<ReportWizardData>) => void
-  projects: ProjectInfo[]
-}) {
-  const selectedProjects = projects.filter((p) =>
-    data.selectedProjectIds.includes(p.id),
-  )
-
-  if (selectedProjects.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center rounded-2xl bg-muted py-16">
-        <p className="text-sm text-muted-foreground">
-          No projects selected. Go back to Step 1 and select at least one project.
-        </p>
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-4">
-      {selectedProjects.map((project) => {
-        const pd = data.projectData[project.id]
-        return (
-          <div
-            key={project.id}
-            className="rounded-2xl bg-muted p-4 space-y-3"
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold">{project.name}</span>
-              {project.clientName && (
-                <span className="text-xs text-muted-foreground">
-                  {project.clientName}
-                </span>
-              )}
-            </div>
-            <div className="space-y-1.5 rounded-xl bg-background p-4">
-              <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Financial Notes
-              </label>
-              <textarea
-                value={pd?.financialNotes ?? ""}
-                onChange={(e) => {
-                  const current = data.projectData[project.id] ?? {
-                    status: "on_track" as const,
-                    previousStatus: null,
-                    clientSatisfaction: "satisfied" as const,
-                    previousSatisfaction: null,
-                    progressPercent: 0,
-                    previousProgress: null,
-                    narrative: "",
-                    teamContributions: [],
-                    financialNotes: "",
-                  }
-                  updateData({
-                    projectData: {
-                      ...data.projectData,
-                      [project.id]: {
-                        ...current,
-                        financialNotes: e.target.value,
-                      },
-                    },
-                  })
-                }}
-                placeholder="Add financial notes for this project..."
-                className="file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input min-h-[80px] w-full min-w-0 rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] resize-y"
-              />
-            </div>
-          </div>
-        )
-      })}
     </div>
   )
 }
