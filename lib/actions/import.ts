@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { requireAuth } from "./auth-helpers"
 import type { ActionResult } from "./types"
 import type { TaskInsert, TaskPriority, TaskStatus } from "@/lib/supabase/types"
 
@@ -357,9 +358,11 @@ export async function importTasksFromCSV(
 export async function previewCSV(
   csvContent: string
 ): Promise<ActionResult<{ headers: string[]; rows: string[][]; totalRows: number }>> {
-  // Require authentication to prevent unauthenticated access
-  const { requireAuth } = await import("./auth-helpers")
-  await requireAuth()
+  try {
+    await requireAuth()
+  } catch {
+    return { error: "Not authenticated" }
+  }
 
   const rows = parseCSV(csvContent)
 

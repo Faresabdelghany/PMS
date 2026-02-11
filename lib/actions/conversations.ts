@@ -318,12 +318,17 @@ export async function searchConversations(
   try {
     const { user, supabase } = await requireAuth()
 
+    const sanitized = sanitizeSearchInput(query)
+    if (sanitized.length < 2) {
+      return { data: [] }
+    }
+
     const { data, error } = await supabase
       .from("chat_conversations")
       .select("*")
       .eq("organization_id", organizationId)
       .eq("user_id", user.id)
-      .ilike("title", `%${sanitizeSearchInput(query)}%`)
+      .ilike("title", `%${sanitized}%`)
       .order("updated_at", { ascending: false })
       .limit(SEARCH_CONVERSATION_LIMIT)
 
