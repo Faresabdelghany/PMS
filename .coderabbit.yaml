@@ -1,0 +1,88 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "en-US"
+tone_instructions: "Be concise and direct. Focus on actionable feedback."
+
+early_access: true
+
+reviews:
+  profile: "chill"
+  request_changes_workflow: false
+  high_level_summary: true
+  high_level_summary_placeholder: "@coderabbitai summary"
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  sequence_diagrams: true
+  changed_files_summary: true
+  labeling_instructions: []
+  path_filters:
+    - "!**/*.lock"
+    - "!**/pnpm-lock.yaml"
+    - "!**/.next/**"
+    - "!**/node_modules/**"
+    - "!**/*.min.js"
+    - "!**/*.min.css"
+    - "!**/dist/**"
+    - "!**/build/**"
+    - "!**/.lighthouseci/**"
+    - "!**/e2e/.auth/**"
+  path_instructions:
+    - path: "app/**"
+      instructions: |
+        This is a Next.js 16 App Router application using React 19 and TypeScript.
+        - Verify async params pattern: `params: Promise<{ id: string }>` with `await params`
+        - Check that Server Components don't use client-side hooks
+        - Ensure proper use of Suspense boundaries with skeleton fallbacks
+        - Verify RSC serialization: data passed to Client Components should be minimal (use Pick types)
+        - Check for proper use of `cachedGetUser()` from `lib/request-cache.ts` instead of direct auth calls
+        - Verify auth helpers usage: `requireAuth`, `requireOrgMember`, `requireProjectMember`
+    - path: "components/**"
+      instructions: |
+        React 19 components using shadcn/ui (new-york style), Radix UI, and Tailwind CSS 4.
+        - Check for proper "use client" directive where needed
+        - Verify accessibility: proper ARIA attributes, keyboard navigation
+        - Ensure consistent use of `cn()` utility for class merging
+        - Check for proper loading states and error boundaries
+    - path: "lib/actions/**"
+      instructions: |
+        Next.js Server Actions returning `ActionResult<T>` type (`{ data?, error? }`).
+        - Verify all actions use proper auth helpers from `lib/actions/auth-helpers.ts`
+        - Check for proper error handling (try/catch with meaningful error messages)
+        - Ensure cache invalidation with `revalidateTag()` after mutations
+        - Verify rate limiting is applied where appropriate (auth, AI, file upload, invitations)
+        - Check for SQL injection via Supabase query builder (should use parameterized queries)
+    - path: "lib/supabase/**"
+      instructions: |
+        Supabase client configuration and types.
+        - Verify correct client usage: `client.ts` for browser, `server.ts` for Server Components/Actions, `admin.ts` for service role
+        - Check that admin client is never exposed to client-side code
+        - Verify storage operations use wrappers from `lib/supabase/storage-utils.ts`
+    - path: "hooks/**"
+      instructions: |
+        Custom React hooks including realtime subscriptions and AI chat.
+        - Check for proper cleanup in useEffect
+        - Verify realtime hooks use pooled subscriptions via `RealtimeProvider` where possible
+        - Check for memory leaks in subscription handlers
+    - path: "supabase/migrations/**"
+      instructions: |
+        PostgreSQL migrations for Supabase.
+        - Verify RLS policies are defined for new tables
+        - Check for proper indexes on frequently queried columns
+        - Ensure migrations are reversible where possible
+    - path: "e2e/**"
+      instructions: |
+        Playwright E2E tests using Page Object Model pattern.
+        - Verify tests use page objects from `e2e/pages/`
+        - Check for proper use of fixtures from `e2e/fixtures.ts`
+        - Ensure tests are not flaky (avoid hard-coded waits, use proper selectors)
+
+chat:
+  auto_reply: true
+
+knowledge_base:
+  learnings:
+    scope: "auto"
+  jira:
+    project_keys: []
+  linear:
+    team_keys: []
