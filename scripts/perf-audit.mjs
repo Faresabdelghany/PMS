@@ -93,6 +93,24 @@ function assertSafeShellArg(value, label) {
   }
 }
 
+// --- Security: resolve absolute path to npx (defense in depth for S4036) ---
+// Avoids relying on PATH lookup which may contain writable directories.
+let npxAbsolute = path.join(
+  path.dirname(process.execPath),
+  process.platform === 'win32' ? 'npx.cmd' : 'npx'
+);
+if (!fs.existsSync(npxAbsolute)) {
+  // Fallback: if npx is not co-located with node (e.g. nvm/pnpm shims), resolve via PATH at startup.
+  // This is acceptable since we resolve once at script init, not at execution time in a loop.
+  const which = spawnSync(process.platform === 'win32' ? 'where' : 'which', ['npx'], { encoding: 'utf8', shell: false });
+  const resolved = (which.stdout || '').split(/\r?\n/)[0].trim();
+  if (!resolved) {
+    console.error('ERROR: Could not resolve absolute path to npx');
+    process.exit(1);
+  }
+  npxAbsolute = resolved;
+}
+
 // --- Helpers ---
 async function collectMetrics(page) {
   await page.waitForTimeout(SETTLE);
@@ -457,9 +475,10 @@ async function main() {
       assertSafeShellArg(outArg, 'output path');
       assertSafeShellArg(headersArg, 'headers path');
       try {
-        // spawnSync with array args + validated inputs.
-        // shell: true required on Windows for npx (.cmd batch file).
-        spawnSync('npx', [
+        // spawnSync with absolute path + array args + validated inputs.
+        // shell: true required on Windows for .cmd batch files.
+        // npxAbsolute is resolved at startup to avoid PATH search (S4036).
+        spawnSync(npxAbsolute, [
           'lighthouse', url,
           '--output=json', `--output-path=${outArg}`,
           '--preset=desktop', '--chrome-flags=--headless=new',
