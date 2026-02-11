@@ -6,12 +6,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip"
 import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
 import { X } from "@phosphor-icons/react/dist/ssr/X"
@@ -26,7 +24,6 @@ interface ReportWizardStep5Props {
   updateData: (updates: Partial<ReportWizardData>) => void
   projects: { id: string; name: string }[]
   actionItems: ActionItem[]
-  projectData?: Record<string, { status: string; progressPercent: number; previousProgress?: number | null; narrative?: string }>
 }
 
 // Action item shape from getOpenActionItems
@@ -106,14 +103,12 @@ export function ReportWizardStep5({
   updateData,
   projects,
   actionItems,
-  projectData,
 }: ReportWizardStep5Props) {
   // --- Highlights CRUD ---
 
   const addHighlight = useCallback(() => {
     const newEntry: HighlightEntry = {
       id: crypto.randomUUID(),
-      projectId: null,
       description: "",
     }
     updateData({ highlights: [...data.highlights, newEntry] })
@@ -144,7 +139,6 @@ export function ReportWizardStep5({
   const addDecision = useCallback(() => {
     const newEntry: DecisionEntry = {
       id: crypto.randomUUID(),
-      projectId: null,
       description: "",
     }
     updateData({ decisions: [...data.decisions, newEntry] })
@@ -176,24 +170,26 @@ export function ReportWizardStep5({
   const [, startTransition] = useTransition()
 
   const handleAiSuggestHighlights = useCallback(() => {
-    setIsAiLoading(true)
+    const selectedProject = projects.find((p) => p.id === data.selectedProjectId)
+    if (!selectedProject) {
+      toast.error("Please select a project first")
+      return
+    }
 
-    const projectsContext = projects
-      .filter((p) => data.selectedProjectIds.includes(p.id))
-      .map((p) => ({
-        name: p.name,
-        status: projectData?.[p.id]?.status ?? "on_track",
-        progressPercent: projectData?.[p.id]?.progressPercent ?? 0,
-        previousProgress: projectData?.[p.id]?.previousProgress,
-        narrative: projectData?.[p.id]?.narrative,
-      }))
+    setIsAiLoading(true)
 
     const existingHighlights = data.highlights.map((h) => h.description)
 
     startTransition(async () => {
       try {
         const result = await suggestReportHighlights({
-          projects: projectsContext,
+          project: {
+            name: selectedProject.name,
+            status: data.status,
+            progressPercent: data.progressPercent,
+            previousProgress: data.previousProgress,
+            narrative: data.narrative || undefined,
+          },
           existingHighlights,
         })
 
@@ -201,16 +197,10 @@ export function ReportWizardStep5({
           toast.error(result.error)
         } else if (result.data && result.data.length > 0) {
           const newHighlights: HighlightEntry[] = result.data.map(
-            (suggestion) => {
-              const matchedProject = projects.find(
-                (p) => p.name === suggestion.projectName,
-              )
-              return {
-                id: crypto.randomUUID(),
-                projectId: matchedProject?.id ?? null,
-                description: suggestion.description,
-              }
-            },
+            (suggestion) => ({
+              id: crypto.randomUUID(),
+              description: suggestion.description,
+            }),
           )
           updateData({ highlights: [...data.highlights, ...newHighlights] })
           toast.success(`Added ${newHighlights.length} suggested highlights`)
@@ -223,11 +213,9 @@ export function ReportWizardStep5({
         setIsAiLoading(false)
       }
     })
-  }, [projects, data.selectedProjectIds, data.highlights, projectData, updateData])
+  }, [projects, data.selectedProjectId, data.highlights, data.status, data.progressPercent, data.previousProgress, data.narrative, updateData])
 
   // --- Action item status change ---
-  // Note: This is a local update for the wizard display. The actual task status
-  // update should be handled by the parent when the report is published.
   const openActionItems = useMemo(
     () => actionItems.filter((item) => item.status !== "done"),
     [actionItems],
@@ -272,50 +260,26 @@ export function ReportWizardStep5({
             {data.highlights.map((entry) => (
               <div
                 key={entry.id}
-                className="rounded-xl bg-background p-4"
+                className="flex items-center gap-2 rounded-xl bg-background p-4"
               >
-                <div className="flex items-start gap-2">
-                  <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
-                    <Input
-                      value={entry.description}
-                      onChange={(e) =>
-                        updateHighlight(entry.id, { description: e.target.value })
-                      }
-                      placeholder="Describe the highlight..."
-                      className="h-8 flex-1 text-sm"
-                    />
-                    <Select
-                      value={entry.projectId ?? "__none__"}
-                      onValueChange={(val) =>
-                        updateHighlight(entry.id, {
-                          projectId: val === "__none__" ? null : val,
-                        })
-                      }
-                    >
-                      <SelectTrigger className="h-8 w-full text-sm sm:w-[180px]">
-                        <SelectValue placeholder="Project (optional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">No project</SelectItem>
-                        {projects.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
-                    onClick={() => removeHighlight(entry.id)}
-                    aria-label="Remove highlight"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
+                <Input
+                  value={entry.description}
+                  onChange={(e) =>
+                    updateHighlight(entry.id, { description: e.target.value })
+                  }
+                  placeholder="Describe the highlight..."
+                  className="h-8 flex-1 text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+                  onClick={() => removeHighlight(entry.id)}
+                  aria-label="Remove highlight"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
             ))}
           </div>
@@ -355,50 +319,26 @@ export function ReportWizardStep5({
             {data.decisions.map((entry) => (
               <div
                 key={entry.id}
-                className="rounded-xl bg-background p-4"
+                className="flex items-center gap-2 rounded-xl bg-background p-4"
               >
-                <div className="flex items-start gap-2">
-                  <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
-                    <Input
-                      value={entry.description}
-                      onChange={(e) =>
-                        updateDecision(entry.id, { description: e.target.value })
-                      }
-                      placeholder="Describe the decision needed..."
-                      className="h-8 flex-1 text-sm"
-                    />
-                    <Select
-                      value={entry.projectId ?? "__none__"}
-                      onValueChange={(val) =>
-                        updateDecision(entry.id, {
-                          projectId: val === "__none__" ? null : val,
-                        })
-                      }
-                    >
-                      <SelectTrigger className="h-8 w-full text-sm sm:w-[180px]">
-                        <SelectValue placeholder="Project" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">No project</SelectItem>
-                        {projects.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
-                    onClick={() => removeDecision(entry.id)}
-                    aria-label="Remove decision"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
+                <Input
+                  value={entry.description}
+                  onChange={(e) =>
+                    updateDecision(entry.id, { description: e.target.value })
+                  }
+                  placeholder="Describe the decision needed..."
+                  className="h-8 flex-1 text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+                  onClick={() => removeDecision(entry.id)}
+                  aria-label="Remove decision"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
             ))}
           </div>
@@ -458,13 +398,11 @@ export function ReportWizardStep5({
                   className="rounded-xl bg-background p-4"
                 >
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    {/* Left side: task info */}
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-medium text-foreground truncate">
                           {item.name}
                         </span>
-                        {/* Priority badge */}
                         <span
                           className={cn(
                             "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize",
@@ -473,7 +411,6 @@ export function ReportWizardStep5({
                         >
                           {item.priority}
                         </span>
-                        {/* Weeks open badge */}
                         {item.weeks_open > 0 && (
                           <span
                             className={cn(
@@ -509,25 +446,34 @@ export function ReportWizardStep5({
                       </div>
                     </div>
 
-                    {/* Right side: status toggle */}
-                    <div className="flex rounded-lg border border-border p-0.5 shrink-0 self-start">
-                      {STATUS_BUTTON_OPTIONS.map((opt) => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          className={cn(
-                            "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-                            item.status === opt.value
-                              ? "bg-primary text-primary-foreground"
-                              : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
-                          )}
-                          disabled
-                          title="Status changes are read-only in the wizard preview"
+                    {/* Right side: status toggle (read-only) */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div
+                          className="flex rounded-lg border border-border p-0.5 shrink-0 self-start cursor-default"
+                          tabIndex={0}
+                          role="group"
+                          aria-label="Action item status (manage from Report Detail page)"
                         >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
+                          {STATUS_BUTTON_OPTIONS.map((opt) => (
+                            <span
+                              key={opt.value}
+                              className={cn(
+                                "rounded-md px-2.5 py-1 text-xs font-medium",
+                                item.status === opt.value
+                                  ? "bg-primary text-primary-foreground"
+                                  : "text-muted-foreground",
+                              )}
+                            >
+                              {opt.label}
+                            </span>
+                          ))}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Manage status from the Report Detail page
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
                 </div>
               )

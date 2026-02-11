@@ -20,8 +20,8 @@ async function ReportsList({ orgId }: { orgId: string }) {
     period_start: r.period_start,
     period_end: r.period_end,
     author: r.author,
-    project_count: r.project_count,
-    status_summary: r.status_summary,
+    project_name: r.project?.name ?? null,
+    status: r.status,
   }))
   return <ReportsListContent initialReports={reports} organizationId={orgId} />
 }
