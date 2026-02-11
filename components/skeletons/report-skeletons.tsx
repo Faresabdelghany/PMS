@@ -1,42 +1,80 @@
 import { Skeleton } from "@/components/ui/skeleton"
 
-export function ReportListItemSkeleton() {
+/** Skeleton for a single report card (matches ReportCard layout) */
+export function ReportCardSkeleton() {
   return (
-    <div className="flex items-center justify-between rounded-lg border p-4">
-      <div className="space-y-2 flex-1">
-        <Skeleton className="h-5 w-64" />
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-4 w-24" />
-        </div>
+    <div className="rounded-2xl border border-border bg-background p-4">
+      {/* Top row: icon + badge */}
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-5 w-5 rounded" />
+        <Skeleton className="h-5 w-20 rounded-full" />
       </div>
-      <div className="flex items-center gap-2">
-        <Skeleton className="h-6 w-16 rounded-full" />
-        <Skeleton className="h-6 w-16 rounded-full" />
-        <Skeleton className="h-6 w-16 rounded-full" />
+
+      {/* Title + date */}
+      <div className="mt-3 space-y-2">
+        <Skeleton className="h-5 w-3/4" />
+        <Skeleton className="h-4 w-1/2" />
+      </div>
+
+      {/* Status pills */}
+      <div className="mt-2 flex items-center gap-1.5">
+        <Skeleton className="h-5 w-16 rounded-full" />
+        <Skeleton className="h-5 w-14 rounded-full" />
+      </div>
+
+      {/* Divider */}
+      <div className="mt-4 border-t border-border/60" />
+
+      {/* Footer */}
+      <div className="mt-3 flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <Skeleton className="h-4 w-4 rounded" />
+          <Skeleton className="h-3 w-14" />
+        </div>
+        <Skeleton className="h-6 w-6 rounded-full" />
       </div>
     </div>
   )
 }
 
+/** Skeleton for the reports list page (matches ReportsListContent layout) */
 export function ReportsListSkeleton() {
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-8 w-32" />
-        <Skeleton className="h-9 w-32 rounded-lg" />
-      </div>
-      <div className="flex items-center gap-3">
-        <Skeleton className="h-9 w-48 rounded-lg" />
-        <Skeleton className="h-9 w-32 rounded-lg" />
-      </div>
-      <div className="space-y-3">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <ReportListItemSkeleton key={i} />
-        ))}
+    <div className="flex flex-1 flex-col bg-background mx-2 my-2 border border-border rounded-lg min-w-0">
+      {/* Header skeleton */}
+      <header className="flex flex-col border-b border-border/40">
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-8 w-8 rounded-lg" />
+            <Skeleton className="h-5 w-16" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-8 rounded-lg" />
+            <Skeleton className="h-8 w-28 rounded-lg" />
+          </div>
+        </div>
+        {/* Filter bar */}
+        <div className="flex items-center px-4 pb-3 pt-3">
+          <Skeleton className="h-8 w-64 rounded-lg" />
+        </div>
+      </header>
+
+      {/* Card grid skeleton */}
+      <div className="p-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <ReportCardSkeleton key={i} />
+          ))}
+        </div>
       </div>
     </div>
   )
+}
+
+/** Kept for backward compat — used nowhere now but exported from index */
+export function ReportListItemSkeleton() {
+  return <ReportCardSkeleton />
 }
 
 export function ReportDetailSkeleton() {

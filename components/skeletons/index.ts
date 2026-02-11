@@ -65,6 +65,7 @@ export { ChatPageSkeleton } from "./chat-skeletons"
 
 // Report skeletons
 export {
+  ReportCardSkeleton,
   ReportListItemSkeleton,
   ReportsListSkeleton,
   ReportDetailSkeleton,
