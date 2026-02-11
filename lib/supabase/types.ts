@@ -1300,6 +1300,18 @@ export interface Database {
           period_type: ReportPeriodType
           period_start: string
           period_end: string
+          project_id: string | null
+          status: ReportProjectStatus
+          previous_status: ReportProjectStatus | null
+          client_satisfaction: ClientSatisfaction
+          previous_satisfaction: ClientSatisfaction | null
+          progress_percent: number
+          previous_progress: number | null
+          narrative: string | null
+          tasks_completed: number
+          tasks_in_progress: number
+          tasks_overdue: number
+          financial_notes: string | null
           created_at: string
           updated_at: string
         }
@@ -1311,6 +1323,18 @@ export interface Database {
           period_type?: ReportPeriodType
           period_start: string
           period_end: string
+          project_id?: string | null
+          status?: ReportProjectStatus
+          previous_status?: ReportProjectStatus | null
+          client_satisfaction?: ClientSatisfaction
+          previous_satisfaction?: ClientSatisfaction | null
+          progress_percent?: number
+          previous_progress?: number | null
+          narrative?: string | null
+          tasks_completed?: number
+          tasks_in_progress?: number
+          tasks_overdue?: number
+          financial_notes?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -1322,6 +1346,18 @@ export interface Database {
           period_type?: ReportPeriodType
           period_start?: string
           period_end?: string
+          project_id?: string | null
+          status?: ReportProjectStatus
+          previous_status?: ReportProjectStatus | null
+          client_satisfaction?: ClientSatisfaction
+          previous_satisfaction?: ClientSatisfaction | null
+          progress_percent?: number
+          previous_progress?: number | null
+          narrative?: string | null
+          tasks_completed?: number
+          tasks_in_progress?: number
+          tasks_overdue?: number
+          financial_notes?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -1339,74 +1375,9 @@ export interface Database {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          }
-        ]
-      }
-      report_projects: {
-        Row: {
-          id: string
-          report_id: string
-          project_id: string
-          status: ReportProjectStatus
-          previous_status: ReportProjectStatus | null
-          client_satisfaction: ClientSatisfaction
-          previous_satisfaction: ClientSatisfaction | null
-          progress_percent: number
-          previous_progress: number | null
-          narrative: string | null
-          team_contributions: Json
-          tasks_completed: number
-          tasks_in_progress: number
-          tasks_overdue: number
-          financial_notes: string | null
-          sort_order: number
-        }
-        Insert: {
-          id?: string
-          report_id: string
-          project_id: string
-          status?: ReportProjectStatus
-          previous_status?: ReportProjectStatus | null
-          client_satisfaction?: ClientSatisfaction
-          previous_satisfaction?: ClientSatisfaction | null
-          progress_percent?: number
-          previous_progress?: number | null
-          narrative?: string | null
-          team_contributions?: Json
-          tasks_completed?: number
-          tasks_in_progress?: number
-          tasks_overdue?: number
-          financial_notes?: string | null
-          sort_order?: number
-        }
-        Update: {
-          id?: string
-          report_id?: string
-          project_id?: string
-          status?: ReportProjectStatus
-          previous_status?: ReportProjectStatus | null
-          client_satisfaction?: ClientSatisfaction
-          previous_satisfaction?: ClientSatisfaction | null
-          progress_percent?: number
-          previous_progress?: number | null
-          narrative?: string | null
-          team_contributions?: Json
-          tasks_completed?: number
-          tasks_in_progress?: number
-          tasks_overdue?: number
-          financial_notes?: string | null
-          sort_order?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "report_projects_report_id_fkey"
-            columns: ["report_id"]
-            isOneToOne: false
-            referencedRelation: "reports"
-            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "report_projects_project_id_fkey"
+            foreignKeyName: "reports_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -1418,7 +1389,6 @@ export interface Database {
         Row: {
           id: string
           report_id: string
-          project_id: string | null
           type: RiskType
           description: string
           severity: RiskSeverity
@@ -1430,7 +1400,6 @@ export interface Database {
         Insert: {
           id?: string
           report_id: string
-          project_id?: string | null
           type?: RiskType
           description: string
           severity?: RiskSeverity
@@ -1442,7 +1411,6 @@ export interface Database {
         Update: {
           id?: string
           report_id?: string
-          project_id?: string | null
           type?: RiskType
           description?: string
           severity?: RiskSeverity
@@ -1460,13 +1428,6 @@ export interface Database {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "report_risks_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "report_risks_originated_report_id_fkey"
             columns: ["originated_report_id"]
             isOneToOne: false
@@ -1479,7 +1440,6 @@ export interface Database {
         Row: {
           id: string
           report_id: string
-          project_id: string | null
           type: ReportHighlightType
           description: string
           sort_order: number
@@ -1487,7 +1447,6 @@ export interface Database {
         Insert: {
           id?: string
           report_id: string
-          project_id?: string | null
           type?: ReportHighlightType
           description: string
           sort_order?: number
@@ -1495,7 +1454,6 @@ export interface Database {
         Update: {
           id?: string
           report_id?: string
-          project_id?: string | null
           type?: ReportHighlightType
           description?: string
           sort_order?: number
@@ -1506,61 +1464,6 @@ export interface Database {
             columns: ["report_id"]
             isOneToOne: false
             referencedRelation: "reports"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "report_highlights_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      report_attachments: {
-        Row: {
-          id: string
-          report_project_id: string
-          file_name: string
-          file_path: string
-          file_size: number
-          content_type: string | null
-          uploaded_by: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          report_project_id: string
-          file_name: string
-          file_path: string
-          file_size?: number
-          content_type?: string | null
-          uploaded_by?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          report_project_id?: string
-          file_name?: string
-          file_path?: string
-          file_size?: number
-          content_type?: string | null
-          uploaded_by?: string | null
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "report_attachments_report_project_id_fkey"
-            columns: ["report_project_id"]
-            isOneToOne: false
-            referencedRelation: "report_projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "report_attachments_uploaded_by_fkey"
-            columns: ["uploaded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           }
         ]
@@ -1909,10 +1812,6 @@ export type Report = Database['public']['Tables']['reports']['Row']
 export type ReportInsert = Database['public']['Tables']['reports']['Insert']
 export type ReportUpdate = Database['public']['Tables']['reports']['Update']
 
-export type ReportProject = Database['public']['Tables']['report_projects']['Row']
-export type ReportProjectInsert = Database['public']['Tables']['report_projects']['Insert']
-export type ReportProjectUpdate = Database['public']['Tables']['report_projects']['Update']
-
 export type ReportRisk = Database['public']['Tables']['report_risks']['Row']
 export type ReportRiskInsert = Database['public']['Tables']['report_risks']['Insert']
 export type ReportRiskUpdate = Database['public']['Tables']['report_risks']['Update']
@@ -1921,28 +1820,14 @@ export type ReportHighlight = Database['public']['Tables']['report_highlights'][
 export type ReportHighlightInsert = Database['public']['Tables']['report_highlights']['Insert']
 export type ReportHighlightUpdate = Database['public']['Tables']['report_highlights']['Update']
 
-export type ReportAttachment = Database['public']['Tables']['report_attachments']['Row']
-export type ReportAttachmentInsert = Database['public']['Tables']['report_attachments']['Insert']
-
 // Report with relations
 export type ReportWithAuthor = Report & {
   author: ProfileMinimal
 }
 
-export type ReportProjectWithRelations = ReportProject & {
-  project: Pick<Project, 'id' | 'name' | 'client_id' | 'status' | 'progress'>
-  attachments?: ReportAttachment[]
-}
-
 export type ReportWithFullRelations = Report & {
   author: ProfileMinimal
-  report_projects: ReportProjectWithRelations[]
+  project: Pick<Project, 'id' | 'name' | 'client_id' | 'status' | 'progress'> | null
   report_risks: ReportRisk[]
   report_highlights: ReportHighlight[]
-}
-
-// Team contribution entry (JSONB shape)
-export type TeamContributionEntry = {
-  member_id: string
-  contribution_text: string
 }

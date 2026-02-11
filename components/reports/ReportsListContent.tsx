@@ -25,8 +25,8 @@ type ReportListItemMinimal = {
   period_start: string
   period_end: string
   author: ProfileMinimal
-  project_count: number
-  status_summary: Record<ReportProjectStatus, number>
+  project_name: string | null
+  status: ReportProjectStatus
 }
 
 // Lazy load the wizard to avoid large initial bundle
@@ -75,24 +75,25 @@ const ReportCard = memo(function ReportCard({ report }: { report: ReportListItem
     .slice(0, 2)
     .toUpperCase()
 
-  const statusEntries = (
-    Object.entries(report.status_summary) as [ReportProjectStatus, number][]
-  ).filter(([, count]) => count > 0)
-
   return (
     <Link
       href={`/reports/${report.id}`}
       className="rounded-2xl border border-border bg-background hover:shadow-lg/5 transition-shadow cursor-pointer focus:outline-none block"
     >
       <div className="p-4">
-        {/* Top row: icon + project count */}
+        {/* Top row: icon + status badge */}
         <div className="flex items-center justify-between">
           <div className="text-muted-foreground">
             <FileText className="h-5 w-5" />
           </div>
-          <div className="flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium text-muted-foreground border-border">
-            {report.project_count} {report.project_count === 1 ? "project" : "projects"}
-          </div>
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium text-white",
+              STATUS_COLORS[report.status] ?? STATUS_COLORS.on_track
+            )}
+          >
+            {STATUS_LABELS[report.status] ?? "On Track"}
+          </span>
         </div>
 
         {/* Title */}
@@ -103,20 +104,12 @@ const ReportCard = memo(function ReportCard({ report }: { report: ReportListItem
           <p className="mt-1 text-sm text-muted-foreground truncate">{dateRange}</p>
         </div>
 
-        {/* Status pills */}
-        <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-          {statusEntries.map(([status, count]) => (
-            <span
-              key={status}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium text-white",
-                STATUS_COLORS[status]
-              )}
-            >
-              {count} {STATUS_LABELS[status]}
-            </span>
-          ))}
-        </div>
+        {/* Project name */}
+        {report.project_name && (
+          <p className="mt-2 text-xs text-muted-foreground truncate">
+            {report.project_name}
+          </p>
+        )}
 
         {/* Divider */}
         <div className="mt-4 border-t border-border/60" />

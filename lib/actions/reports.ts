@@ -6,11 +6,7 @@ import type { ActionResult } from "./types"
 import type {
   Report,
   ReportInsert,
-  ReportProject,
-  ReportProjectInsert,
-  ReportRisk,
   ReportRiskInsert,
-  ReportHighlight,
   ReportHighlightInsert,
   ReportProjectStatus,
   ClientSatisfaction,
@@ -19,7 +15,7 @@ import type {
   RiskStatus,
   ReportHighlightType,
   ReportPeriodType,
-  TeamContributionEntry,
+  ReportRisk,
   ProfileMinimal,
 } from "@/lib/supabase/types"
 
@@ -27,23 +23,8 @@ import type {
 // Types for wizard data
 // ============================================
 
-export type ReportProjectInput = {
-  project_id: string
-  status: ReportProjectStatus
-  previous_status?: ReportProjectStatus | null
-  client_satisfaction: ClientSatisfaction
-  previous_satisfaction?: ClientSatisfaction | null
-  progress_percent: number
-  previous_progress?: number | null
-  narrative?: string | null
-  team_contributions: TeamContributionEntry[]
-  financial_notes?: string | null
-  sort_order: number
-}
-
 export type ReportRiskInput = {
   id?: string // present if carried over
-  project_id?: string | null
   type: RiskType
   description: string
   severity: RiskSeverity
@@ -53,7 +34,6 @@ export type ReportRiskInput = {
 }
 
 export type ReportHighlightInput = {
-  project_id?: string | null
   type: ReportHighlightType
   description: string
   sort_order: number
@@ -64,15 +44,22 @@ export type CreateReportInput = {
   period_type: ReportPeriodType
   period_start: string
   period_end: string
-  projects: ReportProjectInput[]
+  project_id: string | null
+  status: ReportProjectStatus
+  previous_status?: ReportProjectStatus | null
+  client_satisfaction: ClientSatisfaction
+  previous_satisfaction?: ClientSatisfaction | null
+  progress_percent: number
+  previous_progress?: number | null
+  narrative?: string | null
+  financial_notes?: string | null
   risks: ReportRiskInput[]
   highlights: ReportHighlightInput[]
 }
 
 export type ReportListItem = Report & {
   author: ProfileMinimal
-  project_count: number
-  status_summary: Record<ReportProjectStatus, number>
+  project: { id: string; name: string } | null
 }
 
 // ============================================
@@ -95,39 +82,18 @@ export async function getReports(
     .select(`
       *,
       author:profiles!reports_created_by_fkey(id, full_name, email, avatar_url),
-      report_projects!report_projects_report_id_fkey(project_id, status)
+      project:projects!reports_project_id_fkey(id, name)
     `)
     .eq("organization_id", orgId)
     .order("period_start", { ascending: false })
 
   if (error) return { error: error.message }
 
-  const items: ReportListItem[] = (reports ?? []).map((r: any) => {
-    const statusSummary: Record<ReportProjectStatus, number> = {
-      on_track: 0,
-      behind: 0,
-      at_risk: 0,
-      halted: 0,
-      completed: 0,
-    }
-    for (const rp of r.report_projects || []) {
-      statusSummary[rp.status as ReportProjectStatus]++
-    }
-    return {
-      id: r.id,
-      organization_id: r.organization_id,
-      created_by: r.created_by,
-      title: r.title,
-      period_type: r.period_type,
-      period_start: r.period_start,
-      period_end: r.period_end,
-      created_at: r.created_at,
-      updated_at: r.updated_at,
-      author: r.author,
-      project_count: (r.report_projects || []).length,
-      status_summary: statusSummary,
-    }
-  })
+  const items: ReportListItem[] = (reports ?? []).map((r: any) => ({
+    ...r,
+    author: r.author,
+    project: r.project ?? null,
+  }))
 
   return { data: items }
 }
@@ -163,11 +129,7 @@ export async function getReport(
     .select(`
       *,
       author:profiles!reports_created_by_fkey(id, full_name, email, avatar_url),
-      report_projects!report_projects_report_id_fkey(
-        *,
-        project:projects!report_projects_project_id_fkey(id, name, client_id, status, progress, currency),
-        attachments:report_attachments!report_attachments_report_project_id_fkey(*)
-      ),
+      project:projects!reports_project_id_fkey(id, name, client_id, status, progress, currency),
       report_risks!report_risks_report_id_fkey(*),
       report_highlights!report_highlights_report_id_fkey(*)
     `)
@@ -195,7 +157,38 @@ export async function createReport(
     return { error: "You must be an organization member to create reports" }
   }
 
-  // 1. Create the report
+  // Calculate task stats for the project
+  let tasksCompleted = 0
+  let tasksInProgress = 0
+  let tasksOverdue = 0
+
+  if (input.project_id) {
+    const [completedResult, inProgressResult, overdueResult] = await Promise.all([
+      supabase
+        .from("tasks")
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", input.project_id)
+        .eq("status", "done")
+        .gte("updated_at", input.period_start)
+        .lte("updated_at", input.period_end + "T23:59:59"),
+      supabase
+        .from("tasks")
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", input.project_id)
+        .eq("status", "in-progress"),
+      supabase
+        .from("tasks")
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", input.project_id)
+        .neq("status", "done")
+        .lt("end_date", new Date().toISOString().split("T")[0]),
+    ])
+    tasksCompleted = completedResult.count ?? 0
+    tasksInProgress = inProgressResult.count ?? 0
+    tasksOverdue = overdueResult.count ?? 0
+  }
+
+  // Create the report with flat fields
   const { data: report, error: reportError } = await supabase
     .from("reports")
     .insert({
@@ -205,6 +198,18 @@ export async function createReport(
       period_type: input.period_type,
       period_start: input.period_start,
       period_end: input.period_end,
+      project_id: input.project_id,
+      status: input.status,
+      previous_status: input.previous_status ?? null,
+      client_satisfaction: input.client_satisfaction,
+      previous_satisfaction: input.previous_satisfaction ?? null,
+      progress_percent: input.progress_percent,
+      previous_progress: input.previous_progress ?? null,
+      narrative: input.narrative ?? null,
+      tasks_completed: tasksCompleted,
+      tasks_in_progress: tasksInProgress,
+      tasks_overdue: tasksOverdue,
+      financial_notes: input.financial_notes ?? null,
     } satisfies ReportInsert)
     .select()
     .single()
@@ -213,100 +218,31 @@ export async function createReport(
     return { error: reportError?.message ?? "Failed to create report" }
   }
 
-  // 2. Calculate task stats for each project in parallel
-  const taskStatsPromises = input.projects.map(async (p) => {
-    const periodStart = input.period_start
-    const periodEnd = input.period_end
-
-    const [completedResult, inProgressResult, overdueResult] = await Promise.all([
-      supabase
-        .from("tasks")
-        .select("id", { count: "exact", head: true })
-        .eq("project_id", p.project_id)
-        .eq("status", "done")
-        .gte("updated_at", periodStart)
-        .lte("updated_at", periodEnd + "T23:59:59"),
-      supabase
-        .from("tasks")
-        .select("id", { count: "exact", head: true })
-        .eq("project_id", p.project_id)
-        .eq("status", "in-progress"),
-      supabase
-        .from("tasks")
-        .select("id", { count: "exact", head: true })
-        .eq("project_id", p.project_id)
-        .neq("status", "done")
-        .lt("end_date", new Date().toISOString().split("T")[0]),
-    ])
-
-    return {
-      project_id: p.project_id,
-      tasks_completed: completedResult.count ?? 0,
-      tasks_in_progress: inProgressResult.count ?? 0,
-      tasks_overdue: overdueResult.count ?? 0,
-    }
-  })
-
-  const taskStats = await Promise.all(taskStatsPromises)
-  const statsMap = new Map(taskStats.map((s) => [s.project_id, s]))
-
-  // 3. Insert report projects
-  const reportProjects: ReportProjectInsert[] = input.projects.map((p) => {
-    const stats = statsMap.get(p.project_id)
-    return {
-      report_id: report.id,
-      project_id: p.project_id,
-      status: p.status,
-      previous_status: p.previous_status ?? null,
-      client_satisfaction: p.client_satisfaction,
-      previous_satisfaction: p.previous_satisfaction ?? null,
-      progress_percent: p.progress_percent,
-      previous_progress: p.previous_progress ?? null,
-      narrative: p.narrative ?? null,
-      team_contributions: JSON.parse(JSON.stringify(p.team_contributions)),
-      tasks_completed: stats?.tasks_completed ?? 0,
-      tasks_in_progress: stats?.tasks_in_progress ?? 0,
-      tasks_overdue: stats?.tasks_overdue ?? 0,
-      financial_notes: p.financial_notes ?? null,
-      sort_order: p.sort_order,
-    }
-  })
-
-  // 4. Insert risks
-  const reportRisks: ReportRiskInsert[] = input.risks.map((r) => ({
-    report_id: report.id,
-    project_id: r.project_id ?? null,
-    type: r.type,
-    description: r.description,
-    severity: r.severity,
-    status: r.status,
-    mitigation_notes: r.mitigation_notes ?? null,
-    originated_report_id: r.originated_report_id ?? report.id,
-  }))
-
-  // 5. Insert highlights
-  const reportHighlights: ReportHighlightInsert[] = input.highlights.map((h) => ({
-    report_id: report.id,
-    project_id: h.project_id ?? null,
-    type: h.type,
-    description: h.description,
-    sort_order: h.sort_order,
-  }))
-
-  // Insert all sub-entities in parallel
+  // Insert risks and highlights in parallel
   const insertPromises: PromiseLike<any>[] = []
 
-  if (reportProjects.length > 0) {
-    insertPromises.push(
-      supabase.from("report_projects").insert(reportProjects).select()
-    )
-  }
-  if (reportRisks.length > 0) {
+  if (input.risks.length > 0) {
+    const reportRisks: ReportRiskInsert[] = input.risks.map((r) => ({
+      report_id: report.id,
+      type: r.type,
+      description: r.description,
+      severity: r.severity,
+      status: r.status,
+      mitigation_notes: r.mitigation_notes ?? null,
+      originated_report_id: r.originated_report_id ?? report.id,
+    }))
     insertPromises.push(
       supabase.from("report_risks").insert(reportRisks).select()
     )
   }
-  if (reportHighlights.length > 0) {
+
+  if (input.highlights.length > 0) {
+    const reportHighlights: ReportHighlightInsert[] = input.highlights.map((h) => ({
+      report_id: report.id,
+      type: h.type,
+      description: h.description,
+      sort_order: h.sort_order,
+    }))
     insertPromises.push(
       supabase.from("report_highlights").insert(reportHighlights).select()
     )
@@ -345,7 +281,38 @@ export async function updateReport(
     return { error: "You must be an organization member to edit reports" }
   }
 
-  // Update report header
+  // Calculate task stats
+  let tasksCompleted = 0
+  let tasksInProgress = 0
+  let tasksOverdue = 0
+
+  if (input.project_id) {
+    const [completedResult, inProgressResult, overdueResult] = await Promise.all([
+      supabase
+        .from("tasks")
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", input.project_id)
+        .eq("status", "done")
+        .gte("updated_at", input.period_start)
+        .lte("updated_at", input.period_end + "T23:59:59"),
+      supabase
+        .from("tasks")
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", input.project_id)
+        .eq("status", "in-progress"),
+      supabase
+        .from("tasks")
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", input.project_id)
+        .neq("status", "done")
+        .lt("end_date", new Date().toISOString().split("T")[0]),
+    ])
+    tasksCompleted = completedResult.count ?? 0
+    tasksInProgress = inProgressResult.count ?? 0
+    tasksOverdue = overdueResult.count ?? 0
+  }
+
+  // Update report with flat fields
   const { data: report, error: updateError } = await supabase
     .from("reports")
     .update({
@@ -353,6 +320,18 @@ export async function updateReport(
       period_type: input.period_type,
       period_start: input.period_start,
       period_end: input.period_end,
+      project_id: input.project_id,
+      status: input.status,
+      previous_status: input.previous_status ?? null,
+      client_satisfaction: input.client_satisfaction,
+      previous_satisfaction: input.previous_satisfaction ?? null,
+      progress_percent: input.progress_percent,
+      previous_progress: input.previous_progress ?? null,
+      narrative: input.narrative ?? null,
+      tasks_completed: tasksCompleted,
+      tasks_in_progress: tasksInProgress,
+      tasks_overdue: tasksOverdue,
+      financial_notes: input.financial_notes ?? null,
     })
     .eq("id", reportId)
     .select()
@@ -362,94 +341,34 @@ export async function updateReport(
     return { error: updateError?.message ?? "Failed to update report" }
   }
 
-  // Delete existing sub-entities and re-insert (simpler than diffing)
+  // Delete and re-insert risks and highlights
   await Promise.all([
-    supabase.from("report_projects").delete().eq("report_id", reportId),
     supabase.from("report_risks").delete().eq("report_id", reportId),
     supabase.from("report_highlights").delete().eq("report_id", reportId),
   ])
 
-  // Re-insert (same logic as create, task stats recalculated)
-  const taskStatsPromises = input.projects.map(async (p) => {
-    const [completedResult, inProgressResult, overdueResult] = await Promise.all([
-      supabase
-        .from("tasks")
-        .select("id", { count: "exact", head: true })
-        .eq("project_id", p.project_id)
-        .eq("status", "done")
-        .gte("updated_at", input.period_start)
-        .lte("updated_at", input.period_end + "T23:59:59"),
-      supabase
-        .from("tasks")
-        .select("id", { count: "exact", head: true })
-        .eq("project_id", p.project_id)
-        .eq("status", "in-progress"),
-      supabase
-        .from("tasks")
-        .select("id", { count: "exact", head: true })
-        .eq("project_id", p.project_id)
-        .neq("status", "done")
-        .lt("end_date", new Date().toISOString().split("T")[0]),
-    ])
-    return {
-      project_id: p.project_id,
-      tasks_completed: completedResult.count ?? 0,
-      tasks_in_progress: inProgressResult.count ?? 0,
-      tasks_overdue: overdueResult.count ?? 0,
-    }
-  })
-
-  const taskStats = await Promise.all(taskStatsPromises)
-  const statsMap = new Map(taskStats.map((s) => [s.project_id, s]))
-
-  const reportProjects: ReportProjectInsert[] = input.projects.map((p) => {
-    const stats = statsMap.get(p.project_id)
-    return {
-      report_id: reportId,
-      project_id: p.project_id,
-      status: p.status,
-      previous_status: p.previous_status ?? null,
-      client_satisfaction: p.client_satisfaction,
-      previous_satisfaction: p.previous_satisfaction ?? null,
-      progress_percent: p.progress_percent,
-      previous_progress: p.previous_progress ?? null,
-      narrative: p.narrative ?? null,
-      team_contributions: JSON.parse(JSON.stringify(p.team_contributions)),
-      tasks_completed: stats?.tasks_completed ?? 0,
-      tasks_in_progress: stats?.tasks_in_progress ?? 0,
-      tasks_overdue: stats?.tasks_overdue ?? 0,
-      financial_notes: p.financial_notes ?? null,
-      sort_order: p.sort_order,
-    }
-  })
-
-  const reportRisks: ReportRiskInsert[] = input.risks.map((r) => ({
-    report_id: reportId,
-    project_id: r.project_id ?? null,
-    type: r.type,
-    description: r.description,
-    severity: r.severity,
-    status: r.status,
-    mitigation_notes: r.mitigation_notes ?? null,
-    originated_report_id: r.originated_report_id ?? reportId,
-  }))
-
-  const reportHighlights: ReportHighlightInsert[] = input.highlights.map((h) => ({
-    report_id: reportId,
-    project_id: h.project_id ?? null,
-    type: h.type,
-    description: h.description,
-    sort_order: h.sort_order,
-  }))
-
   const insertPromises: PromiseLike<any>[] = []
-  if (reportProjects.length > 0) {
-    insertPromises.push(supabase.from("report_projects").insert(reportProjects).select())
-  }
-  if (reportRisks.length > 0) {
+
+  if (input.risks.length > 0) {
+    const reportRisks: ReportRiskInsert[] = input.risks.map((r) => ({
+      report_id: reportId,
+      type: r.type,
+      description: r.description,
+      severity: r.severity,
+      status: r.status,
+      mitigation_notes: r.mitigation_notes ?? null,
+      originated_report_id: r.originated_report_id ?? reportId,
+    }))
     insertPromises.push(supabase.from("report_risks").insert(reportRisks).select())
   }
-  if (reportHighlights.length > 0) {
+
+  if (input.highlights.length > 0) {
+    const reportHighlights: ReportHighlightInsert[] = input.highlights.map((h) => ({
+      report_id: reportId,
+      type: h.type,
+      description: h.description,
+      sort_order: h.sort_order,
+    }))
     insertPromises.push(supabase.from("report_highlights").insert(reportHighlights).select())
   }
 
@@ -504,7 +423,6 @@ export async function getPreviousReportData(
   orgId: string
 ): Promise<ActionResult<{
   report: Report | null
-  projects: ReportProject[]
   risks: ReportRisk[]
 }>> {
   let supabase: Awaited<ReturnType<typeof requireOrgMember>>["supabase"]
@@ -525,28 +443,20 @@ export async function getPreviousReportData(
     .single()
 
   if (error || !prevReport) {
-    return { data: { report: null, projects: [], risks: [] } }
+    return { data: { report: null, risks: [] } }
   }
 
-  // Load sub-entities from previous report in parallel
-  const [projectsResult, risksResult] = await Promise.all([
-    supabase
-      .from("report_projects")
-      .select("*")
-      .eq("report_id", prevReport.id)
-      .order("sort_order"),
-    supabase
-      .from("report_risks")
-      .select("*")
-      .eq("report_id", prevReport.id)
-      .in("status", ["open", "mitigated"]),
-  ])
+  // Load open/mitigated risks from previous report
+  const { data: risks } = await supabase
+    .from("report_risks")
+    .select("*")
+    .eq("report_id", prevReport.id)
+    .in("status", ["open", "mitigated"])
 
   return {
     data: {
       report: prevReport,
-      projects: projectsResult.data ?? [],
-      risks: risksResult.data ?? [],
+      risks: risks ?? [],
     },
   }
 }
@@ -562,28 +472,17 @@ export type ReportWizardProject = {
   clientName?: string
 }
 
-export type ReportWizardMember = {
-  id: string
-  full_name: string | null
-  email: string
-  avatar_url: string | null
-}
-
 export type ReportWizardDataResult = {
   projects: ReportWizardProject[]
-  orgMembers: ReportWizardMember[]
-  projectMembers: Record<string, string[]>
   actionItems: any[]
   previousReport: {
     report: Report | null
-    projects: ReportProject[]
     risks: ReportRisk[]
   }
 }
 
 /**
  * Fetches all data the report wizard needs in a single server action call.
- * Replaces 4 + 2N separate server action calls with 1 call and 1 auth check.
  * All DB queries run in parallel using Promise.all.
  */
 export async function getReportWizardData(
@@ -598,8 +497,8 @@ export async function getReportWizardData(
     return { error: "You must be an organization member" }
   }
 
-  // Phase 1: Fetch projects, members, previous report, and action items in parallel
-  const [projectsResult, membersResult, prevReportResult, actionItemsResult] =
+  // Fetch projects, previous report, and action items in parallel
+  const [projectsResult, prevReportResult, actionItemsResult] =
     await Promise.all([
       // Minimal project fields - only what the wizard needs
       supabase
@@ -609,12 +508,7 @@ export async function getReportWizardData(
         .neq("status", "completed")
         .neq("status", "cancelled")
         .order("updated_at", { ascending: false }),
-      // Org members
-      supabase
-        .from("organization_members")
-        .select("user_id, profile:profiles(id, full_name, email, avatar_url)")
-        .eq("organization_id", orgId),
-      // Previous report + sub-entities
+      // Previous report
       supabase
         .from("reports")
         .select("*")
@@ -636,9 +530,8 @@ export async function getReportWizardData(
         .order("created_at", { ascending: true }),
     ])
 
-  // Check for errors from Phase 1 queries
+  // Check for errors
   if (projectsResult.error) return { error: `Failed to load projects: ${projectsResult.error.message}` }
-  if (membersResult.error) return { error: `Failed to load members: ${membersResult.error.message}` }
   if (actionItemsResult.error) return { error: `Failed to load action items: ${actionItemsResult.error.message}` }
 
   // Build active projects list
@@ -651,55 +544,18 @@ export async function getReportWizardData(
     })
   )
 
-  // Build org members list
-  const orgMembers: ReportWizardMember[] = (membersResult.data ?? []).map(
-    (m: any) => ({
-      id: m.profile?.id ?? m.user_id,
-      full_name: m.profile?.full_name ?? null,
-      email: m.profile?.email ?? "",
-      avatar_url: m.profile?.avatar_url ?? null,
-    })
-  )
-
-  // Phase 2: Fetch project members (single query) + previous report sub-entities in parallel
+  // Previous report sub-entities
   const prevReport = prevReportResult.data
-  const projectIds = activeProjects.map((p) => p.id)
+  let prevRisks: ReportRisk[] = []
 
-  const prevSubEntitiesPromise = prevReport
-    ? Promise.all([
-        supabase
-          .from("report_projects")
-          .select("*")
-          .eq("report_id", prevReport.id)
-          .order("sort_order"),
-        supabase
-          .from("report_risks")
-          .select("*")
-          .eq("report_id", prevReport.id)
-          .in("status", ["open", "mitigated"]),
-      ])
-    : Promise.resolve(null)
+  if (prevReport) {
+    const risksResult = await supabase
+      .from("report_risks")
+      .select("*")
+      .eq("report_id", prevReport.id)
+      .in("status", ["open", "mitigated"])
 
-  // Single query for all project members instead of N separate queries
-  const [allProjectMembersResult, prevSubEntities] = await Promise.all([
-    projectIds.length > 0
-      ? supabase
-          .from("project_members")
-          .select("project_id, user_id")
-          .in("project_id", projectIds)
-      : Promise.resolve({ data: [], error: null }),
-    prevSubEntitiesPromise,
-  ])
-
-  // Build project members map from single query result
-  const projectMembersMap: Record<string, string[]> = {}
-  for (const id of projectIds) {
-    projectMembersMap[id] = []
-  }
-  for (const pm of allProjectMembersResult.data ?? []) {
-    if (projectMembersMap[pm.project_id]) {
-      projectMembersMap[pm.project_id].push(pm.user_id)
-    }
+    prevRisks = risksResult.data ?? []
   }
 
   // Calculate weeks open for action items
@@ -712,20 +568,14 @@ export async function getReportWizardData(
     return { ...task, weeks_open: weeksOpen }
   })
 
-  // Build previous report data
-  const previousReport = {
-    report: prevReport ?? null,
-    projects: prevSubEntities?.[0]?.data ?? [],
-    risks: prevSubEntities?.[1]?.data ?? [],
-  }
-
   return {
     data: {
       projects: activeProjects,
-      orgMembers,
-      projectMembers: projectMembersMap,
       actionItems,
-      previousReport,
+      previousReport: {
+        report: prevReport ?? null,
+        risks: prevRisks,
+      },
     },
   }
 }

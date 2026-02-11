@@ -5,29 +5,17 @@ import type {
   RiskType,
   RiskSeverity,
   RiskStatus,
-  TeamContributionEntry,
 } from "@/lib/supabase/types"
 
 export type ReportWizardData = {
-  // Step 1: Scope
+  // Step 1: Scope & status
   title: string
   periodType: ReportPeriodType
   periodStart: string // ISO date
   periodEnd: string
-  selectedProjectIds: string[]
+  selectedProjectId: string | null
 
-  // Step 2: Project status (keyed by project ID)
-  projectData: Record<string, ProjectReportData>
-
-  // Step 4: Risks
-  risks: RiskEntry[]
-
-  // Step 5: Highlights & Decisions
-  highlights: HighlightEntry[]
-  decisions: DecisionEntry[]
-}
-
-export type ProjectReportData = {
+  // Flat project fields (shown when project selected)
   status: ReportProjectStatus
   previousStatus: ReportProjectStatus | null
   clientSatisfaction: ClientSatisfaction
@@ -35,13 +23,18 @@ export type ProjectReportData = {
   progressPercent: number
   previousProgress: number | null
   narrative: string
-  teamContributions: TeamContributionEntry[]
   financialNotes: string
+
+  // Step 2: Risks
+  risks: RiskEntry[]
+
+  // Step 3: Highlights & Decisions
+  highlights: HighlightEntry[]
+  decisions: DecisionEntry[]
 }
 
 export type RiskEntry = {
   id: string
-  projectId: string | null
   type: RiskType
   description: string
   severity: RiskSeverity
@@ -53,12 +46,10 @@ export type RiskEntry = {
 
 export type HighlightEntry = {
   id: string
-  projectId: string | null
   description: string
 }
 
 export type DecisionEntry = {
   id: string
-  projectId: string | null
   description: string
 }
