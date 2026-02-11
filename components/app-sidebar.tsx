@@ -32,7 +32,6 @@ import { Question } from "@phosphor-icons/react/dist/ssr/Question"
 import { CaretUpDown } from "@phosphor-icons/react/dist/ssr/CaretUpDown"
 import { SignOut } from "@phosphor-icons/react/dist/ssr/SignOut"
 import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
-import { FileText } from "@phosphor-icons/react/dist/ssr/FileText"
 import { User } from "@phosphor-icons/react/dist/ssr/User"
 import {
   DropdownMenu,
@@ -53,7 +52,7 @@ import { cn } from "@/lib/utils"
 import { PROGRESS_THRESHOLDS, BADGE_CAP } from "@/lib/constants"
 
 // Navigation items defined inline (no mock data dependency)
-type NavItemId = "inbox" | "my-tasks" | "projects" | "clients" | "reports" | "chat" | "performance"
+type NavItemId = "inbox" | "my-tasks" | "projects" | "clients" | "chat" | "performance"
 type SidebarFooterItemId = "settings" | "templates" | "help"
 
 type NavItem = {
@@ -72,7 +71,6 @@ const navItems: NavItem[] = [
   { id: "my-tasks", label: "My task" },
   { id: "projects", label: "Projects" },
   { id: "clients", label: "Clients" },
-  { id: "reports", label: "Reports" },
   { id: "chat", label: "AI Chat" },
   { id: "performance", label: "Performance" },
 ]
@@ -113,11 +111,6 @@ const preloadHandlers: Record<NavItemId, () => void> = {
       void import("@/components/clients-content")
     }
   },
-  reports: () => {
-    if (typeof window !== "undefined") {
-      void import("@/components/reports/ReportsListContent")
-    }
-  },
   chat: () => {
     if (typeof window !== "undefined") {
       void import("@/components/ai/chat-page-content")
@@ -145,7 +138,6 @@ const navItemIcons: Record<NavItemId, React.ComponentType<{ className?: string }
   "my-tasks": CheckSquare,
   projects: Folder,
   clients: Users,
-  reports: FileText,
   chat: Sparkle,
   performance: ChartBar,
 }
@@ -259,7 +251,6 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
     if (id === "projects") return "/projects"
     if (id === "inbox") return "/inbox"
     if (id === "clients") return "/clients"
-    if (id === "reports") return "/reports"
     if (id === "chat") return "/chat"
     if (id === "performance") return "/performance"
     return "#"
@@ -277,9 +268,6 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
     }
     if (id === "clients") {
       return pathname.startsWith("/clients")
-    }
-    if (id === "reports") {
-      return pathname.startsWith("/reports")
     }
     if (id === "chat") {
       return pathname.startsWith("/chat")

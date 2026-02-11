@@ -169,13 +169,15 @@ interface ReportDetailContentProps {
   report: any
   organizationMembers: OrgMember[]
   actionItems: ActionItem[]
+  /** When rendered under a project, use project-scoped breadcrumbs */
+  projectId?: string
 }
 
 // ============================================
 // Main Component
 // ============================================
 
-export function ReportDetailContent({ report, organizationMembers, actionItems }: ReportDetailContentProps) {
+export function ReportDetailContent({ report, organizationMembers, actionItems, projectId }: ReportDetailContentProps) {
   const router = useRouter()
   const [showMeta, setShowMeta] = useState(true)
   const [showWizard, setShowWizard] = useState(false)
@@ -203,10 +205,17 @@ export function ReportDetailContent({ report, organizationMembers, actionItems }
     : (console.warn(`[Report ${report.id}] Unknown satisfaction: "${report.client_satisfaction}"`),
        { label: "Unknown", color: "text-muted-foreground" })
 
-  const breadcrumbs = [
-    { label: "Reports", href: "/reports" },
-    { label: report.title },
-  ]
+  const effectiveProjectId = projectId || report.project?.id
+  const breadcrumbs = effectiveProjectId
+    ? [
+        { label: "Projects", href: "/projects" },
+        { label: report.project?.name || "Project", href: `/projects/${effectiveProjectId}` },
+        { label: report.title },
+      ]
+    : [
+        { label: "Projects", href: "/projects" },
+        { label: report.title },
+      ]
 
   const copyLink = useCallback(async () => {
     if (!navigator.clipboard) {

@@ -30,6 +30,7 @@ import { AIGenerateButton } from "@/components/ai/ai-generate-button"
 import { AISetupPrompt } from "@/components/ai/ai-setup-prompt"
 import { useAIStatus } from "@/hooks/use-ai-status"
 import type { ReportWizardData } from "./report-wizard-types"
+import type { ProjectReportStats } from "@/lib/actions/reports"
 import type {
   ReportPeriodType,
   ReportProjectStatus,
@@ -40,6 +41,11 @@ interface ReportWizardStep1Props {
   data: ReportWizardData
   updateData: (updates: Partial<ReportWizardData>) => void
   projects: { id: string; name: string; clientName?: string }[]
+  /** When set, project is pre-selected and dropdown is hidden */
+  scopedProjectId?: string
+  scopedProjectName?: string
+  /** Auto-calculated stats from workstreams/tasks/deliverables */
+  projectStats?: ProjectReportStats | null
 }
 
 // --- Date helpers ---
@@ -203,7 +209,16 @@ const SATISFACTION_OPTIONS: {
   },
 ]
 
-export function ReportWizardStep1({ data, updateData, projects }: ReportWizardStep1Props) {
+function formatCurrency(value: number, currency: string): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value)
+}
+
+export function ReportWizardStep1({ data, updateData, projects, scopedProjectId, scopedProjectName, projectStats }: ReportWizardStep1Props) {
   const { isConfigured, refetch: refetchAIStatus } = useAIStatus()
   const [narrativeFocused, setNarrativeFocused] = useState(false)
   const narrativeContainerRef = useRef<HTMLDivElement>(null)
@@ -523,41 +538,103 @@ export function ReportWizardStep1({ data, updateData, projects }: ReportWizardSt
       </div>
 
       {/* ===================== Project Selection Card ===================== */}
-      <div className="space-y-4 rounded-2xl bg-muted p-4">
-        <Label className="text-sm font-medium">Project</Label>
-
-        {projects.length === 0 ? (
-          <div className="flex items-center justify-center rounded-xl bg-background py-8">
-            <p className="text-sm text-muted-foreground">
-              No projects found. Create a project first.
-            </p>
+      {scopedProjectId ? (
+        <div className="space-y-4 rounded-2xl bg-muted p-4">
+          <Label className="text-sm font-medium">Project</Label>
+          <div className="rounded-xl bg-background px-4 py-3">
+            <p className="text-sm font-medium text-foreground">{scopedProjectName || "Project"}</p>
           </div>
-        ) : (
-          <Select
-            value={data.selectedProjectId ?? "__none__"}
-            onValueChange={(val) =>
-              updateData({ selectedProjectId: val === "__none__" ? null : val })
-            }
-          >
-            <SelectTrigger className="bg-background">
-              <SelectValue placeholder="Select a project..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">No project</SelectItem>
-              {projects.map((project) => (
-                <SelectItem key={project.id} value={project.id}>
-                  <span>{project.name}</span>
-                  {project.clientName && (
-                    <span className="ml-2 text-muted-foreground">
-                      {project.clientName}
-                    </span>
-                  )}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="space-y-4 rounded-2xl bg-muted p-4">
+          <Label className="text-sm font-medium">Project</Label>
+
+          {projects.length === 0 ? (
+            <div className="flex items-center justify-center rounded-xl bg-background py-8">
+              <p className="text-sm text-muted-foreground">
+                No projects found. Create a project first.
+              </p>
+            </div>
+          ) : (
+            <Select
+              value={data.selectedProjectId ?? "__none__"}
+              onValueChange={(val) =>
+                updateData({ selectedProjectId: val === "__none__" ? null : val })
+              }
+            >
+              <SelectTrigger className="bg-background">
+                <SelectValue placeholder="Select a project..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">No project</SelectItem>
+                {projects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    <span>{project.name}</span>
+                    {project.clientName && (
+                      <span className="ml-2 text-muted-foreground">
+                        {project.clientName}
+                      </span>
+                    )}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      )}
+
+      {/* ===================== Auto-Calculated Progress (when stats available) ===================== */}
+      {projectStats && selectedProject && (
+        <div className="space-y-4 rounded-2xl bg-muted p-4">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Calculated Progress
+            </Label>
+            <span className="text-xs text-muted-foreground">
+              {projectStats.completedWorkstreams}/{projectStats.totalWorkstreams} workstreams &middot; {projectStats.completedTasks}/{projectStats.totalTasks} tasks
+            </span>
+          </div>
+          <div className="rounded-xl bg-background p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-muted-foreground">Auto-calculated: <strong>{projectStats.calculatedProgress}%</strong></span>
+              <span className="text-xs text-muted-foreground">Adjust below if needed</span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-all"
+                style={{ width: `${projectStats.calculatedProgress}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================== Financial Summary (when stats available) ===================== */}
+      {projectStats && selectedProject && projectStats.totalValue > 0 && (
+        <div className="space-y-4 rounded-2xl bg-muted p-4">
+          <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Financial Summary
+          </Label>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-xl bg-background p-3 text-center">
+              <p className="text-xs text-muted-foreground">Total Value</p>
+              <p className="text-sm font-semibold mt-1">{formatCurrency(projectStats.totalValue, projectStats.currency)}</p>
+            </div>
+            <div className="rounded-xl bg-background p-3 text-center">
+              <p className="text-xs text-emerald-600 dark:text-emerald-400">Collected</p>
+              <p className="text-sm font-semibold mt-1 text-emerald-700 dark:text-emerald-300">{formatCurrency(projectStats.paidAmount, projectStats.currency)}</p>
+            </div>
+            <div className="rounded-xl bg-background p-3 text-center">
+              <p className="text-xs text-yellow-600 dark:text-yellow-400">Invoiced</p>
+              <p className="text-sm font-semibold mt-1 text-yellow-700 dark:text-yellow-300">{formatCurrency(projectStats.invoicedAmount, projectStats.currency)}</p>
+            </div>
+            <div className="rounded-xl bg-background p-3 text-center">
+              <p className="text-xs text-red-600 dark:text-red-400">Outstanding</p>
+              <p className="text-sm font-semibold mt-1 text-red-700 dark:text-red-300">{formatCurrency(projectStats.unpaidAmount, projectStats.currency)}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ===================== Project Status Fields ===================== */}
       {selectedProject && (

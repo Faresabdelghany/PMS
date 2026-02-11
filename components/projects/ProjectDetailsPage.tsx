@@ -47,6 +47,9 @@ const preloadAssetsFilesTab = () => import("@/components/projects/AssetsFilesTab
 const DeliverableTab = dynamic(() => import("@/components/projects/DeliverableTab").then(m => m.DeliverableTab), { ssr: false })
 const preloadDeliverableTab = () => import("@/components/projects/DeliverableTab")
 
+const ProjectReportsTab = dynamic(() => import("@/components/reports/ProjectReportsTab").then(m => m.ProjectReportsTab), { ssr: false })
+const preloadReportsTab = () => import("@/components/reports/ProjectReportsTab")
+
 const AddFileModal = dynamic(() => import("@/components/projects/AddFileModal").then(m => m.AddFileModal), { ssr: false })
 
 // Tab loading skeleton
@@ -64,6 +67,8 @@ function TabSkeleton() {
   )
 }
 
+import type { ProjectReportListItem } from "@/lib/actions/reports"
+
 type ProjectDetailsPageProps = {
   projectId: string
   project: ProjectDetails
@@ -73,6 +78,7 @@ type ProjectDetailsPageProps = {
   clients?: { id: string; name: string }[]
   organizationMembers?: OrganizationMember[]
   organizationTags?: OrganizationTag[]
+  reports?: ProjectReportListItem[]
 }
 
 export function ProjectDetailsPage({
@@ -84,6 +90,7 @@ export function ProjectDetailsPage({
   clients = [],
   organizationMembers = [],
   organizationTags = [],
+  reports = [],
 }: ProjectDetailsPageProps) {
   const router = useRouter()
   const { user, profile } = useUser()
@@ -244,6 +251,7 @@ export function ProjectDetailsPage({
                     <TabsTrigger value="notes" onMouseEnter={() => preloadNotesTab()}>Notes</TabsTrigger>
                     <TabsTrigger value="assets" onMouseEnter={() => preloadAssetsFilesTab()}>Assets &amp; Files</TabsTrigger>
                     <TabsTrigger value="deliverables" onMouseEnter={() => preloadDeliverableTab()}>Deliverables</TabsTrigger>
+                    <TabsTrigger value="reports" onMouseEnter={() => preloadReportsTab()}>Reports</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="overview">
@@ -308,6 +316,24 @@ export function ProjectDetailsPage({
                         projectId={projectId}
                         deliverables={supabaseProject.deliverables}
                         currency={supabaseProject.currency || "USD"}
+                        onRefresh={() => startTransition(() => router.refresh())}
+                      />
+                    </Suspense>
+                  </TabsContent>
+
+                  <TabsContent value="reports">
+                    <Suspense fallback={<TabSkeleton />}>
+                      <ProjectReportsTab
+                        projectId={projectId}
+                        projectName={supabaseProject.name}
+                        organizationId={supabaseProject.organization_id}
+                        reports={reports}
+                        organizationMembers={organizationMembers.map(m => ({
+                          id: m.user_id,
+                          name: m.profile?.full_name || m.profile?.email || "Unknown",
+                          email: m.profile?.email || "",
+                          avatarUrl: m.profile?.avatar_url || null,
+                        }))}
                         onRefresh={() => startTransition(() => router.refresh())}
                       />
                     </Suspense>

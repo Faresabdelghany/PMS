@@ -14,10 +14,12 @@ import {
   getReport,
   createReport,
   updateReport,
+  getProjectReportStats,
 } from "@/lib/actions/reports"
 import type {
   CreateReportInput,
   ReportWizardProject,
+  ProjectReportStats,
 } from "@/lib/actions/reports"
 import type {
   ReportWizardData,
@@ -38,6 +40,9 @@ interface ReportWizardProps {
   onCreate?: () => void
   organizationId: string
   editingReportId?: string | null
+  /** When provided, the wizard is scoped to this project (no project dropdown) */
+  projectId?: string
+  projectName?: string
 }
 
 type ProjectInfo = ReportWizardProject
@@ -137,6 +142,8 @@ export function ReportWizard({
   onCreate,
   organizationId,
   editingReportId,
+  projectId: scopedProjectId,
+  projectName: scopedProjectName,
 }: ReportWizardProps) {
   const [step, setStep] = useState(0)
   const [maxStepReached, setMaxStepReached] = useState(0)
@@ -146,6 +153,7 @@ export function ReportWizard({
   // Data loaded on mount
   const [projects, setProjects] = useState<ProjectInfo[]>([])
   const [actionItems, setActionItems] = useState<ActionItem[]>([])
+  const [projectStats, setProjectStats] = useState<ProjectReportStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   // --- Data fetching on mount (single server action call) ---
@@ -158,9 +166,10 @@ export function ReportWizard({
 
       try {
         // Single server action: 1 auth check, all DB queries in parallel
-        const [wizardResult, editResult] = await Promise.all([
+        const [wizardResult, editResult, statsResult] = await Promise.all([
           getReportWizardData(organizationId),
           editingReportId ? getReport(editingReportId) : null,
+          scopedProjectId ? getProjectReportStats(scopedProjectId) : null,
         ])
 
         if (cancelled) return
@@ -173,6 +182,20 @@ export function ReportWizard({
         const wd = wizardResult.data
         setProjects(wd.projects)
         setActionItems(wd.actionItems as ActionItem[])
+
+        // Store project stats for auto-calculated progress/financials
+        if (statsResult?.data) {
+          setProjectStats(statsResult.data)
+        }
+
+        // If scoped to a project, auto-select it
+        if (scopedProjectId) {
+          setData((prev) => ({
+            ...prev,
+            selectedProjectId: scopedProjectId,
+            progressPercent: statsResult?.data?.calculatedProgress ?? prev.progressPercent,
+          }))
+        }
 
         // Apply carry-over from previous report (flat fields)
         const prevData = wd.previousReport
@@ -193,20 +216,26 @@ export function ReportWizard({
 
             const prevReport = prevData.report!
 
-            // Auto-select the same project from previous report
-            const prevProjectId = prevReport.project_id
-            const projectExists = prevProjectId
-              ? wd.projects.some((p) => p.id === prevProjectId)
-              : false
+            // When scoped to a project, never override selectedProjectId from carry-over
+            let selectedProjectId = prev.selectedProjectId
+            if (!scopedProjectId) {
+              const prevProjectId = prevReport.project_id
+              const projectExists = prevProjectId
+                ? wd.projects.some((p) => p.id === prevProjectId)
+                : false
+              if (projectExists) selectedProjectId = prevProjectId
+            }
 
             return {
               ...prev,
-              selectedProjectId: projectExists ? prevProjectId : prev.selectedProjectId,
+              selectedProjectId,
               status: (prevReport.status as ReportWizardData["status"]) ?? prev.status,
               previousStatus: (prevReport.status as ReportWizardData["status"]) ?? null,
               clientSatisfaction: (prevReport.client_satisfaction as ReportWizardData["clientSatisfaction"]) ?? prev.clientSatisfaction,
               previousSatisfaction: (prevReport.client_satisfaction as ReportWizardData["clientSatisfaction"]) ?? null,
-              progressPercent: prevReport.progress_percent ?? prev.progressPercent,
+              progressPercent: scopedProjectId
+                ? (statsResult?.data?.calculatedProgress ?? prev.progressPercent)
+                : (prevReport.progress_percent ?? prev.progressPercent),
               previousProgress: prevReport.progress_percent ?? null,
               risks: carriedRisks,
             }
@@ -277,7 +306,7 @@ export function ReportWizard({
     return () => {
       cancelled = true
     }
-  }, [organizationId, editingReportId])
+  }, [organizationId, editingReportId, scopedProjectId])
 
   // --- Keyboard: Escape to close ---
 
@@ -322,7 +351,8 @@ export function ReportWizard({
       toast.error("Please provide a report title.")
       return
     }
-    if (!data.selectedProjectId) {
+    const effectiveProjectId = data.selectedProjectId || scopedProjectId || null
+    if (!effectiveProjectId) {
       toast.error("Please select a project.")
       return
     }
@@ -336,7 +366,7 @@ export function ReportWizard({
         period_type: data.periodType,
         period_start: data.periodStart,
         period_end: data.periodEnd,
-        project_id: data.selectedProjectId,
+        project_id: effectiveProjectId,
         status: data.status,
         previous_status: data.previousStatus,
         client_satisfaction: data.clientSatisfaction,
@@ -391,7 +421,7 @@ export function ReportWizard({
     } finally {
       setIsPublishing(false)
     }
-  }, [data, editingReportId, organizationId, onCreate, onClose])
+  }, [data, editingReportId, organizationId, scopedProjectId, onCreate, onClose])
 
   // --- Render ---
 
@@ -493,6 +523,9 @@ export function ReportWizard({
                         name: p.name,
                         clientName: p.clientName,
                       }))}
+                      scopedProjectId={scopedProjectId}
+                      scopedProjectName={scopedProjectName}
+                      projectStats={projectStats}
                     />
                   )}
                   {step === 1 && (

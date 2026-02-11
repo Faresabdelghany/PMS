@@ -10,9 +10,11 @@ export const metadata: Metadata = {
   title: "Report - PMS",
 }
 
-type PageProps = { params: Promise<{ id: string }> }
+type PageProps = { params: Promise<{ id: string; reportId: string }> }
 
-async function ReportDetail({ reportId }: { reportId: string }) {
+async function ReportDetail({ projectId, reportId }: { projectId: string; reportId: string }) {
+  // Start action items fetch in parallel with report fetch (no waterfall)
+  const actionItemsPromise = getReportActionItems(reportId)
   const result = await getReport(reportId)
 
   if (result.error || !result.data) {
@@ -21,10 +23,10 @@ async function ReportDetail({ reportId }: { reportId: string }) {
 
   const report = result.data
 
-  // Fetch org members and action items in parallel
+  // Fetch org members in parallel with already-started action items
   const [membersResult, actionItemsResult] = await Promise.all([
     getCachedOrganizationMembers(report.organization_id),
-    getReportActionItems(reportId),
+    actionItemsPromise,
   ])
 
   const members = (membersResult.data || []).map((m: any) => ({
@@ -39,16 +41,17 @@ async function ReportDetail({ reportId }: { reportId: string }) {
       report={report}
       organizationMembers={members}
       actionItems={actionItemsResult.data || []}
+      projectId={projectId}
     />
   )
 }
 
 export default async function Page({ params }: PageProps) {
-  const { id } = await params
+  const { id, reportId } = await params
 
   return (
     <Suspense fallback={<ReportDetailSkeleton />}>
-      <ReportDetail reportId={id} />
+      <ReportDetail projectId={id} reportId={reportId} />
     </Suspense>
   )
 }

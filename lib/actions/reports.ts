@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { requireAuth, requireOrgMember } from "./auth-helpers"
+import { requireAuth, requireOrgMember, requireProjectMember } from "./auth-helpers"
 import type { ActionResult } from "./types"
 import type {
   Report,
@@ -55,47 +55,6 @@ export type CreateReportInput = {
   financial_notes?: string | null
   risks: ReportRiskInput[]
   highlights: ReportHighlightInput[]
-}
-
-export type ReportListItem = Report & {
-  author: ProfileMinimal
-  project: { id: string; name: string } | null
-}
-
-// ============================================
-// Get reports list
-// ============================================
-
-export async function getReports(
-  orgId: string
-): Promise<ActionResult<ReportListItem[]>> {
-  let supabase: Awaited<ReturnType<typeof requireOrgMember>>["supabase"]
-  try {
-    const ctx = await requireOrgMember(orgId)
-    supabase = ctx.supabase
-  } catch {
-    return { error: "You must be an organization member to view reports" }
-  }
-
-  const { data: reports, error } = await supabase
-    .from("reports")
-    .select(`
-      *,
-      author:profiles!reports_created_by_fkey(id, full_name, email, avatar_url),
-      project:projects!reports_project_id_fkey(id, name)
-    `)
-    .eq("organization_id", orgId)
-    .order("period_start", { ascending: false })
-
-  if (error) return { error: error.message }
-
-  const items: ReportListItem[] = (reports ?? []).map((r: any) => ({
-    ...r,
-    author: r.author,
-    project: r.project ?? null,
-  }))
-
-  return { data: items }
 }
 
 // ============================================
@@ -250,7 +209,9 @@ export async function createReport(
 
   await Promise.all(insertPromises)
 
-  revalidatePath("/reports")
+  if (input.project_id) {
+    revalidatePath(`/projects/${input.project_id}`)
+  }
   return { data: report }
 }
 
@@ -374,8 +335,9 @@ export async function updateReport(
 
   await Promise.all(insertPromises)
 
-  revalidatePath("/reports")
-  revalidatePath(`/reports/${reportId}`)
+  if (input.project_id) {
+    revalidatePath(`/projects/${input.project_id}`)
+  }
   return { data: report }
 }
 
@@ -390,7 +352,7 @@ export async function deleteReport(
 
   const { data: report, error: fetchError } = await supabase
     .from("reports")
-    .select("organization_id")
+    .select("organization_id, project_id")
     .eq("id", reportId)
     .single()
 
@@ -411,7 +373,9 @@ export async function deleteReport(
 
   if (error) return { error: error.message }
 
-  revalidatePath("/reports")
+  if (report.project_id) {
+    revalidatePath(`/projects/${report.project_id}`)
+  }
   return { data: { success: true } }
 }
 
@@ -652,7 +616,6 @@ export async function createReportActionItem(input: {
     })
   }
 
-  revalidatePath(`/reports/${input.reportId}`)
   revalidatePath(`/projects/${input.projectId}`)
   return { data: task }
 }
@@ -720,4 +683,179 @@ export async function getOpenActionItems(
   })
 
   return { data: items }
+}
+
+// ============================================
+// Get reports for a specific project
+// ============================================
+
+export type ProjectReportListItem = {
+  id: string
+  title: string
+  period_type: ReportPeriodType
+  period_start: string
+  period_end: string
+  status: ReportProjectStatus
+  progress_percent: number
+  tasks_completed: number
+  tasks_in_progress: number
+  tasks_overdue: number
+  created_at: string
+  author: ProfileMinimal
+}
+
+export async function getProjectReports(
+  projectId: string
+): Promise<ActionResult<ProjectReportListItem[]>> {
+  let supabase: Awaited<ReturnType<typeof requireProjectMember>>["supabase"]
+  try {
+    const ctx = await requireProjectMember(projectId)
+    supabase = ctx.supabase
+  } catch {
+    return { error: "You must be a project member to view reports" }
+  }
+
+  const { data: reports, error } = await supabase
+    .from("reports")
+    .select(`
+      id, title, period_type, period_start, period_end, status,
+      progress_percent, tasks_completed, tasks_in_progress, tasks_overdue,
+      created_at,
+      author:profiles!reports_created_by_fkey(id, full_name, email, avatar_url)
+    `)
+    .eq("project_id", projectId)
+    .order("period_start", { ascending: false })
+
+  if (error) return { error: error.message }
+
+  return { data: (reports ?? []) as ProjectReportListItem[] }
+}
+
+// ============================================
+// Auto-calculate project report stats
+// ============================================
+
+export type ProjectReportStats = {
+  // Progress from workstreams/tasks
+  calculatedProgress: number
+  totalWorkstreams: number
+  completedWorkstreams: number
+  totalTasks: number
+  completedTasks: number
+  inProgressTasks: number
+  overdueTasks: number
+  // Financial from deliverables
+  totalValue: number
+  paidAmount: number
+  invoicedAmount: number
+  unpaidAmount: number
+  currency: string
+}
+
+export async function getProjectReportStats(
+  projectId: string
+): Promise<ActionResult<ProjectReportStats>> {
+  let supabase: Awaited<ReturnType<typeof requireProjectMember>>["supabase"]
+  try {
+    const ctx = await requireProjectMember(projectId)
+    supabase = ctx.supabase
+  } catch {
+    return { error: "You must be a project member to view report stats" }
+  }
+
+  const [
+    workstreamsResult,
+    tasksResult,
+    deliverablesResult,
+    projectResult,
+  ] = await Promise.all([
+    supabase
+      .from("workstreams")
+      .select("id")
+      .eq("project_id", projectId),
+    supabase
+      .from("tasks")
+      .select("id, status, workstream_id, end_date")
+      .eq("project_id", projectId),
+    supabase
+      .from("project_deliverables")
+      .select("value, payment_status")
+      .eq("project_id", projectId),
+    supabase
+      .from("projects")
+      .select("currency")
+      .eq("id", projectId)
+      .single(),
+  ])
+
+  const workstreams = workstreamsResult.data ?? []
+  const tasks = tasksResult.data ?? []
+  const deliverables = deliverablesResult.data ?? []
+  const currency = projectResult.data?.currency || "USD"
+
+  // Calculate workstream completion (a workstream is "done" if all its tasks are done)
+  const workstreamTaskMap = new Map<string, { total: number; done: number }>()
+  for (const ws of workstreams) {
+    workstreamTaskMap.set(ws.id, { total: 0, done: 0 })
+  }
+  let rootDone = 0
+  let rootTotal = 0
+  const today = new Date().toISOString().split("T")[0]
+
+  for (const task of tasks) {
+    if (task.workstream_id && workstreamTaskMap.has(task.workstream_id)) {
+      const ws = workstreamTaskMap.get(task.workstream_id)!
+      ws.total++
+      if (task.status === "done") ws.done++
+    } else {
+      rootTotal++
+      if (task.status === "done") rootDone++
+    }
+  }
+
+  let completedWorkstreams = 0
+  for (const [, ws] of workstreamTaskMap) {
+    if (ws.total > 0 && ws.done === ws.total) completedWorkstreams++
+  }
+
+  const totalTasks = tasks.length
+  const completedTasks = tasks.filter(t => t.status === "done").length
+  const inProgressTasks = tasks.filter(t => t.status === "in-progress").length
+  const overdueTasks = tasks.filter(t => t.status !== "done" && t.end_date && t.end_date < today).length
+
+  // Calculate progress: weighted by workstreams + root tasks
+  const totalUnits = workstreams.length + rootTotal
+  const completedUnits = completedWorkstreams + rootDone
+  const calculatedProgress = totalUnits > 0 ? Math.round((completedUnits / totalUnits) * 100) : 0
+
+  // Financial summary from deliverables
+  let totalValue = 0
+  let paidAmount = 0
+  let invoicedAmount = 0
+  let unpaidAmount = 0
+
+  for (const d of deliverables) {
+    const val = d.value ?? 0
+    totalValue += val
+    if (d.payment_status === "paid") paidAmount += val
+    else if (d.payment_status === "invoiced") invoicedAmount += val
+    else unpaidAmount += val
+  }
+
+  return {
+    data: {
+      calculatedProgress,
+      totalWorkstreams: workstreams.length,
+      completedWorkstreams,
+      totalTasks,
+      completedTasks,
+      inProgressTasks,
+      overdueTasks,
+      totalValue,
+      paidAmount,
+      invoicedAmount,
+      unpaidAmount,
+      currency,
+    },
+  }
 }

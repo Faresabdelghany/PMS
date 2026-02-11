@@ -12,6 +12,7 @@ import {
   getCachedTags,
   getCachedActiveOrganizationId,
 } from "@/lib/server-cache"
+import { getProjectReports } from "@/lib/actions/reports"
 import { transformProjectToUI } from "@/lib/transforms/project-details"
 
 type PageProps = {
@@ -51,6 +52,7 @@ export default async function Page({ params }: PageProps) {
   const tasksPromise = getCachedTasks(id)
   const workstreamsPromise = getCachedWorkstreamsWithTasks(id)
   const orgDataPromise = fetchOrgData()
+  const reportsPromise = getProjectReports(id)
 
   return (
     <Suspense fallback={
@@ -67,6 +69,7 @@ export default async function Page({ params }: PageProps) {
         tasksPromise={tasksPromise}
         workstreamsPromise={workstreamsPromise}
         orgDataPromise={orgDataPromise}
+        reportsPromise={reportsPromise}
         projectId={id}
       />
     </Suspense>
@@ -78,19 +81,22 @@ async function ProjectDetailStreamed({
   tasksPromise,
   workstreamsPromise,
   orgDataPromise,
+  reportsPromise,
   projectId,
 }: {
   projectPromise: ReturnType<typeof getCachedProjectWithDetails>
   tasksPromise: ReturnType<typeof getCachedTasks>
   workstreamsPromise: ReturnType<typeof getCachedWorkstreamsWithTasks>
   orgDataPromise: ReturnType<typeof fetchOrgData>
+  reportsPromise: ReturnType<typeof getProjectReports>
   projectId: string
 }) {
-  const [projectResult, tasksResult, workstreamsResult, orgData] = await Promise.all([
+  const [projectResult, tasksResult, workstreamsResult, orgData, reportsResult] = await Promise.all([
     projectPromise,
     tasksPromise,
     workstreamsPromise,
     orgDataPromise,
+    reportsPromise,
   ])
 
   if (projectResult.error || !projectResult.data) {
@@ -139,6 +145,7 @@ async function ProjectDetailStreamed({
       clients={clients}
       organizationMembers={organizationMembers}
       organizationTags={tagsResult.data || []}
+      reports={reportsResult.data || []}
     />
   )
 }
