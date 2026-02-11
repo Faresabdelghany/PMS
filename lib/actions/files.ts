@@ -60,7 +60,8 @@ const ALLOWED_MIME_TYPES = new Set([
   "audio/mp4",
   "audio/x-m4a",
   // Misc
-  "application/octet-stream", // Figma and generic binary files
+  // Note: application/octet-stream intentionally excluded — too permissive.
+  // Figma files use the .fig extension; type is detected via getFileTypeFromExtension.
 ])
 
 // Bucket configuration
@@ -182,6 +183,11 @@ export async function uploadFile(
 
     if (projectError || !project) {
       return { error: "Project not found or access denied" }
+    }
+
+    // Validate MIME type (SEC-07: enforce allowlist)
+    if (!ALLOWED_MIME_TYPES.has(file.type)) {
+      return { error: `File type "${file.type}" is not allowed` }
     }
 
     // Determine file type

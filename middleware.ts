@@ -29,7 +29,7 @@ function isKVConfigured(): boolean {
   return !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN)
 }
 
-const PUBLIC_ROUTES = ["/login", "/signup", "/auth/callback", "/invite"]
+const PUBLIC_ROUTES = ["/login", "/signup", "/auth/callback", "/invite", "/forgot-password"]
 
 function isPublicRoute(pathname: string): boolean {
   return PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))

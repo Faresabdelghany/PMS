@@ -8,6 +8,7 @@ import { CacheTags, revalidateTag } from "@/lib/cache-tags"
 import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
 import { requireOrgMember } from "./auth-helpers"
 import { uuidSchema, validate } from "@/lib/validations"
+import { sanitizeSearchInput } from "@/lib/search-utils"
 import { CLIENT_STATUSES, createClientStatusCounts } from "@/lib/constants/status"
 import type { Client, ClientInsert, ClientUpdate, ClientStatus } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
@@ -377,9 +378,12 @@ export async function getClientsWithProjectCounts(
   }
 
   if (filters?.search) {
-    query = query.or(
-      `name.ilike.%${filters.search}%,primary_contact_name.ilike.%${filters.search}%,primary_contact_email.ilike.%${filters.search}%`
-    )
+    const sanitized = sanitizeSearchInput(filters.search)
+    if (sanitized.length >= 2) {
+      query = query.or(
+        `name.ilike.%${sanitized}%,primary_contact_name.ilike.%${sanitized}%,primary_contact_email.ilike.%${sanitized}%`
+      )
+    }
   }
 
   const { data: clients, error: clientsError } = await query.order("name")

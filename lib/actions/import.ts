@@ -357,6 +357,10 @@ export async function importTasksFromCSV(
 export async function previewCSV(
   csvContent: string
 ): Promise<ActionResult<{ headers: string[]; rows: string[][]; totalRows: number }>> {
+  // Require authentication to prevent unauthenticated access
+  const { requireAuth } = await import("./auth-helpers")
+  await requireAuth()
+
   const rows = parseCSV(csvContent)
 
   if (rows.length === 0) {
