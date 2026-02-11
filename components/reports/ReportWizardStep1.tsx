@@ -1,12 +1,17 @@
 "use client"
 
 import { useCallback, useMemo } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Button } from "@/components/ui/button"
 import { CaretLeft } from "@phosphor-icons/react/dist/ssr/CaretLeft"
 import { CaretRight } from "@phosphor-icons/react/dist/ssr/CaretRight"
+import { Check } from "@phosphor-icons/react/dist/ssr/Check"
+import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank"
+import { ClockCounterClockwise } from "@phosphor-icons/react/dist/ssr/ClockCounterClockwise"
+import { Calendar as CalendarIcon } from "@phosphor-icons/react/dist/ssr/Calendar"
+import { Sliders } from "@phosphor-icons/react/dist/ssr/Sliders"
 import { cn } from "@/lib/utils"
 import type { ReportWizardData } from "./report-wizard-types"
 import type { ReportPeriodType } from "@/lib/supabase/types"
@@ -22,7 +27,6 @@ interface ReportWizardStep1Props {
 function startOfWeek(date: Date): Date {
   const d = new Date(date)
   const day = d.getDay()
-  // Monday = 1, so shift back by (day === 0 ? 6 : day - 1)
   const diff = day === 0 ? 6 : day - 1
   d.setDate(d.getDate() - diff)
   d.setHours(0, 0, 0, 0)
@@ -78,7 +82,6 @@ function generateTitle(periodType: ReportPeriodType, periodStart: string, period
     const monthName = date.toLocaleDateString("en-US", { month: "long" })
     return `Monthly Report \u2014 ${monthName} ${date.getFullYear()}`
   }
-  // custom
   const start = parseISODate(periodStart)
   const end = parseISODate(periodEnd)
   return `Report \u2014 ${formatShortDate(start)} to ${formatShortDate(end)}`
@@ -89,10 +92,10 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December",
 ]
 
-const PERIOD_OPTIONS: { value: ReportPeriodType; label: string }[] = [
-  { value: "weekly", label: "Weekly" },
-  { value: "monthly", label: "Monthly" },
-  { value: "custom", label: "Custom" },
+const PERIOD_OPTIONS: { value: ReportPeriodType; label: string; icon: React.ReactNode }[] = [
+  { value: "weekly", label: "Weekly", icon: <ClockCounterClockwise className="h-4 w-4" /> },
+  { value: "monthly", label: "Monthly", icon: <CalendarIcon className="h-4 w-4" /> },
+  { value: "custom", label: "Custom", icon: <Sliders className="h-4 w-4" /> },
 ]
 
 export function ReportWizardStep1({ data, updateData, projects }: ReportWizardStep1Props) {
@@ -223,114 +226,135 @@ export function ReportWizardStep1({ data, updateData, projects }: ReportWizardSt
   )
 
   return (
-    <div className="space-y-6">
-      {/* Period Type */}
-      <div className="space-y-2">
-        <Label className="text-sm font-medium">Report Period</Label>
-        <div className="flex gap-2">
-          {PERIOD_OPTIONS.map((opt) => (
-            <Button
-              key={opt.value}
-              type="button"
-              variant={data.periodType === opt.value ? "default" : "outline"}
-              size="sm"
-              onClick={() => setPeriodType(opt.value)}
-            >
-              {opt.label}
-            </Button>
-          ))}
+    <div className="flex flex-col space-y-8">
+      {/* ===================== Period Selection Card ===================== */}
+      <div className="space-y-4 rounded-2xl bg-muted p-4">
+        <p className="text-sm text-muted-foreground">
+          Choose the reporting period for this report.
+        </p>
+
+        {/* Period type radio pills — matches StepOutcome success type */}
+        <div className="flex flex-col sm:flex-row gap-2 w-full">
+          {PERIOD_OPTIONS.map((opt) => {
+            const isActive = data.periodType === opt.value
+
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setPeriodType(opt.value)}
+                className={cn(
+                  "flex items-center justify-between gap-2 rounded-full p-3 text-sm font-medium cursor-pointer transition-colors flex-1",
+                  "bg-background text-foreground",
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">{opt.icon}</span>
+                  <span>{opt.label}</span>
+                </div>
+                <span
+                  className={cn(
+                    "ml-1 flex h-4 w-4 items-center justify-center rounded-full border border-border bg-background",
+                    isActive && "border-teal-600 bg-teal-600 text-primary-foreground",
+                  )}
+                >
+                  {isActive && <Check className="h-3 w-3" weight="regular" />}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Date selector — inside muted card */}
+        <div className="rounded-xl bg-background p-3">
+          {data.periodType === "weekly" && (
+            <div className="flex items-center justify-center gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => shiftWeek(-1)}
+                aria-label="Previous week"
+              >
+                <CaretLeft className="h-4 w-4" />
+              </Button>
+              <div className="flex items-center gap-2 min-w-[200px] justify-center">
+                <CalendarBlank className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">
+                  {data.periodStart && data.periodEnd
+                    ? formatWeekRange(data.periodStart, data.periodEnd)
+                    : "Select a week"}
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => shiftWeek(1)}
+                aria-label="Next week"
+              >
+                <CaretRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+
+          {data.periodType === "monthly" && (
+            <div className="flex items-center justify-center gap-3">
+              <select
+                value={currentMonth}
+                onChange={(e) => setMonth(Number(e.target.value))}
+                className="h-9 rounded-lg border border-input bg-background px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+              >
+                {MONTHS.map((name, i) => (
+                  <option key={i} value={i}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={currentYear}
+                onChange={(e) => setYear(Number(e.target.value))}
+                className="h-9 rounded-lg border border-input bg-background px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+              >
+                {yearOptions.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {data.periodType === "custom" && (
+            <div className="flex items-center justify-center gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Start Date</Label>
+                <Input
+                  type="date"
+                  value={data.periodStart}
+                  onChange={(e) => setCustomStart(e.target.value)}
+                  className="w-[160px]"
+                />
+              </div>
+              <span className="mt-5 text-sm text-muted-foreground">to</span>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">End Date</Label>
+                <Input
+                  type="date"
+                  value={data.periodEnd}
+                  onChange={(e) => setCustomEnd(e.target.value)}
+                  className="w-[160px]"
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Period Selector */}
-      <div className="space-y-2">
-        {data.periodType === "weekly" && (
-          <div className="flex items-center gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              size="icon-sm"
-              onClick={() => shiftWeek(-1)}
-              aria-label="Previous week"
-            >
-              <CaretLeft className="h-4 w-4" />
-            </Button>
-            <span className="min-w-[200px] text-center text-sm font-medium">
-              {data.periodStart && data.periodEnd
-                ? formatWeekRange(data.periodStart, data.periodEnd)
-                : "Select a week"}
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon-sm"
-              onClick={() => shiftWeek(1)}
-              aria-label="Next week"
-            >
-              <CaretRight className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-
-        {data.periodType === "monthly" && (
-          <div className="flex items-center gap-3">
-            <select
-              value={currentMonth}
-              onChange={(e) => setMonth(Number(e.target.value))}
-              className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-            >
-              {MONTHS.map((name, i) => (
-                <option key={i} value={i}>
-                  {name}
-                </option>
-              ))}
-            </select>
-            <select
-              value={currentYear}
-              onChange={(e) => setYear(Number(e.target.value))}
-              className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-            >
-              {yearOptions.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {data.periodType === "custom" && (
-          <div className="flex items-center gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Start Date</Label>
-              <Input
-                type="date"
-                value={data.periodStart}
-                onChange={(e) => setCustomStart(e.target.value)}
-                className="w-[160px]"
-              />
-            </div>
-            <span className="mt-5 text-sm text-muted-foreground">to</span>
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">End Date</Label>
-              <Input
-                type="date"
-                value={data.periodEnd}
-                onChange={(e) => setCustomEnd(e.target.value)}
-                className="w-[160px]"
-              />
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Title */}
-      <div className="space-y-2">
-        <Label htmlFor="report-title" className="text-sm font-medium">
-          Report Title
-        </Label>
+      {/* ===================== Title ===================== */}
+      <div className="space-y-3">
+        <Label className="text-sm">Report Title</Label>
         <Input
-          id="report-title"
           value={data.title}
           onChange={(e) => updateData({ title: e.target.value })}
           placeholder="e.g. Weekly Report — Feb 3-9, 2026"
@@ -340,64 +364,69 @@ export function ReportWizardStep1({ data, updateData, projects }: ReportWizardSt
         </p>
       </div>
 
-      {/* Project Selector */}
-      <div className="space-y-3">
-        <Label className="text-sm font-medium">Projects to Include</Label>
+      {/* ===================== Project Selection Card ===================== */}
+      <div className="space-y-4 rounded-2xl bg-muted p-4">
+        <div className="flex items-center justify-between">
+          <Label className="text-sm font-medium">Projects to Include</Label>
+          {projects.length > 0 && (
+            <button
+              type="button"
+              onClick={toggleAll}
+              className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+            >
+              {allSelected ? "Deselect all" : `Select all (${projects.length})`}
+            </button>
+          )}
+        </div>
 
         {projects.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No projects found. Create a project first.
-          </p>
+          <div className="flex items-center justify-center rounded-xl bg-background py-8">
+            <p className="text-sm text-muted-foreground">
+              No projects found. Create a project first.
+            </p>
+          </div>
         ) : (
-          <>
-            {/* Select All */}
-            <div className="flex items-center gap-2 border-b border-border pb-2">
-              <Checkbox
-                id="select-all-projects"
-                checked={allSelected ? true : someSelected ? "indeterminate" : false}
-                onCheckedChange={toggleAll}
-              />
-              <label
-                htmlFor="select-all-projects"
-                className="cursor-pointer text-sm font-medium"
-              >
-                Select All ({projects.length})
-              </label>
-            </div>
-
-            {/* Project list */}
-            <div className="max-h-[280px] space-y-1 overflow-y-auto">
-              {projects.map((project) => {
-                const isChecked = data.selectedProjectIds.includes(project.id)
-                return (
-                  <div
-                    key={project.id}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2 transition-colors",
-                      isChecked ? "bg-muted/60" : "hover:bg-muted/40",
+          <div className="max-h-[280px] space-y-1 overflow-y-auto rounded-xl bg-background">
+            {projects.map((project) => {
+              const isChecked = data.selectedProjectIds.includes(project.id)
+              return (
+                <button
+                  key={project.id}
+                  type="button"
+                  onClick={() => toggleProject(project.id)}
+                  className={cn(
+                    "flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors",
+                    isChecked ? "bg-muted/40" : "hover:bg-muted/20",
+                  )}
+                >
+                  <Checkbox
+                    checked={isChecked}
+                    onCheckedChange={() => toggleProject(project.id)}
+                    tabIndex={-1}
+                  />
+                  <div className="flex flex-1 items-center gap-2">
+                    <span className="text-sm font-medium">{project.name}</span>
+                    {project.clientName && (
+                      <span className="text-xs text-muted-foreground">
+                        {project.clientName}
+                      </span>
                     )}
-                  >
-                    <Checkbox
-                      id={`project-${project.id}`}
-                      checked={isChecked}
-                      onCheckedChange={() => toggleProject(project.id)}
-                    />
-                    <label
-                      htmlFor={`project-${project.id}`}
-                      className="flex flex-1 cursor-pointer items-center gap-2"
-                    >
-                      <span className="text-sm font-medium">{project.name}</span>
-                      {project.clientName && (
-                        <span className="text-xs text-muted-foreground">
-                          {project.clientName}
-                        </span>
-                      )}
-                    </label>
                   </div>
-                )
-              })}
-            </div>
-          </>
+                  {isChecked && (
+                    <span className="flex h-4 w-4 items-center justify-center rounded-full border-teal-600 bg-teal-600 text-primary-foreground">
+                      <Check className="h-3 w-3" weight="regular" />
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {data.selectedProjectIds.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {data.selectedProjectIds.length} project{data.selectedProjectIds.length !== 1 ? "s" : ""} selected
+          </p>
         )}
       </div>
     </div>

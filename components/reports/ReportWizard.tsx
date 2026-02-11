@@ -608,7 +608,7 @@ function ReportWizardStep3Placeholder({
 
   if (selectedProjects.length === 0) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex flex-col items-center justify-center rounded-2xl bg-muted py-16">
         <p className="text-sm text-muted-foreground">
           No projects selected. Go back to Step 1 and select at least one project.
         </p>
@@ -623,7 +623,7 @@ function ReportWizardStep3Placeholder({
         return (
           <div
             key={project.id}
-            className="rounded-lg border border-border bg-background p-4 space-y-3"
+            className="rounded-2xl bg-muted p-4 space-y-3"
           >
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold">{project.name}</span>
@@ -633,8 +633,8 @@ function ReportWizardStep3Placeholder({
                 </span>
               )}
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">
+            <div className="space-y-1.5 rounded-xl bg-background p-4">
+              <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Financial Notes
               </label>
               <textarea

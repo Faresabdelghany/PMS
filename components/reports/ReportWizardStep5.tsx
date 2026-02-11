@@ -234,11 +234,16 @@ export function ReportWizardStep5({
   )
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col space-y-6">
       {/* ========================= Highlights Section ========================= */}
-      <section className="space-y-3">
+      <div className="space-y-4 rounded-2xl bg-muted p-4">
         <div className="flex items-center justify-between">
-          <Label className="text-sm font-semibold">Highlights</Label>
+          <div className="space-y-1">
+            <Label className="text-sm font-medium">Highlights</Label>
+            <p className="text-sm text-muted-foreground">
+              Key wins and achievements from this period.
+            </p>
+          </div>
           <Button
             type="button"
             variant="ghost"
@@ -253,8 +258,8 @@ export function ReportWizardStep5({
         </div>
 
         {data.highlights.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-6">
-            <p className="mb-2 text-sm text-muted-foreground">
+          <div className="flex flex-col items-center justify-center rounded-xl bg-background py-8">
+            <p className="mb-3 text-sm text-muted-foreground">
               No highlights added yet.
             </p>
             <Button type="button" variant="outline" size="sm" onClick={addHighlight}>
@@ -267,67 +272,77 @@ export function ReportWizardStep5({
             {data.highlights.map((entry) => (
               <div
                 key={entry.id}
-                className="flex items-start gap-2 rounded-lg border border-border bg-background p-3"
+                className="rounded-xl bg-background p-4"
               >
-                <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-                  <Input
-                    value={entry.description}
-                    onChange={(e) =>
-                      updateHighlight(entry.id, { description: e.target.value })
-                    }
-                    placeholder="Describe the highlight..."
-                    className="h-8 flex-1 text-sm"
-                  />
-                  <Select
-                    value={entry.projectId ?? "__none__"}
-                    onValueChange={(val) =>
-                      updateHighlight(entry.id, {
-                        projectId: val === "__none__" ? null : val,
-                      })
-                    }
+                <div className="flex items-start gap-2">
+                  <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+                    <Input
+                      value={entry.description}
+                      onChange={(e) =>
+                        updateHighlight(entry.id, { description: e.target.value })
+                      }
+                      placeholder="Describe the highlight..."
+                      className="h-8 flex-1 text-sm"
+                    />
+                    <Select
+                      value={entry.projectId ?? "__none__"}
+                      onValueChange={(val) =>
+                        updateHighlight(entry.id, {
+                          projectId: val === "__none__" ? null : val,
+                        })
+                      }
+                    >
+                      <SelectTrigger className="h-8 w-full text-sm sm:w-[180px]">
+                        <SelectValue placeholder="Project (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">No project</SelectItem>
+                        {projects.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => removeHighlight(entry.id)}
+                    aria-label="Remove highlight"
                   >
-                    <SelectTrigger className="h-8 w-full text-sm sm:w-[180px]">
-                      <SelectValue placeholder="Project (optional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">No project</SelectItem>
-                      {projects.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => removeHighlight(entry.id)}
-                  aria-label="Remove highlight"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
               </div>
             ))}
-            <div className="flex justify-center pt-1">
-              <Button type="button" variant="outline" size="sm" onClick={addHighlight}>
-                <Plus className="h-4 w-4" />
-                Add Highlight
-              </Button>
-            </div>
           </div>
         )}
-      </section>
+
+        {data.highlights.length > 0 && (
+          <div className="flex justify-center">
+            <Button type="button" variant="outline" size="sm" onClick={addHighlight}>
+              <Plus className="h-4 w-4" />
+              Add Highlight
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* ========================= Decisions Needed Section ========================= */}
-      <section className="space-y-3">
-        <Label className="text-sm font-semibold">Decisions Needed</Label>
+      <div className="space-y-4 rounded-2xl bg-muted p-4">
+        <div className="space-y-1">
+          <Label className="text-sm font-medium">Decisions Needed</Label>
+          <p className="text-sm text-muted-foreground">
+            Decisions that require stakeholder input.
+          </p>
+        </div>
 
         {data.decisions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-6">
-            <p className="mb-2 text-sm text-muted-foreground">
+          <div className="flex flex-col items-center justify-center rounded-xl bg-background py-8">
+            <p className="mb-3 text-sm text-muted-foreground">
               No decisions needed at this time.
             </p>
             <Button type="button" variant="outline" size="sm" onClick={addDecision}>
@@ -340,74 +355,86 @@ export function ReportWizardStep5({
             {data.decisions.map((entry) => (
               <div
                 key={entry.id}
-                className="flex items-start gap-2 rounded-lg border border-border bg-background p-3"
+                className="rounded-xl bg-background p-4"
               >
-                <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-                  <Input
-                    value={entry.description}
-                    onChange={(e) =>
-                      updateDecision(entry.id, { description: e.target.value })
-                    }
-                    placeholder="Describe the decision needed..."
-                    className="h-8 flex-1 text-sm"
-                  />
-                  <Select
-                    value={entry.projectId ?? "__none__"}
-                    onValueChange={(val) =>
-                      updateDecision(entry.id, {
-                        projectId: val === "__none__" ? null : val,
-                      })
-                    }
+                <div className="flex items-start gap-2">
+                  <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+                    <Input
+                      value={entry.description}
+                      onChange={(e) =>
+                        updateDecision(entry.id, { description: e.target.value })
+                      }
+                      placeholder="Describe the decision needed..."
+                      className="h-8 flex-1 text-sm"
+                    />
+                    <Select
+                      value={entry.projectId ?? "__none__"}
+                      onValueChange={(val) =>
+                        updateDecision(entry.id, {
+                          projectId: val === "__none__" ? null : val,
+                        })
+                      }
+                    >
+                      <SelectTrigger className="h-8 w-full text-sm sm:w-[180px]">
+                        <SelectValue placeholder="Project" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">No project</SelectItem>
+                        {projects.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => removeDecision(entry.id)}
+                    aria-label="Remove decision"
                   >
-                    <SelectTrigger className="h-8 w-full text-sm sm:w-[180px]">
-                      <SelectValue placeholder="Project" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">No project</SelectItem>
-                      {projects.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => removeDecision(entry.id)}
-                  aria-label="Remove decision"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
               </div>
             ))}
-            <div className="flex justify-center pt-1">
-              <Button type="button" variant="outline" size="sm" onClick={addDecision}>
-                <Plus className="h-4 w-4" />
-                Add Decision
-              </Button>
-            </div>
           </div>
         )}
-      </section>
+
+        {data.decisions.length > 0 && (
+          <div className="flex justify-center">
+            <Button type="button" variant="outline" size="sm" onClick={addDecision}>
+              <Plus className="h-4 w-4" />
+              Add Decision
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* ========================= Action Items Review Section ========================= */}
-      <section className="space-y-3">
+      <div className="space-y-4 rounded-2xl bg-muted p-4">
         <div className="flex items-center gap-2">
-          <Label className="text-sm font-semibold">Open Action Items</Label>
-          <Badge
-            variant="secondary"
-            className="text-xs"
-          >
-            {openActionItems.length}
-          </Badge>
+          <div className="space-y-1 flex-1">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm font-medium">Open Action Items</Label>
+              <Badge
+                variant="secondary"
+                className="text-xs"
+              >
+                {openActionItems.length}
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Carried-over tasks from previous reports.
+            </p>
+          </div>
         </div>
 
         {openActionItems.length === 0 ? (
-          <div className="flex items-center gap-3 rounded-lg border border-border bg-green-50 px-4 py-6 dark:bg-green-950/20">
+          <div className="flex items-center gap-3 rounded-xl bg-background px-4 py-6">
             <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" weight="fill" />
             <div>
               <p className="text-sm font-medium text-green-800 dark:text-green-300">
@@ -428,13 +455,13 @@ export function ReportWizardStep5({
               return (
                 <div
                   key={item.id}
-                  className="rounded-lg border border-border bg-background p-3"
+                  className="rounded-xl bg-background p-4"
                 >
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     {/* Left side: task info */}
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-semibold text-foreground truncate">
+                        <span className="text-sm font-medium text-foreground truncate">
                           {item.name}
                         </span>
                         {/* Priority badge */}
@@ -507,7 +534,7 @@ export function ReportWizardStep5({
             })}
           </div>
         )}
-      </section>
+      </div>
     </div>
   )
 }
