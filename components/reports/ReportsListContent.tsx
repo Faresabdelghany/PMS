@@ -111,7 +111,7 @@ export function ReportsListContent({ initialReports, organizationId }: ReportsLi
             <Link
               key={report.id}
               href={`/reports/${report.id}`}
-              className="flex items-center justify-between rounded-lg border p-4 hover:bg-accent/50 transition-colors"
+              className="flex items-center justify-between rounded-lg border p-4 hover:bg-accent/50 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
               <div className="space-y-1 flex-1 min-w-0">
                 <h3 className="font-medium truncate">{report.title}</h3>
