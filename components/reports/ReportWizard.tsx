@@ -426,7 +426,7 @@ export function ReportWizard({
     } finally {
       setIsPublishing(false)
     }
-  }, [data, editingReportId, organizationId, scopedProjectId, onCreate, onClose])
+  }, [data, editingReportId, organizationId, scopedProjectId, projectStats, onCreate, onClose])
 
   // --- Render ---
 

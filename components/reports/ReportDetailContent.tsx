@@ -69,6 +69,7 @@ const PERIOD_TYPE_LABELS: Record<string, string> = {
   biweekly: "Biweekly",
   monthly: "Monthly",
   quarterly: "Quarterly",
+  custom: "Custom",
 }
 
 const TASK_STATUS_CONFIG: Record<string, { label: string; color: string; Icon: typeof CheckCircle }> = {
