@@ -34,5 +34,5 @@ export const ProjectDescriptionEditorLazy = dynamic(
   }
 )
 
-// Re-export the type for convenience
-export type { ProjectDescriptionEditorProps } from "./ProjectDescriptionEditor"
+// Re-export the types for convenience
+export type { ProjectDescriptionEditorProps, CustomTemplate } from "./ProjectDescriptionEditor"

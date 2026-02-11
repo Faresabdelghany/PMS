@@ -16,6 +16,7 @@ import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
 import { X } from "@phosphor-icons/react/dist/ssr/X"
 import { ArrowsClockwise } from "@phosphor-icons/react/dist/ssr/ArrowsClockwise"
+import { Check } from "@phosphor-icons/react/dist/ssr/Check"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { suggestReportRisks } from "@/lib/actions/report-ai"
@@ -87,7 +88,6 @@ export function ReportWizardStep4({
 }: ReportWizardStep4Props) {
   const [activeTab, setActiveTab] = useState<TabValue>("blockers")
 
-  // Split risks by type
   const blockers = useMemo(
     () => data.risks.filter((r) => r.type === "blocker"),
     [data.risks],
@@ -201,62 +201,71 @@ export function ReportWizardStep4({
   }, [projects, data.selectedProjectIds, data.risks, projectData, updateData])
 
   return (
-    <div className="space-y-5">
-      {/* Tab Toggle + AI Suggest */}
-      <div className="flex items-center justify-between">
-        <div className="flex rounded-lg border border-border p-0.5">
-          <button
-            type="button"
-            onClick={() => setActiveTab("blockers")}
-            className={cn(
-              "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-              activeTab === "blockers"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            Current Blockers
-            {blockers.length > 0 && (
-              <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-100 px-1 text-xs font-semibold text-red-700 dark:bg-red-900/50 dark:text-red-300">
-                {blockers.length}
-              </span>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("risks")}
-            className={cn(
-              "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-              activeTab === "risks"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            Future Risks
-            {risks.length > 0 && (
-              <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-orange-100 px-1 text-xs font-semibold text-orange-700 dark:bg-orange-900/50 dark:text-orange-300">
-                {risks.length}
-              </span>
-            )}
-          </button>
-        </div>
+    <div className="flex flex-col space-y-6">
+      {/* Tab Toggle + AI Suggest — inside muted card */}
+      <div className="space-y-4 rounded-2xl bg-muted p-4">
+        <p className="text-sm text-muted-foreground">
+          Identify blockers and risks across your projects.
+        </p>
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 gap-1 text-xs"
-          disabled={isAiLoading}
-          onClick={handleAiSuggest}
-        >
-          <Sparkle className={cn("h-3.5 w-3.5", isAiLoading && "animate-spin")} />
-          {isAiLoading ? "Analyzing..." : "AI Suggest"}
-        </Button>
+        <div className="flex items-center justify-between">
+          {/* Tab pills — matching StepOutcome radio style */}
+          <div className="flex gap-2">
+            {(["blockers", "risks"] as const).map((tab) => {
+              const isActive = activeTab === tab
+              const count = tab === "blockers" ? blockers.length : risks.length
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  className={cn(
+                    "flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-background text-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <span>{tab === "blockers" ? "Current Blockers" : "Future Risks"}</span>
+                  {count > 0 && (
+                    <span
+                      className={cn(
+                        "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs font-semibold",
+                        tab === "blockers"
+                          ? "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300"
+                          : "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300",
+                      )}
+                    >
+                      {count}
+                    </span>
+                  )}
+                  {isActive && (
+                    <span className="flex h-4 w-4 items-center justify-center rounded-full border-teal-600 bg-teal-600 text-primary-foreground">
+                      <Check className="h-3 w-3" weight="regular" />
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-xs"
+            disabled={isAiLoading}
+            onClick={handleAiSuggest}
+          >
+            <Sparkle className={cn("h-3.5 w-3.5", isAiLoading && "animate-spin")} />
+            {isAiLoading ? "Analyzing..." : "AI Suggest"}
+          </Button>
+        </div>
       </div>
 
       {/* Entries list */}
       {currentEntries.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-10">
+        <div className="flex flex-col items-center justify-center rounded-2xl bg-muted py-10">
           <p className="mb-3 text-sm text-muted-foreground">
             {activeTab === "blockers"
               ? "No blockers added yet."
@@ -280,12 +289,11 @@ export function ReportWizardStep4({
             return (
               <div
                 key={entry.id}
-                className="relative rounded-lg border border-border bg-background p-4 space-y-3"
+                className="rounded-2xl bg-muted p-4 space-y-3"
               >
-                {/* Top row: carried over badge + severity dot + remove button */}
+                {/* Top row */}
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    {/* Severity indicator dot */}
                     <span
                       className={cn("h-2.5 w-2.5 rounded-full shrink-0", severityConfig.dotColor)}
                       title={severityConfig.label}
@@ -315,9 +323,9 @@ export function ReportWizardStep4({
                   </Button>
                 </div>
 
-                {/* Description */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-muted-foreground">
+                {/* Description — inside bg-background card */}
+                <div className="space-y-1.5 rounded-xl bg-background p-4">
+                  <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Description
                   </Label>
                   <Textarea
@@ -334,11 +342,10 @@ export function ReportWizardStep4({
                   />
                 </div>
 
-                {/* Severity, Status, Project row */}
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  {/* Severity */}
+                {/* Severity, Status, Project — inside bg-background card */}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 rounded-xl bg-background p-4">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-muted-foreground">
+                    <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                       Severity
                     </Label>
                     <Select
@@ -368,9 +375,8 @@ export function ReportWizardStep4({
                     </Select>
                   </div>
 
-                  {/* Status */}
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-muted-foreground">
+                    <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                       Status
                     </Label>
                     <Select
@@ -392,9 +398,8 @@ export function ReportWizardStep4({
                     </Select>
                   </div>
 
-                  {/* Project */}
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-muted-foreground">
+                    <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                       Project
                     </Label>
                     <Select
@@ -420,9 +425,9 @@ export function ReportWizardStep4({
                   </div>
                 </div>
 
-                {/* Mitigation Notes */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-muted-foreground">
+                {/* Mitigation Notes — inside bg-background card */}
+                <div className="space-y-1.5 rounded-xl bg-background p-4">
+                  <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Mitigation Notes
                   </Label>
                   <Textarea
@@ -440,7 +445,7 @@ export function ReportWizardStep4({
         </div>
       )}
 
-      {/* Add button at bottom (when entries exist) */}
+      {/* Add button at bottom */}
       {currentEntries.length > 0 && (
         <div className="flex justify-center">
           <Button

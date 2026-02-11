@@ -15,6 +15,13 @@ import { generateProjectDescription, type ProjectContext } from "@/lib/actions/a
 
 type TemplateType = "goal" | "scope" | "inScope" | "outScope" | "outcomes" | "feature";
 
+export interface CustomTemplate {
+  key: string;
+  label: string;
+  insertContent: string; // HTML content to insert
+  detectText: string; // Text to detect in content (hides button when present)
+}
+
 export interface ProjectDescriptionEditorProps {
   value?: string;
   onChange?: (value: string) => void;
@@ -33,6 +40,8 @@ export interface ProjectDescriptionEditorProps {
     deliverables?: { title: string }[];
     metrics?: { name: string; target?: string }[];
   };
+  // Custom templates (overrides default project templates when provided)
+  customTemplates?: CustomTemplate[];
 }
 
 export function ProjectDescriptionEditor({
@@ -46,6 +55,7 @@ export function ProjectDescriptionEditor({
   showAIButton = true,
   onAIGenerate,
   projectContext,
+  customTemplates,
 }: ProjectDescriptionEditorProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -57,6 +67,7 @@ export function ProjectDescriptionEditor({
     outcomes: false,
     feature: false,
   });
+  const [detectedCustomSections, setDetectedCustomSections] = useState<Set<string>>(new Set());
 
   const { isConfigured, refetch: refetchAIStatus } = useAIStatus();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -171,6 +182,15 @@ export function ProjectDescriptionEditor({
         outcomes: text.includes("Expected Outcomes:"),
         feature: text.includes("Key feature:"),
       });
+      if (customTemplates) {
+        const detected = new Set<string>();
+        for (const tmpl of customTemplates) {
+          if (text.includes(tmpl.detectText)) {
+            detected.add(tmpl.key);
+          }
+        }
+        setDetectedCustomSections(detected);
+      }
       onChange?.(editor.getHTML());
     },
   });
@@ -199,6 +219,11 @@ export function ProjectDescriptionEditor({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isFocused]);
+
+  const handleInsertCustomTemplate = (content: string) => {
+    if (!editor) return;
+    editor.chain().focus().insertContent(content).run();
+  };
 
   const handleInsertTemplate = (type: TemplateType) => {
     if (!editor) return;
@@ -410,7 +435,7 @@ export function ProjectDescriptionEditor({
           <div className="w-full overflow-hidden shrink-0 animate-in fade-in zoom-in-95 duration-200">
             <div className="h-px w-full bg-border my-2" />
             <div className="flex flex-wrap gap-2 items-center w-full">
-              {showTemplates && (
+              {showTemplates && !customTemplates && (
                 <>
                   {!existingSections.goal && (
                     <button
@@ -489,6 +514,25 @@ export function ProjectDescriptionEditor({
                       </span>
                     </button>
                   )}
+                </>
+              )}
+              {showTemplates && customTemplates && (
+                <>
+                  {customTemplates
+                    .filter((tmpl) => !detectedCustomSections.has(tmpl.key))
+                    .map((tmpl) => (
+                      <button
+                        key={tmpl.key}
+                        type="button"
+                        onClick={() => handleInsertCustomTemplate(tmpl.insertContent)}
+                        className="flex gap-1.5 items-center opacity-60 hover:opacity-100 hover:bg-muted/50 px-2 py-1 rounded transition-all"
+                      >
+                        <Plus className="size-3.5 text-muted-foreground" />
+                        <span className="font-medium text-foreground text-xs">
+                          {tmpl.label}
+                        </span>
+                      </button>
+                    ))}
                 </>
               )}
 

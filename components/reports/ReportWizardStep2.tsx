@@ -1,19 +1,19 @@
 "use client"
 
-import { useState, useCallback, useMemo, useTransition } from "react"
-import { Button } from "@/components/ui/button"
+import { useState, useCallback, useMemo } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { CaretDown } from "@phosphor-icons/react/dist/ssr/CaretDown"
 import { CaretUp } from "@phosphor-icons/react/dist/ssr/CaretUp"
-import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 import { SmileyMeh } from "@phosphor-icons/react/dist/ssr/SmileyMeh"
 import { Smiley } from "@phosphor-icons/react/dist/ssr/Smiley"
 import { SmileySad } from "@phosphor-icons/react/dist/ssr/SmileySad"
+import { Check } from "@phosphor-icons/react/dist/ssr/Check"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { generateReportNarrative } from "@/lib/actions/report-ai"
+import { ProjectDescriptionEditorLazy as ProjectDescriptionEditor } from "@/components/project-wizard/ProjectDescriptionEditorLazy"
+import type { CustomTemplate } from "@/components/project-wizard/ProjectDescriptionEditorLazy"
 import type { ReportWizardData, ProjectReportData } from "./report-wizard-types"
 import type { ReportProjectStatus, ClientSatisfaction } from "@/lib/supabase/types"
 
@@ -113,6 +113,35 @@ const STATUS_LABELS: Record<ReportProjectStatus, string> = {
   completed: "Completed",
 }
 
+// --- Report narrative templates ---
+
+const NARRATIVE_TEMPLATES: CustomTemplate[] = [
+  {
+    key: "summary",
+    label: "Summary",
+    insertContent: "<p><strong>Summary:</strong></p><p>Write a brief summary of this period...</p>",
+    detectText: "Summary:",
+  },
+  {
+    key: "progress",
+    label: "Progress",
+    insertContent: "<p><strong>Progress:</strong></p><ul><li><p>Completed item 1</p></li><li><p>Completed item 2</p></li></ul>",
+    detectText: "Progress:",
+  },
+  {
+    key: "blockers",
+    label: "Blockers",
+    insertContent: "<p><strong>Blockers:</strong></p><ul><li><p></p></li></ul>",
+    detectText: "Blockers:",
+  },
+  {
+    key: "nextSteps",
+    label: "Next steps",
+    insertContent: "<p><strong>Next Steps:</strong></p><ol><li><p></p></li></ol>",
+    detectText: "Next Steps:",
+  },
+]
+
 // --- Default project data factory ---
 
 function createDefaultProjectData(): ProjectReportData {
@@ -137,7 +166,6 @@ export function ReportWizardStep2({
   projectMembers,
 }: ReportWizardStep2Props) {
   const [openCards, setOpenCards] = useState<Record<string, boolean>>(() => {
-    // Default: first selected project open, rest closed
     const map: Record<string, boolean> = {}
     data.selectedProjectIds.forEach((id, i) => {
       map[id] = i === 0
@@ -149,12 +177,10 @@ export function ReportWizardStep2({
     setOpenCards((prev) => ({ ...prev, [projectId]: !prev[projectId] }))
   }, [])
 
-  // Ensure projectData exists for all selected projects
   const selectedProjects = useMemo(() => {
     return projects.filter((p) => data.selectedProjectIds.includes(p.id))
   }, [projects, data.selectedProjectIds])
 
-  // Helper to get project data with defaults
   const getProjectData = useCallback(
     (projectId: string): ProjectReportData => {
       return data.projectData[projectId] ?? createDefaultProjectData()
@@ -162,7 +188,6 @@ export function ReportWizardStep2({
     [data.projectData],
   )
 
-  // Helper to update a single project's data
   const updateProjectData = useCallback(
     (projectId: string, updates: Partial<ProjectReportData>) => {
       const current = getProjectData(projectId)
@@ -176,7 +201,6 @@ export function ReportWizardStep2({
     [data.projectData, getProjectData, updateData],
   )
 
-  // Resolve member name
   const getMemberName = useCallback(
     (memberId: string): string => {
       const member = orgMembers.find((m) => m.id === memberId)
@@ -186,7 +210,6 @@ export function ReportWizardStep2({
     [orgMembers],
   )
 
-  // Handle contribution text change
   const updateContribution = useCallback(
     (projectId: string, memberId: string, text: string) => {
       const pd = getProjectData(projectId)
@@ -204,27 +227,22 @@ export function ReportWizardStep2({
     [getProjectData, updateProjectData],
   )
 
-  const [aiLoadingProject, setAiLoadingProject] = useState<string | null>(null)
-  const [, startTransition] = useTransition()
-
-  const handleAiAssist = useCallback(
+  // AI narrative generation handler for ProjectDescriptionEditor
+  const createAiHandler = useCallback(
     (projectId: string) => {
-      const project = projects.find((p) => p.id === projectId)
-      if (!project) return
+      return async (_currentContent: string): Promise<string | null> => {
+        const project = projects.find((p) => p.id === projectId)
+        if (!project) return null
 
-      const pd = getProjectData(projectId)
-      const memberIds = projectMembers[projectId] ?? []
-      const contributions = memberIds
-        .map((memberId) => ({
+        const pd = getProjectData(projectId)
+        const memberIds = projectMembers[projectId] ?? []
+        const contributions = memberIds.map((memberId) => ({
           memberName: getMemberName(memberId),
           contribution:
             pd.teamContributions.find((c) => c.member_id === memberId)
               ?.contribution_text ?? "",
         }))
 
-      setAiLoadingProject(projectId)
-
-      startTransition(async () => {
         try {
           const result = await generateReportNarrative({
             projectId,
@@ -238,23 +256,28 @@ export function ReportWizardStep2({
 
           if (result.error) {
             toast.error(result.error)
-          } else if (result.data) {
-            updateProjectData(projectId, { narrative: result.data })
-            toast.success("Narrative generated")
+            return null
+          }
+
+          if (result.data) {
+            // Convert plain text to HTML paragraphs
+            return result.data
+              .split("\n\n")
+              .map((para) => `<p>${para}</p>`)
+              .join("")
           }
         } catch {
           toast.error("Failed to generate narrative")
-        } finally {
-          setAiLoadingProject(null)
         }
-      })
+        return null
+      }
     },
-    [projects, getProjectData, projectMembers, getMemberName, updateProjectData],
+    [projects, getProjectData, projectMembers, getMemberName],
   )
 
   if (selectedProjects.length === 0) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex flex-col items-center justify-center rounded-2xl bg-muted py-16">
         <p className="text-sm text-muted-foreground">
           No projects selected. Go back to Step 1 and select at least one project.
         </p>
@@ -274,13 +297,13 @@ export function ReportWizardStep2({
         return (
           <div
             key={project.id}
-            className="rounded-lg border border-border bg-background"
+            className="rounded-2xl bg-muted overflow-hidden"
           >
             {/* Card Header */}
             <button
               type="button"
               onClick={() => toggleCard(project.id)}
-              className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-muted/40"
+              className="flex w-full items-center justify-between px-4 py-3.5 text-left transition-colors hover:bg-muted/80"
             >
               <div className="flex items-center gap-3">
                 <span className="text-sm font-semibold">{project.name}</span>
@@ -310,26 +333,34 @@ export function ReportWizardStep2({
 
             {/* Card Body */}
             {isOpen && (
-              <div className="space-y-5 border-t border-border px-4 py-4">
-                {/* Status */}
-                <div className="space-y-2">
+              <div className="space-y-5 px-4 pb-4">
+                {/* Status — radio pills like StepOutcome */}
+                <div className="space-y-3 rounded-xl bg-background p-4">
                   <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Status
                   </Label>
                   <div className="flex flex-wrap gap-2">
-                    {STATUS_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => updateProjectData(project.id, { status: opt.value })}
-                        className={cn(
-                          "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                          pd.status === opt.value ? opt.activeColor : cn("bg-transparent", opt.color),
-                        )}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
+                    {STATUS_OPTIONS.map((opt) => {
+                      const isActive = pd.status === opt.value
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => updateProjectData(project.id, { status: opt.value })}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                            isActive ? opt.activeColor : cn("bg-transparent", opt.color),
+                          )}
+                        >
+                          {opt.label}
+                          {isActive && (
+                            <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-current/20">
+                              <Check className="h-2.5 w-2.5" />
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
                   </div>
                   {pd.previousStatus && pd.status !== pd.previousStatus && (
                     <p className="text-xs text-muted-foreground">
@@ -341,8 +372,8 @@ export function ReportWizardStep2({
                   )}
                 </div>
 
-                {/* Client Satisfaction */}
-                <div className="space-y-2">
+                {/* Client Satisfaction — icon pills */}
+                <div className="space-y-3 rounded-xl bg-background p-4">
                   <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Client Satisfaction
                   </Label>
@@ -358,7 +389,7 @@ export function ReportWizardStep2({
                             updateProjectData(project.id, { clientSatisfaction: opt.value })
                           }
                           className={cn(
-                            "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                            "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
                             isActive ? opt.activeColor : "border-border bg-transparent text-muted-foreground",
                           )}
                         >
@@ -379,8 +410,8 @@ export function ReportWizardStep2({
                     )}
                 </div>
 
-                {/* Progress */}
-                <div className="space-y-2">
+                {/* Progress — slider inside card */}
+                <div className="space-y-3 rounded-xl bg-background p-4">
                   <div className="flex items-center justify-between">
                     <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                       Progress
@@ -402,26 +433,24 @@ export function ReportWizardStep2({
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      step={5}
-                      value={pd.progressPercent}
-                      onChange={(e) =>
-                        updateProjectData(project.id, {
-                          progressPercent: Number(e.target.value),
-                        })
-                      }
-                      className="h-2 w-full cursor-pointer appearance-none rounded-full bg-muted accent-primary"
-                    />
-                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={pd.progressPercent}
+                    onChange={(e) =>
+                      updateProjectData(project.id, {
+                        progressPercent: Number(e.target.value),
+                      })
+                    }
+                    className="h-2 w-full cursor-pointer appearance-none rounded-full bg-muted accent-primary"
+                  />
                 </div>
 
-                {/* Team Members */}
+                {/* Team Contributions */}
                 {memberIds.length > 0 && (
-                  <div className="space-y-2">
+                  <div className="space-y-3 rounded-xl bg-background p-4">
                     <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                       Team Contributions
                     </Label>
@@ -450,31 +479,18 @@ export function ReportWizardStep2({
                   </div>
                 )}
 
-                {/* Narrative */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Narrative
-                    </Label>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 gap-1 text-xs"
-                      disabled={aiLoadingProject === project.id}
-                      onClick={() => handleAiAssist(project.id)}
-                    >
-                      <Sparkle className={cn("h-3.5 w-3.5", aiLoadingProject === project.id && "animate-spin")} />
-                      {aiLoadingProject === project.id ? "Generating..." : "AI Assist"}
-                    </Button>
-                  </div>
-                  <Textarea
+                {/* Narrative — ProjectDescriptionEditor with report templates */}
+                <div className="space-y-3">
+                  <ProjectDescriptionEditor
                     value={pd.narrative}
-                    onChange={(e) =>
-                      updateProjectData(project.id, { narrative: e.target.value })
+                    onChange={(html) =>
+                      updateProjectData(project.id, { narrative: html })
                     }
                     placeholder="Describe what happened this period..."
-                    className="min-h-[80px] resize-y text-sm"
+                    showTemplates
+                    showAIButton
+                    customTemplates={NARRATIVE_TEMPLATES}
+                    onAIGenerate={createAiHandler(project.id)}
                   />
                 </div>
               </div>
