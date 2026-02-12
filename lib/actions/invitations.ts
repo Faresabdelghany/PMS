@@ -8,6 +8,7 @@ import type { Invitation, OrgMemberRole } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 import { requireAuth, requireOrgMember } from "./auth-helpers"
 import { notify } from "./notifications"
+import { rateLimiters, checkRateLimit, rateLimitError } from "@/lib/rate-limit/limiter"
 
 // Helper to clear the organization membership cache cookie
 async function clearOrgMembershipCache() {
@@ -25,6 +26,12 @@ export async function inviteMember(
   try {
     // Verify user is an admin of the organization before doing any work
     const { user, supabase } = await requireOrgMember(orgId, true)
+
+    // Check invitation rate limit (20 invitations per hour)
+    const limit = await checkRateLimit(rateLimiters.invite, user.id)
+    if (!limit.success) {
+      return rateLimitError(limit.reset)
+    }
 
     // Parallel fetch: members and pending invite (eliminates waterfall)
     const [membersResult, inviteResult] = await Promise.all([
@@ -275,6 +282,12 @@ export async function resendInvitation(id: string): Promise<ActionResult<Invitat
 
     // Verify user is an admin of the organization
     const { user } = await requireOrgMember(existing.organization_id, true)
+
+    // Check invitation rate limit (20 invitations per hour)
+    const limit = await checkRateLimit(rateLimiters.invite, user.id)
+    if (!limit.success) {
+      return rateLimitError(limit.reset)
+    }
 
     // Create new invitation first, then cancel old one (avoids race condition)
     const { data, error } = await supabase

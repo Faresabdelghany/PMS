@@ -349,6 +349,14 @@ export async function resetPassword(formData: FormData): Promise<AuthResult> {
     return { error: validation.error }
   }
 
+  // Check rate limit (prevents password reset email flood)
+  const headersList = await headers()
+  const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"
+  const limit = await checkRateLimit(rateLimiters.auth, ip)
+  if (!limit.success) {
+    return rateLimitError(limit.reset)
+  }
+
   const { email } = validation.data
   const supabase = await createClient()
 

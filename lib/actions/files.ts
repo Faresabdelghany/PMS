@@ -10,6 +10,7 @@ import type { ActionResult } from "./types"
 import { requireAuth } from "@/lib/actions/auth-helpers"
 import { getStoragePublicUrl, removeStorageFile } from "@/lib/supabase/storage-utils"
 import { SIGNED_URL_EXPIRY_DOWNLOAD, SIGNED_URL_EXPIRY_PREVIEW } from "@/lib/constants"
+import { rateLimiters, checkRateLimit, rateLimitError } from "@/lib/rate-limit/limiter"
 
 
 // Extended file type with uploader info
@@ -170,6 +171,12 @@ export async function uploadFile(
   try {
     const { user, supabase } = await requireAuth()
 
+    // Check file upload rate limit (50 uploads per hour)
+    const limit = await checkRateLimit(rateLimiters.fileUpload, user.id)
+    if (!limit.success) {
+      return rateLimitError(limit.reset)
+    }
+
     // Get file from FormData
     const file = formData.get("file") as File | null
     if (!file) {
@@ -287,6 +294,12 @@ export async function createLinkAsset(
 ): Promise<ActionResult<ProjectFile>> {
   try {
     const { user, supabase } = await requireAuth()
+
+    // Check file upload rate limit (shared with uploadFile — 50 per hour)
+    const limit = await checkRateLimit(rateLimiters.fileUpload, user.id)
+    if (!limit.success) {
+      return rateLimitError(limit.reset)
+    }
 
     // Validate URL
     try {
