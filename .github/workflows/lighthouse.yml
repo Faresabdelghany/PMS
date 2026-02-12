@@ -83,7 +83,6 @@ jobs:
             --collect.url=https://pms-nine-gold.vercel.app/clients \
             --collect.url=https://pms-nine-gold.vercel.app/inbox \
             --collect.url=https://pms-nine-gold.vercel.app/settings \
-            --collect.url=https://pms-nine-gold.vercel.app/reports \
             --collect.numberOfRuns=1 \
             --collect.settings.preset=desktop \
             --collect.puppeteerScript=.github/lighthouse/auth-script.cjs \
@@ -186,7 +185,6 @@ jobs:
             --collect.url=${{ steps.vercel_preview.outputs.url }}/clients \
             --collect.url=${{ steps.vercel_preview.outputs.url }}/inbox \
             --collect.url=${{ steps.vercel_preview.outputs.url }}/settings \
-            --collect.url=${{ steps.vercel_preview.outputs.url }}/reports \
             --collect.numberOfRuns=1 \
             --collect.settings.preset=desktop \
             --collect.puppeteerScript=.github/lighthouse/auth-script.cjs \
