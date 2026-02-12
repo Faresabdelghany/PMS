@@ -23,6 +23,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm install -g @lhci/cli@0.14.x
+          npm install playwright
           npx playwright install chromium --with-deps
 
       - name: Authenticate and extract cookies
@@ -115,6 +116,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm install -g @lhci/cli@0.14.x
+          npm install playwright
           npx playwright install chromium --with-deps
 
       - name: Authenticate and extract cookies
