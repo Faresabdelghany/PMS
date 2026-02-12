@@ -358,9 +358,8 @@ export const getCachedTaskStats = cache(async (orgId: string) => {
  * Uses KV cache with 30s TTL.
  */
 export const getCachedDashboardStats = cache(async (orgId: string) => {
-  const { cachedGetUser } = await import("./request-cache")
-  const { cacheGet, CacheKeys, CacheTTL } = await import("./cache")
-
+  // Use static imports (already at top of file) — dynamic imports would create
+  // separate function references, breaking React cache() deduplication
   const { user, error: authError, supabase } = await cachedGetUser()
   if (authError || !user) {
     return {

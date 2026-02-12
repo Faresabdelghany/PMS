@@ -179,9 +179,9 @@ const ctx = await requireProjectMember(projectId)       // Project membership
 const ctx = await requireProjectOwnerOrPIC(projectId)   // Elevated access
 ```
 
-**Request-Level Caching (two layers):**
+**Request-Level Caching (two modules, distinct responsibilities):**
 
-1. `lib/request-cache.ts` — Core cached functions including auth and Supabase client:
+1. `lib/request-cache.ts` — Auth & Supabase client only (do NOT add data-fetching wrappers here):
 ```typescript
 import { cachedGetUser, getSupabaseClient } from "@/lib/request-cache"
 
@@ -192,7 +192,7 @@ const { user, supabase } = await cachedGetUser()
 // instead of getUser() (~300-500ms network call) because middleware refreshes the token
 ```
 
-2. `lib/server-cache.ts` — Cached data-fetching wrappers:
+2. `lib/server-cache.ts` — ALL data-fetching cached wrappers (single source of truth):
 ```typescript
 import { getCachedProjects, getCachedTasks } from "@/lib/server-cache"
 
@@ -200,6 +200,8 @@ import { getCachedProjects, getCachedTasks } from "@/lib/server-cache"
 const projects = await getCachedProjects(orgId)
 ```
 Available cached functions: `getCachedProjects`, `getCachedProject`, `getCachedTasks`, `getCachedClients`, `getCachedOrganizationMembers`, `getCachedProjectCount`, `getCachedTaskStats`, etc.
+
+**IMPORTANT:** Never duplicate `cache()` wrappers across modules. React's `cache()` deduplicates by function identity — two separate `cache()` calls wrapping the same action create independent cache stores, causing redundant DB queries.
 
 **Cache Tags:** Use `lib/cache-tags.ts` for granular cache invalidation:
 ```typescript

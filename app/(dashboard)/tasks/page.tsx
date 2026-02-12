@@ -3,8 +3,14 @@ import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { MyTasksPage } from "@/components/tasks/MyTasksPage"
 import { MyTasksSkeleton } from "@/components/skeletons"
-import { cachedGetUser, cachedGetOrganizationMembers, cachedGetProjects, cachedGetMyTasks, cachedGetTags } from "@/lib/request-cache"
-import { getCachedActiveOrgFromKV } from "@/lib/server-cache"
+import { cachedGetUser } from "@/lib/request-cache"
+import {
+  getCachedActiveOrgFromKV,
+  getCachedOrganizationMembers,
+  getCachedProjects,
+  getCachedMyTasks,
+  getCachedTags,
+} from "@/lib/server-cache"
 import type { TaskWithRelations } from "@/lib/actions/tasks"
 import type { ProjectWithRelations } from "@/lib/actions/projects"
 
@@ -30,10 +36,10 @@ export default async function Page() {
   const orgId = org.id
 
   // Start ALL 4 data promises WITHOUT awaiting — Suspense streams data in
-  const tasksPromise = cachedGetMyTasks(orgId)
-  const projectsPromise = cachedGetProjects(orgId)
-  const membersPromise = cachedGetOrganizationMembers(orgId)
-  const tagsPromise = cachedGetTags(orgId)
+  const tasksPromise = getCachedMyTasks(orgId)
+  const projectsPromise = getCachedProjects(orgId)
+  const membersPromise = getCachedOrganizationMembers(orgId)
+  const tagsPromise = getCachedTags(orgId)
 
   return (
     <Suspense fallback={<MyTasksSkeleton />}>
@@ -57,10 +63,10 @@ async function TasksStreamed({
   orgId,
   userId,
 }: {
-  tasksPromise: ReturnType<typeof cachedGetMyTasks>
-  projectsPromise: ReturnType<typeof cachedGetProjects>
-  membersPromise: ReturnType<typeof cachedGetOrganizationMembers>
-  tagsPromise: ReturnType<typeof cachedGetTags>
+  tasksPromise: ReturnType<typeof getCachedMyTasks>
+  projectsPromise: ReturnType<typeof getCachedProjects>
+  membersPromise: ReturnType<typeof getCachedOrganizationMembers>
+  tagsPromise: ReturnType<typeof getCachedTags>
   orgId: string
   userId: string
 }) {
