@@ -1,18 +1,22 @@
 /**
  * Lighthouse CI Puppeteer auth script.
- * Sets Supabase auth cookies before each authenticated page load.
- * Cookie file is written by the Playwright auth step in the workflow.
+ * Logs in via the login form before each authenticated page audit.
+ * Credentials come from environment variables.
  */
-const fs = require('fs');
-
 module.exports = async (browser, { url }) => {
-  const cookieFile = '/tmp/lh-cookies.json';
-  if (!fs.existsSync(cookieFile)) return;
-
-  const cookies = JSON.parse(fs.readFileSync(cookieFile, 'utf-8'));
-  if (!cookies.length) return;
-
   const page = await browser.newPage();
-  await page.setCookie(...cookies);
+
+  // Navigate to login page (same origin as the target URL)
+  const origin = new URL(url).origin;
+  await page.goto(`${origin}/login`, { waitUntil: 'networkidle0' });
+
+  // Fill in credentials and submit
+  await page.type('input[type="email"]', process.env.TEST_USER_EMAIL);
+  await page.type('input[autocomplete="current-password"]', process.env.TEST_USER_PASSWORD);
+  await page.click('button[type="submit"]');
+
+  // Wait for redirect away from login
+  await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 });
+
   await page.close();
 };
