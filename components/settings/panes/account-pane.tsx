@@ -300,7 +300,7 @@ export function AccountPane() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/png,image/jpeg,image/webp"
                 className="hidden"
                 onChange={handleAvatarChange}
                 aria-label="Upload profile photo"

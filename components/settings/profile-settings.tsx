@@ -275,7 +275,7 @@ export function ProfileSettings() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/png,image/jpeg,image/webp"
                   onChange={handleAvatarChange}
                   className="hidden"
                 />

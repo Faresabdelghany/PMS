@@ -11,13 +11,15 @@ VALUES
           'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           'application/zip', 'application/x-zip-compressed']),
   ('project-images', 'project-images', false, 10485760, -- 10MB
-    ARRAY['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml']),
+    ARRAY['image/png', 'image/jpeg', 'image/gif', 'image/webp']),
+    -- Note: image/svg+xml removed — SVGs can contain embedded scripts enabling stored XSS
   ('project-media', 'project-media', false, 104857600, -- 100MB
     ARRAY['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/webm', 'video/mp4', 'video/webm']),
   ('avatars', 'avatars', true, 2097152, -- 2MB
     ARRAY['image/png', 'image/jpeg', 'image/webp']),
   ('org-logos', 'org-logos', true, 5242880, -- 5MB
-    ARRAY['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'])
+    ARRAY['image/png', 'image/jpeg', 'image/webp'])
+    -- Note: image/svg+xml removed — SVGs can contain embedded scripts enabling stored XSS
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================

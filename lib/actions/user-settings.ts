@@ -380,9 +380,10 @@ export async function uploadAvatar(
       return { error: "No file provided" }
     }
 
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      return { error: "File must be an image" }
+    // Validate file type — explicit allowlist (not prefix check) to block SVG XSS
+    const ALLOWED_AVATAR_TYPES = ["image/png", "image/jpeg", "image/webp"]
+    if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
+      return { error: "File must be a PNG, JPEG, or WebP image" }
     }
 
     // Validate file size (max 5MB)

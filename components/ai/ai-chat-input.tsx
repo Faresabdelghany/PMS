@@ -89,7 +89,7 @@ function isWordDoc(filename: string): boolean {
 
 function isImage(filename: string): boolean {
   const ext = getFileExtension(filename)
-  return [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".ico"].includes(ext)
+  return [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico"].includes(ext)
 }
 
 // =============================================================================
@@ -266,7 +266,7 @@ export function AIChatInput({
         onChange={handleFileChange}
         className="sr-only"
         aria-label="Attach files"
-        accept=".txt,.md,.json,.csv,.js,.jsx,.ts,.tsx,.html,.css,.xml,.yaml,.yml,.py,.rb,.php,.java,.c,.cpp,.go,.rs,.sql,.pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp,.svg"
+        accept=".txt,.md,.json,.csv,.js,.jsx,.ts,.tsx,.html,.css,.xml,.yaml,.yml,.py,.rb,.php,.java,.c,.cpp,.go,.rs,.sql,.pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp"
       />
 
       {/* Unified Input Container - Single seamless area */}

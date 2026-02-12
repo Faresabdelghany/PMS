@@ -48,7 +48,7 @@ const ALLOWED_MIME_TYPES = new Set([
   "image/jpeg",
   "image/gif",
   "image/webp",
-  "image/svg+xml",
+  // "image/svg+xml" — removed: SVGs can contain embedded <script> tags enabling stored XSS
   // Video
   "video/mp4",
   "video/webm",
@@ -122,8 +122,9 @@ function getFileTypeFromExtension(filename: string): FileType {
     case "jpeg":
     case "gif":
     case "webp":
-    case "svg":
       return "image"
+    case "svg":
+      return "file" // SVG treated as generic file — not in image allowlist due to XSS risk
     case "mp4":
     case "webm":
     case "mov":
