@@ -104,12 +104,15 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
   ])
 
   const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"
+  const emailKey = validation.data.email.toLowerCase()
 
-  // Check rate limit
-  const limit = await checkRateLimit(rateLimiters.auth, ip)
-  if (!limit.success) {
-    return rateLimitError(limit.reset)
-  }
+  // Check both per-IP and per-email rate limits
+  const [ipLimit, emailLimit] = await Promise.all([
+    checkRateLimit(rateLimiters.auth, ip),
+    checkRateLimit(rateLimiters.authByEmail, emailKey),
+  ])
+  if (!ipLimit.success) return rateLimitError(ipLimit.reset)
+  if (!emailLimit.success) return rateLimitError(emailLimit.reset)
 
   const { email, password, fullName } = validation.data
 
@@ -125,7 +128,8 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
   })
 
   if (error) {
-    return { error: error.message }
+    // Generic message to prevent email enumeration (Supabase may say "User already registered")
+    return { error: "Unable to create account. Please try again or use a different email." }
   }
 
   // If user is created and session exists, auto-create personal workspace
@@ -195,12 +199,15 @@ export async function signIn(formData: FormData): Promise<AuthResult> {
   ])
 
   const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"
+  const emailKey = validation.data.email.toLowerCase()
 
-  // Check rate limit (fast - returns immediately if KV unavailable)
-  const limit = await checkRateLimit(rateLimiters.auth, ip)
-  if (!limit.success) {
-    return rateLimitError(limit.reset)
-  }
+  // Check both per-IP and per-email rate limits
+  const [ipLimit, emailLimit] = await Promise.all([
+    checkRateLimit(rateLimiters.auth, ip),
+    checkRateLimit(rateLimiters.authByEmail, emailKey),
+  ])
+  if (!ipLimit.success) return rateLimitError(ipLimit.reset)
+  if (!emailLimit.success) return rateLimitError(emailLimit.reset)
 
   const { email, password } = validation.data
 
@@ -210,7 +217,8 @@ export async function signIn(formData: FormData): Promise<AuthResult> {
   })
 
   if (error) {
-    return { error: error.message }
+    // Generic message to prevent email enumeration
+    return { error: "Invalid email or password" }
   }
 
   // Warm KV cache BEFORE redirect so the dashboard layout gets cache hits
@@ -349,27 +357,30 @@ export async function resetPassword(formData: FormData): Promise<AuthResult> {
     return { error: validation.error }
   }
 
-  // Check rate limit (prevents password reset email flood)
-  const headersList = await headers()
+  // Check rate limits (prevents password reset email flood)
+  const [headersList, supabase] = await Promise.all([
+    headers(),
+    createClient(),
+  ])
   const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"
-  const limit = await checkRateLimit(rateLimiters.auth, ip)
-  if (!limit.success) {
-    return rateLimitError(limit.reset)
-  }
+  const emailKey = validation.data.email.toLowerCase()
+
+  const [ipLimit, emailLimit] = await Promise.all([
+    checkRateLimit(rateLimiters.auth, ip),
+    checkRateLimit(rateLimiters.authByEmail, emailKey),
+  ])
+  if (!ipLimit.success) return rateLimitError(ipLimit.reset)
+  if (!emailLimit.success) return rateLimitError(emailLimit.reset)
 
   const { email } = validation.data
-  const supabase = await createClient()
 
   // Always use server-controlled URL — never trust client-provided Origin header
   const origin = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
 
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+  // Fire-and-forget: always return success to prevent email enumeration
+  await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${origin}/auth/callback?next=/reset-password`,
   })
-
-  if (error) {
-    return { error: error.message }
-  }
 
   return { success: true }
 }

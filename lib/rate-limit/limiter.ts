@@ -97,8 +97,13 @@ function createLimiter(limit: number, window: Duration, prefix: string): Ratelim
  * Rate limiters for different operation types.
  */
 export const rateLimiters = {
-  // Auth operations - protect against brute force
+  // Auth operations - protect against brute force (per-IP)
   auth: createLimiter(5, "15m", "rl:auth"),
+
+  // Auth operations - protect against credential stuffing (per-email)
+  // More generous than per-IP: multiple users may share a corporate IP,
+  // but a single account shouldn't see >10 failed attempts in 15 minutes.
+  authByEmail: createLimiter(10, "15m", "rl:auth:email"),
 
   // AI operations - cost control
   ai: createLimiter(50, "24h", "rl:ai"),
