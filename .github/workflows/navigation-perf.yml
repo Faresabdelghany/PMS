@@ -1,0 +1,149 @@
+name: Navigation Performance
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # On push to main: test production URL
+  navigation-perf-production:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: |
+          npm install @playwright/test
+          npx playwright install chromium --with-deps
+
+      - name: Authenticate and save state
+        run: |
+          node -e "
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          const path = require('path');
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const context = await browser.newContext();
+            const page = await context.newPage();
+
+            await page.goto('https://pms-nine-gold.vercel.app/login', { waitUntil: 'networkidle' });
+            await page.locator('input[type=\"email\"]').fill(process.env.TEST_USER_EMAIL);
+            await page.locator('input[autocomplete=\"current-password\"]').fill(process.env.TEST_USER_PASSWORD);
+            await page.locator('button[type=\"submit\"]').click();
+            await page.waitForURL(url => !url.pathname.includes('/login'), { timeout: 30000 });
+
+            // Save storage state for Playwright tests
+            const authDir = path.join('e2e', '.auth');
+            fs.mkdirSync(authDir, { recursive: true });
+            await context.storageState({ path: path.join(authDir, 'user.json') });
+            console.log('Authenticated successfully');
+
+            await browser.close();
+          })();
+          "
+        env:
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+
+      - name: Run navigation performance tests
+        run: |
+          npx playwright test navigation-performance.spec.ts \
+            --project=chromium \
+            --reporter=list
+        env:
+          PLAYWRIGHT_BASE_URL: https://pms-nine-gold.vercel.app
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: navigation-perf-results-production
+          path: |
+            e2e/test-results/
+            playwright-report/
+          retention-days: 30
+
+  # On PRs: wait for Vercel preview, then test
+  navigation-perf-preview:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Wait for Vercel preview deployment
+        uses: patrickedqvist/wait-for-vercel-preview@06c79330064b0e6ef7a2574603b62d3c98789125 # v1.3.2
+        id: vercel_preview
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          max_timeout: 300
+          check_interval: 10
+
+      - name: Install dependencies
+        run: |
+          npm install @playwright/test
+          npx playwright install chromium --with-deps
+
+      - name: Authenticate and save state
+        run: |
+          node -e "
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          const path = require('path');
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const context = await browser.newContext();
+            const page = await context.newPage();
+
+            const baseUrl = process.env.PREVIEW_URL;
+            await page.goto(baseUrl + '/login', { waitUntil: 'networkidle' });
+            await page.locator('input[type=\"email\"]').fill(process.env.TEST_USER_EMAIL);
+            await page.locator('input[autocomplete=\"current-password\"]').fill(process.env.TEST_USER_PASSWORD);
+            await page.locator('button[type=\"submit\"]').click();
+            await page.waitForURL(url => !url.pathname.includes('/login'), { timeout: 30000 });
+
+            const authDir = path.join('e2e', '.auth');
+            fs.mkdirSync(authDir, { recursive: true });
+            await context.storageState({ path: path.join(authDir, 'user.json') });
+            console.log('Authenticated successfully');
+
+            await browser.close();
+          })();
+          "
+        env:
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+          PREVIEW_URL: ${{ steps.vercel_preview.outputs.url }}
+
+      - name: Run navigation performance tests
+        run: |
+          npx playwright test navigation-performance.spec.ts \
+            --project=chromium \
+            --reporter=list
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ steps.vercel_preview.outputs.url }}
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: navigation-perf-results-preview
+          path: |
+            e2e/test-results/
+            playwright-report/
+          retention-days: 30

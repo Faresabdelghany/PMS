@@ -48,6 +48,14 @@ TEST_USER_PASSWORD=<test-user-password>
 ```
 Note: The test user must already exist in Supabase auth—it is not created automatically by the test setup.
 
+### Navigation Performance Testing
+
+```bash
+pnpm test:e2e navigation-performance.spec.ts --project=chromium   # Run navigation perf tests
+```
+
+Measures client-side route transition times (what Lighthouse can't). Tests cold loads, sidebar navigation, rapid clicking, and API request counts per route. Thresholds: < 3s per transition. Runs automatically in CI via `.github/workflows/navigation-perf.yml`.
+
 ### Performance Auditing
 
 Use the `/perf-audit` skill to run comprehensive performance audits. It auto-detects the framework (Next.js, React, Angular, Vue, .NET), discovers routes, and measures FCP, LCP, CLS, TTFB, bundle size, and Lighthouse scores across all pages.
