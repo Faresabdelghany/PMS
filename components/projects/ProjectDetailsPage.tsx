@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useState, useRef, Suspense, startTransition, useTransition } from "react"
+import { useCallback, useEffect, useMemo, useState, useRef, Suspense, startTransition, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
 import {
@@ -117,6 +117,15 @@ export function ProjectDetailsPage({
       }, 300)
     }, [router]),
   })
+
+  // Clean up debounce timer on unmount to prevent stale router.refresh() calls
+  useEffect(() => {
+    return () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current)
+      }
+    }
+  }, [])
 
   // Workstream tab state
   const [isWorkstreamTaskModalOpen, setIsWorkstreamTaskModalOpen] = useState(false)
