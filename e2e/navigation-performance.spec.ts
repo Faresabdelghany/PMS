@@ -17,36 +17,30 @@ import { test, expect } from '@playwright/test';
 
 // Page definitions with their expected content selectors
 const PAGES = [
-  { name: 'Dashboard', path: '/', contentSelector: '[data-slot="sidebar"]' },
+  { name: 'Inbox', path: '/inbox', contentSelector: 'h1, [data-testid="inbox"], main' },
   { name: 'Projects', path: '/projects', contentSelector: 'h1, [data-testid="projects-list"], main' },
   { name: 'Tasks', path: '/tasks', contentSelector: 'h1, [data-testid="task-list"], main' },
   { name: 'Clients', path: '/clients', contentSelector: 'h1, [data-testid="clients-list"], main' },
-  { name: 'Inbox', path: '/inbox', contentSelector: 'h1, [data-testid="inbox"], main' },
 ] as const;
 
-// Navigation links in sidebar (used for client-side navigation)
-const NAV_LINKS: Record<string, { role: 'link'; name: RegExp }> = {
-  '/': { role: 'link', name: /home|dashboard|overview/i },
-  '/projects': { role: 'link', name: /projects/i },
-  '/tasks': { role: 'link', name: /my tasks|tasks/i },
-  '/clients': { role: 'link', name: /clients/i },
-  '/inbox': { role: 'link', name: /inbox/i },
+// Sidebar nav links by href (more reliable than role-based matching)
+const NAV_SELECTORS: Record<string, string> = {
+  '/inbox': '[data-slot="sidebar"] a[href="/inbox"]',
+  '/projects': '[data-slot="sidebar"] a[href="/projects"]',
+  '/tasks': '[data-slot="sidebar"] a[href="/tasks"]',
+  '/clients': '[data-slot="sidebar"] a[href="/clients"]',
 };
 
 // Thresholds in milliseconds
 const ROUTE_TRANSITION_THRESHOLD = 3000;
-const NETWORK_SETTLE_THRESHOLD = 5000;
-
-// Collect all results for summary
-const results: { from: string; to: string; transitionMs: number; networkMs: number }[] = [];
 
 test.describe('Navigation Performance', () => {
   test.use({ storageState: 'e2e/.auth/user.json' });
 
   test.beforeEach(async ({ page }) => {
-    // Start on dashboard to ensure authenticated
-    await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await page.locator('[data-slot="sidebar"]').waitFor({ state: 'visible', timeout: 15000 });
+    // Start on inbox (/ redirects to /inbox) to ensure authenticated
+    await page.goto('/inbox', { waitUntil: 'domcontentloaded' });
+    await page.locator('[data-slot="sidebar"]').first().waitFor({ state: 'visible', timeout: 15000 });
   });
 
   // Test cold navigation (direct URL) for each page
@@ -89,16 +83,16 @@ test.describe('Navigation Performance', () => {
     const navigationResults: { from: string; to: string; ms: number }[] = [];
 
     for (let i = 0; i < PAGES.length; i++) {
-      const from = i === 0 ? 'Dashboard' : PAGES[i - 1].name;
+      const from = i === 0 ? 'Inbox' : PAGES[i - 1].name;
       const target = PAGES[i];
 
-      // Skip first page (already on Dashboard from beforeEach)
+      // Skip first page (already on Inbox from beforeEach)
       if (i === 0) continue;
 
-      const navLink = NAV_LINKS[target.path];
-      if (!navLink) continue;
+      const selector = NAV_SELECTORS[target.path];
+      if (!selector) continue;
 
-      const link = page.getByRole(navLink.role, { name: navLink.name }).first();
+      const link = page.locator(selector).first();
 
       // Ensure link is visible before clicking
       await link.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
@@ -145,13 +139,13 @@ test.describe('Navigation Performance', () => {
 
   // Test rapid navigation (click multiple pages quickly)
   test('rapid navigation: no crashes or stuck states', async ({ page }) => {
-    const paths = ['/projects', '/tasks', '/clients', '/inbox', '/'];
+    const paths = ['/projects', '/tasks', '/clients', '/inbox'];
 
     for (const path of paths) {
-      const navLink = NAV_LINKS[path];
-      if (!navLink) continue;
+      const selector = NAV_SELECTORS[path];
+      if (!selector) continue;
 
-      const link = page.getByRole(navLink.role, { name: navLink.name }).first();
+      const link = page.locator(selector).first();
       if (await link.isVisible()) {
         await link.click();
         // Don't wait for full load — simulate rapid clicking
@@ -161,17 +155,17 @@ test.describe('Navigation Performance', () => {
 
     // After rapid navigation, verify the page is in a good state
     await page.waitForLoadState('domcontentloaded');
-    const sidebar = page.locator('[data-slot="sidebar"]');
+    const sidebar = page.locator('[data-slot="sidebar"]').first();
     await expect(sidebar).toBeVisible({ timeout: 10000 });
   });
 
   // Measure network requests per navigation
   test('network efficiency: reasonable request count per navigation', async ({ page }) => {
     for (const target of PAGES.slice(1)) {
-      const navLink = NAV_LINKS[target.path];
-      if (!navLink) continue;
+      const selector = NAV_SELECTORS[target.path];
+      if (!selector) continue;
 
-      const link = page.getByRole(navLink.role, { name: navLink.name }).first();
+      const link = page.locator(selector).first();
       if (!(await link.isVisible())) continue;
 
       // Start tracking network requests
