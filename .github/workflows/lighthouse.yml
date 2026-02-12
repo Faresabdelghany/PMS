@@ -27,10 +27,10 @@ jobs:
           npx playwright install chromium --with-deps
 
       - name: Authenticate and extract cookies
-        id: auth
         run: |
           node -e "
           const { chromium } = require('playwright');
+          const fs = require('fs');
           (async () => {
             const browser = await chromium.launch({ headless: true });
             const context = await browser.newContext();
@@ -42,12 +42,19 @@ jobs:
             await page.locator('button[type=\"submit\"]').click();
             await page.waitForURL(url => !url.pathname.includes('/login'), { timeout: 30000 });
 
+            // Save cookies in Puppeteer format for Lighthouse
             const cookies = await context.cookies();
-            const cookieStr = cookies.map(c => c.name + '=' + c.value).join('; ');
-
-            const fs = require('fs');
-            fs.writeFileSync('/tmp/lh-cookies.txt', cookieStr);
-            console.log('Authenticated successfully, extracted ' + cookies.length + ' cookies');
+            const puppeteerCookies = cookies.map(c => ({
+              name: c.name,
+              value: c.value,
+              domain: c.domain,
+              path: c.path,
+              httpOnly: c.httpOnly,
+              secure: c.secure,
+              sameSite: c.sameSite === 'None' ? 'None' : c.sameSite === 'Lax' ? 'Lax' : 'Strict',
+            }));
+            fs.writeFileSync('/tmp/lh-cookies.json', JSON.stringify(puppeteerCookies));
+            console.log('Authenticated successfully, saved ' + cookies.length + ' cookies');
 
             await browser.close();
           })();
@@ -69,7 +76,6 @@ jobs:
 
       - name: Run Lighthouse CI (authenticated pages)
         run: |
-          COOKIES=$(cat /tmp/lh-cookies.txt)
           lhci autorun \
             --collect.url=https://pms-nine-gold.vercel.app/ \
             --collect.url=https://pms-nine-gold.vercel.app/projects \
@@ -80,7 +86,7 @@ jobs:
             --collect.url=https://pms-nine-gold.vercel.app/reports \
             --collect.numberOfRuns=1 \
             --collect.settings.preset=desktop \
-            --collect.settings.extraHeaders="{\"Cookie\": \"$COOKIES\"}"
+            --collect.puppeteerScript=.github/lighthouse/auth-script.cjs
         env:
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
 
@@ -120,10 +126,10 @@ jobs:
           npx playwright install chromium --with-deps
 
       - name: Authenticate and extract cookies
-        id: auth
         run: |
           node -e "
           const { chromium } = require('playwright');
+          const fs = require('fs');
           (async () => {
             const browser = await chromium.launch({ headless: true });
             const context = await browser.newContext();
@@ -137,11 +143,17 @@ jobs:
             await page.waitForURL(url => !url.pathname.includes('/login'), { timeout: 30000 });
 
             const cookies = await context.cookies();
-            const cookieStr = cookies.map(c => c.name + '=' + c.value).join('; ');
-
-            const fs = require('fs');
-            fs.writeFileSync('/tmp/lh-cookies.txt', cookieStr);
-            console.log('Authenticated successfully, extracted ' + cookies.length + ' cookies');
+            const puppeteerCookies = cookies.map(c => ({
+              name: c.name,
+              value: c.value,
+              domain: c.domain,
+              path: c.path,
+              httpOnly: c.httpOnly,
+              secure: c.secure,
+              sameSite: c.sameSite === 'None' ? 'None' : c.sameSite === 'Lax' ? 'Lax' : 'Strict',
+            }));
+            fs.writeFileSync('/tmp/lh-cookies.json', JSON.stringify(puppeteerCookies));
+            console.log('Authenticated successfully, saved ' + cookies.length + ' cookies');
 
             await browser.close();
           })();
@@ -164,7 +176,6 @@ jobs:
 
       - name: Run Lighthouse CI (authenticated pages)
         run: |
-          COOKIES=$(cat /tmp/lh-cookies.txt)
           lhci autorun \
             --collect.url=${{ steps.vercel_preview.outputs.url }}/ \
             --collect.url=${{ steps.vercel_preview.outputs.url }}/projects \
@@ -175,7 +186,7 @@ jobs:
             --collect.url=${{ steps.vercel_preview.outputs.url }}/reports \
             --collect.numberOfRuns=1 \
             --collect.settings.preset=desktop \
-            --collect.settings.extraHeaders="{\"Cookie\": \"$COOKIES\"}"
+            --collect.puppeteerScript=.github/lighthouse/auth-script.cjs
         env:
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
 
