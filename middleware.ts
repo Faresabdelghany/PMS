@@ -15,6 +15,9 @@ import { CacheTTL, CacheKeys } from "@/lib/cache/keys"
  * - Prefetch requests skip getUser() entirely (browser link preloads)
  * - KV session caching: recently validated sessions skip getUser() for CacheTTL.SESSION
  * - Fast cookie check: no auth cookie → redirect without network call
+ *
+ * Security:
+ * - Per-request nonce for CSP (eliminates 'unsafe-inline' for script-src)
  */
 
 const SESSION_CACHE_TTL = CacheTTL.SESSION // 5 minutes (centralized in lib/cache/keys.ts)
@@ -51,6 +54,30 @@ function redirectTo(request: NextRequest, path: string, query?: Record<string, s
   return NextResponse.redirect(url)
 }
 
+function buildCspHeader(nonce: string): string {
+  const isDev = process.env.NODE_ENV === "development"
+  const scriptSrc = isDev
+    ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval'`
+    : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`
+  return [
+    "default-src 'self'",
+    scriptSrc,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com https://avatars.githubusercontent.com",
+    "font-src 'self' data:",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://vitals.vercel-analytics.com https://va.vercel-scripts.com",
+    "worker-src 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; ")
+}
+
+function applyCSP(response: NextResponse, csp: string): NextResponse {
+  response.headers.set("Content-Security-Policy", csp)
+  return response
+}
+
 async function tryKVSessionCheck(sessionUserId: string): Promise<boolean> {
   if (!isKVConfigured()) return false
   try {
@@ -72,7 +99,12 @@ async function cacheSessionInKV(userId: string): Promise<void> {
   }
 }
 
-function createSupabaseMiddlewareClient(request: NextRequest, getResponse: () => NextResponse, setResponse: (r: NextResponse) => void) {
+function createSupabaseMiddlewareClient(
+  request: NextRequest,
+  requestHeaders: Headers,
+  getResponse: () => NextResponse,
+  setResponse: (r: NextResponse) => void,
+) {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -83,7 +115,7 @@ function createSupabaseMiddlewareClient(request: NextRequest, getResponse: () =>
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          const newResponse = NextResponse.next({ request })
+          const newResponse = NextResponse.next({ request: { headers: requestHeaders } })
           setResponse(newResponse)
           cookiesToSet.forEach(({ name, value, options }) =>
             newResponse.cookies.set(name, value, options)
@@ -98,19 +130,30 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const isPublic = isPublicRoute(pathname)
 
+  // Generate per-request nonce for CSP
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64")
+  const cspHeaderValue = buildCspHeader(nonce)
+
+  // Clone request headers and inject nonce for Server Components to read
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set("x-nonce", nonce)
+
   // Fast path: No auth cookie → skip all Supabase calls
   if (!hasAuthCookie(request)) {
-    if (!isPublic) return redirectTo(request, "/login", { redirect: pathname })
-    return NextResponse.next({ request })
+    if (!isPublic) return applyCSP(redirectTo(request, "/login", { redirect: pathname }), cspHeaderValue)
+    return applyCSP(NextResponse.next({ request: { headers: requestHeaders } }), cspHeaderValue)
   }
 
   // Skip getUser() for prefetch requests
-  if (isPrefetchRequest(request)) return NextResponse.next({ request })
+  if (isPrefetchRequest(request)) {
+    return applyCSP(NextResponse.next({ request: { headers: requestHeaders } }), cspHeaderValue)
+  }
 
   // Auth cookie exists → create Supabase client to refresh token
-  let supabaseResponse = NextResponse.next({ request })
+  let supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
   const supabase = createSupabaseMiddlewareClient(
     request,
+    requestHeaders,
     () => supabaseResponse,
     (r) => { supabaseResponse = r }
   )
@@ -124,18 +167,18 @@ export async function middleware(request: NextRequest) {
     await cacheSessionInKV(sessionUserId)
     const url = request.nextUrl.clone()
     url.pathname = '/inbox'
-    return NextResponse.rewrite(url)
+    return applyCSP(NextResponse.rewrite(url, { request: { headers: requestHeaders } }), cspHeaderValue)
   }
 
   // Redirect /login and /signup to /inbox (URL change is desired here)
   if (sessionUserId && (pathname === '/login' || pathname === '/signup')) {
     await cacheSessionInKV(sessionUserId)
-    return redirectTo(request, "/inbox")
+    return applyCSP(redirectTo(request, "/inbox"), cspHeaderValue)
   }
 
   // Check KV session cache before expensive getUser()
   if (sessionUserId && await tryKVSessionCheck(sessionUserId)) {
-    return supabaseResponse
+    return applyCSP(supabaseResponse, cspHeaderValue)
   }
 
   // Full auth validation
@@ -144,15 +187,15 @@ export async function middleware(request: NextRequest) {
   // Fire-and-forget KV cache (non-critical, don't block response)
   if (user) cacheSessionInKV(user.id)
 
-  if (!user && !isPublic) return redirectTo(request, "/login", { redirect: pathname })
-  if (user && (pathname === '/login' || pathname === '/signup')) return redirectTo(request, "/inbox")
+  if (!user && !isPublic) return applyCSP(redirectTo(request, "/login", { redirect: pathname }), cspHeaderValue)
+  if (user && (pathname === '/login' || pathname === '/signup')) return applyCSP(redirectTo(request, "/inbox"), cspHeaderValue)
   if (user && pathname === '/') {
     const url = request.nextUrl.clone()
     url.pathname = '/inbox'
-    return NextResponse.rewrite(url)
+    return applyCSP(NextResponse.rewrite(url, { request: { headers: requestHeaders } }), cspHeaderValue)
   }
 
-  return supabaseResponse
+  return applyCSP(supabaseResponse, cspHeaderValue)
 }
 
 export const config = {

@@ -1,5 +1,6 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
+import { headers } from "next/headers"
 import { Geist, Geist_Mono } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AnalyticsWrapper } from "@/components/analytics-wrapper"
@@ -31,11 +32,13 @@ export const viewport: Viewport = {
   themeColor: "#3b82f6",
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined
+
   return (
     <html lang="en" className={`${geist.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <head>
@@ -44,6 +47,7 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://lazhmdyajdqbnxxwyxun.supabase.co" />
         {/* Inline script to prevent color theme flash - runs before React hydrates */}
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
@@ -64,6 +68,7 @@ export default function RootLayout({
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
+          nonce={nonce}
         >
           <ColorThemeProvider>
             <ServiceWorkerRegistration />
