@@ -20,16 +20,66 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install @lhci/cli
-        run: npm install -g @lhci/cli@0.14.x
+      - name: Install dependencies
+        run: |
+          npm install -g @lhci/cli@0.14.x
+          npx playwright install chromium --with-deps
 
-      - name: Run Lighthouse CI against production
+      - name: Authenticate and extract cookies
+        id: auth
+        run: |
+          node -e "
+          const { chromium } = require('playwright');
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const context = await browser.newContext();
+            const page = await context.newPage();
+
+            await page.goto('https://pms-nine-gold.vercel.app/login', { waitUntil: 'networkidle' });
+            await page.locator('input[type=\"email\"]').fill(process.env.TEST_USER_EMAIL);
+            await page.locator('input[autocomplete=\"current-password\"]').fill(process.env.TEST_USER_PASSWORD);
+            await page.locator('button[type=\"submit\"]').click();
+            await page.waitForURL(url => !url.pathname.includes('/login'), { timeout: 30000 });
+
+            const cookies = await context.cookies();
+            const cookieStr = cookies.map(c => c.name + '=' + c.value).join('; ');
+
+            const fs = require('fs');
+            fs.writeFileSync('/tmp/lh-cookies.txt', cookieStr);
+            console.log('Authenticated successfully, extracted ' + cookies.length + ' cookies');
+
+            await browser.close();
+          })();
+          "
+        env:
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+
+      - name: Run Lighthouse CI (public pages)
         run: |
           lhci autorun \
             --collect.url=https://pms-nine-gold.vercel.app/login \
             --collect.url=https://pms-nine-gold.vercel.app/signup \
+            --collect.url=https://pms-nine-gold.vercel.app/forgot-password \
             --collect.numberOfRuns=3 \
             --collect.settings.preset=desktop
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+      - name: Run Lighthouse CI (authenticated pages)
+        run: |
+          COOKIES=$(cat /tmp/lh-cookies.txt)
+          lhci autorun \
+            --collect.url=https://pms-nine-gold.vercel.app/ \
+            --collect.url=https://pms-nine-gold.vercel.app/projects \
+            --collect.url=https://pms-nine-gold.vercel.app/tasks \
+            --collect.url=https://pms-nine-gold.vercel.app/clients \
+            --collect.url=https://pms-nine-gold.vercel.app/inbox \
+            --collect.url=https://pms-nine-gold.vercel.app/settings \
+            --collect.url=https://pms-nine-gold.vercel.app/reports \
+            --collect.numberOfRuns=1 \
+            --collect.settings.preset=desktop \
+            --collect.settings.extraHeaders="{\"Cookie\": \"$COOKIES\"}"
         env:
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
 
@@ -62,16 +112,68 @@ jobs:
           max_timeout: 300
           check_interval: 10
 
-      - name: Install @lhci/cli
-        run: npm install -g @lhci/cli@0.14.x
+      - name: Install dependencies
+        run: |
+          npm install -g @lhci/cli@0.14.x
+          npx playwright install chromium --with-deps
 
-      - name: Run Lighthouse CI against preview
+      - name: Authenticate and extract cookies
+        id: auth
+        run: |
+          node -e "
+          const { chromium } = require('playwright');
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const context = await browser.newContext();
+            const page = await context.newPage();
+
+            const baseUrl = process.env.PREVIEW_URL;
+            await page.goto(baseUrl + '/login', { waitUntil: 'networkidle' });
+            await page.locator('input[type=\"email\"]').fill(process.env.TEST_USER_EMAIL);
+            await page.locator('input[autocomplete=\"current-password\"]').fill(process.env.TEST_USER_PASSWORD);
+            await page.locator('button[type=\"submit\"]').click();
+            await page.waitForURL(url => !url.pathname.includes('/login'), { timeout: 30000 });
+
+            const cookies = await context.cookies();
+            const cookieStr = cookies.map(c => c.name + '=' + c.value).join('; ');
+
+            const fs = require('fs');
+            fs.writeFileSync('/tmp/lh-cookies.txt', cookieStr);
+            console.log('Authenticated successfully, extracted ' + cookies.length + ' cookies');
+
+            await browser.close();
+          })();
+          "
+        env:
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+          PREVIEW_URL: ${{ steps.vercel_preview.outputs.url }}
+
+      - name: Run Lighthouse CI (public pages)
         run: |
           lhci autorun \
             --collect.url=${{ steps.vercel_preview.outputs.url }}/login \
             --collect.url=${{ steps.vercel_preview.outputs.url }}/signup \
+            --collect.url=${{ steps.vercel_preview.outputs.url }}/forgot-password \
             --collect.numberOfRuns=3 \
             --collect.settings.preset=desktop
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+      - name: Run Lighthouse CI (authenticated pages)
+        run: |
+          COOKIES=$(cat /tmp/lh-cookies.txt)
+          lhci autorun \
+            --collect.url=${{ steps.vercel_preview.outputs.url }}/ \
+            --collect.url=${{ steps.vercel_preview.outputs.url }}/projects \
+            --collect.url=${{ steps.vercel_preview.outputs.url }}/tasks \
+            --collect.url=${{ steps.vercel_preview.outputs.url }}/clients \
+            --collect.url=${{ steps.vercel_preview.outputs.url }}/inbox \
+            --collect.url=${{ steps.vercel_preview.outputs.url }}/settings \
+            --collect.url=${{ steps.vercel_preview.outputs.url }}/reports \
+            --collect.numberOfRuns=1 \
+            --collect.settings.preset=desktop \
+            --collect.settings.extraHeaders="{\"Cookie\": \"$COOKIES\"}"
         env:
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
 

@@ -7,6 +7,7 @@ module.exports = {
       url: [
         'https://pms-nine-gold.vercel.app/login',
         'https://pms-nine-gold.vercel.app/signup',
+        'https://pms-nine-gold.vercel.app/forgot-password',
       ],
       numberOfRuns: 3,
       settings: {
@@ -24,6 +25,9 @@ module.exports = {
 
         // Accessibility
         'categories:accessibility': ['error', { minScore: 0.9 }],
+
+        // SEO
+        'categories:seo': ['warn', { minScore: 0.9 }],
 
         // Core Web Vitals budgets
         'total-blocking-time': ['error', { maxNumericValue: 500 }],
