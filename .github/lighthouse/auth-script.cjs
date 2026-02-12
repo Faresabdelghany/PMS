@@ -26,7 +26,7 @@ module.exports = async (browser, { url }) => {
   );
 
   // Wait for the page to settle after redirect
-  await page.waitForTimeout(2000);
+  await new Promise(resolve => setTimeout(resolve, 2000));
 
   await page.close();
 };
