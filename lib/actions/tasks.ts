@@ -324,6 +324,24 @@ export async function updateTask(
   id: string,
   data: TaskUpdate
 ): Promise<ActionResult<Task>> {
+  // Validate task ID
+  const idValidation = validate(uuidSchema, id)
+  if (!idValidation.success) {
+    return { error: "Invalid task ID" }
+  }
+
+  // Validate update data against schema (strips unknown fields, enforces constraints)
+  const validation = validate(updateTaskSchema, data)
+  if (!validation.success) {
+    return { error: validation.error }
+  }
+  const validatedData = validation.data
+
+  // Guard against empty updates (e.g., all fields stripped by schema)
+  if (Object.keys(validatedData).length === 0) {
+    return { error: "No valid fields to update" }
+  }
+
   // Use requireAuth to ensure user is authenticated (throws if not)
   const { user, supabase } = await requireAuth()
 
@@ -336,7 +354,7 @@ export async function updateTask(
 
   const { data: task, error } = await supabase
     .from("tasks")
-    .update(data)
+    .update(validatedData)
     .eq("id", id)
     .select()
     .single()
@@ -354,46 +372,46 @@ export async function updateTask(
     const activityPromises: Promise<unknown>[] = []
 
     // Track name change
-    if (data.name !== undefined && data.name !== oldTask.name) {
+    if (validatedData.name !== undefined && validatedData.name !== oldTask.name) {
       activityPromises.push(
-        createTaskActivity(id, "name_changed", oldTask.name, data.name)
+        createTaskActivity(id, "name_changed", oldTask.name, validatedData.name)
       )
     }
 
     // Track status change
-    if (data.status !== undefined && data.status !== oldTask.status) {
+    if (validatedData.status !== undefined && validatedData.status !== oldTask.status) {
       activityPromises.push(
-        createTaskActivity(id, "status_changed", oldTask.status, data.status)
+        createTaskActivity(id, "status_changed", oldTask.status, validatedData.status)
       )
     }
 
     // Track assignee change — batch-fetch all needed profiles in one query
-    if (data.assignee_id !== undefined && data.assignee_id !== oldTask.assignee_id) {
-      const profileIds = [data.assignee_id, oldTask.assignee_id].filter((id): id is string => !!id)
+    if (validatedData.assignee_id !== undefined && validatedData.assignee_id !== oldTask.assignee_id) {
+      const profileIds = [validatedData.assignee_id, oldTask.assignee_id].filter((id): id is string => !!id)
       const { data: profiles } = profileIds.length > 0
         ? await supabase.from("profiles").select("id, full_name, email").in("id", profileIds)
         : { data: [] as { id: string; full_name: string | null; email: string }[] }
       const profileMap = new Map(profiles?.map(p => [p.id, p]) ?? [])
 
-      if (data.assignee_id && !oldTask.assignee_id) {
-        const assignee = profileMap.get(data.assignee_id)
+      if (validatedData.assignee_id && !oldTask.assignee_id) {
+        const assignee = profileMap.get(validatedData.assignee_id)
         activityPromises.push(
-          createTaskActivity(id, "assignee_changed", null, data.assignee_id, {
+          createTaskActivity(id, "assignee_changed", null, validatedData.assignee_id, {
             new_assignee_name: assignee?.full_name || assignee?.email || "Unknown",
           })
         )
-      } else if (!data.assignee_id && oldTask.assignee_id) {
+      } else if (!validatedData.assignee_id && oldTask.assignee_id) {
         const oldAssignee = profileMap.get(oldTask.assignee_id)
         activityPromises.push(
           createTaskActivity(id, "assignee_removed", oldTask.assignee_id, null, {
             old_assignee_name: oldAssignee?.full_name || oldAssignee?.email || "Unknown",
           })
         )
-      } else if (data.assignee_id && oldTask.assignee_id) {
+      } else if (validatedData.assignee_id && oldTask.assignee_id) {
         const oldAssignee = profileMap.get(oldTask.assignee_id)
-        const newAssignee = profileMap.get(data.assignee_id)
+        const newAssignee = profileMap.get(validatedData.assignee_id)
         activityPromises.push(
-          createTaskActivity(id, "assignee_changed", oldTask.assignee_id, data.assignee_id, {
+          createTaskActivity(id, "assignee_changed", oldTask.assignee_id, validatedData.assignee_id, {
             old_assignee_name: oldAssignee?.full_name || oldAssignee?.email || "Unknown",
             new_assignee_name: newAssignee?.full_name || newAssignee?.email || "Unknown",
           })
@@ -402,55 +420,55 @@ export async function updateTask(
     }
 
     // Track priority change
-    if (data.priority !== undefined && data.priority !== oldTask.priority) {
+    if (validatedData.priority !== undefined && validatedData.priority !== oldTask.priority) {
       activityPromises.push(
-        createTaskActivity(id, "priority_changed", oldTask.priority, data.priority)
+        createTaskActivity(id, "priority_changed", oldTask.priority, validatedData.priority)
       )
     }
 
     // Track due date (end_date) change
-    if (data.end_date !== undefined && data.end_date !== oldTask.end_date) {
+    if (validatedData.end_date !== undefined && validatedData.end_date !== oldTask.end_date) {
       activityPromises.push(
-        createTaskActivity(id, "due_date_changed", oldTask.end_date, data.end_date)
+        createTaskActivity(id, "due_date_changed", oldTask.end_date, validatedData.end_date)
       )
     }
 
     // Track start date change
-    if (data.start_date !== undefined && data.start_date !== oldTask.start_date) {
+    if (validatedData.start_date !== undefined && validatedData.start_date !== oldTask.start_date) {
       activityPromises.push(
-        createTaskActivity(id, "start_date_changed", oldTask.start_date, data.start_date)
+        createTaskActivity(id, "start_date_changed", oldTask.start_date, validatedData.start_date)
       )
     }
 
     // Track workstream change
-    if (data.workstream_id !== undefined && data.workstream_id !== oldTask.workstream_id) {
+    if (validatedData.workstream_id !== undefined && validatedData.workstream_id !== oldTask.workstream_id) {
       let workstreamName: string | null = null
-      if (data.workstream_id) {
+      if (validatedData.workstream_id) {
         const { data: ws } = await supabase
           .from("workstreams")
           .select("name")
-          .eq("id", data.workstream_id)
+          .eq("id", validatedData.workstream_id)
           .single()
         workstreamName = ws?.name ?? null
       }
       activityPromises.push(
-        createTaskActivity(id, "workstream_changed", oldTask.workstream_id, data.workstream_id, {
+        createTaskActivity(id, "workstream_changed", oldTask.workstream_id, validatedData.workstream_id, {
           workstream_name: workstreamName,
         })
       )
     }
 
     // Track description change
-    if (data.description !== undefined && data.description !== oldTask.description) {
+    if (validatedData.description !== undefined && validatedData.description !== oldTask.description) {
       activityPromises.push(
         createTaskActivity(id, "description_changed", null, null)
       )
     }
 
     // Track tag change
-    if (data.tag !== undefined && data.tag !== oldTask.tag) {
+    if (validatedData.tag !== undefined && validatedData.tag !== oldTask.tag) {
       activityPromises.push(
-        createTaskActivity(id, "tag_changed", oldTask.tag, data.tag)
+        createTaskActivity(id, "tag_changed", oldTask.tag, validatedData.tag)
       )
     }
 
@@ -474,12 +492,12 @@ export async function updateTask(
       const projectName = (oldTask.project as { name: string } | null)?.name ?? "project"
 
       // Notify on assignee change
-      if (data.assignee_id !== undefined && data.assignee_id !== oldTask.assignee_id) {
+      if (validatedData.assignee_id !== undefined && validatedData.assignee_id !== oldTask.assignee_id) {
         // Notify new assignee
-        if (data.assignee_id) {
+        if (validatedData.assignee_id) {
           await notify({
             orgId,
-            userIds: [data.assignee_id],
+            userIds: [validatedData.assignee_id],
             actorId: user.id,
             type: "task_update",
             title: `assigned you to "${task.name}"`,
@@ -502,13 +520,13 @@ export async function updateTask(
       }
 
       // Notify on status change (only if task has assignee)
-      if (data.status !== undefined && data.status !== oldTask.status && task.assignee_id) {
+      if (validatedData.status !== undefined && validatedData.status !== oldTask.status && task.assignee_id) {
         await notify({
           orgId,
           userIds: [task.assignee_id],
           actorId: user.id,
           type: "task_update",
-          title: `updated "${task.name}" status to ${data.status}`,
+          title: `updated "${task.name}" status to ${validatedData.status}`,
           projectId: task.project_id,
           taskId: task.id,
         })
@@ -516,9 +534,9 @@ export async function updateTask(
 
       // Notify on priority escalation to high/urgent (only if task has assignee)
       if (
-        data.priority !== undefined &&
-        data.priority !== oldTask.priority &&
-        (data.priority === "high" || data.priority === "urgent") &&
+        validatedData.priority !== undefined &&
+        validatedData.priority !== oldTask.priority &&
+        (validatedData.priority === "high" || validatedData.priority === "urgent") &&
         task.assignee_id
       ) {
         await notify({
@@ -526,7 +544,7 @@ export async function updateTask(
           userIds: [task.assignee_id],
           actorId: user.id,
           type: "task_update",
-          title: `marked "${task.name}" as ${data.priority} priority`,
+          title: `marked "${task.name}" as ${validatedData.priority} priority`,
           projectId: task.project_id,
           taskId: task.id,
         })
