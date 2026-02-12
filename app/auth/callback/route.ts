@@ -25,7 +25,8 @@ export async function GET(request: NextRequest) {
   const error = requestUrl.searchParams.get("error")
   const errorDescription = requestUrl.searchParams.get("error_description")
   const next = sanitizeRedirectPath(requestUrl.searchParams.get("next") ?? "/")
-  const origin = requestUrl.origin
+  // Always use server-controlled URL — consistent with auth.ts, avoids reliance on request URL
+  const origin = process.env.NEXT_PUBLIC_SITE_URL || requestUrl.origin
 
   // Handle OAuth errors from the provider
   if (error) {

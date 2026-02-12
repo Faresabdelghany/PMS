@@ -237,13 +237,10 @@ export async function signIn(formData: FormData): Promise<AuthResult> {
 
 // Sign in with OAuth (Google)
 export async function signInWithGoogle(): Promise<void> {
-  // Parallelize client creation and headers fetch
-  const [supabase, headersList] = await Promise.all([
-    createClient(),
-    headers(),
-  ])
+  const supabase = await createClient()
 
-  const origin = headersList.get("origin") || process.env.NEXT_PUBLIC_SITE_URL
+  // Always use server-controlled URL — never trust client-provided Origin header
+  const origin = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
@@ -355,8 +352,8 @@ export async function resetPassword(formData: FormData): Promise<AuthResult> {
   const { email } = validation.data
   const supabase = await createClient()
 
-  const headersList = await headers()
-  const origin = headersList.get("origin") || process.env.NEXT_PUBLIC_SITE_URL
+  // Always use server-controlled URL — never trust client-provided Origin header
+  const origin = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${origin}/auth/callback?next=/reset-password`,
