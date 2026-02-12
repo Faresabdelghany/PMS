@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useRef } from "react"
 import { DotsThree } from "@phosphor-icons/react/dist/ssr/DotsThree"
 import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr/MagnifyingGlass"
 import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
@@ -12,6 +12,7 @@ import { format } from "date-fns"
 import Image from "next/image"
 
 import type { ProjectFile } from "@/lib/data/project-details"
+import { getFileUrl } from "@/lib/actions/files"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -49,9 +50,32 @@ export function FilesTable({ files, onAddFile, onEditFile, onDeleteFile, isDelet
         )
     }
 
-    const handleOpenFile = useCallback((file: ProjectFile) => {
-        if (file.url) {
-            window.open(file.url, "_blank", "noopener,noreferrer")
+    // Track in-flight URL fetches to prevent double-clicks
+    const fetchingRef = useRef<Set<string>>(new Set())
+
+    const handleOpenFile = useCallback(async (file: ProjectFile) => {
+        // Link assets have no storage path — use url directly
+        if (file.isLinkAsset || !file.storagePath) {
+            if (file.url) {
+                window.open(file.url, "_blank", "noopener,noreferrer")
+            }
+            return
+        }
+
+        // Prevent duplicate fetches
+        if (fetchingRef.current.has(file.id)) return
+        fetchingRef.current.add(file.id)
+
+        try {
+            const result = await getFileUrl(file.storagePath, file.type)
+            if (result.data) {
+                window.open(result.data, "_blank", "noopener,noreferrer")
+            } else {
+                // Fallback to stored URL if fresh URL generation fails
+                window.open(file.url, "_blank", "noopener,noreferrer")
+            }
+        } finally {
+            fetchingRef.current.delete(file.id)
         }
     }, [])
 

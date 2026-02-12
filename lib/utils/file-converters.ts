@@ -58,6 +58,7 @@ export function toUIProjectFile(file: ProjectFileWithUploader): UIProjectFile {
     type: toQuickLinkType(file.file_type),
     sizeMB: bytesToMB(file.size_bytes),
     url: file.url,
+    storagePath: file.storage_path || undefined,
     addedBy: uploader,
     addedDate: new Date(file.created_at),
     description: file.description || undefined,

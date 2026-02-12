@@ -231,6 +231,7 @@ export function transformProjectToUI(
       type: file.file_type as any,
       sizeMB: Math.round(file.size_bytes / 1024 / 1024 * 100) / 100,
       url: file.url,
+      storagePath: file.storage_path || undefined,
       addedDate: new Date(file.created_at),
       addedBy: file.profiles ? {
         id: file.profiles.id,
@@ -267,6 +268,7 @@ export function transformProjectToUI(
       type: file.file_type as "pdf" | "zip" | "fig" | "doc" | "file",
       sizeMB: Math.round(file.size_bytes / 1024 / 1024 * 100) / 100,
       url: file.url,
+      storagePath: file.storage_path || undefined,
     })),
   }
 }

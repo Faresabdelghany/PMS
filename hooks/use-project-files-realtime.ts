@@ -26,6 +26,7 @@ export function useProjectFilesRealtime(projectId: string) {
       type: file.file_type as ProjectFile['type'],
       sizeMB,
       url: file.url,
+      storagePath: file.storage_path || undefined,
       description: file.description || undefined,
       isLinkAsset,
       addedDate: new Date(file.created_at),

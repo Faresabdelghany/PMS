@@ -9,6 +9,7 @@ import type {
 import type { ActionResult } from "./types"
 import { requireAuth } from "@/lib/actions/auth-helpers"
 import { getStoragePublicUrl, removeStorageFile } from "@/lib/supabase/storage-utils"
+import { SIGNED_URL_EXPIRY_DOWNLOAD, SIGNED_URL_EXPIRY_PREVIEW } from "@/lib/constants"
 
 
 // Extended file type with uploader info
@@ -236,7 +237,7 @@ export async function uploadFile(
     if (!publicUrl || bucket !== "avatars") {
       const { data: signedData } = await supabase.storage
         .from(bucket)
-        .createSignedUrl(storagePath, 60 * 60 * 24 * 365) // 1 year
+        .createSignedUrl(storagePath, SIGNED_URL_EXPIRY_PREVIEW)
 
       if (signedData?.signedUrl) {
         fileUrl = signedData.signedUrl
@@ -472,11 +473,13 @@ export async function getFile(
   }
 }
 
+// Validate storage path format: {uuid}/{uuid}/{filename}
+const STORAGE_PATH_RE = /^[0-9a-f-]+\/[0-9a-f-]+\/[^/]+$/i
+
 // Get a fresh signed URL for a file (for downloads)
 export async function getFileUrl(
   storagePath: string,
   fileType: FileType = "file",
-  expiresIn: number = 3600 // 1 hour default
 ): Promise<ActionResult<string>> {
   try {
     const { supabase } = await requireAuth()
@@ -485,11 +488,16 @@ export async function getFileUrl(
       return { error: "No storage path provided" }
     }
 
+    // Validate path format to prevent traversal (SEC-55)
+    if (!STORAGE_PATH_RE.test(storagePath)) {
+      return { error: "Invalid storage path" }
+    }
+
     const bucket = getBucketForFileType(fileType)
 
     const { data, error } = await supabase.storage
       .from(bucket)
-      .createSignedUrl(storagePath, expiresIn)
+      .createSignedUrl(storagePath, SIGNED_URL_EXPIRY_DOWNLOAD)
 
     if (error) {
       return { error: `Failed to generate download URL: ${error.message}` }

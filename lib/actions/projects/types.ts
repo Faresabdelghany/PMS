@@ -77,7 +77,7 @@ export type ProjectFullDetails = ProjectWithRelations & {
   deliverables: { id: string; title: string; due_date: string | null; value: number | null; status: DeliverableStatus; payment_status: PaymentStatus; sort_order: number }[]
   metrics: { id: string; name: string; target: string | null; sort_order: number }[]
   notes: { id: string; title: string; content: string | null; note_type: string; status: string; added_by_id: string | null; created_at: string; updated_at: string; author: { id: string; full_name: string | null; email: string; avatar_url: string | null } | null }[]
-  files: { id: string; name: string; file_type: string; size_bytes: number; url: string; description: string | null; created_at: string; added_by_id: string; profiles: { id: string; full_name: string | null; email: string; avatar_url: string | null } | null }[]
+  files: { id: string; name: string; file_type: string; size_bytes: number; url: string; storage_path: string; description: string | null; created_at: string; added_by_id: string; profiles: { id: string; full_name: string | null; email: string; avatar_url: string | null } | null }[]
 }
 
 // Re-export types that are commonly needed

@@ -105,6 +105,8 @@ export type QuickLink = {
   type: "pdf" | "zip" | "fig" | "doc" | "file"
   sizeMB: number
   url: string
+  /** Storage path for generating fresh signed URLs (empty for link assets) */
+  storagePath?: string
 }
 
 export type ProjectFile = QuickLink & {

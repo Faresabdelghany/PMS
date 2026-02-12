@@ -31,6 +31,14 @@ export const SEARCH_CONVERSATION_LIMIT = 20
 export const MAX_AVATAR_SIZE = 5 * 1024 * 1024
 
 // ============================================
+// SIGNED URL EXPIRY
+// ============================================
+/** Signed URL expiry for on-demand downloads (1 hour) */
+export const SIGNED_URL_EXPIRY_DOWNLOAD = 3600
+/** Signed URL expiry for stored preview/display URLs (24 hours) */
+export const SIGNED_URL_EXPIRY_PREVIEW = 86400
+
+// ============================================
 // UI THRESHOLDS
 // ============================================
 /** Project progress color thresholds (percentage) */

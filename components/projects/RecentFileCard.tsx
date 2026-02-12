@@ -1,4 +1,4 @@
-import { useCallback } from "react"
+import { useCallback, useRef } from "react"
 import { DotsThree } from "@phosphor-icons/react/dist/ssr/DotsThree"
 import { ArrowSquareOut } from "@phosphor-icons/react/dist/ssr/ArrowSquareOut"
 import { DownloadSimple } from "@phosphor-icons/react/dist/ssr/DownloadSimple"
@@ -6,6 +6,7 @@ import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
 import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
 
 import type { ProjectFile } from "@/lib/data/project-details"
+import { getFileUrl } from "@/lib/actions/files"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { FileTypeIcon } from "@/components/projects/FileTypeIcon"
@@ -18,12 +19,31 @@ type RecentFileCardProps = {
 
 export function RecentFileCard({ file, onEdit, onDelete }: RecentFileCardProps) {
     const sizeLabel = file.isLinkAsset || file.sizeMB === 0 ? "Link" : `${file.sizeMB.toFixed(1)} MB`
+    const fetchingRef = useRef(false)
 
-    const handleOpenFile = useCallback(() => {
-        if (file.url) {
-            window.open(file.url, "_blank", "noopener,noreferrer")
+    const handleOpenFile = useCallback(async () => {
+        // Link assets have no storage path — use url directly
+        if (file.isLinkAsset || !file.storagePath) {
+            if (file.url) {
+                window.open(file.url, "_blank", "noopener,noreferrer")
+            }
+            return
         }
-    }, [file.url])
+
+        if (fetchingRef.current) return
+        fetchingRef.current = true
+
+        try {
+            const result = await getFileUrl(file.storagePath, file.type)
+            if (result.data) {
+                window.open(result.data, "_blank", "noopener,noreferrer")
+            } else {
+                window.open(file.url, "_blank", "noopener,noreferrer")
+            }
+        } finally {
+            fetchingRef.current = false
+        }
+    }, [file.url, file.storagePath, file.type, file.isLinkAsset])
 
     return (
         <div
