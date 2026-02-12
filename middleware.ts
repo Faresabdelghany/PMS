@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
+import { CacheTTL, CacheKeys } from "@/lib/cache/keys"
 
 /**
  * Supabase Auth Middleware
@@ -12,11 +13,11 @@ import { NextResponse, type NextRequest } from "next/server"
  *
  * Performance optimizations:
  * - Prefetch requests skip getUser() entirely (browser link preloads)
- * - KV session caching: recently validated sessions skip getUser() for 30 minutes
+ * - KV session caching: recently validated sessions skip getUser() for CacheTTL.SESSION
  * - Fast cookie check: no auth cookie → redirect without network call
  */
 
-const SESSION_CACHE_TTL = 1800 // 30 minutes (tokens expire in 1 hour, so 30-min buffer)
+const SESSION_CACHE_TTL = CacheTTL.SESSION // 5 minutes (centralized in lib/cache/keys.ts)
 
 function isPrefetchRequest(request: NextRequest): boolean {
   return (
@@ -54,7 +55,7 @@ async function tryKVSessionCheck(sessionUserId: string): Promise<boolean> {
   if (!isKVConfigured()) return false
   try {
     const { kv } = await import("@vercel/kv")
-    const isValid = await kv.get(`pms:session:validated:${sessionUserId}`)
+    const isValid = await kv.get(CacheKeys.sessionValidated(sessionUserId))
     return !!isValid
   } catch {
     return false
@@ -65,7 +66,7 @@ async function cacheSessionInKV(userId: string): Promise<void> {
   if (!isKVConfigured()) return
   try {
     const { kv } = await import("@vercel/kv")
-    await kv.set(`pms:session:validated:${userId}`, true, { ex: SESSION_CACHE_TTL })
+    await kv.set(CacheKeys.sessionValidated(userId), true, { ex: SESSION_CACHE_TTL })
   } catch {
     // Non-fatal
   }
