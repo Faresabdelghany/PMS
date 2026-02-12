@@ -393,6 +393,13 @@ export async function updatePassword(formData: FormData): Promise<AuthResult> {
     return { error: error.message }
   }
 
+  // Invalidate session cache so middleware re-validates after password change
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session?.user?.id) {
+    const { invalidate } = await import("@/lib/cache")
+    invalidate.session(session.user.id).catch(() => {})
+  }
+
   revalidatePath("/", "layout")
   redirect("/inbox")
 }
