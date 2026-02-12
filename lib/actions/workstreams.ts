@@ -1,9 +1,8 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { after } from "next/server"
-import { requireProjectMember } from "./auth-helpers"
+import { requireAuth, requireProjectMember } from "./auth-helpers"
 import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
 import type { Workstream, WorkstreamInsert, WorkstreamUpdate } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
@@ -24,14 +23,14 @@ export async function createWorkstream(
 ): Promise<ActionResult<Workstream>> {
   const { projectId, name, description, startDate, endDate, tag, taskIds } = input
 
-  // Require project membership
+  // Require project membership — use the returned authenticated client
+  let supabase
   try {
-    await requireProjectMember(projectId)
+    const ctx = await requireProjectMember(projectId)
+    supabase = ctx.supabase
   } catch {
     return { error: "You must be a project member to create workstreams" }
   }
-
-  const supabase = await createClient()
 
   // Validate start_date is before end_date (can check without DB)
   if (startDate && endDate) {
@@ -114,7 +113,7 @@ export async function getWorkstreams(
     const workstreams = await cacheGet(
       CacheKeys.workstreams(projectId),
       async () => {
-        const supabase = await createClient()
+        const { supabase } = await requireAuth()
         const { data, error } = await supabase
           .from("workstreams")
           .select("*")
@@ -150,7 +149,7 @@ export async function getWorkstreamsWithTasks(projectId: string): Promise<
     })[]
   >
 > {
-  const supabase = await createClient()
+  const { supabase } = await requireAuth()
 
   const { data, error } = await supabase
     .from("workstreams")
@@ -188,7 +187,8 @@ export async function updateWorkstream(
   id: string,
   input: UpdateWorkstreamInput
 ): Promise<ActionResult<Workstream>> {
-  const supabase = await createClient()
+  // Authenticate first — no DB queries before auth
+  const { supabase } = await requireAuth()
 
   // Get current workstream to find project_id
   const { data: current } = await supabase
@@ -201,7 +201,7 @@ export async function updateWorkstream(
     return { error: "Workstream not found" }
   }
 
-  // Run auth check and project end_date fetch in parallel (eliminates 1 waterfall)
+  // Run project membership check and project end_date fetch in parallel
   const [authResult, projectResult] = await Promise.all([
     requireProjectMember(current.project_id).catch(() => null),
     input.endDate
@@ -277,7 +277,8 @@ export async function updateWorkstream(
 
 // Delete workstream
 export async function deleteWorkstream(id: string): Promise<ActionResult> {
-  const supabase = await createClient()
+  // Authenticate first — no DB queries before auth
+  const { supabase } = await requireAuth()
 
   // Get project_id for revalidation and auth check
   const { data: ws } = await supabase
@@ -317,14 +318,14 @@ export async function reorderWorkstreams(
   projectId: string,
   workstreamIds: string[]
 ): Promise<ActionResult> {
-  // Require project membership
+  // Require project membership — use the returned authenticated client
+  let supabase
   try {
-    await requireProjectMember(projectId)
+    const ctx = await requireProjectMember(projectId)
+    supabase = ctx.supabase
   } catch {
     return { error: "You must be a project member to reorder workstreams" }
   }
-
-  const supabase = await createClient()
 
   // Update sort_order for each workstream
   const updates = workstreamIds.map((id, index) =>

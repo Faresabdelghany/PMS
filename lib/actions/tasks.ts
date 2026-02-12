@@ -1,6 +1,5 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import { z } from "zod"
@@ -174,7 +173,7 @@ export async function getTasks(
   projectId: string,
   filters?: TaskFilters
 ): Promise<ActionResult<TaskWithRelations[]>> {
-  const supabase = await createClient()
+  const { supabase } = await requireAuth()
 
   let query = supabase
     .from("tasks")
@@ -300,7 +299,7 @@ export async function getMyTasks(
 
 // Get single task
 export async function getTask(id: string): Promise<ActionResult<TaskWithRelations>> {
-  const supabase = await createClient()
+  const { supabase } = await requireAuth()
 
   const { data, error } = await supabase
     .from("tasks")
@@ -556,7 +555,7 @@ export async function updateTaskAssignee(
 
 // Delete task
 export async function deleteTask(id: string): Promise<ActionResult> {
-  const supabase = await createClient()
+  const { supabase } = await requireAuth()
 
   // Get task info + org_id in a single join query (eliminates 1 sequential query)
   const { data: task } = await supabase
@@ -593,7 +592,7 @@ export async function reorderTasks(
   projectId: string,
   taskIds: string[]
 ): Promise<ActionResult> {
-  const supabase = await createClient()
+  const { supabase } = await requireAuth()
 
   // Get orgId from project for cache invalidation
   const { data: project } = await supabase
@@ -630,7 +629,7 @@ export async function moveTaskToWorkstream(
   newWorkstreamId: string | null,
   newIndex: number
 ): Promise<ActionResult> {
-  const supabase = await createClient()
+  const { supabase } = await requireAuth()
 
   // Get task's project_id, assignee_id, and org_id in a single join query (eliminates 1 sequential query)
   const { data: task } = await supabase
@@ -674,7 +673,7 @@ export async function bulkUpdateTaskStatus(
   taskIds: string[],
   status: TaskStatus
 ): Promise<ActionResult> {
-  const supabase = await createClient()
+  const { supabase } = await requireAuth()
 
   // Get task info for cache invalidation before update
   const { data: tasks } = await supabase
@@ -742,7 +741,7 @@ export async function getTaskStats(projectId: string): Promise<
     byPriority: Record<TaskPriority, number>
   }>
 > {
-  const supabase = await createClient()
+  const { supabase } = await requireAuth()
 
   const { data, error } = await supabase
     .from("tasks")

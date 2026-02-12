@@ -1,6 +1,5 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import type { InboxItem, InboxItemInsert, InboxItemWithRelations, InboxItemType } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
@@ -74,7 +73,7 @@ export async function getUnreadCount(): Promise<ActionResult<number>> {
 
 // Mark a single inbox item as read
 export async function markAsRead(itemId: string): Promise<ActionResult<InboxItem>> {
-  const supabase = await createClient()
+  const { supabase } = await requireAuth()
 
   const { data, error } = await supabase
     .from("inbox_items")
@@ -115,7 +114,7 @@ export async function markAllAsRead(): Promise<ActionResult> {
 
 // Delete a single inbox item
 export async function deleteInboxItem(itemId: string): Promise<ActionResult> {
-  const supabase = await createClient()
+  const { supabase } = await requireAuth()
 
   const { error } = await supabase
     .from("inbox_items")
@@ -134,7 +133,7 @@ export async function deleteInboxItem(itemId: string): Promise<ActionResult> {
 export async function createInboxItem(
   data: Omit<InboxItemInsert, "id" | "created_at">
 ): Promise<ActionResult<InboxItem>> {
-  const supabase = await createClient()
+  const { supabase } = await requireAuth()
 
   const { data: item, error } = await supabase
     .from("inbox_items")
@@ -154,7 +153,7 @@ export async function createInboxItemsForUsers(
   userIds: string[],
   data: Omit<InboxItemInsert, "id" | "created_at" | "user_id">
 ): Promise<ActionResult<number>> {
-  const supabase = await createClient()
+  const { supabase } = await requireAuth()
 
   const items = userIds.map((userId) => ({
     ...data,

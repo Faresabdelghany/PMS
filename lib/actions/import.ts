@@ -1,6 +1,5 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { requireAuth } from "./auth-helpers"
 import type { ActionResult } from "./types"
@@ -270,7 +269,7 @@ export async function importTasksFromCSV(
   mapping: ColumnMapping,
   hasHeader: boolean = true
 ): Promise<ActionResult<ImportResult>> {
-  const supabase = await createClient()
+  const { supabase } = await requireAuth()
 
   // Verify user has access to project
   const { data: project, error: projectError } = await supabase

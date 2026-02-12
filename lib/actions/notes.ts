@@ -1,6 +1,5 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import type {
@@ -14,7 +13,6 @@ import type {
 import type { ActionResult } from "./types"
 import { requireAuth } from "./auth-helpers"
 import { notifyMentions } from "./notifications"
-import { cachedGetUser } from "@/lib/request-cache"
 import { removeStorageFile } from "@/lib/supabase/storage-utils"
 import { sanitizeSearchInput } from "@/lib/search-utils"
 
@@ -121,8 +119,7 @@ export async function updateNote(
     audio_data?: AudioData
   }
 ): Promise<ActionResult<ProjectNote>> {
-  // Use cached auth - deduplicates with other calls in the same request
-  const { user, supabase } = await cachedGetUser()
+  const { user, supabase } = await requireAuth()
 
   // Validate title if provided
   if (data.title !== undefined && !data.title.trim()) {
@@ -198,7 +195,7 @@ export async function updateNote(
 
 // Delete a note
 export async function deleteNote(noteId: string): Promise<ActionResult> {
-  const supabase = await createClient()
+  const { supabase } = await requireAuth()
 
   // Get note first to get project_id for revalidation
   const { data: note, error: fetchError } = await supabase
@@ -236,7 +233,7 @@ export async function deleteNote(noteId: string): Promise<ActionResult> {
 export async function getNote(
   noteId: string
 ): Promise<ActionResult<ProjectNoteWithAuthor>> {
-  const supabase = await createClient()
+  const { supabase } = await requireAuth()
 
   const { data, error } = await supabase
     .from("project_notes")
@@ -264,7 +261,7 @@ export async function getProjectNotes(
   projectId: string,
   filters?: NoteFilters
 ): Promise<ActionResult<ProjectNoteWithAuthor[]>> {
-  const supabase = await createClient()
+  const { supabase } = await requireAuth()
 
   let query = supabase
     .from("project_notes")
@@ -311,7 +308,7 @@ export async function getProjectNotesCount(
   projectId: string,
   type?: NoteType
 ): Promise<ActionResult<number>> {
-  const supabase = await createClient()
+  const { supabase } = await requireAuth()
 
   let query = supabase
     .from("project_notes")
@@ -344,7 +341,7 @@ export async function completeAudioNote(
   noteId: string,
   transcription: string
 ): Promise<ActionResult<ProjectNote>> {
-  const supabase = await createClient()
+  const { supabase } = await requireAuth()
 
   // Get current audio data
   const { data: note, error: fetchError } = await supabase
