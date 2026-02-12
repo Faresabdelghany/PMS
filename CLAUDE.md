@@ -50,26 +50,18 @@ Note: The test user must already exist in Supabase auth—it is not created auto
 
 ### Performance Auditing
 
-```bash
-pnpm perf                    # Full audit: all pages + interactions + navigation
-pnpm perf:pages              # Page load metrics only (public + authenticated)
-pnpm perf:interactions       # Interactions + sidebar navigation only
-pnpm perf:lighthouse         # Lighthouse detailed audit on public pages
-pnpm perf:bundle             # Bundle size analysis with webpack analyzer
+Use the `/perf-audit` skill to run comprehensive performance audits. It auto-detects the framework (Next.js, React, Angular, Vue, .NET), discovers routes, and measures FCP, LCP, CLS, TTFB, bundle size, and Lighthouse scores across all pages.
+
+```
+/perf-audit              # Full audit
+/perf-audit pages        # Page load metrics only
+/perf-audit lighthouse   # Lighthouse detailed audit
+/perf-audit bundle       # Bundle size analysis
+/perf-audit interactions # UI interaction timing
+/perf-audit vitals       # Core Web Vitals summary
 ```
 
-The perf audit uses Playwright to authenticate and test all 13+ pages:
-- **Public pages:** `/login`, `/signup`, `/forgot-password`
-- **Authenticated pages:** `/`, `/projects`, `/tasks`, `/clients`, `/inbox`, `/chat`, `/settings`, `/performance`, `/reports`
-- **Detail pages:** Project detail, client detail, chat conversation, report detail
-- **Interactions:** Command palette, create project wizard, new task, task detail panel, create report wizard
-- **Navigation:** All sidebar transitions
-
-Metrics per page: FCP, LCP, CLS, TTFB, DOM count, network requests, transfer size, JS/CSS/image bytes.
-
-Results are saved to `.lighthouseci/perf-audit-results.json` and compared against previous runs automatically.
-
-**Requires** `TEST_USER_EMAIL` and `TEST_USER_PASSWORD` in `.env.local` (same credentials as E2E tests).
+**Requires** `TEST_USER_EMAIL` and `TEST_USER_PASSWORD` in `.env.local` for authenticated page testing.
 
 ### Supabase Commands
 
