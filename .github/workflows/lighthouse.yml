@@ -86,7 +86,8 @@ jobs:
             --collect.url=https://pms-nine-gold.vercel.app/reports \
             --collect.numberOfRuns=1 \
             --collect.settings.preset=desktop \
-            --collect.puppeteerScript=.github/lighthouse/auth-script.cjs
+            --collect.puppeteerScript=.github/lighthouse/auth-script.cjs \
+            --collect.chromePath=/usr/bin/google-chrome-stable
         env:
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
 
@@ -186,7 +187,8 @@ jobs:
             --collect.url=${{ steps.vercel_preview.outputs.url }}/reports \
             --collect.numberOfRuns=1 \
             --collect.settings.preset=desktop \
-            --collect.puppeteerScript=.github/lighthouse/auth-script.cjs
+            --collect.puppeteerScript=.github/lighthouse/auth-script.cjs \
+            --collect.chromePath=/usr/bin/google-chrome-stable
         env:
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
 
