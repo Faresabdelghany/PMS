@@ -129,10 +129,12 @@ export function TaskDetailPanel({
   // Real-time updates for timeline
   useTaskTimelineRealtime(taskId, {
     onCommentInsert: (comment) => {
-      setTimeline((prev) => [
-        ...prev,
-        { type: "comment", data: comment },
-      ])
+      setTimeline((prev) => {
+        if (prev.some((item) => item.type === "comment" && item.data.id === comment.id)) {
+          return prev
+        }
+        return [...prev, { type: "comment", data: comment }]
+      })
     },
     onCommentUpdate: (comment) => {
       setTimeline((prev) =>
@@ -151,10 +153,12 @@ export function TaskDetailPanel({
       )
     },
     onActivityInsert: (activity) => {
-      setTimeline((prev) => [
-        ...prev,
-        { type: "activity", data: activity },
-      ])
+      setTimeline((prev) => {
+        if (prev.some((item) => item.type === "activity" && item.data.id === activity.id)) {
+          return prev
+        }
+        return [...prev, { type: "activity", data: activity }]
+      })
     },
     onReactionInsert: (commentId, reaction) => {
       setTimeline((prev) => prev.map((item) => addReactionToItem(item, commentId, reaction)))
@@ -222,10 +226,12 @@ export function TaskDetailPanel({
 
         const newComment = result.data
         if (newComment) {
-          setTimeline((prev) => [
-            ...prev,
-            { type: "comment" as const, data: newComment },
-          ])
+          setTimeline((prev) => {
+            if (prev.some((item) => item.type === "comment" && item.data.id === newComment.id)) {
+              return prev
+            }
+            return [...prev, { type: "comment" as const, data: newComment }]
+          })
         }
       } finally {
         setIsSubmitting(false)
