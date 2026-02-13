@@ -21,13 +21,12 @@ export async function reorderTasks(
     .eq("id", projectId)
     .single()
 
-  // Update sort_order for each task
-  const updates = taskIds.map((id, index) =>
-    supabase.from("tasks").update({ sort_order: index }).eq("id", id)
-  )
-
-  const results = await Promise.all(updates)
-  const error = results.find((r) => r.error)?.error
+  // Bulk update sort_order in a single RPC call (replaces N individual UPDATEs)
+  const { error } = await supabase.rpc("bulk_reorder_tasks", {
+    p_task_ids: taskIds,
+    p_sort_orders: taskIds.map((_, index) => index),
+    p_project_id: projectId,
+  })
 
   if (error) {
     return { error: error.message }

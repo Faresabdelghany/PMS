@@ -1636,6 +1636,14 @@ export interface Database {
         Args: { p_org_id: string; p_user_id: string }
         Returns: Json
       }
+      bulk_reorder_tasks: {
+        Args: { p_task_ids: string[]; p_sort_orders: number[]; p_project_id: string }
+        Returns: undefined
+      }
+      bulk_reorder_workstreams: {
+        Args: { p_workstream_ids: string[]; p_sort_orders: number[]; p_project_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       project_status: ProjectStatus

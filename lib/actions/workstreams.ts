@@ -324,17 +324,12 @@ export async function reorderWorkstreams(
     return { error: "You must be a project member to reorder workstreams" }
   }
 
-  // Update sort_order for each workstream
-  const updates = workstreamIds.map((id, index) =>
-    supabase
-      .from("workstreams")
-      .update({ sort_order: index })
-      .eq("id", id)
-      .eq("project_id", projectId)
-  )
-
-  const results = await Promise.all(updates)
-  const error = results.find((r) => r.error)?.error
+  // Bulk update sort_order in a single RPC call (replaces N individual UPDATEs)
+  const { error } = await supabase.rpc("bulk_reorder_workstreams", {
+    p_workstream_ids: workstreamIds,
+    p_sort_orders: workstreamIds.map((_, index) => index),
+    p_project_id: projectId,
+  })
 
   if (error) {
     return { error: error.message }
