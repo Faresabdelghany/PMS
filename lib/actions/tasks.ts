@@ -140,10 +140,10 @@ export async function createTask(
     return { error: error.message }
   }
 
-  // Create "created" activity record
-  await createTaskActivity(task.id, "created")
-
   after(async () => {
+    // Create "created" activity record (deferred — not needed for response)
+    await createTaskActivity(task.id, "created")
+
     revalidatePath(`/projects/${projectId}`)
     revalidatePath("/tasks")
     revalidateTag(CacheTags.projectDetails(projectId))
@@ -369,116 +369,117 @@ export async function updateTask(
   // This avoids an extra sequential query after the update
   const orgId = (oldTask?.project as { organization_id?: string } | null)?.organization_id ?? ""
 
-  // Track activities for changed fields
-  if (oldTask) {
-    const activityPromises: Promise<unknown>[] = []
-
-    // Track name change
-    if (validatedData.name !== undefined && validatedData.name !== oldTask.name) {
-      activityPromises.push(
-        createTaskActivity(id, "name_changed", oldTask.name, validatedData.name)
-      )
-    }
-
-    // Track status change
-    if (validatedData.status !== undefined && validatedData.status !== oldTask.status) {
-      activityPromises.push(
-        createTaskActivity(id, "status_changed", oldTask.status, validatedData.status)
-      )
-    }
-
-    // Track assignee change — batch-fetch all needed profiles in one query
-    if (validatedData.assignee_id !== undefined && validatedData.assignee_id !== oldTask.assignee_id) {
-      const profileIds = [validatedData.assignee_id, oldTask.assignee_id].filter((id): id is string => !!id)
-      const { data: profiles } = profileIds.length > 0
-        ? await supabase.from("profiles").select("id, full_name, email").in("id", profileIds)
-        : { data: [] as { id: string; full_name: string | null; email: string }[] }
-      const profileMap = new Map(profiles?.map(p => [p.id, p]) ?? [])
-
-      if (validatedData.assignee_id && !oldTask.assignee_id) {
-        const assignee = profileMap.get(validatedData.assignee_id)
-        activityPromises.push(
-          createTaskActivity(id, "assignee_changed", null, validatedData.assignee_id, {
-            new_assignee_name: assignee?.full_name || assignee?.email || "Unknown",
-          })
-        )
-      } else if (!validatedData.assignee_id && oldTask.assignee_id) {
-        const oldAssignee = profileMap.get(oldTask.assignee_id)
-        activityPromises.push(
-          createTaskActivity(id, "assignee_removed", oldTask.assignee_id, null, {
-            old_assignee_name: oldAssignee?.full_name || oldAssignee?.email || "Unknown",
-          })
-        )
-      } else if (validatedData.assignee_id && oldTask.assignee_id) {
-        const oldAssignee = profileMap.get(oldTask.assignee_id)
-        const newAssignee = profileMap.get(validatedData.assignee_id)
-        activityPromises.push(
-          createTaskActivity(id, "assignee_changed", oldTask.assignee_id, validatedData.assignee_id, {
-            old_assignee_name: oldAssignee?.full_name || oldAssignee?.email || "Unknown",
-            new_assignee_name: newAssignee?.full_name || newAssignee?.email || "Unknown",
-          })
-        )
-      }
-    }
-
-    // Track priority change
-    if (validatedData.priority !== undefined && validatedData.priority !== oldTask.priority) {
-      activityPromises.push(
-        createTaskActivity(id, "priority_changed", oldTask.priority, validatedData.priority)
-      )
-    }
-
-    // Track due date (end_date) change
-    if (validatedData.end_date !== undefined && validatedData.end_date !== oldTask.end_date) {
-      activityPromises.push(
-        createTaskActivity(id, "due_date_changed", oldTask.end_date, validatedData.end_date)
-      )
-    }
-
-    // Track start date change
-    if (validatedData.start_date !== undefined && validatedData.start_date !== oldTask.start_date) {
-      activityPromises.push(
-        createTaskActivity(id, "start_date_changed", oldTask.start_date, validatedData.start_date)
-      )
-    }
-
-    // Track workstream change
-    if (validatedData.workstream_id !== undefined && validatedData.workstream_id !== oldTask.workstream_id) {
-      let workstreamName: string | null = null
-      if (validatedData.workstream_id) {
-        const { data: ws } = await supabase
-          .from("workstreams")
-          .select("name")
-          .eq("id", validatedData.workstream_id)
-          .single()
-        workstreamName = ws?.name ?? null
-      }
-      activityPromises.push(
-        createTaskActivity(id, "workstream_changed", oldTask.workstream_id, validatedData.workstream_id, {
-          workstream_name: workstreamName,
-        })
-      )
-    }
-
-    // Track description change
-    if (validatedData.description !== undefined && validatedData.description !== oldTask.description) {
-      activityPromises.push(
-        createTaskActivity(id, "description_changed", null, null)
-      )
-    }
-
-    // Track tag change
-    if (validatedData.tag !== undefined && validatedData.tag !== oldTask.tag) {
-      activityPromises.push(
-        createTaskActivity(id, "tag_changed", oldTask.tag, validatedData.tag)
-      )
-    }
-
-    // Execute all activity creations in parallel
-    await Promise.all(activityPromises)
-  }
-
   after(async () => {
+    // Track activities for changed fields (deferred — not needed for response)
+    if (oldTask) {
+      const activityPromises: Promise<unknown>[] = []
+
+      // Track name change
+      if (validatedData.name !== undefined && validatedData.name !== oldTask.name) {
+        activityPromises.push(
+          createTaskActivity(id, "name_changed", oldTask.name, validatedData.name)
+        )
+      }
+
+      // Track status change
+      if (validatedData.status !== undefined && validatedData.status !== oldTask.status) {
+        activityPromises.push(
+          createTaskActivity(id, "status_changed", oldTask.status, validatedData.status)
+        )
+      }
+
+      // Track assignee change — batch-fetch all needed profiles in one query
+      if (validatedData.assignee_id !== undefined && validatedData.assignee_id !== oldTask.assignee_id) {
+        const profileIds = [validatedData.assignee_id, oldTask.assignee_id].filter((pid): pid is string => !!pid)
+        const { data: profiles } = profileIds.length > 0
+          ? await supabase.from("profiles").select("id, full_name, email").in("id", profileIds)
+          : { data: [] as { id: string; full_name: string | null; email: string }[] }
+        const profileMap = new Map(profiles?.map(p => [p.id, p]) ?? [])
+
+        if (validatedData.assignee_id && !oldTask.assignee_id) {
+          const assignee = profileMap.get(validatedData.assignee_id)
+          activityPromises.push(
+            createTaskActivity(id, "assignee_changed", null, validatedData.assignee_id, {
+              new_assignee_name: assignee?.full_name || assignee?.email || "Unknown",
+            })
+          )
+        } else if (!validatedData.assignee_id && oldTask.assignee_id) {
+          const oldAssignee = profileMap.get(oldTask.assignee_id)
+          activityPromises.push(
+            createTaskActivity(id, "assignee_removed", oldTask.assignee_id, null, {
+              old_assignee_name: oldAssignee?.full_name || oldAssignee?.email || "Unknown",
+            })
+          )
+        } else if (validatedData.assignee_id && oldTask.assignee_id) {
+          const oldAssignee = profileMap.get(oldTask.assignee_id)
+          const newAssignee = profileMap.get(validatedData.assignee_id)
+          activityPromises.push(
+            createTaskActivity(id, "assignee_changed", oldTask.assignee_id, validatedData.assignee_id, {
+              old_assignee_name: oldAssignee?.full_name || oldAssignee?.email || "Unknown",
+              new_assignee_name: newAssignee?.full_name || newAssignee?.email || "Unknown",
+            })
+          )
+        }
+      }
+
+      // Track priority change
+      if (validatedData.priority !== undefined && validatedData.priority !== oldTask.priority) {
+        activityPromises.push(
+          createTaskActivity(id, "priority_changed", oldTask.priority, validatedData.priority)
+        )
+      }
+
+      // Track due date (end_date) change
+      if (validatedData.end_date !== undefined && validatedData.end_date !== oldTask.end_date) {
+        activityPromises.push(
+          createTaskActivity(id, "due_date_changed", oldTask.end_date, validatedData.end_date)
+        )
+      }
+
+      // Track start date change
+      if (validatedData.start_date !== undefined && validatedData.start_date !== oldTask.start_date) {
+        activityPromises.push(
+          createTaskActivity(id, "start_date_changed", oldTask.start_date, validatedData.start_date)
+        )
+      }
+
+      // Track workstream change
+      if (validatedData.workstream_id !== undefined && validatedData.workstream_id !== oldTask.workstream_id) {
+        let workstreamName: string | null = null
+        if (validatedData.workstream_id) {
+          const { data: ws } = await supabase
+            .from("workstreams")
+            .select("name")
+            .eq("id", validatedData.workstream_id)
+            .single()
+          workstreamName = ws?.name ?? null
+        }
+        activityPromises.push(
+          createTaskActivity(id, "workstream_changed", oldTask.workstream_id, validatedData.workstream_id, {
+            workstream_name: workstreamName,
+          })
+        )
+      }
+
+      // Track description change
+      if (validatedData.description !== undefined && validatedData.description !== oldTask.description) {
+        activityPromises.push(
+          createTaskActivity(id, "description_changed", null, null)
+        )
+      }
+
+      // Track tag change
+      if (validatedData.tag !== undefined && validatedData.tag !== oldTask.tag) {
+        activityPromises.push(
+          createTaskActivity(id, "tag_changed", oldTask.tag, validatedData.tag)
+        )
+      }
+
+      // Execute all activity creations in parallel
+      await Promise.all(activityPromises)
+    }
+
+    // Cache invalidation
     revalidatePath("/projects")
     revalidatePath("/tasks")
     invalidateCache.taskTimeline({ taskId: id })

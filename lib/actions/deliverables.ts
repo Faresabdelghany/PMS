@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { after } from "next/server"
 import { requireProjectMember } from "./auth-helpers"
 import type { ProjectDeliverable, DeliverableStatus, PaymentStatus } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
@@ -92,7 +93,7 @@ export async function createDeliverable(
     return { error: error.message }
   }
 
-  revalidatePath(`/projects/${projectId}`)
+  after(() => revalidatePath(`/projects/${projectId}`))
   return { data }
 }
 
@@ -140,7 +141,7 @@ export async function updateDeliverable(
     return { error: error.message }
   }
 
-  revalidatePath(`/projects/${deliverable.project_id}`)
+  after(() => revalidatePath(`/projects/${deliverable.project_id}`))
   return { data }
 }
 
@@ -176,7 +177,7 @@ export async function deleteDeliverable(
     return { error: error.message }
   }
 
-  revalidatePath(`/projects/${deliverable.project_id}`)
+  after(() => revalidatePath(`/projects/${deliverable.project_id}`))
   return { data: { success: true } }
 }
 
@@ -209,6 +210,6 @@ export async function reorderDeliverables(
     return { error: "Failed to reorder some deliverables" }
   }
 
-  revalidatePath(`/projects/${projectId}`)
+  after(() => revalidatePath(`/projects/${projectId}`))
   return { data: { success: true } }
 }
