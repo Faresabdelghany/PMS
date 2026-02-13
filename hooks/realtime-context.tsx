@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react"
 import { createClient } from "@/lib/supabase/client"
-import type { RealtimeChannel, RealtimePostgresChangesPayload } from "@supabase/supabase-js"
+import type { SupabaseClient, RealtimeChannel, RealtimePostgresChangesPayload } from "@supabase/supabase-js"
 import type { Database } from "@/lib/supabase/types"
 import { useDocumentVisibility } from "./use-document-visibility"
 
@@ -31,6 +31,7 @@ type Listener<T extends TableName = TableName> = {
 
 type SubscriptionState = {
   channel: RealtimeChannel
+  client: SupabaseClient
   listeners: Map<string, Listener>
   table: TableName
   filter?: string
@@ -147,6 +148,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 
       subscription = {
         channel,
+        client: supabase,
         listeners: new Map(),
         table,
         filter,
@@ -167,9 +169,8 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 
       // If no more listeners, clean up subscription
       if (sub.listeners.size === 0) {
-        const supabase = createClient()
         sub.channel.unsubscribe()
-        supabase.removeChannel(sub.channel)
+        sub.client.removeChannel(sub.channel)
         subscriptionsRef.current.delete(key)
 
         if (subscriptionsRef.current.size === 0) {
