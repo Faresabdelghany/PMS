@@ -61,6 +61,16 @@ export const URGENCY_DAYS_WARNING = 7
 export const INITIAL_VISIBLE_TASKS_PER_PROJECT = 5
 
 // ============================================
+// IN-MEMORY CACHE
+// ============================================
+/** Maximum entries in the in-memory cache (local dev fallback) */
+export const MAX_MEMORY_CACHE_SIZE = 500
+/** Percentage of max size that triggers a warning log */
+export const MEMORY_CACHE_WARN_THRESHOLD = 0.8
+/** Interval between expired-entry sweeps (ms) */
+export const MEMORY_CACHE_CLEANUP_INTERVAL_MS = 60_000
+
+// ============================================
 // AI CONTEXT LIMITS
 // ============================================
 export const AI_CONTEXT_LIMITS = {
