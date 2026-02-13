@@ -5,8 +5,7 @@ import { revalidatePath } from "next/cache"
 import type { ActionResult } from "./types"
 import type { AIProvider } from "@/lib/constants/ai"
 import { encrypt, decrypt, isEncryptedFormat, migrateFromBase64 } from "@/lib/crypto"
-import { invalidate } from "@/lib/cache"
-import { CacheTags, revalidateTag } from "@/lib/cache-tags"
+import { invalidate, invalidateCache } from "@/lib/cache"
 import { requireAuth, type TypedSupabaseClient } from "./auth-helpers"
 import { getStoragePublicUrl, removeStorageFile } from "@/lib/supabase/storage-utils"
 import type { AIProviderDB as DbAIProvider } from "@/lib/supabase/types"
@@ -438,15 +437,7 @@ export async function uploadAvatar(
 
     const orgIds = memberships?.map((m) => m.organization_id) || []
 
-    // Invalidate KV cache for profile-related data across all orgs
-    await invalidate.profile(user.id, orgIds)
-
-    // Invalidate Next.js cache tags for organization members and tasks
-    for (const orgId of orgIds) {
-      revalidateTag(CacheTags.organizationMembers(orgId))
-    }
-    // Invalidate user's tasks cache (only needs to be done once)
-    revalidateTag(CacheTags.myTasks(user.id))
+    await invalidateCache.profile({ userId: user.id, orgIds })
 
     revalidatePath("/settings")
     // Revalidate dashboard to update sidebar and other profile displays
@@ -503,15 +494,7 @@ export async function deleteAvatar(): Promise<ActionResult<{ success: boolean }>
 
     const orgIds = memberships?.map((m) => m.organization_id) || []
 
-    // Invalidate KV cache for profile-related data across all orgs
-    await invalidate.profile(user.id, orgIds)
-
-    // Invalidate Next.js cache tags for organization members and tasks
-    for (const orgId of orgIds) {
-      revalidateTag(CacheTags.organizationMembers(orgId))
-    }
-    // Invalidate user's tasks cache (only needs to be done once)
-    revalidateTag(CacheTags.myTasks(user.id))
+    await invalidateCache.profile({ userId: user.id, orgIds })
 
     revalidatePath("/settings")
     // Revalidate dashboard to update sidebar and other profile displays

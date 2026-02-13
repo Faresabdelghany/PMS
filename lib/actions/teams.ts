@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { invalidate } from "@/lib/cache"
+import { invalidateCache } from "@/lib/cache"
 import type { Team, TeamUpdate } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 import { requireAuth, requireOrgMember } from "./auth-helpers"
@@ -37,7 +37,7 @@ export async function createTeam(
     }
 
     revalidatePath("/", "layout")
-    invalidate.team(orgId)
+    await invalidateCache.teams({ orgId })
     return { data }
   } catch {
     return { error: "Not authorized" }
@@ -122,7 +122,7 @@ export async function updateTeam(
     }
 
     revalidatePath("/", "layout")
-    if (data) invalidate.team(data.organization_id)
+    if (data) await invalidateCache.teams({ orgId: data.organization_id })
     return { data }
   } catch {
     return { error: "Not authenticated" }
@@ -141,7 +141,7 @@ export async function deleteTeam(id: string, orgId?: string): Promise<ActionResu
     }
 
     revalidatePath("/", "layout")
-    if (orgId) invalidate.team(orgId)
+    if (orgId) await invalidateCache.teams({ orgId })
     return {}
   } catch {
     return { error: "Not authenticated" }

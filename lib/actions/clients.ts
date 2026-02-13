@@ -4,8 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import { z } from "zod"
-import { CacheTags, revalidateTag } from "@/lib/cache-tags"
-import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
+import { cacheGet, CacheKeys, CacheTTL, invalidateCache } from "@/lib/cache"
 import { requireOrgMember } from "./auth-helpers"
 import { uuidSchema, validate } from "@/lib/validations"
 import { sanitizeSearchInput } from "@/lib/search-utils"
@@ -102,9 +101,7 @@ export async function createClientAction(
 
   after(async () => {
     revalidatePath("/clients")
-    revalidateTag(CacheTags.clients(orgId))
-    // KV cache invalidation
-    await invalidate.client(orgId)
+    await invalidateCache.client({ orgId })
   })
 
   return { data: client }
@@ -277,11 +274,8 @@ export async function updateClient(
 
   after(async () => {
     revalidatePath("/clients")
-    revalidateTag(CacheTags.client(id))
     if (client.organization_id) {
-      revalidateTag(CacheTags.clients(client.organization_id))
-      // KV cache invalidation
-      await invalidate.client(client.organization_id)
+      await invalidateCache.client({ clientId: id, orgId: client.organization_id })
     }
   })
 
@@ -328,10 +322,7 @@ export async function deleteClient(id: string): Promise<ActionResult> {
 
   after(async () => {
     revalidatePath("/clients")
-    revalidateTag(CacheTags.client(id))
-    revalidateTag(CacheTags.clients(client.organization_id))
-    // KV cache invalidation
-    await invalidate.client(client.organization_id)
+    await invalidateCache.client({ clientId: id, orgId: client.organization_id })
   })
 
   return {}

@@ -14,7 +14,7 @@ import type {
 import type { ActionResult } from "./types"
 import { requireAuth } from "./auth-helpers"
 import { notifyMentions } from "./notifications"
-import { CacheTags, revalidateTag } from "@/lib/cache-tags"
+import { invalidateCache } from "@/lib/cache"
 import { getStoragePublicUrl } from "@/lib/supabase/storage-utils"
 
 // Create a new comment on a task
@@ -99,8 +99,7 @@ export async function createTaskComment(
       return { data: { ...comment, reactions: [], attachments: [] } as TaskCommentWithRelations }
     }
 
-    revalidateTag(CacheTags.taskTimeline(taskId))
-    revalidateTag(CacheTags.taskComments(taskId))
+    invalidateCache.taskTimeline({ taskId })
 
     // Send mention notifications
     const project = task.projects as { organization_id: string } | null
@@ -166,8 +165,7 @@ export async function updateTaskComment(
       return { error: `Failed to update comment: ${error.message}` }
     }
 
-    revalidateTag(CacheTags.taskTimeline(existing.task_id))
-    revalidateTag(CacheTags.taskComments(existing.task_id))
+    invalidateCache.taskTimeline({ taskId: existing.task_id })
 
     return { data: comment }
   } catch (error) {
@@ -207,8 +205,7 @@ export async function deleteTaskComment(
       return { error: `Failed to delete comment: ${error.message}` }
     }
 
-    revalidateTag(CacheTags.taskTimeline(existing.task_id))
-    revalidateTag(CacheTags.taskComments(existing.task_id))
+    invalidateCache.taskTimeline({ taskId: existing.task_id })
 
     return { data: undefined }
   } catch (error) {
@@ -253,7 +250,7 @@ export async function toggleCommentReaction(
         .single()
 
       if (comment) {
-        revalidateTag(CacheTags.taskTimeline(comment.task_id))
+        invalidateCache.taskTimeline({ taskId: comment.task_id })
       }
 
       return { data: { added: false } }
@@ -279,7 +276,7 @@ export async function toggleCommentReaction(
         .single()
 
       if (comment) {
-        revalidateTag(CacheTags.taskTimeline(comment.task_id))
+        invalidateCache.taskTimeline({ taskId: comment.task_id })
       }
 
       return { data: { added: true } }

@@ -5,8 +5,7 @@ import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import { cookies } from "next/headers"
-import { CacheTags, revalidateTag } from "@/lib/cache-tags"
-import { cacheGet, CacheKeys, CacheTTL } from "@/lib/cache"
+import { cacheGet, CacheKeys, CacheTTL, invalidateCache } from "@/lib/cache"
 import { requireAuth, requireOrgMember } from "./auth-helpers"
 import type { Organization, OrganizationInsert, OrganizationUpdate, OrgMemberRole } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
@@ -87,9 +86,9 @@ export async function createOrganization(
     // Clear the membership cache to reflect the new organization
     await clearOrgMembershipCache()
 
-    after(() => {
+    after(async () => {
       revalidatePath("/", "layout")
-      revalidateTag(CacheTags.organizations(user.id))
+      await invalidateCache.orgMembers({ orgId: org.id, userId: user.id })
     })
 
     return { data: org }
@@ -166,7 +165,7 @@ export async function updateOrganization(
 
   after(() => {
     revalidatePath("/", "layout")
-    revalidateTag(CacheTags.organization(id))
+    invalidateCache.organization({ orgId: id })
   })
 
   return { data: org }
@@ -189,10 +188,10 @@ export async function deleteOrganization(id: string): Promise<ActionResult> {
     return { error: error.message }
   }
 
-  after(() => {
+  after(async () => {
     revalidatePath("/", "layout")
-    revalidateTag(CacheTags.organization(id))
-    revalidateTag(CacheTags.organizationMembers(id))
+    invalidateCache.organization({ orgId: id })
+    await invalidateCache.orgMembers({ orgId: id })
   })
 
   redirect("/inbox")
@@ -252,9 +251,9 @@ export async function updateMemberRole(
     return { error: error.message }
   }
 
-  after(() => {
+  after(async () => {
     revalidatePath("/", "layout")
-    revalidateTag(CacheTags.organizationMembers(orgId))
+    await invalidateCache.orgMembers({ orgId, userId })
   })
 
   return {}
@@ -284,10 +283,9 @@ export async function removeOrganizationMember(orgId: string, userId: string): P
   // Clear the membership cache as user may have lost their only organization
   await clearOrgMembershipCache()
 
-  after(() => {
+  after(async () => {
     revalidatePath("/", "layout")
-    revalidateTag(CacheTags.organizationMembers(orgId))
-    revalidateTag(CacheTags.organizations(userId))
+    await invalidateCache.orgMembers({ orgId, userId })
   })
 
   return {}

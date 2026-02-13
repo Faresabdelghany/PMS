@@ -3,8 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { after } from "next/server"
-import { CacheTags, revalidateTag } from "@/lib/cache-tags"
-import { invalidate } from "@/lib/cache"
+import { invalidateCache } from "@/lib/cache"
 import { requireProjectOwnerOrPIC } from "../auth-helpers"
 import { cachedGetUser } from "@/lib/request-cache"
 import type { ProjectMember, ProjectMemberRole } from "@/lib/supabase/types"
@@ -53,9 +52,7 @@ export async function addProjectMember(
 
   after(async () => {
     revalidatePath(`/projects/${projectId}`)
-    revalidateTag(CacheTags.project(projectId))
-    revalidateTag(CacheTags.projectMembers(projectId))
-    invalidate.projectMembership(projectId, userId).catch(() => {})
+    await invalidateCache.projectMembership({ projectId, userId })
 
     // Notify the new member
     if (user && project) {
@@ -98,11 +95,9 @@ export async function updateProjectMemberRole(
     return { error: error.message }
   }
 
-  after(() => {
+  after(async () => {
     revalidatePath(`/projects/${projectId}`)
-    revalidateTag(CacheTags.project(projectId))
-    revalidateTag(CacheTags.projectMembers(projectId))
-    invalidate.projectMembership(projectId, userId).catch(() => {})
+    await invalidateCache.projectMembership({ projectId, userId })
   })
 
   return {}
@@ -142,9 +137,7 @@ export async function removeProjectMember(
 
   after(async () => {
     revalidatePath(`/projects/${projectId}`)
-    revalidateTag(CacheTags.project(projectId))
-    revalidateTag(CacheTags.projectMembers(projectId))
-    invalidate.projectMembership(projectId, userId).catch(() => {})
+    await invalidateCache.projectMembership({ projectId, userId })
 
     // Notify the removed member
     if (user && project) {

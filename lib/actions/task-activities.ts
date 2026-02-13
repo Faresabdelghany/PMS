@@ -12,7 +12,7 @@ import type {
 } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 import { requireAuth } from "./auth-helpers"
-import { CacheTags, revalidateTag } from "@/lib/cache-tags"
+import { invalidateCache } from "@/lib/cache"
 
 // Create a task activity record (called internally by task update actions)
 export async function createTaskActivity(
@@ -44,8 +44,7 @@ export async function createTaskActivity(
       return { error: `Failed to create activity: ${error.message}` }
     }
 
-    revalidateTag(CacheTags.taskTimeline(taskId))
-    revalidateTag(CacheTags.taskActivities(taskId))
+    invalidateCache.taskTimeline({ taskId })
 
     return { data: activity }
   } catch (error) {

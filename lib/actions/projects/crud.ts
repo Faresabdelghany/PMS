@@ -3,8 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { after } from "next/server"
-import { CacheTags, revalidateTag } from "@/lib/cache-tags"
-import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
+import { cacheGet, CacheKeys, CacheTTL, invalidateCache } from "@/lib/cache"
 import { requireProjectMember, requireProjectOwnerOrPIC } from "../auth-helpers"
 import { uuidSchema, validate } from "@/lib/validations"
 import { cachedGetUser } from "@/lib/request-cache"
@@ -241,8 +240,7 @@ export async function createProject(
 
   after(async () => {
     revalidatePath("/projects")
-    revalidateTag(CacheTags.projects(orgId))
-    await invalidate.project(project.id, orgId)
+    await invalidateCache.project({ projectId: project.id, orgId })
   })
 
   return { data: project }
@@ -401,11 +399,8 @@ export async function updateProject(
   after(async () => {
     revalidatePath("/projects")
     revalidatePath(`/projects/${id}`)
-    revalidateTag(CacheTags.project(id))
-    revalidateTag(CacheTags.projectDetails(id))
     if (project.organization_id) {
-      revalidateTag(CacheTags.projects(project.organization_id))
-      await invalidate.project(id, project.organization_id)
+      await invalidateCache.project({ projectId: id, orgId: project.organization_id })
     }
 
     // Send notification on status change
@@ -478,11 +473,8 @@ export async function deleteProject(id: string): Promise<ActionResult> {
 
   after(async () => {
     revalidatePath("/projects")
-    revalidateTag(CacheTags.project(id))
-    revalidateTag(CacheTags.projectDetails(id))
     if (project?.organization_id) {
-      revalidateTag(CacheTags.projects(project.organization_id))
-      await invalidate.project(id, project.organization_id)
+      await invalidateCache.project({ projectId: id, orgId: project.organization_id })
     }
   })
 

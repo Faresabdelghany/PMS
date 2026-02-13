@@ -203,14 +203,25 @@ Available cached functions: `getCachedProjects`, `getCachedProject`, `getCachedT
 
 **IMPORTANT:** Never duplicate `cache()` wrappers across modules. React's `cache()` deduplicates by function identity — two separate `cache()` calls wrapping the same action create independent cache stores, causing redundant DB queries.
 
-**Cache Tags:** Use `lib/cache-tags.ts` for granular cache invalidation:
+**Unified Cache Invalidation:** After mutations, always use `invalidateCache.*` from `lib/cache/invalidation.ts`. This ensures BOTH Next.js tags and KV cache are invalidated together — missing either causes stale data:
 ```typescript
-import { CacheTags, revalidateTag } from "@/lib/cache-tags"
+import { invalidateCache } from "@/lib/cache"
 
-// Invalidate specific cached data after mutations
-revalidateTag(CacheTags.projects(orgId))
-revalidateTag(CacheTags.project(projectId))
+// After project mutation — invalidates Next.js tags AND KV cache in one call
+await invalidateCache.project({ projectId, orgId })
+
+// After task mutation
+await invalidateCache.task({ taskId, projectId, assigneeId, orgId })
+
+// After client mutation
+await invalidateCache.client({ clientId, orgId })
+
+// Other helpers: .orgMembers(), .tags(), .labels(), .teams(),
+// .workstreams(), .projectMembership(), .taskTimeline(), .profile()
 ```
+**IMPORTANT:** Never call `revalidateTag()` or `invalidate.*()` directly in server actions. Always use the unified helpers. The only exceptions are cross-entity side-effects (e.g., `revalidateTag(CacheTags.projectDetails())` in `createTask`) and complex custom patterns (e.g., `bulkUpdateTaskStatus`).
+
+**Cache Tags:** Defined in `lib/cache-tags.ts`. Used internally by `invalidateCache` helpers — do not call directly.
 
 **KV Caching (Cross-Request):** Use `lib/cache/` for persistent caching with Vercel KV/Redis:
 ```typescript

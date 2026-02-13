@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
+import { cacheGet, CacheKeys, CacheTTL, invalidateCache } from "@/lib/cache"
 import type { OrganizationLabel, OrganizationLabelUpdate, LabelCategory } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 import { requireAuth, requireOrgMember } from "./auth-helpers"
@@ -89,7 +89,7 @@ export async function createLabel(
     }
 
     revalidatePath("/settings")
-    invalidate.labels(orgId)
+    await invalidateCache.labels({ orgId })
     return { data }
   } catch {
     return { error: "Not authorized" }
@@ -144,7 +144,7 @@ export async function updateLabel(
     }
 
     revalidatePath("/settings")
-    if (data) invalidate.labels(data.organization_id)
+    if (data) await invalidateCache.labels({ orgId: data.organization_id })
     return { data }
   } catch {
     return { error: "Not authenticated" }
@@ -166,7 +166,7 @@ export async function deleteLabel(labelId: string, orgId?: string): Promise<Acti
     }
 
     revalidatePath("/settings")
-    if (orgId) invalidate.labels(orgId)
+    if (orgId) await invalidateCache.labels({ orgId })
     return {}
   } catch {
     return { error: "Not authenticated" }

@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
+import { cacheGet, CacheKeys, CacheTTL, invalidateCache } from "@/lib/cache"
 import type { OrganizationTag, OrganizationTagUpdate } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 import { requireAuth, requireOrgMember } from "./auth-helpers"
@@ -74,7 +74,7 @@ export async function createTag(
     }
 
     revalidatePath("/settings")
-    invalidate.tags(orgId)
+    await invalidateCache.tags({ orgId })
     return { data }
   } catch {
     return { error: "Not authorized" }
@@ -140,7 +140,7 @@ export async function updateTag(
     }
 
     revalidatePath("/settings")
-    if (data) invalidate.tags(data.organization_id)
+    if (data) await invalidateCache.tags({ orgId: data.organization_id })
     return { data }
   } catch {
     return { error: "Not authenticated" }
@@ -173,7 +173,7 @@ export async function deleteTag(tagId: string, orgId?: string): Promise<ActionRe
     }
 
     revalidatePath("/settings")
-    if (orgId) invalidate.tags(orgId)
+    if (orgId) await invalidateCache.tags({ orgId })
     return {}
   } catch {
     return { error: "Not authenticated" }

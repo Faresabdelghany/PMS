@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import { requireAuth, requireProjectMember } from "./auth-helpers"
-import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
+import { cacheGet, CacheKeys, CacheTTL, invalidateCache } from "@/lib/cache"
 import type { Workstream, WorkstreamInsert, WorkstreamUpdate } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 
@@ -98,8 +98,7 @@ export async function createWorkstream(
 
   after(async () => {
     revalidatePath(`/projects/${projectId}`)
-    // KV cache invalidation
-    await invalidate.workstream(projectId)
+    await invalidateCache.workstreams({ projectId })
   })
 
   return { data }
@@ -268,8 +267,7 @@ export async function updateWorkstream(
 
   after(async () => {
     revalidatePath(`/projects/${current.project_id}`)
-    // KV cache invalidation
-    await invalidate.workstream(current.project_id)
+    await invalidateCache.workstreams({ projectId: current.project_id })
   })
 
   return { data: workstream }
@@ -306,8 +304,7 @@ export async function deleteWorkstream(id: string): Promise<ActionResult> {
 
   after(async () => {
     revalidatePath(`/projects/${ws.project_id}`)
-    // KV cache invalidation
-    await invalidate.workstream(ws.project_id)
+    await invalidateCache.workstreams({ projectId: ws.project_id })
   })
 
   return {}
@@ -345,8 +342,7 @@ export async function reorderWorkstreams(
 
   after(async () => {
     revalidatePath(`/projects/${projectId}`)
-    // KV cache invalidation
-    await invalidate.workstream(projectId)
+    await invalidateCache.workstreams({ projectId })
   })
 
   return {}

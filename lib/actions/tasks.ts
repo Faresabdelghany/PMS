@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import { z } from "zod"
 import { CacheTags, revalidateTag } from "@/lib/cache-tags"
-import { cacheGet, CacheKeys, CacheTTL, invalidate } from "@/lib/cache"
+import { cacheGet, CacheKeys, CacheTTL, invalidate, invalidateCache } from "@/lib/cache"
 import { uuidSchema, validate } from "@/lib/validations"
 import { cachedGetUser } from "@/lib/request-cache"
 import { requireAuth } from "./auth-helpers"
@@ -146,10 +146,12 @@ export async function createTask(
   after(async () => {
     revalidatePath(`/projects/${projectId}`)
     revalidatePath("/tasks")
-    revalidateTag(CacheTags.tasks(projectId))
     revalidateTag(CacheTags.projectDetails(projectId))
-    // KV cache invalidation
-    await invalidate.task(projectId, validatedData.assignee_id ?? null, project?.organization_id ?? "")
+    await invalidateCache.task({
+      projectId,
+      assigneeId: validatedData.assignee_id ?? null,
+      orgId: project?.organization_id ?? "",
+    })
 
     // Notify assignee when task is created with assignment
     if (user && validatedData.assignee_id && project?.organization_id) {
@@ -479,12 +481,14 @@ export async function updateTask(
   after(async () => {
     revalidatePath("/projects")
     revalidatePath("/tasks")
-    revalidateTag(CacheTags.task(id))
-    revalidateTag(CacheTags.taskTimeline(id))
+    invalidateCache.taskTimeline({ taskId: id })
     if (task.project_id) {
-      revalidateTag(CacheTags.tasks(task.project_id))
-      // KV cache invalidation
-      await invalidate.task(task.project_id, task.assignee_id, orgId)
+      await invalidateCache.task({
+        taskId: id,
+        projectId: task.project_id,
+        assigneeId: task.assignee_id,
+        orgId,
+      })
     }
 
     // Send notifications for significant changes
@@ -591,12 +595,14 @@ export async function deleteTask(id: string): Promise<ActionResult> {
   }
 
   after(async () => {
-    revalidateTag(CacheTags.task(id))
     if (task) {
       revalidatePath(`/projects/${task.project_id}`)
-      revalidateTag(CacheTags.tasks(task.project_id))
-      // KV cache invalidation
-      await invalidate.task(task.project_id, task.assignee_id, orgId)
+      await invalidateCache.task({
+        taskId: id,
+        projectId: task.project_id,
+        assigneeId: task.assignee_id,
+        orgId,
+      })
     }
     revalidatePath("/tasks")
   })
@@ -633,9 +639,10 @@ export async function reorderTasks(
 
   after(async () => {
     revalidatePath(`/projects/${projectId}`)
-    revalidateTag(CacheTags.tasks(projectId))
-    // KV cache invalidation - invalidate project tasks cache
-    await invalidate.key(CacheKeys.projectTasks(projectId))
+    await invalidateCache.task({
+      projectId,
+      orgId: project?.organization_id ?? "",
+    })
   })
 
   return {}
@@ -677,10 +684,12 @@ export async function moveTaskToWorkstream(
 
   after(async () => {
     revalidatePath(`/projects/${task.project_id}`)
-    revalidateTag(CacheTags.task(taskId))
-    revalidateTag(CacheTags.tasks(task.project_id))
-    // KV cache invalidation
-    await invalidate.task(task.project_id, task.assignee_id, orgId)
+    await invalidateCache.task({
+      taskId,
+      projectId: task.project_id,
+      assigneeId: task.assignee_id,
+      orgId,
+    })
   })
 
   return {}
