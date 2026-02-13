@@ -109,6 +109,7 @@ npx supabase status                     # Check local services status
 - **`lib/`** - Utilities and data
   - `supabase/` - Supabase clients and types
   - `actions/` - Server Actions for data mutations
+  - `page-auth.ts` - `getPageOrganization()` helper for standardized auth + org resolution in pages
   - `request-cache.ts` - Core request-level caching (`cachedGetUser`, `getSupabaseClient`, and cached action wrappers)
   - `server-cache.ts` - Additional request-level cached functions (wraps actions with React `cache()`)
   - `cache-tags.ts` - Cache tag constants for granular revalidation
@@ -178,6 +179,18 @@ const ctx = await requireOrgMember(orgId)                // Org membership
 const ctx = await requireProjectMember(projectId)       // Project membership
 const ctx = await requireProjectOwnerOrPIC(projectId)   // Elevated access
 ```
+
+**Page-Level Auth + Org Resolution:** All dashboard pages must use `getPageOrganization()` from `lib/page-auth.ts` for auth + org resolution. This ensures consistent redirect behavior (no auth → `/login`, no org → `/onboarding`) and eliminates duplicated auth/org boilerplate:
+```typescript
+import { getPageOrganization } from "@/lib/page-auth"
+
+// Standard pattern — all dashboard pages use this
+const { user, orgId } = await getPageOrganization()
+
+// Then fetch page-specific data using orgId
+const projects = await getCachedProjects(orgId)
+```
+**IMPORTANT:** Do NOT manually call `cachedGetUser()` + `getCachedActiveOrgFromKV()` + redirect logic in page.tsx files. Always use `getPageOrganization()` instead. The only exceptions are: (1) the dashboard layout itself (which pre-warms the KV cache), and (2) entity detail pages that derive org from the entity (e.g., report detail page gets org from `report.organization_id`).
 
 **Request-Level Caching (two modules, distinct responsibilities):**
 

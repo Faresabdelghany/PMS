@@ -1,11 +1,11 @@
 import type { Metadata } from "next"
 import { Suspense } from "react"
-import { redirect } from "next/navigation"
 import { Breadcrumbs } from "@/components/projects/Breadcrumbs"
 import { PerformancePageSkeleton, ChartsSkeleton } from "@/components/skeletons/performance-skeletons"
 import { PerformanceStatCards } from "@/components/performance/PerformanceStatCards"
 import { PerformanceCharts } from "@/components/performance/PerformanceCharts"
-import { getCachedPerformanceMetrics, getCachedActiveOrgFromKV } from "@/lib/server-cache"
+import { getPageOrganization } from "@/lib/page-auth"
+import { getCachedPerformanceMetrics } from "@/lib/server-cache"
 
 export const metadata: Metadata = {
   title: "Performance - PMS",
@@ -50,18 +50,11 @@ async function PerformanceContent({ orgId }: { orgId: string }) {
 }
 
 export default async function PerformancePage() {
-  // Use KV-cached org - instant hit from layout's cache warming (~5ms)
-  const org = await getCachedActiveOrgFromKV()
-
-  if (!org) {
-    redirect("/login")
-  }
-
-  const organizationId = org.id
+  const { orgId } = await getPageOrganization()
 
   return (
     <Suspense fallback={<PerformancePageSkeleton />}>
-      <PerformanceContent orgId={organizationId} />
+      <PerformanceContent orgId={orgId} />
     </Suspense>
   )
 }

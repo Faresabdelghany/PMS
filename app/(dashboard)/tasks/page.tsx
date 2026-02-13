@@ -1,11 +1,9 @@
 import type { Metadata } from "next"
 import { Suspense } from "react"
-import { redirect } from "next/navigation"
 import { MyTasksPage } from "@/components/tasks/MyTasksPage"
 import { MyTasksSkeleton } from "@/components/skeletons"
-import { cachedGetUser } from "@/lib/request-cache"
+import { getPageOrganization } from "@/lib/page-auth"
 import {
-  getCachedActiveOrgFromKV,
   getCachedOrganizationMembers,
   getCachedProjects,
   getCachedMyTasks,
@@ -19,21 +17,7 @@ export const metadata: Metadata = {
 }
 
 export default async function Page() {
-  // Use cached auth - shared with layout (no duplicate DB hit)
-  const { user, error: authError } = await cachedGetUser()
-
-  if (authError || !user) {
-    redirect("/login")
-  }
-
-  // Use KV-cached org - instant hit from layout's cache warming (~5ms)
-  const org = await getCachedActiveOrgFromKV()
-
-  if (!org) {
-    redirect("/onboarding")
-  }
-
-  const orgId = org.id
+  const { user, orgId } = await getPageOrganization()
 
   // Start ALL 4 data promises WITHOUT awaiting — Suspense streams data in
   const tasksPromise = getCachedMyTasks(orgId)

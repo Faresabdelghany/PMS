@@ -1,8 +1,8 @@
 import type { Metadata } from "next"
 import { Suspense } from "react"
-import { redirect } from "next/navigation"
 import { ClientsContent } from "@/components/clients-content"
-import { getCachedClientsWithProjectCounts, getCachedActiveOrgFromKV } from "@/lib/server-cache"
+import { getPageOrganization } from "@/lib/page-auth"
+import { getCachedClientsWithProjectCounts } from "@/lib/server-cache"
 import { ClientsListSkeleton } from "@/components/skeletons"
 
 export const metadata: Metadata = {
@@ -16,18 +16,11 @@ async function ClientsList({ orgId }: { orgId: string }) {
 }
 
 export default async function Page() {
-  // Use KV-cached org - instant hit from layout's cache warming (~5ms)
-  const org = await getCachedActiveOrgFromKV()
-
-  if (!org) {
-    redirect("/login")
-  }
-
-  const organizationId = org.id
+  const { orgId } = await getPageOrganization()
 
   return (
     <Suspense fallback={<ClientsListSkeleton />}>
-      <ClientsList orgId={organizationId} />
+      <ClientsList orgId={orgId} />
     </Suspense>
   )
 }

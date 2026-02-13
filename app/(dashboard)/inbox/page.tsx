@@ -1,21 +1,16 @@
 import type { Metadata } from "next"
 import { Suspense } from "react"
-import { redirect } from "next/navigation"
 import { InboxContent } from "@/components/inbox/InboxContent"
 import { InboxPageSkeleton } from "@/components/skeletons"
-import { getCachedInboxItems, getCachedUnreadCount, getCachedActiveOrgFromKV } from "@/lib/server-cache"
+import { getPageOrganization } from "@/lib/page-auth"
+import { getCachedInboxItems, getCachedUnreadCount } from "@/lib/server-cache"
 
 export const metadata: Metadata = {
   title: "Inbox - PMS",
 }
 
 export default async function Page() {
-  // Use KV-cached org - instant hit from layout's cache warming (~5ms)
-  const org = await getCachedActiveOrgFromKV()
-
-  if (!org) {
-    redirect("/onboarding")
-  }
+  const { orgId } = await getPageOrganization()
 
   // Start promises WITHOUT awaiting — Suspense streams data in
   const inboxPromise = getCachedInboxItems()
@@ -26,7 +21,7 @@ export default async function Page() {
       <InboxStreamed
         inboxPromise={inboxPromise}
         unreadPromise={unreadPromise}
-        organizationId={org.id}
+        organizationId={orgId}
       />
     </Suspense>
   )

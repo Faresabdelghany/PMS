@@ -3,6 +3,7 @@ import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { ProjectDetailsPage } from "@/components/projects/ProjectDetailsPage"
 import { ProjectDetailsSkeleton } from "@/components/skeletons"
+import { getPageOrganization } from "@/lib/page-auth"
 import {
   getCachedProjectWithDetails,
   getCachedTasks,
@@ -10,7 +11,6 @@ import {
   getCachedClients,
   getCachedOrganizationMembers,
   getCachedTags,
-  getCachedActiveOrganizationId,
 } from "@/lib/server-cache"
 import { getProjectReports } from "@/lib/actions/reports"
 import { transformProjectToUI } from "@/lib/transforms/project-details"
@@ -27,15 +27,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 /**
- * Fetches org-dependent data (clients, members, tags) using the user's active org.
- * This helper allows org data to be fetched in parallel with project data,
- * eliminating the waterfall where we'd wait for project to get the org ID.
+ * Fetches org-dependent data (clients, members, tags) for the given org.
+ * Called in parallel with project data to eliminate the waterfall.
  */
-async function fetchOrgData() {
-  const orgId = await getCachedActiveOrganizationId()
-  if (!orgId) {
-    return { clients: { data: null }, members: { data: null }, tags: { data: null }, orgId: null }
-  }
+async function fetchOrgData(orgId: string) {
   const [clients, members, tags] = await Promise.all([
     getCachedClients(orgId),
     getCachedOrganizationMembers(orgId),
@@ -46,12 +41,13 @@ async function fetchOrgData() {
 
 export default async function Page({ params }: PageProps) {
   const { id } = await params
+  const { orgId } = await getPageOrganization()
 
   // Start ALL queries as promises WITHOUT awaiting — Suspense streams data in
   const projectPromise = getCachedProjectWithDetails(id)
   const tasksPromise = getCachedTasks(id)
   const workstreamsPromise = getCachedWorkstreamsWithTasks(id)
-  const orgDataPromise = fetchOrgData()
+  const orgDataPromise = fetchOrgData(orgId)
   const reportsPromise = getProjectReports(id)
 
   return (

@@ -267,30 +267,6 @@ export const getCachedAIConfigured = cache(async () => {
 })
 
 // ============================================
-// ACTIVE ORGANIZATION (for parallel fetching)
-// ============================================
-
-/**
- * Get the user's active organization ID (request-level cached)
- *
- * This is useful for pages that need to fetch org-dependent data in parallel
- * with other queries. The dashboard layout already fetches this, but pages
- * can use this to get the org ID without waiting for other data.
- *
- * Most projects will belong to the user's primary organization, so speculatively
- * fetching org data using this ID eliminates the waterfall in most cases.
- */
-export const getCachedActiveOrganizationId = cache(async () => {
-  const { getUserOrganizations } = await import("./actions/organizations")
-  const result = await getUserOrganizations()
-  if (result.error || !result.data || result.data.length === 0) {
-    return null
-  }
-  // Return the first (primary) organization ID
-  return result.data[0].id
-})
-
-// ============================================
 // AGGREGATION HELPERS (for stat cards)
 // ============================================
 
