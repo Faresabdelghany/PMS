@@ -55,7 +55,7 @@ import {
 import { FilterPopover, type MemberOption, type TagOption } from "@/components/filter-popover"
 import { ChipOverflow } from "@/components/chip-overflow"
 import { TaskRowBase } from "@/components/tasks/TaskRowBase"
-import { TaskQuickCreateModal, type TaskData } from "@/components/tasks/TaskQuickCreateModal"
+import { TaskQuickCreateModalLazy as TaskQuickCreateModal, type TaskData } from "@/components/tasks/TaskQuickCreateModalLazy"
 import dynamic from "next/dynamic"
 
 // Lazy-load task detail panel - defers Tiptap/comment editor until a task is opened

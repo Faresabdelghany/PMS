@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Breadcrumbs } from "@/components/projects/Breadcrumbs"
-import { TaskQuickCreateModal } from "@/components/tasks/TaskQuickCreateModal"
+import { TaskQuickCreateModalLazy as TaskQuickCreateModal } from "@/components/tasks/TaskQuickCreateModalLazy"
 import { getOptimizedAvatarUrl } from "@/lib/assets/avatars"
 import { cn } from "@/lib/utils"
 

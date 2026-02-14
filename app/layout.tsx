@@ -22,6 +22,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "PM Tools - Project Management",
   description: "Modern project and task management tool with timeline view",
+  manifest: "/manifest.webmanifest",
   icons: {
     icon: "/icon.png",
     apple: "/apple-touch-icon.png",

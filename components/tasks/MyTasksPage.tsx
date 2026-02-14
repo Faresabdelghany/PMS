@@ -4,11 +4,14 @@ import { useMemo, useState, useCallback, useRef } from "react"
 import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
 import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 
+import { LoadMoreButton } from "@/components/ui/load-more-button"
+import { useLoadMore } from "@/hooks/use-load-more"
+import { getMyTasks } from "@/lib/actions/tasks"
 import type { TaskWithRelations } from "@/lib/actions/tasks"
 import type { ProjectWithRelations } from "@/lib/actions/projects"
 import type { TaskPriority } from "@/lib/supabase/types"
 import type { ProjectTask } from "@/lib/data/project-details"
-import type { TaskData } from "@/components/tasks/TaskQuickCreateModal"
+import type { TaskData } from "@/components/tasks/TaskQuickCreateModalLazy"
 
 // Extended project type that includes workstreams for task creation modal
 type ProjectWithWorkstreams = ProjectWithRelations & {
@@ -102,7 +105,7 @@ import {
 import { FilterPopover, type MemberOption, type TagOption } from "@/components/filter-popover"
 import { ChipOverflow } from "@/components/chip-overflow"
 import { ViewOptionsPopover } from "@/components/view-options-popover"
-import { TaskQuickCreateModal, type CreateTaskContext } from "@/components/tasks/TaskQuickCreateModal"
+import { TaskQuickCreateModalLazy as TaskQuickCreateModal, type CreateTaskContext } from "@/components/tasks/TaskQuickCreateModalLazy"
 import type { OrganizationTag as FullOrganizationTag } from "@/lib/supabase/types"
 
 // Minimal tag shape for RSC serialization — only fields used by UI
@@ -154,6 +157,8 @@ type OrganizationMember = {
 
 interface MyTasksPageProps {
   initialTasks?: TaskWithRelations[]
+  initialHasMore?: boolean
+  initialCursor?: string | null
   projects?: ProjectWithWorkstreams[]
   organizationId?: string
   userId?: string
@@ -163,13 +168,35 @@ interface MyTasksPageProps {
 
 export function MyTasksPage({
   initialTasks = [],
+  initialHasMore = false,
+  initialCursor = null,
   projects = [],
   organizationId,
   userId,
   organizationMembers = [],
   organizationTags = [],
 }: MyTasksPageProps) {
-  const [tasks, setTasks] = useState<TaskWithRelations[]>(initialTasks)
+  const fetchMoreTasks = useCallback(
+    (cursor: string) => {
+      if (!organizationId) return Promise.resolve({ data: [], hasMore: false, nextCursor: null })
+      return getMyTasks(organizationId, undefined, cursor)
+    },
+    [organizationId]
+  )
+
+  const {
+    items: tasks,
+    hasMore,
+    isLoading: isLoadingMore,
+    loadMore,
+    setItems: setTasks,
+  } = useLoadMore({
+    initialItems: initialTasks,
+    initialHasMore,
+    initialCursor,
+    fetchMore: fetchMoreTasks,
+  })
+
   const [filters, setFilters] = useState<FilterChipType[]>([])
   const [viewOptions, setViewOptions] = useState<ViewOptions>(DEFAULT_VIEW_OPTIONS)
 
@@ -621,6 +648,7 @@ export function MyTasksPage({
             tags={organizationTags}
           />
         )}
+        <LoadMoreButton hasMore={hasMore} isLoading={isLoadingMore} onLoadMore={loadMore} />
       </div>
 
       <TaskQuickCreateModal

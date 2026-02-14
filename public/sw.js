@@ -1,11 +1,13 @@
 // Service Worker for static asset caching
 // Improves INP by reducing network requests for static assets
 
-const CACHE_NAME = 'pms-cache-v2'
+const CACHE_NAME = 'pms-cache-v3'
 const STATIC_ASSETS = [
   '/',
   '/icon.png',
   '/apple-touch-icon.png',
+  '/offline.html',
+  '/manifest.webmanifest',
 ]
 
 // Install event - cache static assets
@@ -66,26 +68,34 @@ globalThis.addEventListener('fetch', (event) => {
       }
 
       // Not in cache, fetch from network and cache it
-      return fetch(event.request).then((response) => {
-        // Cache successful responses for static assets
-        if (
-          response &&
-          response.status === 200 &&
-          (event.request.url.endsWith('.js') ||
-            event.request.url.endsWith('.css') ||
-            event.request.url.endsWith('.png') ||
-            event.request.url.endsWith('.jpg') ||
-            event.request.url.endsWith('.svg') ||
-            event.request.url.endsWith('.woff2'))
-        ) {
-          const responseToCache = response.clone()
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache)
-          })
-        }
+      return fetch(event.request)
+        .then((response) => {
+          // Cache successful responses for static assets
+          if (
+            response &&
+            response.status === 200 &&
+            (event.request.url.endsWith('.js') ||
+              event.request.url.endsWith('.css') ||
+              event.request.url.endsWith('.png') ||
+              event.request.url.endsWith('.jpg') ||
+              event.request.url.endsWith('.svg') ||
+              event.request.url.endsWith('.woff2'))
+          ) {
+            const responseToCache = response.clone()
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache)
+            })
+          }
 
-        return response
-      })
+          return response
+        })
+        .catch(() => {
+          // Network failed — serve offline fallback for navigation requests
+          if (event.request.mode === 'navigate') {
+            return caches.match('/offline.html')
+          }
+          return new Response('', { status: 408 })
+        })
     })
   )
 })
