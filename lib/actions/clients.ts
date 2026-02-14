@@ -9,8 +9,10 @@ import { requireOrgMember } from "./auth-helpers"
 import { uuidSchema, validate } from "@/lib/validations"
 import { sanitizeSearchInput } from "@/lib/search-utils"
 import { CLIENT_STATUSES, createClientStatusCounts } from "@/lib/constants/status"
+import { DEFAULT_PAGE_SIZE } from "@/lib/constants"
+import { encodeCursor, decodeCursor } from "./cursor"
 import type { Client, ClientInsert, ClientUpdate, ClientStatus } from "@/lib/supabase/types"
-import type { ActionResult } from "./types"
+import type { ActionResult, PaginatedResult } from "./types"
 
 // Client validation schemas
 const createClientSchema = z.object({
@@ -107,11 +109,13 @@ export async function createClientAction(
   return { data: client }
 }
 
-// Get clients for organization with filters
+// Get clients for organization with filters and cursor-based pagination
 export async function getClients(
   orgId: string,
-  filters?: ClientFilters
-): Promise<ActionResult<Client[]>> {
+  filters?: ClientFilters,
+  cursor?: string,
+  limit: number = DEFAULT_PAGE_SIZE
+): Promise<PaginatedResult<Client>> {
   // Validate organization ID
   const orgValidation = validate(uuidSchema, orgId)
   if (!orgValidation.success) {
@@ -129,8 +133,8 @@ export async function getClients(
     (v) => v !== undefined && v !== ""
   )
 
-  // Only cache unfiltered queries
-  if (!hasFilters) {
+  // Only cache unfiltered, first-page queries
+  if (!hasFilters && !cursor) {
     try {
       const clients = await cacheGet(
         CacheKeys.clients(orgId),
@@ -140,13 +144,21 @@ export async function getClients(
             .select("*, owner:profiles(id, full_name, email, avatar_url)")
             .eq("organization_id", orgId)
             .order("name")
+            .limit(limit + 1)
 
           if (error) throw error
           return data ?? []
         },
         CacheTTL.CLIENTS
       )
-      return { data: clients as Client[] }
+
+      const hasMore = clients.length > limit
+      const items = hasMore ? clients.slice(0, limit) : clients
+      const nextCursor = hasMore
+        ? encodeCursor(items[items.length - 1].name, items[items.length - 1].id)
+        : null
+
+      return { data: items as Client[], nextCursor, hasMore }
     } catch (error) {
       return {
         error: error instanceof Error ? error.message : "Failed to fetch clients",
@@ -154,7 +166,7 @@ export async function getClients(
     }
   }
 
-  // Filtered query - don't cache
+  // Filtered or cursor query - don't cache
   let query = supabase
     .from("clients")
     .select("*, owner:profiles(id, full_name, email, avatar_url)")
@@ -175,13 +187,38 @@ export async function getClients(
     )
   }
 
-  const { data, error } = await query.order("name")
+  // Compound cursor: (name, id) ASC
+  if (cursor) {
+    try {
+      const { value, id } = decodeCursor(cursor)
+      query = query.or(
+        `name.gt.${value},and(name.eq.${value},id.gt.${id})`
+      )
+    } catch {
+      return { error: "Invalid cursor" }
+    }
+  }
+
+  const { data, error } = await query
+    .order("name")
+    .order("id")
+    .limit(limit + 1)
 
   if (error) {
     return { error: error.message }
   }
 
-  return { data: data as Client[] }
+  const hasMore = (data?.length || 0) > limit
+  const items = hasMore ? data!.slice(0, limit) : (data || [])
+  const nextCursor = hasMore
+    ? encodeCursor(items[items.length - 1].name, items[items.length - 1].id)
+    : null
+
+  return {
+    data: items as Client[],
+    nextCursor,
+    hasMore,
+  }
 }
 
 // Get single client
@@ -349,8 +386,10 @@ export type ClientWithProjectCount = Client & {
 
 export async function getClientsWithProjectCounts(
   orgId: string,
-  filters?: ClientFilters
-): Promise<ActionResult<ClientWithProjectCount[]>> {
+  filters?: ClientFilters,
+  cursor?: string,
+  limit: number = DEFAULT_PAGE_SIZE
+): Promise<PaginatedResult<ClientWithProjectCount>> {
   const supabase = await createClient()
 
   // First get clients
@@ -376,42 +415,59 @@ export async function getClientsWithProjectCounts(
     }
   }
 
-  const { data: clients, error: clientsError } = await query.order("name")
+  // Compound cursor: (name, id) ASC
+  if (cursor) {
+    try {
+      const { value, id } = decodeCursor(cursor)
+      query = query.or(
+        `name.gt.${value},and(name.eq.${value},id.gt.${id})`
+      )
+    } catch {
+      return { error: "Invalid cursor" }
+    }
+  }
+
+  const { data: clients, error: clientsError } = await query
+    .order("name")
+    .order("id")
+    .limit(limit + 1)
 
   if (clientsError) {
     return { error: clientsError.message }
   }
 
   if (!clients || clients.length === 0) {
-    return { data: [] }
+    return { data: [], hasMore: false, nextCursor: null }
   }
 
-  // Get project counts with status for all clients in one query
-  const clientIds = clients.map((c) => c.id)
-  const { data: projectData, error: countsError } = await supabase
-    .from("projects")
-    .select("client_id, status")
-    .in("client_id", clientIds)
+  // Determine pagination before project count enrichment
+  const clientsHasMore = clients.length > limit
+  const paginatedClients = clientsHasMore ? clients.slice(0, limit) : clients
+
+  // Get project counts via SQL aggregation RPC (single grouped query instead of N rows)
+  const clientIds = paginatedClients.map((c) => c.id)
+  const { data: countRows, error: countsError } = await supabase.rpc(
+    "get_project_counts_for_clients",
+    { p_client_ids: clientIds }
+  )
 
   if (countsError) {
     return { error: countsError.message }
   }
 
-  // Count projects per client with breakdown by status
+  // Build lookup map from RPC result (already aggregated)
   const countMap = new Map<string, { total: number; active: number; planned: number; completed: number }>()
-  projectData?.forEach((p) => {
-    if (p.client_id) {
-      const current = countMap.get(p.client_id) || { total: 0, active: 0, planned: 0, completed: 0 }
-      current.total++
-      if (p.status === "active") current.active++
-      else if (p.status === "planned" || p.status === "backlog") current.planned++
-      else if (p.status === "completed") current.completed++
-      countMap.set(p.client_id, current)
-    }
+  ;(countRows ?? []).forEach((row: { client_id: string; total: number; active: number; planned: number; completed: number }) => {
+    countMap.set(row.client_id, {
+      total: Number(row.total),
+      active: Number(row.active),
+      planned: Number(row.planned),
+      completed: Number(row.completed),
+    })
   })
 
   // Merge counts into clients
-  const clientsWithCounts: ClientWithProjectCount[] = clients.map((client) => {
+  const clientsWithCounts: ClientWithProjectCount[] = paginatedClients.map((client) => {
     const counts = countMap.get(client.id) || { total: 0, active: 0, planned: 0, completed: 0 }
     return {
       ...client,
@@ -424,10 +480,14 @@ export async function getClientsWithProjectCounts(
     }
   })
 
-  return { data: clientsWithCounts }
+  const nextCursor = clientsHasMore
+    ? encodeCursor(paginatedClients[paginatedClients.length - 1].name, paginatedClients[paginatedClients.length - 1].id)
+    : null
+
+  return { data: clientsWithCounts, nextCursor, hasMore: clientsHasMore }
 }
 
-// Get client stats for organization
+// Get client stats for organization (uses SQL aggregation RPC — single row instead of N rows)
 export async function getClientStats(orgId: string): Promise<
   ActionResult<{
     total: number
@@ -436,27 +496,25 @@ export async function getClientStats(orgId: string): Promise<
 > {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
-    .from("clients")
-    .select("status")
-    .eq("organization_id", orgId)
+  const { data, error } = await supabase.rpc("get_client_stats", {
+    p_org_id: orgId,
+  })
 
   if (error) {
     return { error: error.message }
   }
 
-  const byStatus = createClientStatusCounts()
+  const stats = data as {
+    total: number
+    byStatus: Record<string, number>
+  }
 
-  data.forEach((client) => {
-    if (client.status in byStatus) {
-      byStatus[client.status as ClientStatus]++
-    }
-  })
+  const byStatus = { ...createClientStatusCounts(), ...stats.byStatus }
 
   return {
     data: {
-      total: data.length,
-      byStatus,
+      total: stats.total,
+      byStatus: byStatus as Record<ClientStatus, number>,
     },
   }
 }

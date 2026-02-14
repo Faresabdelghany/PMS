@@ -4,19 +4,25 @@ import { cacheGet, CacheKeys, CacheTTL } from "@/lib/cache"
 import { cachedGetUser } from "@/lib/request-cache"
 import { requireAuth } from "../auth-helpers"
 import { sanitizeSearchInput } from "@/lib/search-utils"
+import { DEFAULT_PAGE_SIZE } from "@/lib/constants"
+import { encodeCursor, decodeCursor } from "../cursor"
 import {
   createTaskStatusCounts,
   createTaskPriorityCounts,
 } from "@/lib/constants/status"
 import type { TaskStatus, TaskPriority } from "@/lib/supabase/types"
-import type { ActionResult } from "../types"
+import type { ActionResult, PaginatedResult } from "../types"
 import type { TaskFilters, TaskWithRelations } from "./types"
 
-// Get tasks for project with filters
+// Get tasks for a project with filters.
+// When no cursor is provided, returns ALL tasks (needed for board/drag-drop views).
+// When a cursor is provided, returns paginated results.
 export async function getTasks(
   projectId: string,
-  filters?: TaskFilters
-): Promise<ActionResult<TaskWithRelations[]>> {
+  filters?: TaskFilters,
+  cursor?: string,
+  limit: number = DEFAULT_PAGE_SIZE
+): Promise<PaginatedResult<TaskWithRelations>> {
   const { supabase } = await requireAuth()
 
   let query = supabase
@@ -51,20 +57,57 @@ export async function getTasks(
     }
   }
 
-  const { data, error } = await query.order("sort_order")
+  // When cursor is provided, paginate. Otherwise return all tasks.
+  if (cursor) {
+    try {
+      const { value, id } = decodeCursor(cursor)
+      const cursorSort = Number(value)
+      if (Number.isNaN(cursorSort)) {
+        return { error: "Invalid cursor value" }
+      }
+      // Compound cursor: (sort_order > cursor) OR (sort_order = cursor AND id > cursorId)
+      query = query.or(
+        `sort_order.gt.${cursorSort},and(sort_order.eq.${cursorSort},id.gt.${id})`
+      )
+    } catch {
+      return { error: "Invalid cursor" }
+    }
+
+    const { data, error } = await query
+      .order("sort_order")
+      .order("id")
+      .limit(limit + 1)
+
+    if (error) {
+      return { error: error.message }
+    }
+
+    const hasMore = (data?.length || 0) > limit
+    const items = hasMore ? data!.slice(0, limit) : (data || [])
+    const nextCursor = hasMore
+      ? encodeCursor(items[items.length - 1].sort_order, items[items.length - 1].id)
+      : null
+
+    return { data: items as TaskWithRelations[], nextCursor, hasMore }
+  }
+
+  // No cursor: return all tasks (board view, drag-drop, timeline need full set)
+  const { data, error } = await query.order("sort_order", { ascending: true }).order("id", { ascending: true })
 
   if (error) {
     return { error: error.message }
   }
 
-  return { data: data as TaskWithRelations[] }
+  return { data: (data || []) as TaskWithRelations[], nextCursor: null, hasMore: false }
 }
 
 // Get tasks for current user across all projects in an organization
 export async function getMyTasks(
   orgId: string,
-  filters?: Omit<TaskFilters, "assigneeId">
-): Promise<ActionResult<TaskWithRelations[]>> {
+  filters?: Omit<TaskFilters, "assigneeId">,
+  cursor?: string,
+  limit: number = DEFAULT_PAGE_SIZE
+): Promise<PaginatedResult<TaskWithRelations>> {
   // Use cached auth - deduplicates with other calls in the same request
   const { user, error: authError, supabase } = await cachedGetUser()
 
@@ -72,10 +115,10 @@ export async function getMyTasks(
     return { error: "Not authenticated" }
   }
 
-  // Only cache unfiltered queries
+  // Only cache unfiltered, first-page queries
   const hasFilters = filters && Object.values(filters).some((v) => v !== undefined)
 
-  if (!hasFilters) {
+  if (!hasFilters && !cursor) {
     try {
       const tasks = await cacheGet(
         CacheKeys.userTasks(user.id, orgId),
@@ -91,21 +134,28 @@ export async function getMyTasks(
             .eq("assignee_id", user.id)
             .eq("project.organization_id", orgId)
             .order("updated_at", { ascending: false })
+            .order("id", { ascending: false })
+            .limit(limit + 1)
 
           if (error) throw error
           return data as TaskWithRelations[]
         },
         CacheTTL.TASKS
       )
-      return { data: tasks }
+
+      const hasMore = tasks.length > limit
+      const items = hasMore ? tasks.slice(0, limit) : tasks
+      const nextCursor = hasMore
+        ? encodeCursor(items[items.length - 1].updated_at, items[items.length - 1].id)
+        : null
+
+      return { data: items, nextCursor, hasMore }
     } catch (error) {
       return { error: error instanceof Error ? error.message : "Failed to fetch tasks" }
     }
   }
 
-  // Filtered query - don't cache
-  // Use !inner join to filter by organization at the database level
-  // This is more efficient than fetching all tasks and filtering in JS
+  // Filtered or cursor query - don't cache
   let query = supabase
     .from("tasks")
     .select(`
@@ -132,13 +182,38 @@ export async function getMyTasks(
     }
   }
 
-  const { data, error } = await query.order("updated_at", { ascending: false })
+  // Compound cursor: (updated_at, id) DESC
+  if (cursor) {
+    try {
+      const { value, id } = decodeCursor(cursor)
+      query = query.or(
+        `updated_at.lt.${value},and(updated_at.eq.${value},id.lt.${id})`
+      )
+    } catch {
+      return { error: "Invalid cursor" }
+    }
+  }
+
+  const { data, error } = await query
+    .order("updated_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(limit + 1)
 
   if (error) {
     return { error: error.message }
   }
 
-  return { data: data as TaskWithRelations[] }
+  const hasMore = (data?.length || 0) > limit
+  const items = hasMore ? data!.slice(0, limit) : (data || [])
+  const nextCursor = hasMore
+    ? encodeCursor(items[items.length - 1].updated_at, items[items.length - 1].id)
+    : null
+
+  return {
+    data: items as TaskWithRelations[],
+    nextCursor,
+    hasMore,
+  }
 }
 
 // Get single task
@@ -163,7 +238,7 @@ export async function getTask(id: string): Promise<ActionResult<TaskWithRelation
   return { data: data as TaskWithRelations }
 }
 
-// Get task stats for project
+// Get task stats for project (uses SQL aggregation RPC — single row instead of N rows)
 export async function getTaskStats(projectId: string): Promise<
   ActionResult<{
     total: number
@@ -173,32 +248,30 @@ export async function getTaskStats(projectId: string): Promise<
 > {
   const { supabase } = await requireAuth()
 
-  const { data, error } = await supabase
-    .from("tasks")
-    .select("status, priority")
-    .eq("project_id", projectId)
+  const { data, error } = await supabase.rpc("get_task_stats", {
+    p_project_id: projectId,
+  })
 
   if (error) {
     return { error: error.message }
   }
 
-  const byStatus = createTaskStatusCounts()
-  const byPriority = createTaskPriorityCounts()
+  // RPC returns JSON with the exact shape we need
+  const stats = data as {
+    total: number
+    byStatus: Record<string, number>
+    byPriority: Record<string, number>
+  }
 
-  data.forEach((task) => {
-    if (task.status in byStatus) {
-      byStatus[task.status as TaskStatus]++
-    }
-    if (task.priority in byPriority) {
-      byPriority[task.priority as TaskPriority]++
-    }
-  })
+  // Merge with defaults to ensure all keys exist
+  const byStatus = { ...createTaskStatusCounts(), ...stats.byStatus }
+  const byPriority = { ...createTaskPriorityCounts(), ...stats.byPriority }
 
   return {
     data: {
-      total: data.length,
-      byStatus,
-      byPriority,
+      total: stats.total,
+      byStatus: byStatus as Record<TaskStatus, number>,
+      byPriority: byPriority as Record<TaskPriority, number>,
     },
   }
 }

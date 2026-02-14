@@ -119,7 +119,7 @@ export async function getProjectWithDetails(id: string): Promise<ActionResult<Pr
   }
 }
 
-// Get project stats for organization
+// Get project stats for organization (uses SQL aggregation RPC — single row instead of N rows)
 export async function getProjectStats(orgId: string): Promise<
   ActionResult<{
     total: number
@@ -129,32 +129,28 @@ export async function getProjectStats(orgId: string): Promise<
 > {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
-    .from("projects")
-    .select("status, priority")
-    .eq("organization_id", orgId)
+  const { data, error } = await supabase.rpc("get_project_stats", {
+    p_org_id: orgId,
+  })
 
   if (error) {
     return { error: error.message }
   }
 
-  const byStatus = createProjectStatusCounts()
-  const byPriority = createProjectPriorityCounts()
+  const stats = data as {
+    total: number
+    byStatus: Record<string, number>
+    byPriority: Record<string, number>
+  }
 
-  data.forEach((project) => {
-    if (project.status in byStatus) {
-      byStatus[project.status as ProjectStatus]++
-    }
-    if (project.priority in byPriority) {
-      byPriority[project.priority as ProjectPriority]++
-    }
-  })
+  const byStatus = { ...createProjectStatusCounts(), ...stats.byStatus }
+  const byPriority = { ...createProjectPriorityCounts(), ...stats.byPriority }
 
   return {
     data: {
-      total: data.length,
-      byStatus,
-      byPriority,
+      total: stats.total,
+      byStatus: byStatus as Record<ProjectStatus, number>,
+      byPriority: byPriority as Record<ProjectPriority, number>,
     },
   }
 }

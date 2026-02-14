@@ -1644,6 +1644,28 @@ export interface Database {
         Args: { p_workstream_ids: string[]; p_sort_orders: number[]; p_project_id: string }
         Returns: undefined
       }
+      get_task_stats: {
+        Args: { p_project_id: string }
+        Returns: Json
+      }
+      get_client_stats: {
+        Args: { p_org_id: string }
+        Returns: Json
+      }
+      get_project_stats: {
+        Args: { p_org_id: string }
+        Returns: Json
+      }
+      get_project_counts_for_clients: {
+        Args: { p_client_ids: string[] }
+        Returns: {
+          client_id: string
+          total: number
+          active: number
+          planned: number
+          completed: number
+        }[]
+      }
     }
     Enums: {
       project_status: ProjectStatus

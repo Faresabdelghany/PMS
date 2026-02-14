@@ -99,7 +99,17 @@ export const invalidate = {
    * Invalidate client-related cache keys.
    */
   async client(orgId: string): Promise<void> {
-    await this.keys([CacheKeys.clients(orgId)])
+    await this.keys([
+      CacheKeys.clients(orgId),
+      CacheKeys.clientsWithCounts(orgId),
+    ])
+  },
+
+  /**
+   * Invalidate inbox cache keys.
+   */
+  async inbox(userId: string): Promise<void> {
+    await this.key(CacheKeys.inbox(userId))
   },
 
   /**

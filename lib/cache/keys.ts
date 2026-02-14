@@ -25,6 +25,10 @@ export const CacheKeys = {
 
   // Clients (TTL: 2 min)
   clients: (orgId: string) => `pms:clients:${orgId}`,
+  clientsWithCounts: (orgId: string) => `pms:clients-counts:${orgId}`,
+
+  // Inbox (TTL: 30 sec)
+  inbox: (userId: string) => `pms:inbox:${userId}`,
 
   // Teams (TTL: 5 min)
   teams: (orgId: string) => `pms:teams:${orgId}`,
@@ -93,6 +97,7 @@ export const CacheTTL = {
   SESSION: 300, // 5 minutes
 
   // Tier 3: Volatile data
+  INBOX: 30, // 30 seconds
   TASKS: 30, // 30 seconds
   WORKSTREAMS: 60, // 1 minute
   SEARCH: 30, // 30 seconds

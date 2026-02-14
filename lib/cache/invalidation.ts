@@ -95,6 +95,19 @@ export const invalidateCache = {
   },
 
   // ---------------------------------------------------------------------------
+  // Inbox
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Invalidate inbox caches.
+   * Call after creating, reading, or deleting inbox items.
+   */
+  async inbox(opts: { userId: string }) {
+    revalidateTag(CacheTags.inbox(opts.userId))
+    await invalidate.inbox(opts.userId)
+  },
+
+  // ---------------------------------------------------------------------------
   // Organizations
   // ---------------------------------------------------------------------------
 
