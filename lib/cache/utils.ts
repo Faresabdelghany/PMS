@@ -2,9 +2,18 @@
 import { kv, isKVAvailable, memCache } from "./client"
 import { logger } from "@/lib/logger"
 
+/** Fraction of TTL remaining below which a background refresh is triggered. */
+const SWR_STALE_THRESHOLD = 0.25
+
+/** Keys currently being refreshed — prevents thundering-herd duplicate fetches. */
+const refreshing = new Set<string>()
+
 /**
- * Cache-aside pattern: Try cache first, fallback to fetcher.
- * Non-blocking cache write on miss.
+ * Cache-aside with stale-while-revalidate.
+ *
+ * 1. Cache HIT + fresh → return immediately
+ * 2. Cache HIT + stale (< 25% TTL remaining) → return immediately, refresh in background
+ * 3. Cache MISS → fetch, write to cache, return
  *
  * Uses Vercel KV in production, in-memory cache for local dev.
  */
@@ -13,20 +22,42 @@ export async function cacheGet<T>(
   fetcher: () => Promise<T>,
   ttlSeconds: number
 ): Promise<T> {
-  const cache = isKVAvailable() ? kv : memCache
+  const useKV = isKVAvailable()
+  const cache = useKV ? kv : memCache
 
   try {
-    // Try cache first
     const cached = await cache.get<T>(key)
     if (cached !== null) {
+      // SWR: check if entry is stale (< 25% of TTL remaining)
+      // If so, serve stale data immediately and refresh in background
+      if (!refreshing.has(key)) {
+        try {
+          const remaining = useKV
+            ? await kv.ttl(key)
+            : await memCache.ttl(key)
+
+          if (remaining >= 0 && remaining < ttlSeconds * SWR_STALE_THRESHOLD) {
+            refreshing.add(key)
+            fetcher()
+              .then(async (fresh) => {
+                if (fresh !== null && fresh !== undefined) {
+                  await cache.set(key, fresh, { ex: ttlSeconds })
+                }
+              })
+              .catch(() => {})
+              .finally(() => refreshing.delete(key))
+          }
+        } catch {
+          // TTL check failed — serve cached data, skip SWR
+        }
+      }
       return cached
     }
   } catch (error) {
-    // Log but don't fail - fallback to fetcher
     logger.error(`GET error for ${key}`, { module: "cache", error })
   }
 
-  // Cache miss - fetch fresh data
+  // Cache miss — fetch fresh data
   const fresh = await fetcher()
 
   // Write to cache (non-blocking)

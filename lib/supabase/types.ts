@@ -1666,6 +1666,10 @@ export interface Database {
           completed: number
         }[]
       }
+      get_project_details: {
+        Args: { p_project_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       project_status: ProjectStatus
@@ -1790,6 +1794,7 @@ export type InboxItemWithRelations = InboxItem & {
 
 // Organization Tags & Labels
 export type OrganizationTag = Database["public"]["Tables"]["organization_tags"]["Row"]
+export type OrganizationTagLean = Pick<OrganizationTag, "id" | "name" | "color">
 export type OrganizationTagInsert = Database["public"]["Tables"]["organization_tags"]["Insert"]
 export type OrganizationTagUpdate = Database["public"]["Tables"]["organization_tags"]["Update"]
 

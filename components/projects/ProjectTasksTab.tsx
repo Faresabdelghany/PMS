@@ -63,7 +63,7 @@ const TaskDetailPanel = dynamic(
   () => import("@/components/tasks/TaskDetailPanel").then(m => ({ default: m.TaskDetailPanel })),
   { ssr: false }
 )
-import type { OrganizationTag, TaskPriority as TaskPriorityType, Workstream } from "@/lib/supabase/types"
+import type { OrganizationTagLean, TaskPriority as TaskPriorityType, Workstream } from "@/lib/supabase/types"
 import { formatDueLabel } from "@/lib/date-utils"
 import { cn } from "@/lib/utils"
 import { usePooledTasksRealtime } from "@/hooks/realtime-context"
@@ -138,7 +138,7 @@ type ProjectTasksTabProps = {
   initialTasks?: TaskWithRelations[]
   workstreams?: { id: string; name: string }[]
   organizationMembers?: OrganizationMember[]
-  organizationTags?: OrganizationTag[]
+  organizationTags?: OrganizationTagLean[]
 }
 
 export function ProjectTasksTab({

@@ -13,10 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import type { ProjectTask } from "@/lib/data/project-details"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import type { OrganizationTag as FullOrganizationTag } from "@/lib/supabase/types"
-
-// Minimal tag shape — only fields used by UI
-type OrganizationTag = Pick<FullOrganizationTag, "id" | "name" | "color">
+import type { OrganizationTagLean as OrganizationTag } from "@/lib/supabase/types"
 
 type TaskBoardCardVariant = "default" | "completed" | "empty"
 

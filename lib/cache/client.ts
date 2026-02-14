@@ -117,4 +117,15 @@ export const memCache = {
   async del(key: string): Promise<void> {
     memoryCache.delete(key)
   },
+
+  /**
+   * Get remaining TTL in seconds for a key.
+   * Returns -1 if key doesn't exist or is expired.
+   */
+  async ttl(key: string): Promise<number> {
+    const entry = memoryCache.get(key)
+    if (!entry) return -1
+    const remaining = Math.ceil((entry.expiresAt - Date.now()) / 1000)
+    return remaining > 0 ? remaining : -1
+  },
 }

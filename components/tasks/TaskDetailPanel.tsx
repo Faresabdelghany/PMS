@@ -22,7 +22,7 @@ import type {
   TaskCommentWithRelations,
   TaskCommentReaction,
   Workstream,
-  OrganizationTag,
+  OrganizationTagLean,
 } from "@/lib/supabase/types"
 import { toast } from "sonner"
 import { useTaskTimelineRealtime } from "@/hooks/use-task-timeline-realtime"
@@ -65,7 +65,7 @@ interface TaskDetailPanelProps {
   organizationId: string
   organizationMembers?: TaskPanelMember[]
   workstreams?: Workstream[]
-  tags?: OrganizationTag[]
+  tags?: OrganizationTagLean[]
 }
 
 export function TaskDetailPanel({

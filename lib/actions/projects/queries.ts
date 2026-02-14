@@ -64,53 +64,33 @@ export async function getProjectWithDetails(id: string): Promise<ActionResult<Pr
     return { error: projectError.message }
   }
 
-  // Fetch all related data in parallel
-  const [scopeResult, outcomesResult, featuresResult, deliverablesResult, metricsResult, notesResult, filesResult] = await Promise.all([
-    supabase
-      .from("project_scope")
-      .select("id, item, is_in_scope, sort_order")
-      .eq("project_id", id)
-      .order("sort_order"),
-    supabase
-      .from("project_outcomes")
-      .select("id, item, sort_order")
-      .eq("project_id", id)
-      .order("sort_order"),
-    supabase
-      .from("project_features")
-      .select("id, item, priority, sort_order")
-      .eq("project_id", id)
-      .order("sort_order"),
-    supabase
-      .from("project_deliverables")
-      .select("id, title, due_date, value, status, payment_status, sort_order")
-      .eq("project_id", id)
-      .order("sort_order"),
-    supabase
-      .from("project_metrics")
-      .select("id, name, target, sort_order")
-      .eq("project_id", id)
-      .order("sort_order"),
-    supabase
-      .from("project_notes")
-      .select(`
-        id, title, content, note_type, status, added_by_id, created_at, updated_at,
-        author:profiles!project_notes_added_by_id_fkey(id, full_name, email, avatar_url)
-      `)
-      .eq("project_id", id)
-      .order("updated_at", { ascending: false }),
+  // Fetch detail sub-tables and files in parallel:
+  // - RPC consolidates 6 queries (scope, outcomes, features, deliverables, metrics, notes) into 1
+  // - Files use a separate storage query
+  // Total: 2 queries instead of 7
+  const [detailsResult, filesResult] = await Promise.all([
+    supabase.rpc("get_project_details", { p_project_id: id }),
     getProjectFiles(id),
   ])
+
+  const details = (detailsResult.data || {}) as {
+    scope?: unknown[]
+    outcomes?: unknown[]
+    features?: unknown[]
+    deliverables?: unknown[]
+    metrics?: unknown[]
+    notes?: unknown[]
+  }
 
   return {
     data: {
       ...project,
-      scope: scopeResult.data || [],
-      outcomes: outcomesResult.data || [],
-      features: featuresResult.data || [],
-      deliverables: deliverablesResult.data || [],
-      metrics: metricsResult.data || [],
-      notes: notesResult.data || [],
+      scope: details.scope || [],
+      outcomes: details.outcomes || [],
+      features: details.features || [],
+      deliverables: details.deliverables || [],
+      metrics: details.metrics || [],
+      notes: details.notes || [],
       files: (filesResult.data || []).map((file) => ({
         ...file,
         profiles: file.uploader || null,

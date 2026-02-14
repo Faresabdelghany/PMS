@@ -20,10 +20,7 @@ import { ProjectDescriptionEditorLazy as ProjectDescriptionEditor } from '@/comp
 import { QuickCreateModalLayout } from '@/components/QuickCreateModalLayout'
 import { toast } from 'sonner'
 import { createTask, updateTask } from '@/lib/actions/tasks'
-import type { OrganizationTag as FullOrganizationTag, TaskPriority } from "@/lib/supabase/types"
-
-// Minimal tag shape — only fields used by UI
-type OrganizationTag = Pick<FullOrganizationTag, "id" | "name" | "color">
+import type { OrganizationTagLean as OrganizationTag, TaskPriority } from "@/lib/supabase/types"
 
 // Types for data passed from parent
 type ProjectOption = {

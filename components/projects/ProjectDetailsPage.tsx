@@ -14,7 +14,7 @@ import { SquareHalf } from "@phosphor-icons/react/dist/ssr/SquareHalf"
 import { toast } from "sonner"
 import { useProjectRealtime } from "@/hooks/use-realtime"
 
-import type { ProjectFullDetails } from "@/lib/actions/projects"
+import type { ProjectFullDetails, ProjectWithRelations } from "@/lib/actions/projects"
 import type { TaskWithRelations } from "@/lib/actions/tasks"
 import type {
   WorkstreamWithTasks,
@@ -34,7 +34,7 @@ import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { WorkstreamTask, ProjectDetails } from "@/lib/data/project-details"
-import type { OrganizationTag } from "@/lib/supabase/types"
+import type { OrganizationTagLean } from "@/lib/supabase/types"
 
 // Lazy load tab content that's not immediately visible
 // Preload functions to be called on tab hover for instant feel
@@ -69,15 +69,28 @@ function TabSkeleton() {
 
 import type { ProjectReportListItem } from "@/lib/actions/reports"
 
+/**
+ * Lean subset of ProjectFullDetails — only the fields the client component uses.
+ * Strips scope, outcomes, features, metrics, notes, files, and wizard-only
+ * fields to reduce RSC serialization payload.
+ */
+export type ProjectDetailLean = Pick<
+  ProjectFullDetails,
+  | "id" | "name" | "description" | "status" | "priority"
+  | "start_date" | "end_date" | "client_id" | "client"
+  | "type_label" | "tags" | "group_label" | "label_badge"
+  | "members" | "organization_id" | "currency" | "deliverables"
+>
+
 type ProjectDetailsPageProps = {
   projectId: string
   project: ProjectDetails
-  supabaseProject: ProjectFullDetails
+  supabaseProject: ProjectDetailLean
   tasks?: TaskWithRelations[]
   workstreams?: WorkstreamWithTasks[]
   clients?: { id: string; name: string }[]
   organizationMembers?: OrganizationMember[]
-  organizationTags?: OrganizationTag[]
+  organizationTags?: OrganizationTagLean[]
   reports?: ProjectReportListItem[]
 }
 

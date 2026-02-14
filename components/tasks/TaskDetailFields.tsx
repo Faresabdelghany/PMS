@@ -29,7 +29,7 @@ import type {
   TaskPriority,
   TaskStatus,
   Workstream,
-  OrganizationTag,
+  OrganizationTagLean,
 } from "@/lib/supabase/types"
 import type { TaskPanelMember } from "./TaskDetailPanel"
 
@@ -38,7 +38,7 @@ interface TaskDetailFieldsProps {
   onUpdate: (field: string, value: unknown) => void
   organizationMembers?: TaskPanelMember[]
   workstreams?: Workstream[]
-  tags?: OrganizationTag[]
+  tags?: OrganizationTagLean[]
 }
 
 const PRIORITY_OPTIONS: { value: TaskPriority; label: string; color: string }[] = [

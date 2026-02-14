@@ -14,6 +14,7 @@ import {
 } from "@/lib/server-cache"
 import { getProjectReports } from "@/lib/actions/reports"
 import { transformProjectToUI } from "@/lib/transforms/project-details"
+import type { ProjectDetailLean } from "@/components/projects/ProjectDetailsPage"
 
 type PageProps = {
   params: Promise<{ id: string }>
@@ -131,16 +132,40 @@ async function ProjectDetailStreamed({
   // Pre-compute UI transform on the server to avoid blocking the client render.
   const project = transformProjectToUI(projectResult.data, tasks, workstreams, organizationMembers)
 
+  // Strip heavy fields (scope, outcomes, features, metrics, notes, files)
+  // from the raw project before serializing to the client component.
+  // Only keep fields actually used by ProjectDetailsPage.
+  const raw = projectResult.data
+  const supabaseProject: ProjectDetailLean = {
+    id: raw.id,
+    name: raw.name,
+    description: raw.description,
+    status: raw.status,
+    priority: raw.priority,
+    start_date: raw.start_date,
+    end_date: raw.end_date,
+    client_id: raw.client_id,
+    client: raw.client,
+    type_label: raw.type_label,
+    tags: raw.tags,
+    group_label: raw.group_label,
+    label_badge: raw.label_badge,
+    members: raw.members,
+    organization_id: raw.organization_id,
+    currency: raw.currency,
+    deliverables: raw.deliverables,
+  }
+
   return (
     <ProjectDetailsPage
       projectId={projectId}
       project={project}
-      supabaseProject={projectResult.data}
+      supabaseProject={supabaseProject}
       tasks={tasks}
       workstreams={workstreams}
       clients={clients}
       organizationMembers={organizationMembers}
-      organizationTags={tagsResult.data || []}
+      organizationTags={(tagsResult.data || []).map(t => ({ id: t.id, name: t.name, color: t.color }))}
       reports={reportsResult.data || []}
     />
   )
