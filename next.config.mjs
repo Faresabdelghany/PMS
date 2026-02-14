@@ -51,6 +51,7 @@ const nextConfig = {
   images: {
     // Enable Next.js image optimization for better performance
     // Supports automatic sizing, format conversion (WebP/AVIF), and caching
+    formats: ['image/avif', 'image/webp'], // AVIF first (20-50% smaller than WebP), WebP fallback
     minimumCacheTTL: 86400, // 24 hours - override short upstream cache headers (e.g. Supabase Storage 1h)
     remotePatterns: [
       {

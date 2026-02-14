@@ -1,7 +1,7 @@
 // Service Worker for static asset caching
 // Improves INP by reducing network requests for static assets
 
-const CACHE_NAME = 'pms-cache-v1'
+const CACHE_NAME = 'pms-cache-v2'
 const STATIC_ASSETS = [
   '/',
   '/icon.png',
@@ -46,8 +46,7 @@ globalThis.addEventListener('fetch', (event) => {
   if (
     url.pathname.startsWith('/api/') ||
     url.pathname.startsWith('/auth/') ||
-    url.hostname.includes('supabase.co') ||
-    url.hostname.includes('vercel.app')
+    url.hostname.includes('supabase.co')
   ) {
     return
   }
