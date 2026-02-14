@@ -15,6 +15,7 @@ import {
   callDeepSeek,
   callOpenRouter,
 } from "./providers"
+import { sanitizeForPrompt } from "../ai-helpers"
 
 // Generic text generation
 export async function generateText(
@@ -75,10 +76,10 @@ export async function generateProjectDescription(
   const systemPrompt = `You are a professional project manager assistant. Generate clear, concise project descriptions that help teams understand the project scope and goals. Keep descriptions between 2-4 paragraphs.`
 
   const userPrompt = `Generate a professional project description for:
-Project Name: ${context.name}
-Client: ${context.client || "Internal"}
-${context.startDate ? `Timeline: ${context.startDate} to ${context.endDate || "ongoing"}` : ""}
-${context.description ? `\nAdditional context: ${context.description}` : ""}
+Project Name: ${sanitizeForPrompt(context.name)}
+Client: ${sanitizeForPrompt(context.client) || "Internal"}
+${context.startDate ? `Timeline: ${sanitizeForPrompt(context.startDate)} to ${sanitizeForPrompt(context.endDate) || "ongoing"}` : ""}
+${context.description ? `\nAdditional context: ${sanitizeForPrompt(context.description)}` : ""}
 
 Please write a clear project description that:
 1. Summarizes the project purpose
@@ -102,18 +103,18 @@ export async function generateTasks(
   const systemPrompt = `You are a project management expert. Generate practical, actionable tasks for projects. Each task should be specific and achievable. Return your response as a JSON array.`
 
   const existingTasksText = context.existingTasks?.length
-    ? `\nExisting tasks (avoid duplicates): ${context.existingTasks.map((t) => t.title).join(", ")}`
+    ? `\nExisting tasks (avoid duplicates): ${context.existingTasks.map((t) => sanitizeForPrompt(t.title)).join(", ")}`
     : ""
 
   const workstreamsText = context.existingWorkstreams?.length
-    ? `\nWorkstreams to consider: ${context.existingWorkstreams.join(", ")}`
+    ? `\nWorkstreams to consider: ${context.existingWorkstreams.map(w => sanitizeForPrompt(w)).join(", ")}`
     : ""
 
   const userPrompt = `Generate ${count} new tasks for this project:
-Project: ${context.name}
-${context.description ? `Description: ${context.description}` : ""}
-Client: ${context.client || "Internal"}
-Status: ${context.status || "active"}
+Project: ${sanitizeForPrompt(context.name)}
+${context.description ? `Description: ${sanitizeForPrompt(context.description)}` : ""}
+Client: ${sanitizeForPrompt(context.client) || "Internal"}
+Status: ${sanitizeForPrompt(context.status) || "active"}
 ${existingTasksText}
 ${workstreamsText}
 
@@ -161,9 +162,9 @@ export async function generateWorkstreams(
   const systemPrompt = `You are a project management expert. Generate logical workstream/milestone groupings for projects. Return your response as a JSON array.`
 
   const userPrompt = `Suggest ${count} workstreams/phases for this project:
-Project: ${context.name}
-${context.description ? `Description: ${context.description}` : ""}
-Client: ${context.client || "Internal"}
+Project: ${sanitizeForPrompt(context.name)}
+${context.description ? `Description: ${sanitizeForPrompt(context.description)}` : ""}
+Client: ${sanitizeForPrompt(context.client) || "Internal"}
 
 Return a JSON array with exactly ${count} workstreams in this format:
 [
@@ -206,7 +207,7 @@ export async function summarizeNotes(
   const systemPrompt = `You are a professional assistant that summarizes meeting notes and project updates. Create clear, actionable summaries.`
 
   const notesText = notes
-    .map((n) => `## ${n.title}\n${n.content}`)
+    .map((n) => `## ${sanitizeForPrompt(n.title)}\n${sanitizeForPrompt(n.content)}`)
     .join("\n\n")
 
   const userPrompt = `Please summarize these project notes into key points and action items:
@@ -236,11 +237,11 @@ export async function enhanceTranscription(
   const systemPrompt = `You are an assistant that formats voice transcriptions into well-structured notes. Clean up filler words, organize thoughts, and add appropriate formatting.`
 
   const userPrompt = `Format this voice transcription into a clean note:
-${context?.projectName ? `Project: ${context.projectName}` : ""}
+${context?.projectName ? `Project: ${sanitizeForPrompt(context.projectName)}` : ""}
 ${context?.meetingType ? `Meeting type: ${context.meetingType}` : ""}
 
 Transcription:
-${rawTranscription}
+${sanitizeForPrompt(rawTranscription)}
 
 Return a JSON object with:
 {
@@ -312,13 +313,13 @@ Do NOT use markdown.`
 
   const userPrompt = `Transform these rough notes into professional, well-written documentation. Keep ALL original details but expand and improve the writing:
 
-${context?.title ? `Title: ${context.title}` : ""}
-${context?.projectName ? `Project: ${context.projectName}` : ""}
+${context?.title ? `Title: ${sanitizeForPrompt(context.title)}` : ""}
+${context?.projectName ? `Project: ${sanitizeForPrompt(context.projectName)}` : ""}
 ${noteTypeContext}
 
 ROUGH NOTES:
 """
-${content}
+${sanitizeForPrompt(content)}
 """
 
 Write a professional note that:

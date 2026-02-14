@@ -289,6 +289,38 @@ const actionHandlers: Record<string, ActionHandler> = {
 }
 
 // =============================================================================
+// Action Payload Validation
+// =============================================================================
+
+/**
+ * Validate that an AI-proposed action has the expected shape.
+ * Defense against malformed or injection-crafted action payloads.
+ */
+function validateActionPayload(action: ProposedAction): string | null {
+  if (!action || typeof action !== "object") {
+    return "Invalid action: not an object"
+  }
+  if (typeof action.type !== "string" || !action.type) {
+    return "Invalid action: missing or non-string type"
+  }
+  if (!action.data || typeof action.data !== "object" || Array.isArray(action.data)) {
+    return "Invalid action: missing or invalid data object"
+  }
+  if (!(action.type in actionHandlers)) {
+    return `Unknown action type: ${action.type}`
+  }
+  for (const [key, value] of Object.entries(action.data)) {
+    if (value !== null && typeof value === "object") {
+      return `Invalid action data: "${key}" contains a nested object`
+    }
+    if (typeof value === "function") {
+      return `Invalid action data: "${key}" contains a function`
+    }
+  }
+  return null
+}
+
+// =============================================================================
 // Execute Action
 // =============================================================================
 
@@ -303,16 +335,15 @@ export async function executeAction(
   action: ProposedAction,
   callbacks?: ClientSideCallbacks
 ): Promise<ExecuteActionResult> {
+  const validationError = validateActionPayload(action)
+  if (validationError) {
+    return { success: false, error: validationError }
+  }
+
   const { type, data } = action
 
   try {
-    const handler = actionHandlers[type]
-
-    if (!handler) {
-      return { success: false, error: `Unknown action type: ${type}` }
-    }
-
-    return await handler(data, callbacks)
+    return await actionHandlers[type](data, callbacks)
   } catch (err) {
     return {
       success: false,

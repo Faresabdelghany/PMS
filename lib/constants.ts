@@ -73,6 +73,9 @@ export const MEMORY_CACHE_CLEANUP_INTERVAL_MS = 60_000
 // ============================================
 // AI CONTEXT LIMITS
 // ============================================
+/** Maximum length for user-provided strings interpolated into AI prompts */
+export const AI_PROMPT_INPUT_MAX_LENGTH = 2000
+
 export const AI_CONTEXT_LIMITS = {
   members: 10,
   projects: 20,
