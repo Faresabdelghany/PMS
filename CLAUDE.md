@@ -402,7 +402,7 @@ KV_REST_API_TOKEN=<vercel-kv-token>
 
 ## Deployment
 
-**Production URL:** https://pms-nine-gold.vercel.app
+**Production URL:** https://pms-nine-gold-gilt.vercel.app
 
 - Hosted on Vercel with auto-deploy from `main` branch
 - Supabase project: `lazhmdyajdqbnxxwyxun`
