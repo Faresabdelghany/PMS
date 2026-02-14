@@ -6,6 +6,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { ProjectHeader } from "@/components/project-header"
 import { ProjectCardsView } from "@/components/project-cards-view"
 import { ProjectWizardLazy } from "@/components/project-wizard/ProjectWizardLazy"
+import { LoadMoreButton } from "@/components/ui/load-more-button"
+import { useLoadMore } from "@/hooks/use-load-more"
 
 // Lazy-load heavy view components that are conditionally rendered
 const ProjectTimeline = dynamic(
@@ -51,12 +53,16 @@ function toMockProject(p: ProjectWithRelations): MockProject {
 
 interface ProjectsContentProps {
   initialProjects?: ProjectWithRelations[]
+  initialHasMore?: boolean
+  initialCursor?: string | null
   clients?: { id: string; name: string }[]
   organizationId?: string
 }
 
 export function ProjectsContent({
   initialProjects = [],
+  initialHasMore = false,
+  initialCursor = null,
   clients = [],
   organizationId
 }: ProjectsContentProps) {
@@ -68,12 +74,32 @@ export function ProjectsContent({
   const [filters, setFilters] = useState<FilterChip[]>([])
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<EditingProjectData | null>(null)
-  const [supabaseProjects, setSupabaseProjects] = useState<ProjectWithRelations[]>(initialProjects)
+
+  const fetchMoreProjects = useCallback(
+    (cursor: string) => {
+      if (!organizationId) return Promise.resolve({ data: [], hasMore: false, nextCursor: null })
+      return getProjects(organizationId, undefined, cursor)
+    },
+    [organizationId]
+  )
+
+  const {
+    items: supabaseProjects,
+    hasMore,
+    isLoading: isLoadingMore,
+    loadMore,
+    setItems: setSupabaseProjects,
+  } = useLoadMore({
+    initialItems: initialProjects,
+    initialHasMore,
+    initialCursor,
+    fetchMore: fetchMoreProjects,
+  })
 
   const isSyncingRef = useRef(false)
   const prevParamsRef = useRef<string>("")
 
-  // Fetch projects from Supabase
+  // Fetch first page of projects from Supabase (for refresh after create/update)
   const fetchProjects = useCallback(async () => {
     if (!organizationId) return
 
@@ -81,7 +107,7 @@ export function ProjectsContent({
     if (result.data) {
       setSupabaseProjects(result.data)
     }
-  }, [organizationId])
+  }, [organizationId, setSupabaseProjects])
 
   // Real-time updates for projects (server-side filtered by organization)
   usePooledRealtime({
@@ -300,6 +326,7 @@ export function ProjectsContent({
           onEditProject={(project) => openEditWizard(project.id)}
         />
       )}
+      <LoadMoreButton hasMore={hasMore} isLoading={isLoadingMore} onLoadMore={loadMore} />
       {isWizardOpen && (
         <ProjectWizardLazy
           onClose={closeWizard}

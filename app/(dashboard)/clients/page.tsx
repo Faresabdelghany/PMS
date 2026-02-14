@@ -12,7 +12,14 @@ export const metadata: Metadata = {
 async function ClientsList({ orgId }: { orgId: string }) {
   const result = await getCachedClientsWithProjectCounts(orgId)
   const clients = result.data || []
-  return <ClientsContent initialClients={clients} organizationId={orgId} />
+  return (
+    <ClientsContent
+      initialClients={clients}
+      initialHasMore={result.hasMore ?? false}
+      initialCursor={result.nextCursor ?? null}
+      organizationId={orgId}
+    />
+  )
 }
 
 export default async function Page() {

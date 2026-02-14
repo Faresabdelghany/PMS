@@ -1,6 +1,7 @@
 // lib/rate-limit/limiter.ts
 import { Ratelimit, type Duration } from "@upstash/ratelimit"
 import { kv } from "@vercel/kv"
+import { logger } from "@/lib/logger"
 
 // ---------------------------------------------------------------------------
 // In-memory fallback store
@@ -144,7 +145,7 @@ export async function checkRateLimit(
   // KV not configured — use in-memory fallback
   if (!isKVAvailable()) {
     if (!kvWarningLogged) {
-      console.warn("[rate-limit] KV unavailable, using in-memory fallback")
+      logger.warn("KV unavailable, using in-memory fallback", { module: "rate-limit" })
       kvWarningLogged = true
     }
     if (config) {
@@ -164,7 +165,7 @@ export async function checkRateLimit(
     }
   } catch (error) {
     // KV error at runtime — fall back to in-memory
-    console.error("[rate-limit] KV error, falling back to in-memory:", error)
+    logger.error("KV error, falling back to in-memory", { module: "rate-limit", error })
     if (config) {
       const key = `${identifier}:${config.limit}:${config.windowMs}`
       return memoryRateLimit(key, config.limit, config.windowMs)

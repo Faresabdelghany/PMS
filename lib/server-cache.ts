@@ -1,6 +1,7 @@
 import { cache } from "react"
 import { cachedGetUser } from "./request-cache"
 import { cacheGet, CacheKeys, CacheTTL } from "./cache"
+import { logger } from "./logger"
 
 /**
  * Centralized Cache Layer
@@ -271,60 +272,80 @@ export const getCachedAIConfigured = cache(async () => {
 // ============================================
 
 /**
- * Get project count for an organization (request-level cached)
+ * Get project count for an organization (request-level cached).
+ * Uses lightweight count queries instead of fetching all project rows.
  */
 export const getCachedProjectCount = cache(async (orgId: string) => {
-  const { getProjects } = await import("./actions/projects")
-  const result = await getProjects(orgId)
+  const { createClient } = await import("./supabase/server")
+  const supabase = await createClient()
+
+  const [totalResult, activeResult, completedResult] = await Promise.all([
+    supabase.from("projects").select("id", { count: "exact", head: true }).eq("organization_id", orgId),
+    supabase.from("projects").select("id", { count: "exact", head: true }).eq("organization_id", orgId).eq("status", "active"),
+    supabase.from("projects").select("id", { count: "exact", head: true }).eq("organization_id", orgId).eq("status", "completed"),
+  ])
+
   return {
-    total: result.data?.length ?? 0,
-    active: result.data?.filter((p) => p.status === "active").length ?? 0,
-    completed: result.data?.filter((p) => p.status === "completed").length ?? 0,
+    total: totalResult.count ?? 0,
+    active: activeResult.count ?? 0,
+    completed: completedResult.count ?? 0,
   }
 })
 
 /**
- * Get client count for an organization (request-level cached)
+ * Get client count for an organization (request-level cached).
+ * Uses lightweight count query instead of fetching all client rows.
  */
 export const getCachedClientCount = cache(async (orgId: string) => {
-  const { getClients } = await import("./actions/clients")
-  const result = await getClients(orgId)
+  const { createClient } = await import("./supabase/server")
+  const supabase = await createClient()
+
+  const { count, error } = await supabase
+    .from("clients")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", orgId)
+
   return {
-    total: result.data?.length ?? 0,
+    total: error ? 0 : (count ?? 0),
   }
 })
 
 /**
- * Get task stats for current user (request-level cached)
+ * Get task stats for current user (request-level cached).
+ * Uses lightweight count queries instead of fetching all task rows.
  */
 export const getCachedTaskStats = cache(async (orgId: string) => {
-  const { getMyTasks } = await import("./actions/tasks")
-  const result = await getMyTasks(orgId)
-  const tasks = result.data ?? []
+  const { user, supabase } = await cachedGetUser()
+  if (!user) {
+    return { total: 0, dueToday: 0, overdue: 0, completedThisWeek: 0 }
+  }
+
   const now = new Date()
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
+  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString()
   const startOfWeek = new Date(now)
   startOfWeek.setDate(now.getDate() - now.getDay())
   startOfWeek.setHours(0, 0, 0, 0)
 
+  // Base query fragment: user's tasks in this org (via inner join on projects)
+  const base = () => supabase
+    .from("tasks")
+    .select("id, project:projects!inner(organization_id)", { count: "exact", head: true })
+    .eq("assignee_id", user.id)
+    .eq("project.organization_id", orgId)
+
+  const [totalResult, dueTodayResult, overdueResult, completedResult] = await Promise.all([
+    base(),
+    base().neq("status", "done").gte("end_date", todayStart).lt("end_date", todayEnd),
+    base().neq("status", "done").lt("end_date", todayStart),
+    base().eq("status", "done").gte("updated_at", startOfWeek.toISOString()),
+  ])
+
   return {
-    total: tasks.length,
-    dueToday: tasks.filter((t) => {
-      if (!t.end_date) return false
-      const due = new Date(t.end_date)
-      return (
-        due.toDateString() === now.toDateString() && t.status !== "done"
-      )
-    }).length,
-    overdue: tasks.filter((t) => {
-      if (!t.end_date) return false
-      const due = new Date(t.end_date)
-      return due < now && t.status !== "done"
-    }).length,
-    completedThisWeek: tasks.filter((t) => {
-      if (t.status !== "done" || !t.updated_at) return false
-      const completed = new Date(t.updated_at)
-      return completed >= startOfWeek
-    }).length,
+    total: totalResult.count ?? 0,
+    dueToday: dueTodayResult.count ?? 0,
+    overdue: overdueResult.count ?? 0,
+    completedThisWeek: completedResult.count ?? 0,
   }
 })
 
@@ -355,7 +376,7 @@ export const getCachedDashboardStats = cache(async (orgId: string) => {
 
       if (error) {
         // Fallback to individual queries if RPC not yet deployed
-        console.warn("[cache] get_dashboard_stats RPC failed, using fallback:", error.message)
+        logger.warn("get_dashboard_stats RPC failed, using fallback", { module: "cache", error: error.message })
         return {
           projects: { total: 0, active: 0, completed: 0 },
           clients: { total: 0 },

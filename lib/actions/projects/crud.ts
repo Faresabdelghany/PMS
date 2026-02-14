@@ -7,12 +7,15 @@ import { cacheGet, CacheKeys, CacheTTL, invalidateCache } from "@/lib/cache"
 import { requireProjectMember, requireProjectOwnerOrPIC } from "../auth-helpers"
 import { uuidSchema, validate } from "@/lib/validations"
 import { cachedGetUser } from "@/lib/request-cache"
+import { DEFAULT_PAGE_SIZE } from "@/lib/constants"
+import { logger } from "@/lib/logger"
 import type { Project, ProjectUpdate, ProjectStatus, ProjectMemberRole, TaskPriority } from "@/lib/supabase/types"
-import type { ActionResult } from "../types"
+import type { ActionResult, PaginatedResult } from "../types"
 import type { GuidedProjectInput, ProjectFilters, ProjectWithRelations } from "./types"
 import { createProjectSchema } from "./validation"
 import { notify } from "../notifications"
 import { sanitizeSearchInput } from "@/lib/search-utils"
+import { encodeCursor, decodeCursor } from "../cursor"
 
 // Create project (supports both quick create and guided wizard)
 export async function createProject(
@@ -66,7 +69,7 @@ export async function createProject(
       .in("user_id", allMemberIds)
 
     if (membersError) {
-      console.error("Failed to validate organization members:", membersError.message)
+      logger.error("Failed to validate organization members", { module: "projects", error: membersError.message })
     }
 
     validMemberIds = new Set(orgMembers?.map((m) => m.user_id) || [])
@@ -246,17 +249,19 @@ export async function createProject(
   return { data: project }
 }
 
-// Get projects for organization with filters
+// Get projects for organization with filters and cursor-based pagination
 export async function getProjects(
   orgId: string,
-  filters?: ProjectFilters
-): Promise<ActionResult<ProjectWithRelations[]>> {
+  filters?: ProjectFilters,
+  cursor?: string,
+  limit: number = DEFAULT_PAGE_SIZE
+): Promise<PaginatedResult<ProjectWithRelations>> {
   const supabase = await createClient()
 
-  // Only cache unfiltered queries
+  // Only cache unfiltered, first-page queries
   const hasFilters = filters && Object.values(filters).some((v) => v !== undefined)
 
-  if (!hasFilters) {
+  if (!hasFilters && !cursor) {
     try {
       const projects = await cacheGet(
         CacheKeys.projects(orgId),
@@ -276,19 +281,27 @@ export async function getProjects(
             `)
             .eq("organization_id", orgId)
             .order("updated_at", { ascending: false })
+            .limit(limit + 1)
 
           if (error) throw error
           return data as ProjectWithRelations[]
         },
         CacheTTL.PROJECTS
       )
-      return { data: projects }
+
+      const hasMore = projects.length > limit
+      const items = hasMore ? projects.slice(0, limit) : projects
+      const nextCursor = hasMore
+        ? encodeCursor(items[items.length - 1].updated_at, items[items.length - 1].id)
+        : null
+
+      return { data: items, nextCursor, hasMore }
     } catch (error) {
       return { error: error instanceof Error ? error.message : "Failed to fetch projects" }
     }
   }
 
-  // Filtered query - don't cache
+  // Filtered or cursor query - don't cache
   let query = supabase
     .from("projects")
     .select(`
@@ -327,13 +340,38 @@ export async function getProjects(
     }
   }
 
-  const { data, error } = await query.order("updated_at", { ascending: false })
+  // Compound cursor: (updated_at, id) DESC
+  if (cursor) {
+    try {
+      const { value, id } = decodeCursor(cursor)
+      query = query.or(
+        `updated_at.lt.${value},and(updated_at.eq.${value},id.lt.${id})`
+      )
+    } catch {
+      return { error: "Invalid cursor" }
+    }
+  }
+
+  const { data, error } = await query
+    .order("updated_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(limit + 1)
 
   if (error) {
     return { error: error.message }
   }
 
-  return { data: data as ProjectWithRelations[] }
+  const hasMore = (data?.length || 0) > limit
+  const items = hasMore ? data!.slice(0, limit) : (data || [])
+  const nextCursor = hasMore
+    ? encodeCursor(items[items.length - 1].updated_at, items[items.length - 1].id)
+    : null
+
+  return {
+    data: items as ProjectWithRelations[],
+    nextCursor,
+    hasMore,
+  }
 }
 
 // Get single project with all relations

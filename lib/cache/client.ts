@@ -5,6 +5,7 @@ import {
   MEMORY_CACHE_WARN_THRESHOLD,
   MEMORY_CACHE_CLEANUP_INTERVAL_MS,
 } from "@/lib/constants"
+import { logger } from "@/lib/logger"
 
 /**
  * Re-export the Vercel KV client.
@@ -54,9 +55,7 @@ function evict(): void {
   // 2. Warn at threshold (with hysteresis: warn at 80%, reset at 60%)
   const warnAt = Math.floor(MAX_MEMORY_CACHE_SIZE * MEMORY_CACHE_WARN_THRESHOLD)
   if (memoryCache.size >= warnAt && !warnLogged) {
-    console.warn(
-      `[mem-cache] Size ${memoryCache.size} reached ${Math.round(MEMORY_CACHE_WARN_THRESHOLD * 100)}% of max (${MAX_MEMORY_CACHE_SIZE})`
-    )
+    logger.warn(`Size ${memoryCache.size} reached ${Math.round(MEMORY_CACHE_WARN_THRESHOLD * 100)}% of max (${MAX_MEMORY_CACHE_SIZE})`, { module: "mem-cache" })
     warnLogged = true
   } else if (memoryCache.size < Math.floor(MAX_MEMORY_CACHE_SIZE * 0.6)) {
     warnLogged = false
@@ -72,9 +71,7 @@ function evict(): void {
       memoryCache.delete(key)
     }
     if (toRemove.length > 0) {
-      console.warn(
-        `[mem-cache] LRU evicted ${toRemove.length} entries (now ${memoryCache.size}/${MAX_MEMORY_CACHE_SIZE})`
-      )
+      logger.warn(`LRU evicted ${toRemove.length} entries (now ${memoryCache.size}/${MAX_MEMORY_CACHE_SIZE})`, { module: "mem-cache" })
     }
   }
 }

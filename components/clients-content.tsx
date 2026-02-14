@@ -27,6 +27,9 @@ import { toast } from "sonner"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useMemo, useState, lazy, Suspense, memo, useCallback } from "react"
+import { LoadMoreButton } from "@/components/ui/load-more-button"
+import { useLoadMore } from "@/hooks/use-load-more"
+import { getClientsWithProjectCounts } from "@/lib/actions/clients"
 import type { ClientStatus } from "@/lib/supabase/types"
 import type { ClientWithProjectCount, ProjectCountBreakdown } from "@/lib/actions/clients"
 
@@ -250,11 +253,36 @@ const ClientTableRow = memo(function ClientTableRow({
 
 interface ClientsContentProps {
   initialClients?: ClientWithProjectCount[]
+  initialHasMore?: boolean
+  initialCursor?: string | null
   organizationId: string
 }
 
-export function ClientsContent({ initialClients = [], organizationId }: ClientsContentProps) {
+export function ClientsContent({
+  initialClients = [],
+  initialHasMore = false,
+  initialCursor = null,
+  organizationId,
+}: ClientsContentProps) {
   const router = useRouter()
+
+  const fetchMoreClients = useCallback(
+    (cursor: string) => getClientsWithProjectCounts(organizationId, undefined, cursor),
+    [organizationId]
+  )
+
+  const {
+    items: allClients,
+    hasMore,
+    isLoading: isLoadingMore,
+    loadMore,
+  } = useLoadMore({
+    initialItems: initialClients,
+    initialHasMore,
+    initialCursor,
+    fetchMore: fetchMoreClients,
+  })
+
   const [query, setQuery] = useState("")
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState<"all" | ClientStatus>("all")
@@ -267,7 +295,7 @@ export function ClientsContent({ initialClients = [], organizationId }: ClientsC
 
   // Map Supabase clients to internal format
   const clients: MappedClient[] = useMemo(() => {
-    return initialClients.map((c): MappedClient => ({
+    return allClients.map((c): MappedClient => ({
       id: c.id,
       name: c.name,
       status: c.status,
@@ -278,7 +306,7 @@ export function ClientsContent({ initialClients = [], organizationId }: ClientsC
       projectCount: c.project_count,
       projectBreakdown: c.project_breakdown || { active: 0, planned: 0, completed: 0 },
     }))
-  }, [initialClients])
+  }, [allClients])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -660,6 +688,7 @@ export function ClientsContent({ initialClients = [], organizationId }: ClientsC
               </div>
             </div>
           )}
+          <LoadMoreButton hasMore={hasMore} isLoading={isLoadingMore} onLoadMore={loadMore} />
         </div>
       </div>
       {isWizardOpen && (

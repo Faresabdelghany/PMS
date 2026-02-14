@@ -83,6 +83,8 @@ async function TasksStreamed({
   return (
     <MyTasksPage
       initialTasks={(tasksResult.data || []) as TaskWithRelations[]}
+      initialHasMore={tasksResult.hasMore ?? false}
+      initialCursor={tasksResult.nextCursor ?? null}
       projects={(projectsResult.data || []) as ProjectWithRelations[]}
       organizationId={orgId}
       userId={userId}

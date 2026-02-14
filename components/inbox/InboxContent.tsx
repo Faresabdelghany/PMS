@@ -1,6 +1,9 @@
 "use client"
 
 import { useState, useMemo, useCallback, memo } from "react"
+import { LoadMoreButton } from "@/components/ui/load-more-button"
+import { useLoadMore } from "@/hooks/use-load-more"
+import { getInboxItems } from "@/lib/actions/inbox"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -153,13 +156,39 @@ const InboxItemRow = memo(function InboxItemRow({ item, onMarkAsRead, onDelete }
 
 interface InboxContentProps {
   initialItems: InboxItemWithRelations[]
+  initialHasMore?: boolean
+  initialCursor?: string | null
   initialUnreadCount: number
   organizationId: string
 }
 
-export function InboxContent({ initialItems, initialUnreadCount, organizationId }: InboxContentProps) {
+export function InboxContent({
+  initialItems,
+  initialHasMore = false,
+  initialCursor = null,
+  initialUnreadCount,
+  organizationId,
+}: InboxContentProps) {
   const { user } = useUser()
-  const [items, setItems] = useState(initialItems)
+
+  const fetchMoreInbox = useCallback(
+    (cursor: string) => getInboxItems(undefined, cursor),
+    []
+  )
+
+  const {
+    items,
+    hasMore,
+    isLoading: isLoadingMore,
+    loadMore,
+    setItems,
+  } = useLoadMore({
+    initialItems,
+    initialHasMore,
+    initialCursor,
+    fetchMore: fetchMoreInbox,
+  })
+
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount)
   const [query, setQuery] = useState("")
   const [activeTab, setActiveTab] = useState<TabFilter>("all")
@@ -403,6 +432,7 @@ export function InboxContent({ initialItems, initialUnreadCount, organizationId 
                 onDelete={handleDelete}
               />
             ))}
+            <LoadMoreButton hasMore={hasMore} isLoading={isLoadingMore} onLoadMore={loadMore} />
           </div>
         )}
       </div>

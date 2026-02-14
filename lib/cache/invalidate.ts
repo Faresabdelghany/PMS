@@ -1,6 +1,7 @@
 // lib/cache/invalidate.ts
 import { kv, isKVAvailable, memCache } from "./client"
 import { CacheKeys } from "./keys"
+import { logger } from "@/lib/logger"
 
 /**
  * Cache invalidation helpers.
@@ -18,7 +19,7 @@ export const invalidate = {
         await memCache.del(key)
       }
     } catch (error) {
-      console.error(`[cache] invalidate.key error for ${key}:`, error)
+      logger.error(`invalidate.key error for ${key}`, { module: "cache", error })
     }
   },
 
@@ -34,7 +35,7 @@ export const invalidate = {
         await Promise.all(keys.map((k) => memCache.del(k)))
       }
     } catch (error) {
-      console.error(`[cache] invalidate.keys error:`, error)
+      logger.error("invalidate.keys error", { module: "cache", error })
     }
   },
 
@@ -172,7 +173,7 @@ export const invalidate = {
         await kv.del(...keys)
       }
     } catch (error) {
-      console.error(`[cache] invalidate.search error:`, error)
+      logger.error("invalidate.search error", { module: "cache", error })
     }
   },
 

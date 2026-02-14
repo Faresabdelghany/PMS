@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { CacheKeys, CacheTTL } from "./keys"
 import { kv, isKVAvailable, memCache } from "./client"
 import { SIDEBAR_PROJECT_LIMIT } from "@/lib/constants"
+import { logger } from "@/lib/logger"
 
 /**
  * Warm KV cache with user's dashboard data after login.
@@ -85,6 +86,6 @@ export async function warmUserCache(userId: string): Promise<void> {
     await Promise.allSettled(writes)
   } catch (error) {
     // Non-fatal - cache warming is best-effort
-    console.error("[cache] warmUserCache error:", error)
+    logger.error("warmUserCache error", { module: "cache", error })
   }
 }

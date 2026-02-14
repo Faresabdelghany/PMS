@@ -44,6 +44,8 @@ async function InboxStreamed({
   return (
     <InboxContent
       initialItems={items}
+      initialHasMore={inboxResult.hasMore ?? false}
+      initialCursor={inboxResult.nextCursor ?? null}
       initialUnreadCount={unreadCount}
       organizationId={organizationId}
     />

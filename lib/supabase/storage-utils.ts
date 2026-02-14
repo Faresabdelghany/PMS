@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { logger } from "@/lib/logger"
 
 /**
  * Safely get a public URL for a storage object.
@@ -25,7 +26,7 @@ export async function removeStorageFile(
 ): Promise<{ error: string | null }> {
   const { error } = await supabase.storage.from(bucket).remove(paths)
   if (error) {
-    console.error(`Failed to remove files from ${bucket}:`, error.message)
+    logger.error(`Failed to remove files from ${bucket}`, { module: "storage", error: error.message })
     return { error: error.message }
   }
   return { error: null }

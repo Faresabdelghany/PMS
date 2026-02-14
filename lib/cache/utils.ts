@@ -1,5 +1,6 @@
 // lib/cache/utils.ts
 import { kv, isKVAvailable, memCache } from "./client"
+import { logger } from "@/lib/logger"
 
 /**
  * Cache-aside pattern: Try cache first, fallback to fetcher.
@@ -22,7 +23,7 @@ export async function cacheGet<T>(
     }
   } catch (error) {
     // Log but don't fail - fallback to fetcher
-    console.error(`[cache] GET error for ${key}:`, error)
+    logger.error(`GET error for ${key}`, { module: "cache", error })
   }
 
   // Cache miss - fetch fresh data
@@ -31,7 +32,7 @@ export async function cacheGet<T>(
   // Write to cache (non-blocking)
   if (fresh !== null && fresh !== undefined) {
     cache.set(key, fresh, { ex: ttlSeconds }).catch((error) => {
-      console.error(`[cache] SET error for ${key}:`, error)
+      logger.error(`SET error for ${key}`, { module: "cache", error })
     })
   }
 
@@ -52,7 +53,7 @@ export async function cacheInvalidateAndFetch<T>(
   try {
     await cache.del(key)
   } catch (error) {
-    console.error(`[cache] DEL error for ${key}:`, error)
+    logger.error(`DEL error for ${key}`, { module: "cache", error })
   }
 
   const fresh = await fetcher()
@@ -61,7 +62,7 @@ export async function cacheInvalidateAndFetch<T>(
     try {
       await cache.set(key, fresh, { ex: ttlSeconds })
     } catch (error) {
-      console.error(`[cache] SET error for ${key}:`, error)
+      logger.error(`SET error for ${key}`, { module: "cache", error })
     }
   }
 

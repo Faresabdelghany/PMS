@@ -4,6 +4,7 @@ import { rateLimiters, checkRateLimit } from "@/lib/rate-limit/limiter"
 import { decrypt, isEncryptedFormat, migrateFromBase64 } from "@/lib/crypto"
 import { sanitizeForPrompt } from "@/lib/actions/ai-helpers"
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { logger } from "@/lib/logger"
 
 // =============================================================================
 // AI Config Verification (inline to avoid using cookies() from next/headers)
@@ -43,7 +44,7 @@ async function verifyAIConfigForApiRoute(
     try {
       apiKey = decrypt(storedValue)
     } catch (err) {
-      console.error("Decryption error:", err)
+      logger.error("Decryption error", { module: "ai", error: err })
       return { error: "Failed to decrypt API key" }
     }
   } else {
@@ -60,14 +61,14 @@ async function verifyAIConfigForApiRoute(
         .eq("user_id", userId)
         .then(({ error }) => {
           if (error) {
-            console.error("Failed to migrate API key encryption format:", error.message)
+            logger.error("Failed to migrate API key encryption format", { module: "ai", error: error.message })
           }
         })
 
       try {
         apiKey = decrypt(migratedValue)
       } catch (err) {
-        console.error("Decryption error after migration:", err)
+        logger.error("Decryption error after migration", { module: "ai", error: err })
         return { error: "Failed to decrypt API key" }
       }
     } else {
@@ -1000,7 +1001,7 @@ export async function POST(req: NextRequest) {
       },
     })
   } catch (error) {
-    console.error("Streaming error:", error)
+    logger.error("Streaming error", { module: "ai", error })
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
       { status: 500, headers: { "Content-Type": "application/json" } }

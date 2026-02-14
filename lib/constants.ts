@@ -23,6 +23,8 @@ export const MESSAGE_PAGE_SIZE = 100
 export const INBOX_PAGE_SIZE = 50
 /** Max search results for conversations */
 export const SEARCH_CONVERSATION_LIMIT = 20
+/** Default page size for cursor-based pagination */
+export const DEFAULT_PAGE_SIZE = 50
 
 // ============================================
 // FILE UPLOADS

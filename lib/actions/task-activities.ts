@@ -13,6 +13,7 @@ import type {
 import type { ActionResult } from "./types"
 import { requireAuth } from "./auth-helpers"
 import { invalidateCache } from "@/lib/cache"
+import { logger } from "@/lib/logger"
 
 // Create a task activity record (called internally by task update actions)
 export async function createTaskActivity(
@@ -48,7 +49,7 @@ export async function createTaskActivity(
 
     return { data: activity }
   } catch (error) {
-    console.error("Error creating task activity:", error)
+    logger.error("Error creating task activity", { module: "task-activities", error })
     return { error: "An unexpected error occurred" }
   }
 }
@@ -75,7 +76,7 @@ export async function getTaskActivities(
 
     return { data: activities as TaskActivityWithRelations[] }
   } catch (error) {
-    console.error("Error fetching task activities:", error)
+    logger.error("Error fetching task activities", { module: "task-activities", error })
     return { error: "An unexpected error occurred" }
   }
 }
@@ -135,7 +136,7 @@ export async function getTaskTimeline(
 
     return { data: timeline }
   } catch (error) {
-    console.error("Error fetching task timeline:", error)
+    logger.error("Error fetching task timeline", { module: "task-activities", error })
     return { error: "An unexpected error occurred" }
   }
 }

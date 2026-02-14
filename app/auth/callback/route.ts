@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createPersonalOrganization } from "@/lib/actions/auth"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import { logger } from "@/lib/logger"
 
 /**
  * Sanitize redirect path to prevent open redirect attacks.
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
         const fullName = user.user_metadata?.full_name || user.email?.split("@")[0] || "My"
         const orgResult = await createPersonalOrganization(user.id, fullName)
         if (orgResult.error) {
-          console.error("Failed to create personal organization:", orgResult.error)
+          logger.error("Failed to create personal organization", { module: "auth", error: orgResult.error })
           // Fallback to onboarding if auto-creation fails
           return NextResponse.redirect(`${origin}/onboarding`)
         }
@@ -81,7 +82,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Log the exchange error for debugging
-    console.error("Auth code exchange error:", exchangeError?.message)
+    logger.error("Auth code exchange error", { module: "auth", error: exchangeError?.message })
     return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(exchangeError?.message || "Authentication failed")}`)
   }
 

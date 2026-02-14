@@ -16,6 +16,7 @@ import { requireAuth } from "./auth-helpers"
 import { notifyMentions } from "./notifications"
 import { invalidateCache } from "@/lib/cache"
 import { getStoragePublicUrl } from "@/lib/supabase/storage-utils"
+import { logger } from "@/lib/logger"
 
 // Create a new comment on a task
 export async function createTaskComment(
@@ -77,7 +78,7 @@ export async function createTaskComment(
 
       const { error: attachError } = await supabase.from("task_comment_attachments").insert(attachmentRecords)
       if (attachError) {
-        console.error("Failed to insert comment attachments:", attachError.message)
+        logger.error("Failed to insert comment attachments", { module: "task-comments", error: attachError.message })
       }
     }
 
@@ -94,7 +95,7 @@ export async function createTaskComment(
       .single()
 
     if (refetchError || !fullComment) {
-      console.error("Failed to refetch comment with relations:", refetchError?.message)
+      logger.error("Failed to refetch comment with relations", { module: "task-comments", error: refetchError?.message })
       // Return the original comment with minimal shape rather than failing
       return { data: { ...comment, reactions: [], attachments: [] } as TaskCommentWithRelations }
     }
@@ -118,7 +119,7 @@ export async function createTaskComment(
 
     return { data: fullComment as TaskCommentWithRelations }
   } catch (error) {
-    console.error("Error creating task comment:", error)
+    logger.error("Error creating task comment", { module: "task-comments", error })
     return { error: "An unexpected error occurred" }
   }
 }
@@ -169,7 +170,7 @@ export async function updateTaskComment(
 
     return { data: comment }
   } catch (error) {
-    console.error("Error updating task comment:", error)
+    logger.error("Error updating task comment", { module: "task-comments", error })
     return { error: "An unexpected error occurred" }
   }
 }
@@ -209,7 +210,7 @@ export async function deleteTaskComment(
 
     return { data: undefined }
   } catch (error) {
-    console.error("Error deleting task comment:", error)
+    logger.error("Error deleting task comment", { module: "task-comments", error })
     return { error: "An unexpected error occurred" }
   }
 }
@@ -282,7 +283,7 @@ export async function toggleCommentReaction(
       return { data: { added: true } }
     }
   } catch (error) {
-    console.error("Error toggling reaction:", error)
+    logger.error("Error toggling reaction", { module: "task-comments", error })
     return { error: "An unexpected error occurred" }
   }
 }
@@ -311,7 +312,7 @@ export async function getTaskComments(
 
     return { data: comments as TaskCommentWithRelations[] }
   } catch (error) {
-    console.error("Error fetching task comments:", error)
+    logger.error("Error fetching task comments", { module: "task-comments", error })
     return { error: "An unexpected error occurred" }
   }
 }
@@ -365,7 +366,7 @@ export async function uploadCommentAttachment(
       },
     }
   } catch (error) {
-    console.error("Error uploading attachment:", error)
+    logger.error("Error uploading attachment", { module: "task-comments", error })
     return { error: "An unexpected error occurred" }
   }
 }

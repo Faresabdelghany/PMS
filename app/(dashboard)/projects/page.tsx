@@ -44,6 +44,8 @@ async function ProjectsListStreamed({
   return (
     <ProjectsContent
       initialProjects={projectsResult.data ?? []}
+      initialHasMore={projectsResult.hasMore ?? false}
+      initialCursor={projectsResult.nextCursor ?? null}
       clients={clientsResult.data ?? []}
       organizationId={orgId}
     />
