@@ -1,4 +1,5 @@
 import bundleAnalyzer from '@next/bundle-analyzer'
+import { withSentryConfig } from '@sentry/nextjs'
 
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
@@ -149,4 +150,13 @@ const nextConfig = {
   },
 }
 
-export default withBundleAnalyzer(nextConfig)
+export default withSentryConfig(withBundleAnalyzer(nextConfig), {
+  // Suppress Sentry CLI warnings when DSN is not configured
+  silent: !process.env.NEXT_PUBLIC_SENTRY_DSN,
+
+  // Disable source map upload unless auth token is set
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+
+  // Turbopack doesn't support webpack.treeshake — Sentry handles it automatically
+})
