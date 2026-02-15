@@ -53,7 +53,7 @@ import { Clock } from "@phosphor-icons/react/dist/ssr/Clock"
 import { Folder } from "@phosphor-icons/react/dist/ssr/Folder"
 import { ArrowSquareOut } from "@phosphor-icons/react/dist/ssr/ArrowSquareOut"
 
-import type { ReportProjectStatus, ClientSatisfaction, RiskSeverity, RiskStatus, TaskPriority, Workstream, OrganizationTagLean } from "@/lib/supabase/types"
+import type { ReportProjectStatus, ClientSatisfaction, RiskSeverity, RiskStatus, TaskPriority, Workstream, OrganizationTagLean, ReportWithFullRelations, ReportRisk, ReportHighlight } from "@/lib/supabase/types"
 
 // Lazy-load task detail panel - defers Tiptap/comment editor until a task is opened
 const TaskDetailPanel = dynamic(
@@ -74,17 +74,17 @@ type TaskRow = Database["public"]["Tables"]["tasks"]["Row"]
 // ============================================
 
 const PROJECT_STATUS_CONFIG: Record<ReportProjectStatus, { label: string; color: string; bg: string }> = {
-  on_track: { label: "On Track", color: "text-emerald-700", bg: "bg-emerald-100 dark:bg-emerald-900/30" },
-  behind: { label: "Behind", color: "text-yellow-700", bg: "bg-yellow-100 dark:bg-yellow-900/30" },
-  at_risk: { label: "At Risk", color: "text-red-700", bg: "bg-red-100 dark:bg-red-900/30" },
-  halted: { label: "Halted", color: "text-gray-700", bg: "bg-gray-100 dark:bg-gray-900/30" },
-  completed: { label: "Completed", color: "text-blue-700", bg: "bg-blue-100 dark:bg-blue-900/30" },
+  on_track: { label: "On Track", color: "text-emerald-700 dark:text-emerald-300", bg: "bg-emerald-100 dark:bg-emerald-900/30" },
+  behind: { label: "Behind", color: "text-yellow-700 dark:text-yellow-300", bg: "bg-yellow-100 dark:bg-yellow-900/30" },
+  at_risk: { label: "At Risk", color: "text-red-700 dark:text-red-300", bg: "bg-red-100 dark:bg-red-900/30" },
+  halted: { label: "Halted", color: "text-gray-700 dark:text-gray-300", bg: "bg-gray-100 dark:bg-gray-900/30" },
+  completed: { label: "Completed", color: "text-blue-700 dark:text-blue-300", bg: "bg-blue-100 dark:bg-blue-900/30" },
 }
 
 const SATISFACTION_CONFIG: Record<ClientSatisfaction, { label: string; color: string }> = {
-  satisfied: { label: "Satisfied", color: "text-emerald-600" },
-  neutral: { label: "Neutral", color: "text-yellow-600" },
-  dissatisfied: { label: "Dissatisfied", color: "text-red-600" },
+  satisfied: { label: "Satisfied", color: "text-emerald-600 dark:text-emerald-400" },
+  neutral: { label: "Neutral", color: "text-yellow-600 dark:text-yellow-400" },
+  dissatisfied: { label: "Dissatisfied", color: "text-red-600 dark:text-red-400" },
 }
 
 const SEVERITY_CONFIG: Record<RiskSeverity, { label: string; color: string }> = {
@@ -95,9 +95,9 @@ const SEVERITY_CONFIG: Record<RiskSeverity, { label: string; color: string }> = 
 }
 
 const RISK_STATUS_CONFIG: Record<RiskStatus, { label: string; color: string; decoration?: string }> = {
-  open: { label: "Open", color: "text-red-600" },
-  mitigated: { label: "Mitigated", color: "text-yellow-600" },
-  resolved: { label: "Resolved", color: "text-green-600", decoration: "line-through" },
+  open: { label: "Open", color: "text-red-600 dark:text-red-400" },
+  mitigated: { label: "Mitigated", color: "text-yellow-600 dark:text-yellow-400" },
+  resolved: { label: "Resolved", color: "text-green-600 dark:text-green-400", decoration: "line-through" },
 }
 
 const PERIOD_TYPE_LABELS: Record<string, string> = {
@@ -149,13 +149,13 @@ function StatusChangeIndicator({ current, previous }: { current: string; previou
 
   if (currentVal > previousVal) {
     return (
-      <span className="inline-flex items-center gap-0.5 text-xs text-emerald-600">
+      <span className="inline-flex items-center gap-0.5 text-xs text-emerald-600 dark:text-emerald-400">
         <ArrowUp className="h-3 w-3" /> was {PROJECT_STATUS_CONFIG[previous as ReportProjectStatus]?.label || previous}
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center gap-0.5 text-xs text-red-600">
+    <span className="inline-flex items-center gap-0.5 text-xs text-red-600 dark:text-red-400">
       <ArrowDown className="h-3 w-3" /> was {PROJECT_STATUS_CONFIG[previous as ReportProjectStatus]?.label || previous}
     </span>
   )
@@ -166,7 +166,7 @@ function ProgressDelta({ current, previous }: { current: number; previous: numbe
   const delta = current - previous
   if (delta === 0) return null
   return (
-    <span className={cn("text-xs ml-2", delta > 0 ? "text-emerald-600" : "text-red-600")}>
+    <span className={cn("text-xs ml-2", delta > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>
       {delta > 0 ? "+" : ""}{delta}% from last week
     </span>
   )
@@ -219,7 +219,7 @@ function toTaskData(task: TaskWithRelations, projectId: string, projectName: str
 }
 
 interface ReportDetailContentProps {
-  report: any
+  report: ReportWithFullRelations
   organizationMembers: OrganizationMember[]
   actionItems: TaskWithRelations[]
   /** When rendered under a project, use project-scoped breadcrumbs */
@@ -249,7 +249,7 @@ export function ReportDetailContent({
   const [showMeta, setShowMeta] = useState(true)
   const [showWizard, setShowWizard] = useState(false)
   const [showTaskModal, setShowTaskModal] = useState(false)
-  const [, startTabTransition] = useTransition()
+  const [, startMetaTransition] = useTransition()
 
   // Derive effective project ID early (needed by realtime handlers below)
   const effectiveProjectId = projectId || report.project?.id
@@ -370,8 +370,8 @@ export function ReportDetailContent({
 
   // Flat data from report
   const risks = report.report_risks || []
-  const highlights = (report.report_highlights || []).filter((h: any) => h.type === "highlight")
-  const decisions = (report.report_highlights || []).filter((h: any) => h.type === "decision")
+  const highlights = (report.report_highlights || []).filter((h) => h.type === "highlight")
+  const decisions = (report.report_highlights || []).filter((h) => h.type === "decision")
   const statusConfig = report.status in PROJECT_STATUS_CONFIG
     ? PROJECT_STATUS_CONFIG[report.status as ReportProjectStatus]
     : (console.warn(`[Report ${report.id}] Unknown status: "${report.status}"`),
@@ -474,16 +474,16 @@ export function ReportDetailContent({
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon-sm" aria-label="Copy link" onClick={copyLink}>
+          <Button variant="ghost" size="icon" aria-label="Copy link" onClick={copyLink} className="h-9 w-9">
             <LinkSimple className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
-            size="icon-sm"
+            size="icon"
             aria-pressed={!showMeta}
             aria-label={showMeta ? "Collapse meta panel" : "Expand meta panel"}
-            className={showMeta ? "bg-muted" : ""}
-            onClick={() => startTabTransition(() => setShowMeta((v) => !v))}
+            className={cn("h-9 w-9 hidden lg:inline-flex", showMeta && "bg-muted")}
+            onClick={() => startMetaTransition(() => setShowMeta((v) => !v))}
           >
             <SquareHalf className="h-4 w-4" weight="duotone" />
           </Button>
@@ -496,7 +496,7 @@ export function ReportDetailContent({
           <div className="mx-auto w-full max-w-7xl">
             <div
               className={cn(
-                "mt-0 grid grid-cols-1 gap-15",
+                "mt-0 grid grid-cols-1 gap-8",
                 showMeta && "lg:grid-cols-[minmax(0,2fr)_minmax(0,320px)]"
               )}
             >
@@ -506,17 +506,17 @@ export function ReportDetailContent({
                 <section className="mt-4 space-y-5">
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-3 flex-wrap">
-                      <h1 className="text-2xl font-semibold text-foreground leading-tight">{report.title}</h1>
-                      <Badge variant="secondary" className="border-none bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                      <h1 className="text-2xl font-semibold text-foreground leading-tight break-words">{report.title}</h1>
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">
                         {PERIOD_TYPE_LABELS[report.period_type] || report.period_type}
                       </Badge>
                     </div>
                     <Button
                       type="button"
                       variant="ghost"
-                      size="icon-sm"
+                      size="icon"
                       aria-label="Edit report"
-                      className="rounded-lg text-muted-foreground hover:text-foreground"
+                      className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground"
                       onClick={handleEdit}
                     >
                       <PencilSimpleLine className="h-4 w-4" />
@@ -545,7 +545,7 @@ export function ReportDetailContent({
                 {/* Project Status Card */}
                 {report.project && (
                   <section className="rounded-lg border">
-                    <div className="flex items-center justify-between p-6 pb-4">
+                    <div className="flex items-center justify-between gap-4 p-6 pb-4 flex-wrap">
                       <div className="flex items-center gap-3 flex-wrap">
                         <Link
                           href={`/projects/${report.project.id}`}
@@ -584,10 +584,10 @@ export function ReportDetailContent({
 
                       {/* Task Stats */}
                       <div className="flex gap-4 text-sm">
-                        <span className="text-emerald-600">{report.tasks_completed ?? 0} completed</span>
-                        <span className="text-blue-600">{report.tasks_in_progress ?? 0} in progress</span>
+                        <span className="text-emerald-600 dark:text-emerald-400">{report.tasks_completed ?? 0} completed</span>
+                        <span className="text-blue-600 dark:text-blue-400">{report.tasks_in_progress ?? 0} in progress</span>
                         {(report.tasks_overdue ?? 0) > 0 && (
-                          <span className="text-red-600">{report.tasks_overdue} overdue</span>
+                          <span className="text-red-600 dark:text-red-400">{report.tasks_overdue} overdue</span>
                         )}
                       </div>
                     </div>
@@ -596,30 +596,30 @@ export function ReportDetailContent({
 
                 {/* Financial Summary */}
                 {(hasFinancialData || report.financial_notes) && (
-                  <section>
-                    <h3 className="text-base font-semibold mb-3">Financial Summary</h3>
+                  <section aria-labelledby="report-financials-heading">
+                    <h3 id="report-financials-heading" className="text-base font-semibold mb-3">Financial Summary</h3>
                     {hasFinancialData && (
-                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-4">
+                      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-4">
                         <div className="rounded-xl border bg-background p-4 text-center">
-                          <p className="text-xs text-muted-foreground">Total Value</p>
-                          <p className="text-lg font-semibold mt-1">{formatCurrency(financialTotalValue, financialCurrency)}</p>
+                          <dt className="text-xs text-muted-foreground">Total Value</dt>
+                          <dd className="text-lg font-semibold mt-1">{formatCurrency(financialTotalValue, financialCurrency)}</dd>
                         </div>
                         <div className="rounded-xl border bg-background p-4 text-center">
-                          <p className="text-xs text-emerald-600">Collected</p>
-                          <p className="text-lg font-semibold mt-1 text-emerald-700 dark:text-emerald-400">{formatCurrency(financialPaid, financialCurrency)}</p>
+                          <dt className="text-xs text-emerald-600 dark:text-emerald-400">Collected</dt>
+                          <dd className="text-lg font-semibold mt-1 text-emerald-700 dark:text-emerald-400">{formatCurrency(financialPaid, financialCurrency)}</dd>
                         </div>
                         <div className="rounded-xl border bg-background p-4 text-center">
-                          <p className="text-xs text-yellow-600">Invoiced</p>
-                          <p className="text-lg font-semibold mt-1 text-yellow-700 dark:text-yellow-400">{formatCurrency(financialInvoiced, financialCurrency)}</p>
+                          <dt className="text-xs text-yellow-600 dark:text-yellow-400">Invoiced</dt>
+                          <dd className="text-lg font-semibold mt-1 text-yellow-700 dark:text-yellow-400">{formatCurrency(financialInvoiced, financialCurrency)}</dd>
                         </div>
                         <div className="rounded-xl border bg-background p-4 text-center">
-                          <p className="text-xs text-red-600">Outstanding</p>
-                          <p className="text-lg font-semibold mt-1 text-red-700 dark:text-red-400">{formatCurrency(financialUnpaid, financialCurrency)}</p>
+                          <dt className="text-xs text-red-600 dark:text-red-400">Outstanding</dt>
+                          <dd className="text-lg font-semibold mt-1 text-red-700 dark:text-red-400">{formatCurrency(financialUnpaid, financialCurrency)}</dd>
                         </div>
-                      </div>
+                      </dl>
                     )}
                     {report.financial_notes && (
-                      <p className="text-sm text-muted-foreground whitespace-pre-line">
+                      <p className="text-sm text-muted-foreground whitespace-pre-line max-w-prose">
                         {report.financial_notes}
                       </p>
                     )}
@@ -628,9 +628,9 @@ export function ReportDetailContent({
 
                 {/* Narrative */}
                 {report.narrative && (
-                  <section>
-                    <h3 className="text-base font-semibold mb-3">Summary</h3>
-                    <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
+                  <section aria-labelledby="report-narrative-heading">
+                    <h3 id="report-narrative-heading" className="text-base font-semibold mb-3">Summary</h3>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed max-w-prose">
                       {report.narrative}
                     </p>
                   </section>
@@ -638,12 +638,12 @@ export function ReportDetailContent({
 
                 {/* Highlights */}
                 {highlights.length > 0 && (
-                  <section>
-                    <h3 className="text-base font-semibold mb-3">Highlights</h3>
+                  <section aria-labelledby="report-highlights-heading">
+                    <h3 id="report-highlights-heading" className="text-base font-semibold mb-3">Highlights</h3>
                     <ul className="space-y-2">
-                      {highlights.map((h: any) => (
+                      {highlights.map((h) => (
                         <li key={h.id} className="flex items-start gap-2 text-sm">
-                          <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                          <span aria-hidden="true" className="mt-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
                           <span>{h.description}</span>
                         </li>
                       ))}
@@ -653,10 +653,10 @@ export function ReportDetailContent({
 
                 {/* Decisions Needed */}
                 {decisions.length > 0 && (
-                  <section>
-                    <h3 className="text-base font-semibold mb-3">Decisions Needed</h3>
+                  <section aria-labelledby="report-decisions-heading">
+                    <h3 id="report-decisions-heading" className="text-base font-semibold mb-3">Decisions Needed</h3>
                     <div className="space-y-2">
-                      {decisions.map((d: any) => (
+                      {decisions.map((d) => (
                         <div
                           key={d.id}
                           className="rounded-lg border-2 border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 p-4"
@@ -672,15 +672,15 @@ export function ReportDetailContent({
                 )}
 
                 {/* Risks & Blockers */}
-                <section>
-                  <h3 className="text-base font-semibold mb-3">Risks &amp; Blockers</h3>
+                <section aria-labelledby="report-risks-heading">
+                  <h3 id="report-risks-heading" className="text-base font-semibold mb-3">Risks &amp; Blockers</h3>
                   {risks.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No risks or blockers reported.</p>
                   ) : (
                     <>
                       {/* Desktop table */}
                       <div className="hidden md:block rounded-lg border overflow-hidden">
-                        <table className="w-full text-sm">
+                        <table className="w-full text-sm" aria-label="Risks and blockers">
                           <thead className="bg-muted/50">
                             <tr>
                               <th className="text-left p-3 font-medium">Description</th>
@@ -691,9 +691,9 @@ export function ReportDetailContent({
                             </tr>
                           </thead>
                           <tbody className="divide-y">
-                            {risks.map((risk: any) => {
-                              const severityConfig = SEVERITY_CONFIG[risk.severity as RiskSeverity]
-                              const riskStatusConfig = RISK_STATUS_CONFIG[risk.status as RiskStatus]
+                            {risks.map((risk) => {
+                              const severityConfig = SEVERITY_CONFIG[risk.severity]
+                              const riskStatusConfig = RISK_STATUS_CONFIG[risk.status]
                               return (
                                 <tr key={risk.id} className={risk.status === "resolved" ? "opacity-60" : ""}>
                                   <td className="p-3">
@@ -757,10 +757,10 @@ export function ReportDetailContent({
                 </section>
 
                 {/* Action Items — full task list */}
-                <section>
+                <section aria-labelledby="report-action-items-heading">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-base font-semibold">Action Items</h3>
+                      <h3 id="report-action-items-heading" className="text-base font-semibold">Action Items</h3>
                       <Badge variant="secondary" className="text-xs">{items.length}</Badge>
                     </div>
                     {report.project && (
@@ -845,9 +845,9 @@ export function ReportDetailContent({
                                     <DropdownMenuTrigger asChild>
                                       <Button
                                         type="button"
-                                        size="icon-sm"
+                                        size="icon"
                                         variant="ghost"
-                                        className="size-7 rounded-md text-muted-foreground"
+                                        className="size-8 rounded-md text-muted-foreground"
                                         aria-label="Task actions"
                                       >
                                         <DotsThreeVertical className="h-4 w-4" weight="bold" />
@@ -879,9 +879,9 @@ export function ReportDetailContent({
                 </section>
               </div>
 
-              {/* Right Meta Panel */}
+              {/* Right Meta Panel — hidden on mobile, collapsible on lg+ */}
               {showMeta && (
-                <div className="lg:border-l lg:border-border lg:pl-6 animate-in fade-in duration-150">
+                <div className="hidden lg:block lg:border-l lg:border-border lg:pl-6 animate-in fade-in duration-150">
                   <aside className="flex flex-col gap-10 p-4 pt-8 lg:sticky lg:top-4 lg:self-start">
                     {/* Report Info */}
                     <div className="space-y-4">
@@ -968,7 +968,7 @@ export function ReportDetailContent({
                       <div className="space-y-3">
                         <div className="flex items-center gap-2 text-sm">
                           <WarningCircle className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <span>{risks.filter((r: any) => r.status !== "resolved").length} open risks</span>
+                          <span>{risks.filter((r) => r.status !== "resolved").length} open risks</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                           <UserCircle className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -982,8 +982,6 @@ export function ReportDetailContent({
             </div>
           </div>
         </div>
-
-        <Separator className="mt-auto" />
 
         {/* Edit Wizard */}
         {showWizard && (

@@ -1880,7 +1880,7 @@ export type ReportWithAuthor = Report & {
 
 export type ReportWithFullRelations = Report & {
   author: ProfileMinimal
-  project: Pick<Project, 'id' | 'name' | 'client_id' | 'status' | 'progress'> | null
+  project: Pick<Project, 'id' | 'name' | 'client_id' | 'status' | 'progress' | 'currency'> | null
   report_risks: ReportRisk[]
   report_highlights: ReportHighlight[]
 }
