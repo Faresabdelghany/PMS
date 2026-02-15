@@ -163,7 +163,7 @@ export function ProjectDetailsPage({
 
   const breadcrumbs = useMemo(
     () => [
-      { label: "Projects", href: "/" },
+      { label: "Projects", href: "/projects" },
       { label: project.name },
     ],
     [project.name]
