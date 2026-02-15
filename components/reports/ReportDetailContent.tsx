@@ -420,7 +420,9 @@ export function ReportDetailContent({
   }, [effectiveProjectId, report.project, projectWorkstreams])
 
   const handleTaskCreated = useCallback((task: TaskData) => {
-    // Add new task to local state optimistically
+    // Add new task to local state optimistically.
+    // Do NOT close the modal here — the modal manages its own lifecycle
+    // (stays open when "Create more" is toggled on, calls onClose otherwise).
     const newTask: TaskWithRelations = {
       id: task.id,
       name: task.name,
@@ -450,8 +452,6 @@ export function ReportDetailContent({
       if (prev.some(t => t.id === newTask.id)) return prev
       return [...prev, newTask]
     })
-    setShowTaskModal(false)
-    setEditingTask(null)
   }, [effectiveProjectId, report.id, report.project?.name])
 
   // Financial data
