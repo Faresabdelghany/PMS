@@ -70,8 +70,6 @@ export const CacheKeys = {
   dashboardStats: (userId: string, orgId: string) =>
     `pms:dashboard-stats:${userId}:${orgId}`,
 
-  // Performance metrics (TTL: 2 min)
-  performanceMetrics: (orgId: string) => `pms:performance:${orgId}`,
 } as const
 
 /**

@@ -53,13 +53,6 @@ export {
   SettingsPageSkeleton,
 } from "./settings-skeletons"
 
-// Performance skeletons
-export {
-  ChartSkeleton,
-  PerformanceStatCardSkeleton,
-  PerformancePageSkeleton,
-} from "./performance-skeletons"
-
 // Chat skeletons
 export { ChatPageSkeleton } from "./chat-skeletons"
 

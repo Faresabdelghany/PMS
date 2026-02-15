@@ -418,22 +418,3 @@ export const getCachedAIContext = cache(async () => {
   return getAIContext()
 })
 
-// ============================================
-// PERFORMANCE / ANALYTICS
-// ============================================
-
-/**
- * Get performance metrics for an organization (request-level + KV cached)
- * Uses KV cache with 2-minute TTL to avoid re-running expensive analytics
- * queries (3 parallel DB queries + CPU-intensive calculations) on every request.
- */
-export const getCachedPerformanceMetrics = cache(async (orgId: string) => {
-  const { cacheGet, CacheKeys, CacheTTL } = await import("./cache")
-  const { getPerformanceMetrics } = await import("./actions/analytics")
-
-  return cacheGet(
-    CacheKeys.performanceMetrics(orgId),
-    () => getPerformanceMetrics(orgId),
-    CacheTTL.PROJECTS // 2 minutes — reasonable for analytics data
-  )
-})
