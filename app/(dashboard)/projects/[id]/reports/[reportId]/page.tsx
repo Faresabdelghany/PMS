@@ -60,6 +60,8 @@ async function ReportDetail({ projectId, reportId }: { projectId: string; report
       organizationMembers={rawMembers}
       actionItems={actionItemsResult.data || []}
       projectId={projectId}
+      organizationId={report.organization_id}
+      reportId={reportId}
       organizationTags={tags}
       projectWorkstreams={workstreams}
     />

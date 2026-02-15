@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { requireAuth, requireOrgMember, requireProjectMember } from "./auth-helpers"
 import type { ActionResult } from "./types"
+import type { TaskWithRelations } from "./tasks"
 import type {
   Report,
   ReportInsert,
@@ -641,21 +642,22 @@ export async function createReportActionItem(input: {
 
 export async function getReportActionItems(
   reportId: string
-): Promise<ActionResult<any[]>> {
+): Promise<ActionResult<TaskWithRelations[]>> {
   const { supabase } = await requireAuth()
 
   const { data, error } = await supabase
     .from("tasks")
     .select(`
-      id, name, description, status, priority, end_date, tag, created_at,
-      assignee:profiles!tasks_assignee_id_fkey(id, full_name, avatar_url),
+      *,
+      assignee:profiles(id, full_name, email, avatar_url),
+      workstream:workstreams(id, name),
       project:projects!tasks_project_id_fkey(id, name)
     `)
     .eq("source_report_id", reportId)
     .order("created_at", { ascending: true })
 
   if (error) return { error: error.message }
-  return { data: data ?? [] }
+  return { data: (data ?? []) as TaskWithRelations[] }
 }
 
 // ============================================

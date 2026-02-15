@@ -1,19 +1,43 @@
 "use client"
 
 import { useState, useCallback, useMemo, useTransition, startTransition } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import { toast } from "sonner"
+import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Breadcrumbs } from "@/components/projects/Breadcrumbs"
-import { TaskQuickCreateModalLazy as TaskQuickCreateModal } from "@/components/tasks/TaskQuickCreateModalLazy"
+import { TaskQuickCreateModalLazy as TaskQuickCreateModal, type TaskData } from "@/components/tasks/TaskQuickCreateModalLazy"
+import { TaskRowBase } from "@/components/tasks/TaskRowBase"
 import { getOptimizedAvatarUrl } from "@/lib/assets/avatars"
 import { cn } from "@/lib/utils"
+import { updateTaskStatus, deleteTask } from "@/lib/actions/tasks"
+import type { TaskWithRelations } from "@/lib/actions/tasks"
+import { formatDueLabel } from "@/lib/date-utils"
+import {
+  TASK_STATUS_LABELS,
+  TASK_STATUS_COLORS,
+  TASK_PRIORITY_LABELS,
+  type TaskStatus as TaskStatusType,
+} from "@/lib/constants/status"
+import { usePooledRealtime } from "@/hooks/realtime-context"
+import type { Database } from "@/lib/supabase/types"
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { DotsThreeVertical } from "@phosphor-icons/react/dist/ssr/DotsThreeVertical"
+import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
+import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
 
 import { LinkSimple } from "@phosphor-icons/react/dist/ssr/LinkSimple"
 import { SquareHalf } from "@phosphor-icons/react/dist/ssr/SquareHalf"
@@ -25,13 +49,25 @@ import { WarningCircle } from "@phosphor-icons/react/dist/ssr/WarningCircle"
 import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank"
 import { UserCircle } from "@phosphor-icons/react/dist/ssr/UserCircle"
 import { ChartBar } from "@phosphor-icons/react/dist/ssr/ChartBar"
-import { CheckCircle } from "@phosphor-icons/react/dist/ssr/CheckCircle"
-import { Circle } from "@phosphor-icons/react/dist/ssr/Circle"
 import { Clock } from "@phosphor-icons/react/dist/ssr/Clock"
 import { Folder } from "@phosphor-icons/react/dist/ssr/Folder"
 import { ArrowSquareOut } from "@phosphor-icons/react/dist/ssr/ArrowSquareOut"
 
-import type { ReportProjectStatus, ClientSatisfaction, RiskSeverity, RiskStatus } from "@/lib/supabase/types"
+import type { ReportProjectStatus, ClientSatisfaction, RiskSeverity, RiskStatus, TaskPriority, Workstream, OrganizationTagLean } from "@/lib/supabase/types"
+
+// Lazy-load task detail panel - defers Tiptap/comment editor until a task is opened
+const TaskDetailPanel = dynamic(
+  () => import("@/components/tasks/TaskDetailPanel").then(m => ({ default: m.TaskDetailPanel })),
+  { ssr: false }
+)
+
+// Lazy-load delete confirmation dialog
+const DeleteTaskDialog = dynamic(
+  () => import("@/components/tasks/DeleteTaskDialog").then(m => ({ default: m.DeleteTaskDialog })),
+  { ssr: false }
+)
+
+type TaskRow = Database["public"]["Tables"]["tasks"]["Row"]
 
 // ============================================
 // Constants
@@ -72,19 +108,8 @@ const PERIOD_TYPE_LABELS: Record<string, string> = {
   custom: "Custom",
 }
 
-const TASK_STATUS_CONFIG: Record<string, { label: string; color: string; Icon: typeof CheckCircle }> = {
-  todo: { label: "To Do", color: "text-muted-foreground", Icon: Circle },
-  "in-progress": { label: "In Progress", color: "text-blue-600", Icon: Clock },
-  done: { label: "Done", color: "text-emerald-600", Icon: CheckCircle },
-}
-
-const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
-  urgent: { label: "Urgent", color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" },
-  high: { label: "High", color: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" },
-  medium: { label: "Medium", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300" },
-  low: { label: "Low", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" },
-  "no-priority": { label: "None", color: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" },
-}
+// Valid TaskPriority values for type checking
+const VALID_PRIORITIES: TaskPriority[] = ["no-priority", "low", "medium", "high", "urgent"]
 
 // ============================================
 // Helpers
@@ -163,25 +188,44 @@ type OrganizationMember = {
   }
 }
 
-type ActionItem = {
-  id: string
-  name: string
-  description: string | null
-  status: string
-  priority: string
-  end_date: string | null
-  tag: string | null
-  created_at: string
-  assignee: { id: string; full_name: string; avatar_url: string | null } | null
-  project: { id: string; name: string } | null
+// Convert TaskWithRelations to TaskData for the TaskQuickCreateModal
+function toTaskData(task: TaskWithRelations, projectId: string, projectName: string): TaskData {
+  const priority = task.priority && VALID_PRIORITIES.includes(task.priority as TaskPriority)
+    ? (task.priority as TaskPriority)
+    : undefined
+  const startDate = task.start_date ? new Date(task.start_date) : null
+  const endDate = task.end_date ? new Date(task.end_date) : null
+
+  return {
+    id: task.id,
+    name: task.name,
+    status: task.status as "todo" | "in-progress" | "done",
+    priority,
+    tag: task.tag ?? undefined,
+    assignee: task.assignee ? {
+      id: task.assignee.id,
+      name: task.assignee.full_name || task.assignee.email,
+      avatarUrl: task.assignee.avatar_url ?? null,
+    } : undefined,
+    startDate,
+    endDate,
+    dueLabel: endDate ? formatDueLabel(endDate) : undefined,
+    description: task.description ?? undefined,
+    projectId,
+    projectName,
+    workstreamId: task.workstream?.id ?? undefined,
+    workstreamName: task.workstream?.name ?? undefined,
+  }
 }
 
 interface ReportDetailContentProps {
   report: any
   organizationMembers: OrganizationMember[]
-  actionItems: ActionItem[]
+  actionItems: TaskWithRelations[]
   /** When rendered under a project, use project-scoped breadcrumbs */
   projectId?: string
+  organizationId: string
+  reportId: string
   organizationTags?: { id: string; name: string; color: string }[]
   projectWorkstreams?: { id: string; name: string }[]
 }
@@ -193,16 +237,136 @@ interface ReportDetailContentProps {
 export function ReportDetailContent({
   report,
   organizationMembers,
-  actionItems,
+  actionItems: initialActionItems,
   projectId,
+  organizationId,
+  reportId,
   organizationTags = [],
   projectWorkstreams = [],
 }: ReportDetailContentProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [showMeta, setShowMeta] = useState(true)
   const [showWizard, setShowWizard] = useState(false)
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [, startTabTransition] = useTransition()
+
+  // Derive effective project ID early (needed by realtime handlers below)
+  const effectiveProjectId = projectId || report.project?.id
+
+  // --- Action items (tasks) state & management ---
+  const [items, setItems] = useState<TaskWithRelations[]>(initialActionItems)
+  const [editingTask, setEditingTask] = useState<TaskWithRelations | null>(null)
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  // Real-time subscription for action items linked to this report
+  usePooledRealtime({
+    table: "tasks",
+    filter: `source_report_id=eq.${reportId}`,
+    enabled: !!reportId,
+    onInsert: (task: TaskRow) => {
+      setItems(prev => {
+        if (prev.some(t => t.id === task.id)) return prev
+        return [...prev, {
+          ...task,
+          assignee: null,
+          workstream: null,
+          project: effectiveProjectId ? { id: effectiveProjectId, name: report.project?.name || "" } : null,
+        } as TaskWithRelations]
+      })
+    },
+    onUpdate: (task: TaskRow) => {
+      setItems(prev => prev.map(t => {
+        if (t.id !== task.id) return t
+        // Merge scalar fields; clear stale relations when FK changes
+        return {
+          ...t,
+          ...task,
+          assignee: task.assignee_id !== t.assignee_id ? null : t.assignee,
+          workstream: task.workstream_id !== t.workstream_id ? null : t.workstream,
+        }
+      }))
+    },
+    onDelete: (task: TaskRow) => {
+      setItems(prev => prev.filter(t => t.id !== task.id))
+    },
+  })
+
+  // Toggle action item status
+  const toggleActionItem = useCallback(async (taskId: string) => {
+    const task = items.find(t => t.id === taskId)
+    if (!task) return
+    const newStatus = task.status === "done" ? "todo" : "done"
+    // Optimistic update
+    setItems(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t))
+    const result = await updateTaskStatus(taskId, newStatus as "todo" | "in-progress" | "done")
+    if (result.error) {
+      setItems(prev => prev.map(t => t.id === taskId ? { ...t, status: task.status } : t))
+      toast.error("Failed to update task status")
+    }
+  }, [items])
+
+  // Open task detail panel via URL
+  const openTaskDetail = useCallback((taskId: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("task", taskId)
+    router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false })
+  }, [router, searchParams])
+
+  // Edit action item via quick create modal
+  const openEditActionItem = useCallback((task: TaskWithRelations) => {
+    setEditingTask(task)
+    setShowTaskModal(true)
+  }, [])
+
+  // Handle task updated from edit modal
+  const handleActionItemUpdated = useCallback((updated: TaskData) => {
+    setItems(prev =>
+      prev.map(t =>
+        t.id === updated.id
+          ? {
+              ...t,
+              name: updated.name,
+              status: updated.status,
+              priority: updated.priority || "no-priority",
+              tag: updated.tag || null,
+              description: updated.description || null,
+              start_date: updated.startDate?.toISOString().split('T')[0] || null,
+              end_date: updated.endDate?.toISOString().split('T')[0] || null,
+              workstream_id: updated.workstreamId || null,
+              workstream: updated.workstreamId ? { id: updated.workstreamId, name: updated.workstreamName || "" } : null,
+              assignee_id: updated.assignee?.id || null,
+              assignee: updated.assignee ? {
+                id: updated.assignee.id,
+                full_name: updated.assignee.name,
+                email: "",
+                avatar_url: updated.assignee.avatarUrl || null,
+              } : null,
+            }
+          : t
+      )
+    )
+    setEditingTask(null)
+  }, [])
+
+  // Delete action item
+  const handleDeleteActionItem = useCallback(async () => {
+    if (!taskToDelete) return
+    setIsDeleting(true)
+    const result = await deleteTask(taskToDelete)
+    if (result.error) {
+      toast.error("Failed to delete task")
+    } else {
+      setItems(prev => prev.filter(t => t.id !== taskToDelete))
+      toast.success("Action item deleted")
+    }
+    setIsDeleting(false)
+    setTaskToDelete(null)
+  }, [taskToDelete])
+
+  // Count open action items for the sidebar
+  const openActionItemsCount = useMemo(() => items.filter(a => a.status !== "done").length, [items])
 
   // Flat data from report
   const risks = report.report_risks || []
@@ -217,7 +381,6 @@ export function ReportDetailContent({
     : (console.warn(`[Report ${report.id}] Unknown satisfaction: "${report.client_satisfaction}"`),
        { label: "Unknown", color: "text-muted-foreground" })
 
-  const effectiveProjectId = projectId || report.project?.id
   const breadcrumbs = effectiveProjectId
     ? [
         { label: "Projects", href: "/projects" },
@@ -256,10 +419,40 @@ export function ReportDetailContent({
     }]
   }, [effectiveProjectId, report.project, projectWorkstreams])
 
-  const handleTaskCreated = useCallback(() => {
+  const handleTaskCreated = useCallback((task: TaskData) => {
+    // Add new task to local state optimistically
+    const newTask: TaskWithRelations = {
+      id: task.id,
+      name: task.name,
+      status: task.status,
+      priority: task.priority || "no-priority",
+      tag: task.tag || null,
+      description: task.description || null,
+      start_date: task.startDate?.toISOString().split('T')[0] || null,
+      end_date: task.endDate?.toISOString().split('T')[0] || null,
+      project_id: effectiveProjectId || "",
+      workstream_id: task.workstreamId || null,
+      assignee_id: task.assignee?.id || null,
+      sort_order: 0,
+      source_report_id: report.id,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      project: effectiveProjectId ? { id: effectiveProjectId, name: report.project?.name || "" } : null,
+      workstream: task.workstreamId ? { id: task.workstreamId, name: task.workstreamName || "" } : null,
+      assignee: task.assignee ? {
+        id: task.assignee.id,
+        full_name: task.assignee.name,
+        email: "",
+        avatar_url: task.assignee.avatarUrl || null,
+      } : null,
+    }
+    setItems(prev => {
+      if (prev.some(t => t.id === newTask.id)) return prev
+      return [...prev, newTask]
+    })
     setShowTaskModal(false)
-    startTransition(() => router.refresh())
-  }, [router])
+    setEditingTask(null)
+  }, [effectiveProjectId, report.id, report.project?.name])
 
   // Financial data
   const financialTotalValue = report.financial_total_value ?? 0
@@ -268,9 +461,6 @@ export function ReportDetailContent({
   const financialUnpaid = report.financial_unpaid_amount ?? 0
   const financialCurrency = report.financial_currency || "USD"
   const hasFinancialData = financialTotalValue > 0 || financialPaid > 0 || financialInvoiced > 0 || financialUnpaid > 0
-
-  // Overdue detection for action items
-  const today = new Date().toISOString().split("T")[0]
 
   return (
     <div className="flex flex-1 flex-col min-w-0 m-2 border border-border rounded-lg">
@@ -566,92 +756,124 @@ export function ReportDetailContent({
                   )}
                 </section>
 
-                {/* Action Items */}
+                {/* Action Items — full task list */}
                 <section>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <h3 className="text-base font-semibold">Action Items</h3>
-                      <Badge variant="secondary" className="text-xs">{actionItems.length}</Badge>
+                      <Badge variant="secondary" className="text-xs">{items.length}</Badge>
                     </div>
                     {report.project && (
-                      <Button variant="outline" size="sm" onClick={() => setShowTaskModal(true)}>
+                      <Button variant="outline" size="sm" onClick={() => { setEditingTask(null); setShowTaskModal(true) }}>
                         <Plus className="h-3.5 w-3.5" />
                         Add Action Item
                       </Button>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mb-4">
-                    Tasks created from this report appear on the Tasks page with the &quot;Action Item&quot; tag.
-                  </p>
 
-                  {actionItems.length === 0 ? (
+                  {items.length === 0 ? (
                     <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12 text-center">
                       <p className="text-sm text-muted-foreground">No action items yet.</p>
                       {report.project && (
-                        <Button variant="outline" size="sm" className="mt-3" onClick={() => setShowTaskModal(true)}>
+                        <Button variant="outline" size="sm" className="mt-3" onClick={() => { setEditingTask(null); setShowTaskModal(true) }}>
                           <Plus className="h-3.5 w-3.5" />
                           Create first action item
                         </Button>
                       )}
                     </div>
                   ) : (
-                    <div className="rounded-md border divide-y">
-                      {actionItems.map((item) => {
-                        const taskStatusConfig = TASK_STATUS_CONFIG[item.status] || TASK_STATUS_CONFIG.todo
-                        const StatusIcon = taskStatusConfig.Icon
-                        const priorityConfig = PRIORITY_CONFIG[item.priority] || PRIORITY_CONFIG["no-priority"]
-                        const isOverdue = item.end_date && item.end_date < today && item.status !== "done"
+                    <div className="rounded-2xl border border-border bg-card shadow-[var(--shadow-workstream)]">
+                      <div className="space-y-1 px-2 py-3">
+                        {items.map((item) => {
+                          const isDone = item.status === "done"
+                          const endDate = item.end_date ? new Date(item.end_date) : null
+                          const dueLabel = endDate ? formatDueLabel(endDate) : null
+                          const startDate = item.start_date ? new Date(item.start_date) : null
 
-                        return (
-                          <div
-                            key={item.id}
-                            className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer"
-                            onClick={() => {
-                              if (effectiveProjectId) {
-                                router.push(`/projects/${effectiveProjectId}?task=${item.id}`)
+                          return (
+                            <TaskRowBase
+                              key={item.id}
+                              checked={isDone}
+                              title={item.name}
+                              onCheckedChange={() => toggleActionItem(item.id)}
+                              onTitleClick={() => openTaskDetail(item.id)}
+                              titleAriaLabel={item.name}
+                              titleSuffix={
+                                item.workstream?.name ? (
+                                  <Badge variant="muted" className="whitespace-nowrap text-[11px] hidden sm:inline">
+                                    {item.workstream.name}
+                                  </Badge>
+                                ) : null
                               }
-                            }}
-                          >
-                            <StatusIcon className={cn("h-4 w-4 shrink-0", taskStatusConfig.color)} />
-                            <span className={cn(
-                              "text-sm font-medium truncate min-w-0",
-                              item.status === "done" && "line-through text-muted-foreground"
-                            )}>
-                              {item.name}
-                            </span>
-                            <div className="flex items-center gap-2 ml-auto shrink-0">
-                              <Badge variant="secondary" className={cn("text-[10px] font-medium", priorityConfig.color)}>
-                                {priorityConfig.label}
-                              </Badge>
-                              {item.assignee && (
-                                <Avatar className="h-6 w-6">
-                                  <AvatarImage
-                                    src={getOptimizedAvatarUrl(item.assignee.avatar_url, 24) || undefined}
-                                    alt={item.assignee.full_name}
-                                  />
-                                  <AvatarFallback className="text-[9px]">
-                                    {item.assignee.full_name?.charAt(0) || "?"}
-                                  </AvatarFallback>
-                                </Avatar>
-                              )}
-                              {item.end_date && (
-                                <span className={cn(
-                                  "text-xs whitespace-nowrap",
-                                  isOverdue ? "text-red-600 font-medium" : "text-muted-foreground"
-                                )}>
-                                  {isOverdue && "Overdue \u2022 "}
-                                  {new Date(item.end_date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                                </span>
-                              )}
-                              {item.tag && (
-                                <Badge variant="outline" className="text-[10px]">
-                                  {item.tag}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                        )
-                      })}
+                              meta={
+                                <>
+                                  <span className={cn("font-medium", TASK_STATUS_COLORS[item.status as TaskStatusType] ?? "text-muted-foreground")}>
+                                    {TASK_STATUS_LABELS[item.status as TaskStatusType] ?? "To do"}
+                                  </span>
+                                  {startDate && (
+                                    <span className="text-muted-foreground hidden sm:inline">
+                                      Start: {format(startDate, "dd/MM")}
+                                    </span>
+                                  )}
+                                  {dueLabel && (
+                                    <span className="text-muted-foreground hidden sm:inline">{dueLabel}</span>
+                                  )}
+                                  {item.priority && (
+                                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground hidden sm:inline">
+                                      {TASK_PRIORITY_LABELS[item.priority as keyof typeof TASK_PRIORITY_LABELS] ?? "No priority"}
+                                    </span>
+                                  )}
+                                  {item.tag && (
+                                    <Badge variant="outline" className="whitespace-nowrap text-[11px] hidden sm:inline">
+                                      {item.tag}
+                                    </Badge>
+                                  )}
+                                  {item.assignee && (
+                                    <Avatar className="size-6">
+                                      {item.assignee.avatar_url && (
+                                        <AvatarImage
+                                          src={getOptimizedAvatarUrl(item.assignee.avatar_url, 24) || undefined}
+                                          alt={item.assignee.full_name || ""}
+                                        />
+                                      )}
+                                      <AvatarFallback className="text-[9px]">
+                                        {(item.assignee.full_name || item.assignee.email || "?").charAt(0).toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                  )}
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        type="button"
+                                        size="icon-sm"
+                                        variant="ghost"
+                                        className="size-7 rounded-md text-muted-foreground"
+                                        aria-label="Task actions"
+                                      >
+                                        <DotsThreeVertical className="h-4 w-4" weight="bold" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-40">
+                                      <DropdownMenuItem onClick={() => openEditActionItem(item)}>
+                                        <PencilSimple className="h-4 w-4" />
+                                        Edit
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        className="text-destructive focus:text-destructive"
+                                        onClick={() => setTaskToDelete(item.id)}
+                                      >
+                                        <Trash className="h-4 w-4" />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </>
+                              }
+                            />
+                          )
+                        })}
+                      </div>
                     </div>
                   )}
                 </section>
@@ -750,7 +972,7 @@ export function ReportDetailContent({
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                           <UserCircle className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <span>{actionItems.filter(a => a.status !== "done").length} open action items</span>
+                          <span>{openActionItemsCount} open action items</span>
                         </div>
                       </div>
                     </div>
@@ -776,19 +998,42 @@ export function ReportDetailContent({
           />
         )}
 
-        {/* Add Action Item via TaskQuickCreateModal */}
+        {/* Add / Edit Action Item via TaskQuickCreateModal */}
         <TaskQuickCreateModal
           open={showTaskModal}
-          onClose={() => setShowTaskModal(false)}
+          onClose={() => { setShowTaskModal(false); setEditingTask(null) }}
           onTaskCreated={handleTaskCreated}
-          context={{ projectId: effectiveProjectId }}
+          context={editingTask ? undefined : { projectId: effectiveProjectId }}
+          editingTask={editingTask && effectiveProjectId ? toTaskData(editingTask, effectiveProjectId, report.project?.name || "") : undefined}
+          onTaskUpdated={handleActionItemUpdated}
           projects={modalProjects}
           organizationMembers={organizationMembers}
           tags={organizationTags}
-          defaultTag="Action Item"
-          defaultTagLocked
-          sourceReportId={report.id}
+          defaultTag={editingTask ? undefined : "Action Item"}
+          defaultTagLocked={!editingTask}
+          sourceReportId={editingTask ? undefined : report.id}
         />
+
+        {/* Delete Action Item Confirmation */}
+        {taskToDelete && (
+          <DeleteTaskDialog
+            open={!!taskToDelete}
+            onOpenChange={(open) => !open && setTaskToDelete(null)}
+            onConfirm={handleDeleteActionItem}
+            isDeleting={isDeleting}
+          />
+        )}
+
+        {/* Task Detail Panel — opens as slide-over when ?task= is in URL */}
+        {searchParams.get("task") && effectiveProjectId && (
+          <TaskDetailPanel
+            projectId={effectiveProjectId}
+            organizationId={organizationId}
+            organizationMembers={organizationMembers}
+            workstreams={projectWorkstreams.map(w => ({ id: w.id, name: w.name }) as Workstream)}
+            tags={organizationTags as OrganizationTagLean[]}
+          />
+        )}
       </div>
     </div>
   )
