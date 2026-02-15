@@ -49,7 +49,7 @@ export async function getWorkflowStatuses(
 
     let query = supabase
       .from("workflow_statuses")
-      .select("*")
+      .select("id, organization_id, entity_type, category, name, description, color, is_default, is_locked, sort_order, created_at, updated_at")
       .eq("organization_id", organizationId)
       .order("sort_order")
 

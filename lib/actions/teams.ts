@@ -51,7 +51,7 @@ export async function getTeams(orgId: string): Promise<ActionResult<Team[]>> {
 
     const { data, error } = await supabase
       .from("teams")
-      .select("*")
+      .select("id, organization_id, name, description, created_at, updated_at")
       .eq("organization_id", orgId)
       .order("name")
 

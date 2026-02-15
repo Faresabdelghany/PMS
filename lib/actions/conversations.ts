@@ -23,7 +23,7 @@ export async function getConversations(
       async () => {
         const { data, error } = await supabase
           .from("chat_conversations")
-          .select("*")
+          .select("id, organization_id, user_id, title, created_at, updated_at")
           .eq("organization_id", organizationId)
           .eq("user_id", user.id)
           .order("updated_at", { ascending: false })
@@ -325,7 +325,7 @@ export async function searchConversations(
 
     const { data, error } = await supabase
       .from("chat_conversations")
-      .select("*")
+      .select("id, organization_id, user_id, title, created_at, updated_at")
       .eq("organization_id", organizationId)
       .eq("user_id", user.id)
       .ilike("title", `%${sanitized}%`)

@@ -20,7 +20,7 @@ export async function getLabels(
       async () => {
         const { data, error } = await supabase
           .from("organization_labels")
-          .select("*")
+          .select("id, organization_id, category, name, description, color, created_at, updated_at")
           .eq("organization_id", orgId)
           .order("name")
 

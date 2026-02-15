@@ -16,7 +16,7 @@ export async function getTags(orgId: string): Promise<ActionResult<OrganizationT
       async () => {
         const { data, error } = await supabase
           .from("organization_tags")
-          .select("*")
+          .select("id, organization_id, name, description, color, is_system, created_at, updated_at")
           .eq("organization_id", orgId)
           .order("name")
 

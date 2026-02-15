@@ -115,7 +115,7 @@ export async function getWorkstreams(
         const { supabase } = await requireAuth()
         const { data, error } = await supabase
           .from("workstreams")
-          .select("*")
+          .select("id, project_id, name, description, start_date, end_date, tag, sort_order, created_at, updated_at")
           .eq("project_id", projectId)
           .order("sort_order")
 
@@ -153,7 +153,7 @@ export async function getWorkstreamsWithTasks(projectId: string): Promise<
   const { data, error } = await supabase
     .from("workstreams")
     .select(`
-      *,
+      id, project_id, name, description, start_date, end_date, tag, sort_order, created_at, updated_at,
       tasks(id, name, status, priority, assignee_id, start_date, end_date, tag, sort_order)
     `)
     .eq("project_id", projectId)

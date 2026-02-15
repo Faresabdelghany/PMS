@@ -19,11 +19,11 @@ export async function warmUserCache(userId: string): Promise<void> {
     const [orgsResult, profileResult, colorThemeResult] = await Promise.all([
       admin
         .from("organization_members")
-        .select("role, organization:organizations(*)")
+        .select("role, organization:organizations(id, name, slug, logo_url)")
         .eq("user_id", userId),
       admin
         .from("profiles")
-        .select("*")
+        .select("id, full_name, email, avatar_url")
         .eq("id", userId)
         .single(),
       admin
@@ -67,7 +67,7 @@ export async function warmUserCache(userId: string): Promise<void> {
       const primaryOrgId = orgs[0].id
       const { data: projects } = await admin
         .from("projects")
-        .select("*")
+        .select("id, name, status, progress, updated_at")
         .eq("organization_id", primaryOrgId)
         .eq("status", "active")
         .order("updated_at", { ascending: false })

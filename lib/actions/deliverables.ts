@@ -39,7 +39,7 @@ export async function getDeliverables(
 
   const { data, error } = await supabase
     .from("project_deliverables")
-    .select("*")
+    .select("id, project_id, title, due_date, value, status, payment_status, sort_order, created_at")
     .eq("project_id", projectId)
     .order("sort_order", { ascending: true })
 
