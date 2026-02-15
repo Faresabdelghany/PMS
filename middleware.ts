@@ -207,8 +207,9 @@ export const config = {
      * - favicon.ico (favicon file)
      * - icon.png, apple-touch-icon.png (app icons)
      * - sw.js (service worker - must not be redirected)
+     * - manifest.webmanifest (PWA manifest)
      * - public assets (svg, png, jpg, etc.)
      */
-    "/((?!_next/static|_next/image|favicon.ico|icon.png|apple-touch-icon.png|robots\\.txt|sw\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|icon.png|apple-touch-icon.png|robots\\.txt|sw\\.js|manifest\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 }
