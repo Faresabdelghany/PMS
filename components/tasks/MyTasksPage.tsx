@@ -100,9 +100,19 @@ const DeleteTaskDialog = dynamic(
   () => import("@/components/tasks/DeleteTaskDialog").then(m => ({ default: m.DeleteTaskDialog })),
   { ssr: false }
 )
-import { FilterPopover, type MemberOption, type TagOption } from "@/components/filter-popover"
-import { ChipOverflow } from "@/components/chip-overflow"
-import { ViewOptionsPopover } from "@/components/view-options-popover"
+import type { MemberOption, TagOption } from "@/components/filter-popover"
+const FilterPopover = dynamic(
+  () => import("@/components/filter-popover").then(m => ({ default: m.FilterPopover })),
+  { ssr: false }
+)
+const ChipOverflow = dynamic(
+  () => import("@/components/chip-overflow").then(m => ({ default: m.ChipOverflow })),
+  { ssr: false }
+)
+const ViewOptionsPopover = dynamic(
+  () => import("@/components/view-options-popover").then(m => ({ default: m.ViewOptionsPopover })),
+  { ssr: false }
+)
 import { TaskQuickCreateModalLazy as TaskQuickCreateModal, type CreateTaskContext } from "@/components/tasks/TaskQuickCreateModalLazy"
 import type { OrganizationTagLean as OrganizationTag } from "@/lib/supabase/types"
 import { formatDueLabel } from "@/lib/date-utils"

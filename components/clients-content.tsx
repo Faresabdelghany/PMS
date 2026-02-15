@@ -154,7 +154,7 @@ const ClientTableRow = memo(function ClientTableRow({
   const displayContactName = client.primaryContactName ?? client.name
 
   return (
-    <TableRow className="hover:bg-muted/80">
+    <TableRow className="hover:bg-muted/80 [content-visibility:auto] [contain-intrinsic-size:auto_56px]">
       <TableCell className="align-middle">
         <Checkbox
           aria-label={`Select ${client.name}`}
