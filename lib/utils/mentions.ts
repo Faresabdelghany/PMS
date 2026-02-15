@@ -10,15 +10,14 @@ export function extractMentions(text: string): string[] {
 
   // Match @[Display Name](uuid) pattern
   const mentionRegex = /@\[([^\]]+)\]\(([a-f0-9-]{36})\)/gi
-  const userIds: string[] = []
+  const userIds = new Set<string>()
 
   let match
   while ((match = mentionRegex.exec(text)) !== null) {
-    const userId = match[2]
-    if (userId && !userIds.includes(userId)) {
-      userIds.push(userId)
+    if (match[2]) {
+      userIds.add(match[2])
     }
   }
 
-  return userIds
+  return Array.from(userIds)
 }

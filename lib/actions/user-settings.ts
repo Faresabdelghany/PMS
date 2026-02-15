@@ -419,23 +419,17 @@ export async function uploadAvatar(
       return { error: "Failed to get avatar URL after upload" }
     }
 
-    // Update profile with new avatar URL
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({ avatar_url: avatarUrl })
-      .eq("id", user.id)
+    // Update profile and fetch memberships in parallel (independent operations)
+    const [updateResult, membershipsResult] = await Promise.all([
+      supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("id", user.id),
+      supabase.from("organization_members").select("organization_id").eq("user_id", user.id),
+    ])
 
-    if (updateError) {
-      return { error: `Failed to update profile: ${updateError.message}` }
+    if (updateResult.error) {
+      return { error: `Failed to update profile: ${updateResult.error.message}` }
     }
 
-    // Get all organizations the user belongs to for cache invalidation
-    const { data: memberships } = await supabase
-      .from("organization_members")
-      .select("organization_id")
-      .eq("user_id", user.id)
-
-    const orgIds = memberships?.map((m) => m.organization_id) || []
+    const orgIds = membershipsResult.data?.map((m) => m.organization_id) || []
 
     await invalidateCache.profile({ userId: user.id, orgIds })
 
@@ -476,23 +470,17 @@ export async function deleteAvatar(): Promise<ActionResult<{ success: boolean }>
       }
     }
 
-    // Clear avatar URL from profile
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({ avatar_url: null })
-      .eq("id", user.id)
+    // Clear avatar URL and fetch memberships in parallel (independent operations)
+    const [updateResult, membershipsResult] = await Promise.all([
+      supabase.from("profiles").update({ avatar_url: null }).eq("id", user.id),
+      supabase.from("organization_members").select("organization_id").eq("user_id", user.id),
+    ])
 
-    if (updateError) {
-      return { error: `Failed to update profile: ${updateError.message}` }
+    if (updateResult.error) {
+      return { error: `Failed to update profile: ${updateResult.error.message}` }
     }
 
-    // Get all organizations the user belongs to for cache invalidation
-    const { data: memberships } = await supabase
-      .from("organization_members")
-      .select("organization_id")
-      .eq("user_id", user.id)
-
-    const orgIds = memberships?.map((m) => m.organization_id) || []
+    const orgIds = membershipsResult.data?.map((m) => m.organization_id) || []
 
     await invalidateCache.profile({ userId: user.id, orgIds })
 

@@ -1,7 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 
 // Lazy-load the CommandPalette — prefetched on idle, opens instantly on Cmd+K
 const CommandPaletteDynamic = dynamic(
@@ -47,11 +47,17 @@ export function CommandPaletteLazy(props: CommandPaletteLazyProps) {
     }
   }, [])
 
+  // Use a ref to avoid re-registering the listener when shouldLoad changes
+  const shouldLoadRef = useRef(false)
+  useEffect(() => {
+    shouldLoadRef.current = shouldLoad
+  }, [shouldLoad])
+
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
-        if (!shouldLoad) {
+        if (!shouldLoadRef.current) {
           // First press: load the component and open immediately
           setShouldLoad(true)
           setOpen(true)
@@ -64,7 +70,7 @@ export function CommandPaletteLazy(props: CommandPaletteLazyProps) {
 
     document.addEventListener("keydown", down)
     return () => document.removeEventListener("keydown", down)
-  }, [shouldLoad])
+  }, [])
 
   // Don't render anything until user triggers Cmd+K
   if (!shouldLoad) {

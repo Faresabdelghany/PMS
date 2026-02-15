@@ -185,19 +185,8 @@ export function TaskDetailPanel({
     router.push(newPath, { scroll: false })
   }, [router, searchParams])
 
-  // Handle keyboard shortcuts
-  useEffect(() => {
-    if (!isOpen) return
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        handleClose()
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [isOpen, handleClose])
+  // Escape key is handled by the Sheet (Radix Dialog) component's built-in
+  // onOpenChange callback — no need for a manual window keydown listener.
 
   // Update task field handler
   const handleUpdateTask = useCallback(
