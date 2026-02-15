@@ -1,7 +1,7 @@
 // Service Worker for static asset caching
 // Improves INP by reducing network requests for static assets
 
-const CACHE_NAME = 'pms-cache-v3'
+const CACHE_NAME = 'pms-cache-v4'
 const STATIC_ASSETS = [
   '/',
   '/icon.png',
@@ -10,11 +10,17 @@ const STATIC_ASSETS = [
   '/manifest.webmanifest',
 ]
 
-// Install event - cache static assets
+// Install event - cache static assets individually so one failure doesn't block others
 globalThis.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS)
+      return Promise.all(
+        STATIC_ASSETS.map((url) =>
+          cache.add(url).catch(() => {
+            // Individual asset failure shouldn't block SW install
+          })
+        )
+      )
     })
   )
   // Activate immediately
