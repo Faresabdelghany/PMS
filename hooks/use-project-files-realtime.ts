@@ -1,18 +1,34 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useDocumentVisibility } from './use-document-visibility';
 import type { ProjectFile } from '@/lib/data/project-details';
 import { getProjectFiles, type ProjectFileWithUploader } from '@/lib/actions/files';
 
+/** Debounce delay (ms) for coalescing rapid realtime changes into a single refetch */
+const REFETCH_DEBOUNCE_MS = 300;
+
 /**
  * Hook for fetching project files with real-time updates
- * Combines initial data fetching with Supabase Realtime subscription
+ * Combines initial data fetching with Supabase Realtime subscription.
+ *
+ * Optimizations:
+ * - DELETE events remove the file from state directly (no refetch needed)
+ * - INSERT/UPDATE events are debounced to coalesce rapid changes
+ * - Subscription pauses when the browser tab is hidden
  */
 export function useProjectFilesRealtime(projectId: string) {
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const isVisible = useDocumentVisibility();
+  const isVisibleRef = useRef(isVisible);
+  isVisibleRef.current = isVisible;
+
+  const channelRef = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null);
+  const refetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Transform database file to UI format
   const transformFile = useCallback((file: ProjectFileWithUploader): ProjectFile => {
@@ -58,6 +74,31 @@ export function useProjectFilesRealtime(projectId: string) {
     setIsLoading(false);
   }, [projectId, transformFile]);
 
+  // Debounced refetch: coalesces multiple rapid INSERT/UPDATE events
+  const debouncedRefetch = useCallback(() => {
+    if (refetchTimerRef.current) {
+      clearTimeout(refetchTimerRef.current);
+    }
+    refetchTimerRef.current = setTimeout(() => {
+      fetchFiles();
+      refetchTimerRef.current = null;
+    }, REFETCH_DEBOUNCE_MS);
+  }, [fetchFiles]);
+
+  // Visibility-based pause/resume
+  useEffect(() => {
+    const channel = channelRef.current;
+    if (!channel) return;
+
+    if (isVisible) {
+      channel.subscribe();
+      // Refetch on resume in case changes happened while hidden
+      fetchFiles();
+    } else {
+      channel.unsubscribe();
+    }
+  }, [isVisible, fetchFiles]);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -77,20 +118,44 @@ export function useProjectFilesRealtime(projectId: string) {
           table: 'project_files',
           filter: `project_id=eq.${projectId}`,
         },
-        () => {
-          // Refetch on any change
-          if (isMounted) {
-            fetchFiles();
+        (payload) => {
+          if (!isMounted) return;
+
+          if (payload.eventType === 'DELETE') {
+            // DELETE: remove directly from state -- no refetch needed
+            const oldRecord = payload.old as { id?: string } | undefined;
+            if (oldRecord?.id) {
+              setFiles((prev) => prev.filter((f) => f.id !== oldRecord.id));
+            }
+          } else {
+            // INSERT or UPDATE: need to refetch to get uploader profile relation
+            // Debounce to coalesce rapid changes (e.g. bulk upload)
+            debouncedRefetch();
           }
         }
-      )
-      .subscribe();
+      );
+
+    channelRef.current = channel;
+
+    // Only subscribe if visible
+    if (isVisibleRef.current) {
+      channel.subscribe((status, err) => {
+        if (err) {
+          console.error(`[Realtime] project-files:${projectId} error:`, err);
+        }
+      });
+    }
 
     return () => {
       isMounted = false;
+      if (refetchTimerRef.current) {
+        clearTimeout(refetchTimerRef.current);
+      }
+      channel.unsubscribe();
       supabase.removeChannel(channel);
+      channelRef.current = null;
     };
-  }, [projectId, fetchFiles]);
+  }, [projectId, fetchFiles, debouncedRefetch]);
 
   return { files, isLoading, error, refetch: fetchFiles };
 }

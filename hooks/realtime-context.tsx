@@ -10,7 +10,12 @@ import {
   type ReactNode,
 } from "react"
 import { createClient } from "@/lib/supabase/client"
-import type { SupabaseClient, RealtimeChannel, RealtimePostgresChangesPayload } from "@supabase/supabase-js"
+import type {
+  SupabaseClient,
+  RealtimeChannel,
+  RealtimePostgresChangesPayload,
+  RealtimePostgresChangesFilter,
+} from "@supabase/supabase-js"
 import type { Database } from "@/lib/supabase/types"
 import { useDocumentVisibility } from "./use-document-visibility"
 
@@ -37,13 +42,21 @@ type SubscriptionState = {
   filter?: string
 }
 
+/** Connection health status for the realtime system */
+export type RealtimeConnectionStatus = "connecting" | "connected" | "disconnected" | "error"
+
 type RealtimeContextValue = {
   subscribe: <T extends TableName>(
     table: T,
     filter: string | undefined,
     listener: Listener<T>
   ) => () => void
+  /** Whether at least one channel is actively connected */
   isConnected: boolean
+  /** Overall connection health status */
+  connectionStatus: RealtimeConnectionStatus
+  /** Most recent connection error, if any */
+  lastError: string | null
 }
 
 const RealtimeContext = createContext<RealtimeContextValue | null>(null)
@@ -59,12 +72,15 @@ const RealtimeContext = createContext<RealtimeContextValue | null>(null)
  * - Reduced WebSocket connections
  * - Automatic cleanup when all listeners unsubscribe
  * - Visibility-aware pausing (subscriptions pause when tab is hidden)
+ * - Connection health monitoring surfaced to the UI
  */
 export function RealtimeProvider({ children }: { children: ReactNode }) {
   const subscriptionsRef = useRef<Map<SubscriptionKey, SubscriptionState>>(new Map())
   const listenerIdCounter = useRef(0)
   const isVisible = useDocumentVisibility()
   const [isConnected, setIsConnected] = useState(false)
+  const [connectionStatus, setConnectionStatus] = useState<RealtimeConnectionStatus>("disconnected")
+  const [lastError, setLastError] = useState<string | null>(null)
 
   // Pause/resume subscriptions based on visibility
   useEffect(() => {
@@ -81,7 +97,10 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       subscriptions.forEach((sub) => {
         sub.channel.subscribe()
       })
-      setIsConnected(subscriptions.size > 0)
+      if (subscriptions.size > 0) {
+        setIsConnected(true)
+        setConnectionStatus("connected")
+      }
     }
   }, [isVisible])
 
@@ -102,15 +121,11 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       const channelName = `pooled:${key}`
       const channel = supabase.channel(channelName)
 
-      const config: any = {
-        event: "*",
-        schema: "public",
-        table,
-      }
-
-      if (filter) {
-        config.filter = filter
-      }
+      // Build properly typed config instead of using `any`
+      const config = (filter
+        ? { event: "*" as const, schema: "public", table, filter }
+        : { event: "*" as const, schema: "public", table }
+      ) as unknown as RealtimePostgresChangesFilter<"*">
 
       channel
         .on(
@@ -143,6 +158,26 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         .subscribe((status, err) => {
           if (err) {
             console.error(`[Realtime] ${key} subscription error:`, err)
+            setLastError(`${key}: ${err.message}`)
+            setConnectionStatus("error")
+          } else if (status === "SUBSCRIBED") {
+            setConnectionStatus("connected")
+            setLastError(null)
+          } else if (status === "CHANNEL_ERROR") {
+            setConnectionStatus("error")
+            setLastError(`${key}: channel error`)
+          } else if (status === "TIMED_OUT") {
+            setConnectionStatus("error")
+            setLastError(`${key}: subscription timed out`)
+          } else if (status === "CLOSED") {
+            // Channel was intentionally closed (e.g. visibility hide)
+            // Only set disconnected if no other channels are active
+            const hasActiveChannels = Array.from(subscriptionsRef.current.values()).some(
+              (s) => s.channel !== channel
+            )
+            if (!hasActiveChannels) {
+              setConnectionStatus("disconnected")
+            }
           }
         })
 
@@ -155,6 +190,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       }
       subscriptionsRef.current.set(key, subscription)
       setIsConnected(true)
+      setConnectionStatus("connecting")
     }
 
     // Add listener to subscription
@@ -175,13 +211,14 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 
         if (subscriptionsRef.current.size === 0) {
           setIsConnected(false)
+          setConnectionStatus("disconnected")
         }
       }
     }
   }, [])
 
   return (
-    <RealtimeContext.Provider value={{ subscribe, isConnected }}>
+    <RealtimeContext.Provider value={{ subscribe, isConnected, connectionStatus, lastError }}>
       {children}
     </RealtimeContext.Provider>
   )
@@ -196,6 +233,23 @@ export function useRealtimeContext() {
     throw new Error("useRealtimeContext must be used within a RealtimeProvider")
   }
   return context
+}
+
+/**
+ * Hook to access just the connection health status.
+ * Useful for building connection indicators in the UI.
+ *
+ * @example
+ * ```tsx
+ * const { connectionStatus, lastError } = useRealtimeConnectionStatus()
+ * if (connectionStatus === "error") {
+ *   return <Banner>Connection issue: {lastError}</Banner>
+ * }
+ * ```
+ */
+export function useRealtimeConnectionStatus() {
+  const { connectionStatus, lastError, isConnected } = useRealtimeContext()
+  return { connectionStatus, lastError, isConnected }
 }
 
 /**

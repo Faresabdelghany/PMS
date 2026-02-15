@@ -144,7 +144,11 @@ export function useRealtime<T extends TableName>({
     // Use ref to get current visibility without adding it to dependencies
     // The visibility effect will handle subsequent pause/resume
     if (!pauseWhenHidden || isVisibleRef.current) {
-      channel.subscribe()
+      channel.subscribe((status, err) => {
+        if (err) {
+          console.error(`[Realtime] ${channelName} error:`, err)
+        }
+      })
     }
 
     return () => {
