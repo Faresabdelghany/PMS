@@ -41,8 +41,16 @@ next-env.d.ts
 .next-docs/
 .playwright-mcp/
 
-# lighthouse ci
+# lighthouse / perf audit artifacts
 .lighthouseci/
+lighthouse-*.json
+lh-*.json
+perf-audit-*.json
+perf-audit-*.js
+perf-playwright*.json
+reauth.js
+pms-cookies.txt
+bundle-analyzer-*.png
 
 # Windows artifacts
 nul
