@@ -62,8 +62,8 @@ function log(level: LogLevel, message: string, context?: LogContext): void {
   } else {
     // Human-readable in development
     const prefix = `[${level.toUpperCase()}]`
-    const module = context?.module ? `[${context.module}]` : ""
-    const parts = [prefix, module, message].filter(Boolean)
+    const moduleName = context?.module ? `[${context.module}]` : ""
+    const parts = [prefix, moduleName, message].filter(Boolean)
     const msg = parts.join(" ")
 
     // Omit module from extra context since it's already in prefix
