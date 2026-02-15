@@ -24,7 +24,7 @@ import { Circle } from "@phosphor-icons/react/dist/ssr/Circle"
 import { DotsThree } from "@phosphor-icons/react/dist/ssr/DotsThree"
 import { toast } from "sonner"
 import Link from "next/link"
-import { formatDistanceToNow } from "date-fns"
+import { timeAgo } from "@/lib/date-utils"
 import type { InboxItemWithRelations, InboxItemType } from "@/lib/supabase/types"
 import { markAsRead, markAllAsRead, deleteInboxItem } from "@/lib/actions/inbox"
 import { useInboxRealtime } from "@/hooks/use-realtime"
@@ -110,7 +110,7 @@ const InboxItemRow = memo(function InboxItemRow({ item, onMarkAsRead, onDelete }
             )}
             <div className="flex items-center gap-2 mt-1">
               <span className="text-[11px] text-muted-foreground">
-                {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
+                {timeAgo(item.created_at)}
               </span>
               {item.project && (
                 <>

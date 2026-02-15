@@ -8,13 +8,17 @@ import { LoadMoreButton } from "@/components/ui/load-more-button"
 import { useLoadMore } from "@/hooks/use-load-more"
 import { getMyTasks } from "@/lib/actions/tasks"
 import type { TaskWithRelations } from "@/lib/actions/tasks"
-import type { ProjectWithRelations } from "@/lib/actions/projects"
 import type { TaskPriority } from "@/lib/supabase/types"
 import type { ProjectTask } from "@/lib/data/project-details"
 import type { TaskData } from "@/components/tasks/TaskQuickCreateModalLazy"
 
-// Extended project type that includes workstreams for task creation modal
-type ProjectWithWorkstreams = ProjectWithRelations & {
+// Lean project shape — only the fields MyTasksPage actually uses
+// Keeps RSC serialization payload small (strips description, dates, members, client, etc.)
+type ProjectLean = {
+  id: string
+  name: string
+  progress: number | null
+  status: string
   workstreams?: { id: string; name: string }[]
 }
 
@@ -92,16 +96,10 @@ import {
 } from "@/components/tasks/task-filter-utils"
 import { Button } from "@/components/ui/button"
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+const DeleteTaskDialog = dynamic(
+  () => import("@/components/tasks/DeleteTaskDialog").then(m => ({ default: m.DeleteTaskDialog })),
+  { ssr: false }
+)
 import { FilterPopover, type MemberOption, type TagOption } from "@/components/filter-popover"
 import { ChipOverflow } from "@/components/chip-overflow"
 import { ViewOptionsPopover } from "@/components/view-options-popover"
@@ -156,7 +154,7 @@ interface MyTasksPageProps {
   initialTasks?: TaskWithRelations[]
   initialHasMore?: boolean
   initialCursor?: string | null
-  projects?: ProjectWithWorkstreams[]
+  projects?: ProjectLean[]
   organizationId?: string
   userId?: string
   organizationMembers?: OrganizationMember[]
@@ -664,26 +662,14 @@ export function MyTasksPage({
         tags={organizationTags}
       />
 
-      <AlertDialog open={!!taskToDelete} onOpenChange={(open) => !open && setTaskToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete task?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the task.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteTask}
-              disabled={isDeleting}
-              className="bg-destructive text-white hover:bg-destructive/90"
-            >
-              {isDeleting ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {taskToDelete && (
+        <DeleteTaskDialog
+          open={!!taskToDelete}
+          onOpenChange={(open) => !open && setTaskToDelete(null)}
+          onConfirm={handleDeleteTask}
+          isDeleting={isDeleting}
+        />
+      )}
     </div>
   )
 }

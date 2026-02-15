@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react"
 import { sanitizeHtml } from "@/lib/sanitize"
-import { formatDistanceToNow } from "date-fns"
+import { timeAgo } from "@/lib/date-utils"
 import { DotsThree } from "@phosphor-icons/react/dist/ssr/DotsThree"
 import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
 import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
@@ -112,7 +112,7 @@ export function TaskCommentItem({
             {author?.full_name || author?.email || "Unknown"}
           </span>
           <span className="text-xs text-muted-foreground">
-            {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+            {timeAgo(comment.created_at)}
           </span>
           {comment.updated_at !== comment.created_at && (
             <span className="text-xs text-muted-foreground">(edited)</span>

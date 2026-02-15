@@ -10,7 +10,6 @@ import {
   getCachedTags,
 } from "@/lib/server-cache"
 import type { TaskWithRelations } from "@/lib/actions/tasks"
-import type { ProjectWithRelations } from "@/lib/actions/projects"
 
 export const metadata: Metadata = {
   title: "My Tasks - PMS",
@@ -80,12 +79,21 @@ async function TasksStreamed({
     color: t.color,
   }))
 
+  // Map projects to minimal shape — MyTasksPage only needs id, name, progress, status
+  // Strips description, dates, members, client, tags, etc. to reduce RSC serialization payload
+  const projects = (projectsResult.data || []).map(p => ({
+    id: p.id,
+    name: p.name,
+    progress: p.progress,
+    status: p.status,
+  }))
+
   return (
     <MyTasksPage
       initialTasks={(tasksResult.data || []) as TaskWithRelations[]}
       initialHasMore={tasksResult.hasMore ?? false}
       initialCursor={tasksResult.nextCursor ?? null}
-      projects={(projectsResult.data || []) as ProjectWithRelations[]}
+      projects={projects}
       organizationId={orgId}
       userId={userId}
       organizationMembers={members}

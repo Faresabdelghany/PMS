@@ -488,7 +488,7 @@ export function ClientsContent({
         </div>
       </header>
 
-      <div className="flex-1 overflow-auto px-4 pb-2 pt-5">
+      <div className="flex-1 overflow-auto px-4 pb-2 pt-5" style={{ contain: "content" }}>
         <div className="w-full">
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center border border-dashed border-border/60 rounded-lg bg-muted/30">

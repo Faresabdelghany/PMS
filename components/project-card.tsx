@@ -111,7 +111,7 @@ export const ProjectCard = memo(function ProjectCard({ project, actions, variant
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
-      className="rounded-2xl border border-border bg-background hover:shadow-lg/5 transition-shadow cursor-pointer focus:outline-none "
+      className="rounded-2xl border border-border bg-background hover:shadow-lg/5 transition-shadow cursor-pointer focus:outline-none [content-visibility:auto] [contain-intrinsic-size:auto_200px]"
     >
       <div className="p-4">
         <div className="flex items-center justify-between">

@@ -44,7 +44,7 @@ export default async function RootLayout({
     <html lang="en" className={`${geist.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <head>
         {/* Preconnect to external origins for faster resource loading */}
-        <link rel="preconnect" href="https://lazhmdyajdqbnxxwyxun.supabase.co" />
+        <link rel="preconnect" href="https://lazhmdyajdqbnxxwyxun.supabase.co" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://lazhmdyajdqbnxxwyxun.supabase.co" />
         {/* Inline script to prevent color theme flash - runs before React hydrates */}
         <script

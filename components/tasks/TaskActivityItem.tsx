@@ -1,6 +1,6 @@
 "use client"
 
-import { formatDistanceToNow } from "date-fns"
+import { timeAgo } from "@/lib/date-utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { formatActivityMessage } from "@/lib/utils/activity-formatter"
 import type { TaskActivityWithRelations } from "@/lib/supabase/types"
@@ -26,7 +26,7 @@ export function TaskActivityItem({ activity }: TaskActivityItemProps) {
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">{message}</span>
           <span className="text-xs text-muted-foreground/70">
-            {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
+            {timeAgo(activity.created_at)}
           </span>
         </div>
       </div>
