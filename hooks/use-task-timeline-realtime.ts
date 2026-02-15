@@ -19,6 +19,7 @@ interface UseTaskTimelineRealtimeCallbacks {
 
 export function useTaskTimelineRealtime(
   taskId: string | null,
+  commentIds: string[],
   callbacks: UseTaskTimelineRealtimeCallbacks
 ) {
   const callbacksRef = useRef(callbacks)
@@ -58,12 +59,17 @@ export function useTaskTimelineRealtime(
     []
   )
 
+  // Stable ref for commentIds to use in the dependency check without
+  // triggering the comments/activities channel to rebuild
+  const commentIdsRef = useRef(commentIds)
+  commentIdsRef.current = commentIds
+
+  // Channel 1: Comments & activities — stable, only depends on taskId
   useEffect(() => {
     if (!taskId) return
 
     const supabase = createClient()
 
-    // Single channel with multiple listeners for comments, activities, and reactions
     const channel = supabase
       .channel(`task-timeline-${taskId}`)
       .on(
@@ -110,12 +116,31 @@ export function useTaskTimelineRealtime(
           }
         }
       )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [taskId, fetchCommentWithRelations, fetchActivityWithRelations])
+
+  // Channel 2: Reactions — re-subscribes when commentIds change
+  // Serialized to a stable string so the effect only re-runs when the actual IDs change
+  const commentIdsKey = commentIds.join(",")
+
+  useEffect(() => {
+    if (!taskId || commentIds.length === 0) return
+
+    const supabase = createClient()
+
+    const channel = supabase
+      .channel(`task-reactions-${taskId}-${commentIdsKey}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "task_comment_reactions",
+          filter: `comment_id=in.(${commentIdsKey})`,
         },
         (payload) => {
           const reaction = payload.new as TaskCommentReaction | undefined
@@ -133,6 +158,7 @@ export function useTaskTimelineRealtime(
           event: "DELETE",
           schema: "public",
           table: "task_comment_reactions",
+          filter: `comment_id=in.(${commentIdsKey})`,
         },
         (payload) => {
           const oldReaction = payload.old as {
@@ -152,5 +178,6 @@ export function useTaskTimelineRealtime(
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [taskId, fetchCommentWithRelations, fetchActivityWithRelations])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taskId, commentIdsKey])
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useMemo } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
   Sheet,
@@ -126,8 +126,15 @@ export function TaskDetailPanel({
     fetchTaskData()
   }, [taskId])
 
+  // Derive comment IDs from timeline so the reaction subscription
+  // only listens to reactions on this task's comments
+  const commentIds = useMemo(
+    () => timeline.filter((item) => item.type === "comment").map((item) => item.data.id),
+    [timeline]
+  )
+
   // Real-time updates for timeline
-  useTaskTimelineRealtime(taskId, {
+  useTaskTimelineRealtime(taskId, commentIds, {
     onCommentInsert: (comment) => {
       setTimeline((prev) => {
         if (prev.some((item) => item.type === "comment" && item.data.id === comment.id)) {
