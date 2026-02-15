@@ -136,7 +136,7 @@ export async function getClients(
   // Only cache unfiltered, first-page queries
   if (!hasFilters && !cursor) {
     try {
-      const clients = await cacheGet(
+      const cached = await cacheGet(
         CacheKeys.clients(orgId),
         async () => {
           const { data, error } = await supabase
@@ -147,18 +147,18 @@ export async function getClients(
             .limit(limit + 1)
 
           if (error) throw error
-          return data ?? []
+          const raw = data ?? []
+          const hasMore = raw.length > limit
+          const items = hasMore ? raw.slice(0, limit) : raw
+          const nextCursor = hasMore
+            ? encodeCursor(items[items.length - 1].name, items[items.length - 1].id)
+            : null
+          return { data: items as Client[], nextCursor, hasMore }
         },
         CacheTTL.CLIENTS
       )
 
-      const hasMore = clients.length > limit
-      const items = hasMore ? clients.slice(0, limit) : clients
-      const nextCursor = hasMore
-        ? encodeCursor(items[items.length - 1].name, items[items.length - 1].id)
-        : null
-
-      return { data: items as Client[], nextCursor, hasMore }
+      return cached
     } catch (error) {
       return {
         error: error instanceof Error ? error.message : "Failed to fetch clients",
@@ -392,6 +392,40 @@ export async function getClientsWithProjectCounts(
 ): Promise<PaginatedResult<ClientWithProjectCount>> {
   const supabase = await createClient()
 
+  // Only cache unfiltered, first-page queries
+  const hasFilters = filters && Object.values(filters).some((v) => v !== undefined && v !== "")
+
+  if (!hasFilters && !cursor) {
+    try {
+      const cached = await cacheGet(
+        CacheKeys.clientsWithCounts(orgId),
+        async () => {
+          return fetchClientsWithCounts(supabase, orgId, undefined, undefined, limit)
+        },
+        CacheTTL.CLIENTS
+      )
+      return cached
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : "Failed to fetch clients" }
+    }
+  }
+
+  // Filtered or cursor query - don't cache
+  try {
+    return await fetchClientsWithCounts(supabase, orgId, filters, cursor, limit)
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Failed to fetch clients" }
+  }
+}
+
+// Internal helper for fetching clients with project counts (used by both cached and uncached paths)
+async function fetchClientsWithCounts(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  orgId: string,
+  filters?: ClientFilters,
+  cursor?: string,
+  limit: number = DEFAULT_PAGE_SIZE
+): Promise<PaginatedResult<ClientWithProjectCount>> {
   // First get clients
   let query = supabase
     .from("clients")
@@ -433,7 +467,7 @@ export async function getClientsWithProjectCounts(
     .limit(limit + 1)
 
   if (clientsError) {
-    return { error: clientsError.message }
+    throw new Error(clientsError.message)
   }
 
   if (!clients || clients.length === 0) {
@@ -452,7 +486,7 @@ export async function getClientsWithProjectCounts(
   )
 
   if (countsError) {
-    return { error: countsError.message }
+    throw new Error(countsError.message)
   }
 
   // Build lookup map from RPC result (already aggregated)

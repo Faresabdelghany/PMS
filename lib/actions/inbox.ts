@@ -27,7 +27,7 @@ export async function getInboxItems(
 
     if (!hasFilters && !cursor) {
       try {
-        const items = await cacheGet(
+        const cached = await cacheGet(
           CacheKeys.inbox(user.id),
           async () => {
             const { data, error } = await supabase
@@ -45,18 +45,18 @@ export async function getInboxItems(
               .limit(limit + 1)
 
             if (error) throw error
-            return data as InboxItemWithRelations[]
+            const raw = data as InboxItemWithRelations[]
+            const hasMore = raw.length > limit
+            const page = hasMore ? raw.slice(0, limit) : raw
+            const nextCursor = hasMore
+              ? encodeCursor(page[page.length - 1].created_at, page[page.length - 1].id)
+              : null
+            return { data: page, nextCursor, hasMore }
           },
           CacheTTL.INBOX
         )
 
-        const hasMore = items.length > limit
-        const page = hasMore ? items.slice(0, limit) : items
-        const nextCursor = hasMore
-          ? encodeCursor(page[page.length - 1].created_at, page[page.length - 1].id)
-          : null
-
-        return { data: page, nextCursor, hasMore }
+        return cached
       } catch (error) {
         return { error: error instanceof Error ? error.message : "Failed to fetch inbox" }
       }

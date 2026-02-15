@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ArrowLeft } from "@phosphor-icons/react/dist/ssr/ArrowLeft"
 import { DotsThree } from "@phosphor-icons/react/dist/ssr/DotsThree"
 import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
@@ -12,7 +12,7 @@ import { SkipBack } from "@phosphor-icons/react/dist/ssr/SkipBack"
 import { SkipForward } from "@phosphor-icons/react/dist/ssr/SkipForward"
 import { CircleNotch } from "@phosphor-icons/react/dist/ssr/CircleNotch"
 import { format } from "date-fns"
-import DOMPurify from "dompurify"
+import { sanitizeHtml } from "@/lib/sanitize"
 
 import type { ProjectNote, TranscriptSegment } from "@/lib/data/project-details"
 import { Button } from "@/components/ui/button"
@@ -51,6 +51,19 @@ export function NotePreviewModal({
     const [summaryOpen, setSummaryOpen] = useState(true)
     const [keyPointsOpen, setKeyPointsOpen] = useState(false)
     const [insightsOpen, setInsightsOpen] = useState(false)
+    const [sanitizedContent, setSanitizedContent] = useState<string | null>(null)
+
+    useEffect(() => {
+        if (!note?.content) {
+            setSanitizedContent(null)
+            return
+        }
+        let cancelled = false
+        sanitizeHtml(note.content).then((html) => {
+            if (!cancelled) setSanitizedContent(html)
+        })
+        return () => { cancelled = true }
+    }, [note?.content])
 
     if (!note) return null
 
@@ -143,10 +156,10 @@ export function NotePreviewModal({
                                     </CollapsibleSection>
                                 </>
                             ) : (
-                                note.content ? (
+                                note.content && sanitizedContent ? (
                                     <div
                                         className="prose prose-sm max-w-none text-foreground"
-                                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(note.content) }}
+                                        dangerouslySetInnerHTML={{ __html: sanitizedContent }}
                                     />
                                 ) : (
                                     <div className="text-sm text-muted-foreground">

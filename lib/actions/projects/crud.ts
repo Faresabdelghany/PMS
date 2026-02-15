@@ -263,7 +263,7 @@ export async function getProjects(
 
   if (!hasFilters && !cursor) {
     try {
-      const projects = await cacheGet(
+      const cached = await cacheGet(
         CacheKeys.projects(orgId),
         async () => {
           const { data, error } = await supabase
@@ -284,18 +284,18 @@ export async function getProjects(
             .limit(limit + 1)
 
           if (error) throw error
-          return data as ProjectWithRelations[]
+          const raw = data as ProjectWithRelations[]
+          const hasMore = raw.length > limit
+          const items = hasMore ? raw.slice(0, limit) : raw
+          const nextCursor = hasMore
+            ? encodeCursor(items[items.length - 1].updated_at, items[items.length - 1].id)
+            : null
+          return { data: items, nextCursor, hasMore }
         },
         CacheTTL.PROJECTS
       )
 
-      const hasMore = projects.length > limit
-      const items = hasMore ? projects.slice(0, limit) : projects
-      const nextCursor = hasMore
-        ? encodeCursor(items[items.length - 1].updated_at, items[items.length - 1].id)
-        : null
-
-      return { data: items, nextCursor, hasMore }
+      return cached
     } catch (error) {
       return { error: error instanceof Error ? error.message : "Failed to fetch projects" }
     }

@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useCallback } from "react"
-import DOMPurify from "dompurify"
+import { useState, useCallback, useEffect } from "react"
+import { sanitizeHtml } from "@/lib/sanitize"
 import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
 import { Check } from "@phosphor-icons/react/dist/ssr/Check"
 import { X } from "@phosphor-icons/react/dist/ssr/X"
@@ -24,6 +24,19 @@ export function TaskDetailDescription({
 }: TaskDetailDescriptionProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editedDescription, setEditedDescription] = useState(description || "")
+  const [sanitizedHtml, setSanitizedHtml] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!description) {
+      setSanitizedHtml(null)
+      return
+    }
+    let cancelled = false
+    sanitizeHtml(description).then((html) => {
+      if (!cancelled) setSanitizedHtml(html)
+    })
+    return () => { cancelled = true }
+  }, [description])
 
   const handleSave = useCallback(() => {
     const trimmed = editedDescription.trim()
@@ -35,16 +48,6 @@ export function TaskDetailDescription({
     setEditedDescription(description || "")
     setIsEditing(false)
   }, [description])
-
-  // Parse and render HTML content
-  const renderDescription = (html: string) => {
-    return (
-      <div
-        className="prose prose-sm max-w-none text-foreground prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground"
-        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }}
-      />
-    )
-  }
 
   if (isEditing) {
     return (
@@ -96,12 +99,15 @@ export function TaskDetailDescription({
           Edit
         </Button>
       </div>
-      {description ? (
+      {description && sanitizedHtml ? (
         <div
           className="text-sm cursor-pointer hover:bg-muted/30 rounded p-2 -m-2 transition-colors"
           onClick={() => setIsEditing(true)}
         >
-          {renderDescription(description)}
+          <div
+            className="prose prose-sm max-w-none text-foreground prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground"
+            dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+          />
         </div>
       ) : (
         <div

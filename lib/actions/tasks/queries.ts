@@ -120,7 +120,7 @@ export async function getMyTasks(
 
   if (!hasFilters && !cursor) {
     try {
-      const tasks = await cacheGet(
+      const cached = await cacheGet(
         CacheKeys.userTasks(user.id, orgId),
         async () => {
           const { data, error } = await supabase
@@ -138,18 +138,18 @@ export async function getMyTasks(
             .limit(limit + 1)
 
           if (error) throw error
-          return data as TaskWithRelations[]
+          const raw = data as TaskWithRelations[]
+          const hasMore = raw.length > limit
+          const items = hasMore ? raw.slice(0, limit) : raw
+          const nextCursor = hasMore
+            ? encodeCursor(items[items.length - 1].updated_at, items[items.length - 1].id)
+            : null
+          return { data: items, nextCursor, hasMore }
         },
         CacheTTL.TASKS
       )
 
-      const hasMore = tasks.length > limit
-      const items = hasMore ? tasks.slice(0, limit) : tasks
-      const nextCursor = hasMore
-        ? encodeCursor(items[items.length - 1].updated_at, items[items.length - 1].id)
-        : null
-
-      return { data: items, nextCursor, hasMore }
+      return cached
     } catch (error) {
       return { error: error instanceof Error ? error.message : "Failed to fetch tasks" }
     }

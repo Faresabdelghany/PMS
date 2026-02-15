@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useCallback } from "react"
-import DOMPurify from "dompurify"
+import { useState, useCallback, useEffect } from "react"
+import { sanitizeHtml } from "@/lib/sanitize"
 import { formatDistanceToNow } from "date-fns"
 import { DotsThree } from "@phosphor-icons/react/dist/ssr/DotsThree"
 import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
@@ -43,6 +43,15 @@ export function TaskCommentItem({
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(comment.content)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [sanitizedContent, setSanitizedContent] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    sanitizeHtml(comment.content).then((html) => {
+      if (!cancelled) setSanitizedContent(html)
+    })
+    return () => { cancelled = true }
+  }, [comment.content])
 
   const isAuthor = currentUserId === comment.author_id
   const author = comment.author
@@ -77,12 +86,13 @@ export function TaskCommentItem({
     [comment.id, onReactionToggle]
   )
 
-  // Render HTML content safely
-  const renderContent = (html: string) => {
+  // Render sanitized HTML content
+  const renderContent = () => {
+    if (!sanitizedContent) return null
     return (
       <div
         className="prose prose-sm max-w-none text-foreground prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-muted"
-        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }}
+        dangerouslySetInnerHTML={{ __html: sanitizedContent }}
       />
     )
   }
@@ -166,7 +176,7 @@ export function TaskCommentItem({
             </div>
           </div>
         ) : (
-          <div className="text-sm">{renderContent(comment.content)}</div>
+          <div className="text-sm">{renderContent()}</div>
         )}
 
         {/* Attachments */}
