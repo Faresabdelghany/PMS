@@ -1,0 +1,74 @@
+[
+  {
+    "page": "login",
+    "performance": 85,
+    "accessibility": 100,
+    "bestPractices": 100,
+    "seo": 100,
+    "fcp": 1204.305,
+    "lcp": 2554.3050000000003,
+    "cls": 0,
+    "tbt": 471.5,
+    "si": 2006.220234001234
+  },
+  {
+    "page": "inbox",
+    "performance": 78,
+    "accessibility": 100,
+    "bestPractices": 96,
+    "seo": 100,
+    "fcp": 1579.975,
+    "lcp": 2029.975,
+    "cls": 0,
+    "tbt": 728.0000000000005,
+    "si": 4535.251071502153
+  },
+  {
+    "page": "projects",
+    "performance": 69,
+    "accessibility": 100,
+    "bestPractices": 96,
+    "seo": 100,
+    "fcp": 1316.643,
+    "lcp": 3012.643,
+    "cls": 0.002120803285505214,
+    "tbt": 1168,
+    "si": 3811.324158598577
+  },
+  {
+    "page": "tasks",
+    "performance": 47,
+    "accessibility": 95,
+    "bestPractices": 96,
+    "seo": 100,
+    "fcp": 1685.4335,
+    "lcp": 5302.422500000001,
+    "cls": 0.06995639511320358,
+    "tbt": 1544.312,
+    "si": 5866.5339182610205
+  },
+  {
+    "page": "clients",
+    "performance": 61,
+    "accessibility": 96,
+    "bestPractices": 96,
+    "seo": 100,
+    "fcp": 1342.587,
+    "lcp": 3442.587,
+    "cls": 0,
+    "tbt": 1492.4999999999998,
+    "si": 5217.274196449798
+  },
+  {
+    "page": "settings",
+    "performance": 56,
+    "accessibility": 100,
+    "bestPractices": 96,
+    "seo": 100,
+    "fcp": 1708.6420000000003,
+    "lcp": 5248.830500000002,
+    "cls": 0,
+    "tbt": 1069.0825,
+    "si": 3154.78387823895
+  }
+]

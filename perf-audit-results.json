@@ -1,0 +1,619 @@
+{
+  "timestamp": "2026-02-12T10:39:48.048Z",
+  "framework": "Next.js 16.1.6 (Turbopack)",
+  "target": "https://pms-nine-gold.vercel.app",
+  "pageMetrics": [
+    {
+      "page": "Login (public)",
+      "path": "/login",
+      "ttfb": 142,
+      "fcp": 424,
+      "domInteractive": 237,
+      "domComplete": 321,
+      "domCount": 164,
+      "scriptCount": 36,
+      "stylesheetCount": 2,
+      "totalTransfer": 3,
+      "jsBytes": 0,
+      "cssBytes": 0,
+      "imageBytes": 0,
+      "fontBytes": 0,
+      "resourceCount": 37,
+      "cls": 0,
+      "clsSources": [],
+      "thirdParty": [],
+      "images": [],
+      "fonts": [
+        "Geist (unloaded)",
+        "Geist (loaded)",
+        "Geist Fallback (unloaded)",
+        "Geist Mono (unloaded)",
+        "Geist Mono Fallback (unloaded)"
+      ],
+      "fontCount": 2
+    },
+    {
+      "page": "Inbox",
+      "path": "/inbox",
+      "ttfb": 102,
+      "fcp": 720,
+      "domInteractive": 972,
+      "domComplete": 975,
+      "domCount": 218,
+      "scriptCount": 56,
+      "stylesheetCount": 2,
+      "totalTransfer": 13,
+      "jsBytes": 0,
+      "cssBytes": 0,
+      "imageBytes": 0,
+      "fontBytes": 0,
+      "resourceCount": 51,
+      "cls": 0,
+      "clsSources": [],
+      "thirdParty": [],
+      "images": [
+        {
+          "src": "https://pms-nine-gold.vercel.app/_next/image?url=%2Flogo-wrapper.png&w=32&q=75",
+          "loading": "lazy",
+          "width": 16,
+          "height": 16,
+          "hasExplicitDimensions": true,
+          "isNextImage": true
+        },
+        {
+          "src": "https://lazhmdyajdqbnxxwyxun.supabase.co/storage/v1/render/image/public/avatars/",
+          "loading": "auto",
+          "width": 32,
+          "height": 32,
+          "hasExplicitDimensions": false,
+          "isNextImage": false
+        }
+      ],
+      "fonts": [
+        "Geist (unloaded)",
+        "Geist (loaded)",
+        "Geist Fallback (unloaded)",
+        "Geist Mono (unloaded)",
+        "Geist Mono (loaded)",
+        "Geist Mono Fallback (loaded)"
+      ],
+      "fontCount": 2
+    },
+    {
+      "page": "Projects",
+      "path": "/projects",
+      "ttfb": 179,
+      "fcp": 1748,
+      "domInteractive": 1701,
+      "domComplete": 1790,
+      "domCount": 343,
+      "scriptCount": 64,
+      "stylesheetCount": 2,
+      "totalTransfer": 13,
+      "jsBytes": 0,
+      "cssBytes": 0,
+      "imageBytes": 0,
+      "fontBytes": 0,
+      "resourceCount": 56,
+      "cls": 0,
+      "clsSources": [],
+      "thirdParty": [],
+      "images": [
+        {
+          "src": "https://pms-nine-gold.vercel.app/_next/image?url=%2Flogo-wrapper.png&w=32&q=75",
+          "loading": "lazy",
+          "width": 16,
+          "height": 16,
+          "hasExplicitDimensions": true,
+          "isNextImage": true
+        },
+        {
+          "src": "https://lazhmdyajdqbnxxwyxun.supabase.co/storage/v1/render/image/public/avatars/",
+          "loading": "auto",
+          "width": 32,
+          "height": 32,
+          "hasExplicitDimensions": false,
+          "isNextImage": false
+        }
+      ],
+      "fonts": [
+        "Geist (unloaded)",
+        "Geist (loaded)",
+        "Geist Fallback (unloaded)",
+        "Geist Mono (unloaded)",
+        "Geist Mono (loaded)",
+        "Geist Mono Fallback (loaded)"
+      ],
+      "fontCount": 2
+    },
+    {
+      "page": "Tasks",
+      "path": "/tasks",
+      "ttfb": 96,
+      "fcp": 1020,
+      "domInteractive": 1196,
+      "domComplete": 1197,
+      "domCount": 485,
+      "scriptCount": 69,
+      "stylesheetCount": 2,
+      "totalTransfer": 13,
+      "jsBytes": 0,
+      "cssBytes": 0,
+      "imageBytes": 0,
+      "fontBytes": 0,
+      "resourceCount": 60,
+      "cls": 0,
+      "clsSources": [],
+      "thirdParty": [],
+      "images": [
+        {
+          "src": "https://pms-nine-gold.vercel.app/_next/image?url=%2Flogo-wrapper.png&w=32&q=75",
+          "loading": "lazy",
+          "width": 16,
+          "height": 16,
+          "hasExplicitDimensions": true,
+          "isNextImage": true
+        },
+        {
+          "src": "https://lazhmdyajdqbnxxwyxun.supabase.co/storage/v1/render/image/public/avatars/",
+          "loading": "auto",
+          "width": 32,
+          "height": 32,
+          "hasExplicitDimensions": false,
+          "isNextImage": false
+        },
+        {
+          "src": "https://lazhmdyajdqbnxxwyxun.supabase.co/storage/v1/object/public/avatars/56e3e8",
+          "loading": "auto",
+          "width": 24,
+          "height": 24,
+          "hasExplicitDimensions": false,
+          "isNextImage": false
+        },
+        {
+          "src": "https://lazhmdyajdqbnxxwyxun.supabase.co/storage/v1/object/public/avatars/56e3e8",
+          "loading": "auto",
+          "width": 24,
+          "height": 24,
+          "hasExplicitDimensions": false,
+          "isNextImage": false
+        },
+        {
+          "src": "https://lazhmdyajdqbnxxwyxun.supabase.co/storage/v1/object/public/avatars/56e3e8",
+          "loading": "auto",
+          "width": 24,
+          "height": 24,
+          "hasExplicitDimensions": false,
+          "isNextImage": false
+        },
+        {
+          "src": "https://lazhmdyajdqbnxxwyxun.supabase.co/storage/v1/object/public/avatars/56e3e8",
+          "loading": "auto",
+          "width": 24,
+          "height": 24,
+          "hasExplicitDimensions": false,
+          "isNextImage": false
+        },
+        {
+          "src": "https://lazhmdyajdqbnxxwyxun.supabase.co/storage/v1/object/public/avatars/56e3e8",
+          "loading": "auto",
+          "width": 24,
+          "height": 24,
+          "hasExplicitDimensions": false,
+          "isNextImage": false
+        },
+        {
+          "src": "https://lazhmdyajdqbnxxwyxun.supabase.co/storage/v1/object/public/avatars/56e3e8",
+          "loading": "auto",
+          "width": 24,
+          "height": 24,
+          "hasExplicitDimensions": false,
+          "isNextImage": false
+        },
+        {
+          "src": "https://lazhmdyajdqbnxxwyxun.supabase.co/storage/v1/object/public/avatars/56e3e8",
+          "loading": "auto",
+          "width": 24,
+          "height": 24,
+          "hasExplicitDimensions": false,
+          "isNextImage": false
+        },
+        {
+          "src": "https://lazhmdyajdqbnxxwyxun.supabase.co/storage/v1/object/public/avatars/56e3e8",
+          "loading": "auto",
+          "width": 24,
+          "height": 24,
+          "hasExplicitDimensions": false,
+          "isNextImage": false
+        },
+        {
+          "src": "https://lazhmdyajdqbnxxwyxun.supabase.co/storage/v1/object/public/avatars/56e3e8",
+          "loading": "auto",
+          "width": 24,
+          "height": 24,
+          "hasExplicitDimensions": false,
+          "isNextImage": false
+        },
+        {
+          "src": "https://lazhmdyajdqbnxxwyxun.supabase.co/storage/v1/object/public/avatars/56e3e8",
+          "loading": "auto",
+          "width": 24,
+          "height": 24,
+          "hasExplicitDimensions": false,
+          "isNextImage": false
+        }
+      ],
+      "fonts": [
+        "Geist (unloaded)",
+        "Geist (loaded)",
+        "Geist Fallback (unloaded)",
+        "Geist Mono (unloaded)",
+        "Geist Mono (loaded)",
+        "Geist Mono Fallback (loaded)"
+      ],
+      "fontCount": 2
+    },
+    {
+      "page": "Clients",
+      "path": "/clients",
+      "ttfb": 126,
+      "fcp": 924,
+      "domInteractive": 984,
+      "domComplete": 985,
+      "domCount": 294,
+      "scriptCount": 56,
+      "stylesheetCount": 2,
+      "totalTransfer": 13,
+      "jsBytes": 0,
+      "cssBytes": 0,
+      "imageBytes": 0,
+      "fontBytes": 0,
+      "resourceCount": 51,
+      "cls": 0,
+      "clsSources": [],
+      "thirdParty": [],
+      "images": [
+        {
+          "src": "https://pms-nine-gold.vercel.app/_next/image?url=%2Flogo-wrapper.png&w=32&q=75",
+          "loading": "lazy",
+          "width": 16,
+          "height": 16,
+          "hasExplicitDimensions": true,
+          "isNextImage": true
+        },
+        {
+          "src": "https://lazhmdyajdqbnxxwyxun.supabase.co/storage/v1/render/image/public/avatars/",
+          "loading": "auto",
+          "width": 32,
+          "height": 32,
+          "hasExplicitDimensions": false,
+          "isNextImage": false
+        }
+      ],
+      "fonts": [
+        "Geist (unloaded)",
+        "Geist (loaded)",
+        "Geist Fallback (unloaded)",
+        "Geist Mono (unloaded)",
+        "Geist Mono (loaded)",
+        "Geist Mono Fallback (loaded)"
+      ],
+      "fontCount": 2
+    },
+    {
+      "page": "Chat",
+      "path": "/chat",
+      "ttfb": 92,
+      "fcp": 964,
+      "domInteractive": 1001,
+      "domComplete": 1002,
+      "domCount": 294,
+      "scriptCount": 60,
+      "stylesheetCount": 2,
+      "totalTransfer": 16,
+      "jsBytes": 0,
+      "cssBytes": 0,
+      "imageBytes": 0,
+      "fontBytes": 0,
+      "resourceCount": 59,
+      "cls": 0,
+      "clsSources": [],
+      "thirdParty": [],
+      "images": [
+        {
+          "src": "https://pms-nine-gold.vercel.app/_next/image?url=%2Flogo-wrapper.png&w=32&q=75",
+          "loading": "lazy",
+          "width": 16,
+          "height": 16,
+          "hasExplicitDimensions": true,
+          "isNextImage": true
+        },
+        {
+          "src": "https://lazhmdyajdqbnxxwyxun.supabase.co/storage/v1/render/image/public/avatars/",
+          "loading": "auto",
+          "width": 32,
+          "height": 32,
+          "hasExplicitDimensions": false,
+          "isNextImage": false
+        }
+      ],
+      "fonts": [
+        "Geist (unloaded)",
+        "Geist (loaded)",
+        "Geist Fallback (unloaded)",
+        "Geist Mono (unloaded)",
+        "Geist Mono (loaded)",
+        "Geist Mono Fallback (loaded)"
+      ],
+      "fontCount": 2
+    },
+    {
+      "page": "Performance",
+      "path": "/performance",
+      "ttfb": 106,
+      "fcp": 756,
+      "domInteractive": 885,
+      "domComplete": 898,
+      "domCount": 442,
+      "scriptCount": 65,
+      "stylesheetCount": 2,
+      "totalTransfer": 14,
+      "jsBytes": 0,
+      "cssBytes": 0,
+      "imageBytes": 0,
+      "fontBytes": 0,
+      "resourceCount": 61,
+      "cls": 0,
+      "clsSources": [],
+      "thirdParty": [],
+      "images": [
+        {
+          "src": "https://pms-nine-gold.vercel.app/_next/image?url=%2Flogo-wrapper.png&w=32&q=75",
+          "loading": "lazy",
+          "width": 16,
+          "height": 16,
+          "hasExplicitDimensions": true,
+          "isNextImage": true
+        },
+        {
+          "src": "https://lazhmdyajdqbnxxwyxun.supabase.co/storage/v1/render/image/public/avatars/",
+          "loading": "auto",
+          "width": 32,
+          "height": 32,
+          "hasExplicitDimensions": false,
+          "isNextImage": false
+        },
+        {
+          "src": "https://lazhmdyajdqbnxxwyxun.supabase.co/storage/v1/render/image/public/avatars/",
+          "loading": "auto",
+          "width": 20,
+          "height": 20,
+          "hasExplicitDimensions": false,
+          "isNextImage": false
+        }
+      ],
+      "fonts": [
+        "Geist (unloaded)",
+        "Geist (loaded)",
+        "Geist Fallback (unloaded)",
+        "Geist Mono (unloaded)",
+        "Geist Mono (loaded)",
+        "Geist Mono Fallback (loaded)"
+      ],
+      "fontCount": 2
+    },
+    {
+      "page": "Settings",
+      "path": "/settings",
+      "ttfb": 94,
+      "fcp": 712,
+      "domInteractive": 829,
+      "domComplete": 830,
+      "domCount": 380,
+      "scriptCount": 58,
+      "stylesheetCount": 2,
+      "totalTransfer": 20,
+      "jsBytes": 7,
+      "cssBytes": 0,
+      "imageBytes": 0,
+      "fontBytes": 0,
+      "resourceCount": 54,
+      "cls": 0,
+      "clsSources": [],
+      "thirdParty": [],
+      "images": [
+        {
+          "src": "https://pms-nine-gold.vercel.app/_next/image?url=%2Flogo-wrapper.png&w=32&q=75",
+          "loading": "lazy",
+          "width": 16,
+          "height": 16,
+          "hasExplicitDimensions": true,
+          "isNextImage": true
+        },
+        {
+          "src": "https://lazhmdyajdqbnxxwyxun.supabase.co/storage/v1/render/image/public/avatars/",
+          "loading": "auto",
+          "width": 32,
+          "height": 32,
+          "hasExplicitDimensions": false,
+          "isNextImage": false
+        },
+        {
+          "src": "https://lazhmdyajdqbnxxwyxun.supabase.co/storage/v1/object/public/avatars/56e3e8",
+          "loading": "auto",
+          "width": 64,
+          "height": 64,
+          "hasExplicitDimensions": false,
+          "isNextImage": false
+        }
+      ],
+      "fonts": [
+        "Geist (unloaded)",
+        "Geist (loaded)",
+        "Geist Fallback (unloaded)",
+        "Geist Mono (unloaded)",
+        "Geist Mono (loaded)",
+        "Geist Mono Fallback (loaded)"
+      ],
+      "fontCount": 2
+    }
+  ],
+  "lighthouse": [
+    {
+      "page": "login",
+      "performance": 85,
+      "accessibility": 100,
+      "bestPractices": 100,
+      "seo": 100,
+      "fcp": 1204.305,
+      "lcp": 2554.3050000000003,
+      "cls": 0,
+      "tbt": 471.5,
+      "si": 2006.220234001234
+    },
+    {
+      "page": "inbox",
+      "performance": 78,
+      "accessibility": 100,
+      "bestPractices": 96,
+      "seo": 100,
+      "fcp": 1579.975,
+      "lcp": 2029.975,
+      "cls": 0,
+      "tbt": 728.0000000000005,
+      "si": 4535.251071502153
+    },
+    {
+      "page": "projects",
+      "performance": 69,
+      "accessibility": 100,
+      "bestPractices": 96,
+      "seo": 100,
+      "fcp": 1316.643,
+      "lcp": 3012.643,
+      "cls": 0.002120803285505214,
+      "tbt": 1168,
+      "si": 3811.324158598577
+    },
+    {
+      "page": "tasks",
+      "performance": 47,
+      "accessibility": 95,
+      "bestPractices": 96,
+      "seo": 100,
+      "fcp": 1685.4335,
+      "lcp": 5302.422500000001,
+      "cls": 0.06995639511320358,
+      "tbt": 1544.312,
+      "si": 5866.5339182610205
+    },
+    {
+      "page": "clients",
+      "performance": 61,
+      "accessibility": 96,
+      "bestPractices": 96,
+      "seo": 100,
+      "fcp": 1342.587,
+      "lcp": 3442.587,
+      "cls": 0,
+      "tbt": 1492.4999999999998,
+      "si": 5217.274196449798
+    },
+    {
+      "page": "settings",
+      "performance": 56,
+      "accessibility": 100,
+      "bestPractices": 96,
+      "seo": 100,
+      "fcp": 1708.6420000000003,
+      "lcp": 5248.830500000002,
+      "cls": 0,
+      "tbt": 1069.0825,
+      "si": 3154.78387823895
+    }
+  ],
+  "bundle": {
+    "totalJS": 5265,
+    "chunkCount": 150,
+    "top15": [
+      {
+        "name": "chunks\\fcbfb7ec4fc992cf.js",
+        "sizeKB": 429
+      },
+      {
+        "name": "chunks\\57453136907ddf0e.js",
+        "sizeKB": 357
+      },
+      {
+        "name": "chunks\\872f16af2f34b56d.js",
+        "sizeKB": 271
+      },
+      {
+        "name": "chunks\\9e301bcedcec7b50.js",
+        "sizeKB": 223
+      },
+      {
+        "name": "chunks\\8a8036a9bdf4609c.js",
+        "sizeKB": 191
+      },
+      {
+        "name": "chunks\\a6dad97d9634a72d.js",
+        "sizeKB": 110
+      },
+      {
+        "name": "chunks\\6495940ba01f0278.js",
+        "sizeKB": 102
+      },
+      {
+        "name": "chunks\\ee199b30a5133459.js",
+        "sizeKB": 95
+      },
+      {
+        "name": "chunks\\b9960b8c0d946375.js",
+        "sizeKB": 91
+      },
+      {
+        "name": "chunks\\a532e01daef37b6e.js",
+        "sizeKB": 88
+      },
+      {
+        "name": "chunks\\07bb877983b20a72.js",
+        "sizeKB": 87
+      },
+      {
+        "name": "chunks\\1c484ce79439d8e9.js",
+        "sizeKB": 86
+      },
+      {
+        "name": "chunks\\715d5ee177cb73b1.js",
+        "sizeKB": 86
+      },
+      {
+        "name": "chunks\\55333b2a61ab7b8b.js",
+        "sizeKB": 80
+      },
+      {
+        "name": "chunks\\ce035cdf2422d6be.js",
+        "sizeKB": 64
+      }
+    ]
+  },
+  "interactions": [
+    {
+      "interaction": "Command Palette (Ctrl+K)",
+      "ms": 803
+    },
+    {
+      "interaction": "Sidebar Navigation (Inbox -> Projects)",
+      "ms": 420
+    },
+    {
+      "interaction": "Sidebar Navigation (Projects -> Tasks)",
+      "ms": 382
+    },
+    {
+      "interaction": "Sidebar Navigation (Settings)",
+      "error": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-slot=\"sidebar\""
+    }
+  ]
+}
