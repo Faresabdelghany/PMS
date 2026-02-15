@@ -16,6 +16,7 @@ export type TaskListDndWrapperProps = {
   groups: ProjectTaskGroup[]
   allGroups: ProjectTaskGroup[]
   onToggleTask: (taskId: string) => void
+  onTitleClick?: (taskId: string) => void
   onAddTask: (context: CreateTaskContext) => void
   onEditTask?: (task: TaskLike) => void
   onDeleteTask?: (taskId: string) => void
@@ -26,6 +27,7 @@ export function TaskListDndWrapper({
   groups,
   allGroups,
   onToggleTask,
+  onTitleClick,
   onAddTask,
   onEditTask,
   onDeleteTask,
@@ -74,6 +76,7 @@ export function TaskListDndWrapper({
       <ProjectTaskListView
         groups={groups}
         onToggleTask={onToggleTask}
+        onTitleClick={onTitleClick}
         onAddTask={onAddTask}
         onEditTask={onEditTask}
         onDeleteTask={onDeleteTask}

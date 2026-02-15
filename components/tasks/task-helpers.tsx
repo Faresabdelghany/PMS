@@ -48,12 +48,13 @@ import { getTaskDescriptionSnippet, type TaskLike, type ProjectTaskGroup } from 
 export type ProjectTasksSectionProps = {
   group: ProjectTaskGroup
   onToggleTask: (taskId: string) => void
+  onTitleClick?: (taskId: string) => void
   onAddTask: (context: CreateTaskContext) => void
   onEditTask?: (task: TaskLike) => void
   onDeleteTask?: (taskId: string) => void
 }
 
-export function ProjectTasksSection({ group, onToggleTask, onAddTask, onEditTask, onDeleteTask }: ProjectTasksSectionProps) {
+export function ProjectTasksSection({ group, onToggleTask, onTitleClick, onAddTask, onEditTask, onDeleteTask }: ProjectTasksSectionProps) {
   const [expanded, setExpanded] = useState(false)
   const { project, tasks } = group
   const total = tasks.length
@@ -127,6 +128,7 @@ export function ProjectTasksSection({ group, onToggleTask, onAddTask, onEditTask
               key={task.id}
               task={task}
               onToggle={() => onToggleTask(task.id)}
+              onTitleClick={onTitleClick}
               onEdit={onEditTask}
               onDelete={onDeleteTask}
             />
@@ -213,11 +215,12 @@ function getPriorityLabel(priority: string): string {
 export type TaskRowDnDProps = {
   task: TaskLike
   onToggle: () => void
+  onTitleClick?: (taskId: string) => void
   onEdit?: (task: TaskLike) => void
   onDelete?: (taskId: string) => void
 }
 
-export function TaskRowDnD({ task, onToggle, onEdit, onDelete }: TaskRowDnDProps) {
+export function TaskRowDnD({ task, onToggle, onTitleClick, onEdit, onDelete }: TaskRowDnDProps) {
   const isDone = task.status === "done"
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -235,6 +238,7 @@ export function TaskRowDnD({ task, onToggle, onEdit, onDelete }: TaskRowDnDProps
         checked={isDone}
         title={task.name}
         onCheckedChange={onToggle}
+        onTitleClick={onTitleClick ? () => onTitleClick(task.id) : undefined}
         titleAriaLabel={task.name}
         titleSuffix={<TaskBadges workstreamName={task.workstreamName} className="hidden sm:inline" />}
         subtitle={<div className="hidden sm:inline">{getTaskDescriptionSnippet(task)}</div>}
@@ -318,12 +322,13 @@ export function TaskRowDnD({ task, onToggle, onEdit, onDelete }: TaskRowDnDProps
 export type ProjectTaskListViewProps = {
   groups: ProjectTaskGroup[]
   onToggleTask: (taskId: string) => void
+  onTitleClick?: (taskId: string) => void
   onAddTask: (context: CreateTaskContext) => void
   onEditTask?: (task: TaskLike) => void
   onDeleteTask?: (taskId: string) => void
 }
 
-export function ProjectTaskListView({ groups, onToggleTask, onAddTask, onEditTask, onDeleteTask }: ProjectTaskListViewProps) {
+export function ProjectTaskListView({ groups, onToggleTask, onTitleClick, onAddTask, onEditTask, onDeleteTask }: ProjectTaskListViewProps) {
   return (
     <>
       {groups.map((group, index) => {
@@ -332,6 +337,7 @@ export function ProjectTaskListView({ groups, onToggleTask, onAddTask, onEditTas
             key={group.project.id}
             group={group}
             onToggleTask={onToggleTask}
+            onTitleClick={onTitleClick}
             onAddTask={onAddTask}
             onEditTask={onEditTask}
             onDeleteTask={onDeleteTask}

@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState, useCallback, useRef } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
 import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 
@@ -100,6 +101,11 @@ const DeleteTaskDialog = dynamic(
   () => import("@/components/tasks/DeleteTaskDialog").then(m => ({ default: m.DeleteTaskDialog })),
   { ssr: false }
 )
+// Lazy-load task detail panel — defers Tiptap/comment editor until a task is opened
+const TaskDetailPanel = dynamic(
+  () => import("@/components/tasks/TaskDetailPanel").then(m => ({ default: m.TaskDetailPanel })),
+  { ssr: false }
+)
 import type { MemberOption, TagOption } from "@/components/filter-popover"
 const FilterPopover = dynamic(
   () => import("@/components/filter-popover").then(m => ({ default: m.FilterPopover })),
@@ -114,7 +120,7 @@ const ViewOptionsPopover = dynamic(
   { ssr: false }
 )
 import { TaskQuickCreateModalLazy as TaskQuickCreateModal, type CreateTaskContext } from "@/components/tasks/TaskQuickCreateModalLazy"
-import type { OrganizationTagLean as OrganizationTag } from "@/lib/supabase/types"
+import type { OrganizationTagLean as OrganizationTag, Workstream } from "@/lib/supabase/types"
 import { formatDueLabel } from "@/lib/date-utils"
 import { toast } from "sonner"
 import { usePooledRealtime } from "@/hooks/realtime-context"
@@ -181,6 +187,9 @@ export function MyTasksPage({
   organizationMembers = [],
   organizationTags = [],
 }: MyTasksPageProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
   const fetchMoreTasks = useCallback(
     (cursor: string) => {
       if (!organizationId) return Promise.resolve({ data: [], hasMore: false, nextCursor: null })
@@ -373,6 +382,25 @@ export function MyTasksPage({
     setCreateContext(undefined)
     setIsCreateTaskOpen(true)
   }
+
+  // Open task detail panel via URL param (same pattern as ProjectTasksTab)
+  // Uses window.location.search instead of searchParams to avoid recreating
+  // the callback on every URL change (which would bust TaskRowBase memo)
+  const openTaskDetail = useCallback((taskId: string) => {
+    const params = new URLSearchParams(window.location.search)
+    params.set("task", taskId)
+    router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false })
+  }, [router])
+
+  // Resolve workstreams for the task currently open in the detail panel
+  const activeTaskId = searchParams.get("task")
+  const activeTask = activeTaskId ? tasks.find(t => t.id === activeTaskId) : null
+  const activeProjectId = activeTask?.project?.id || ""
+  const activeWorkstreams = useMemo(() => {
+    if (!activeProjectId) return []
+    const project = projects.find(p => p.id === activeProjectId)
+    return (project?.workstreams || []).map(w => ({ id: w.id, name: w.name }) as Workstream)
+  }, [activeProjectId, projects])
 
   const handleTaskCreated = useCallback((task: UITask) => {
     // The task will be added via real-time subscription or we add it optimistically
@@ -636,6 +664,7 @@ export function MyTasksPage({
             groups={visibleGroups}
             allGroups={groups}
             onToggleTask={toggleTask}
+            onTitleClick={openTaskDetail}
             onAddTask={(context) => openCreateTask(context)}
             onEditTask={openEditTask}
             onDeleteTask={(taskId) => setTaskToDelete(taskId)}
@@ -649,7 +678,7 @@ export function MyTasksPage({
             onToggleTask={toggleTask}
             onChangeTag={changeTaskTag}
             onMoveTaskDate={moveTaskDate}
-            onOpenTask={(task) => openEditTask(task)}
+            onOpenTask={(task) => openTaskDetail(task.id)}
             tags={organizationTags}
           />
         )}
@@ -678,6 +707,20 @@ export function MyTasksPage({
           onOpenChange={(open) => !open && setTaskToDelete(null)}
           onConfirm={handleDeleteTask}
           isDeleting={isDeleting}
+        />
+      )}
+
+      {/* Task Detail Panel — only mount when ?task= param is present */}
+      {activeTaskId && organizationId && (
+        <TaskDetailPanel
+          projectId={activeProjectId}
+          organizationId={organizationId}
+          organizationMembers={organizationMembers.map(m => ({
+            user_id: m.user_id,
+            profile: m.profile,
+          }))}
+          workstreams={activeWorkstreams}
+          tags={organizationTags}
         />
       )}
     </div>
