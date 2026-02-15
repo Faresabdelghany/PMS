@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { format } from 'date-fns'
 import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank"
@@ -177,8 +177,17 @@ export function TaskQuickCreateModal({
   const [priority, setPriority] = useState<PriorityOption | undefined>(PRIORITY_OPTIONS[0])
   const [selectedTag, setSelectedTag] = useState<OrganizationTag | undefined>(undefined)
 
+  // Track previous open state so we only reset form when the modal first opens,
+  // not when parent re-renders while the modal is already open (which would
+  // clear the "Create more" toggle and form fields mid-use).
+  const prevOpenRef = useRef(false)
+
   useEffect(() => {
-    if (!open) return
+    const wasOpen = prevOpenRef.current
+    prevOpenRef.current = open
+
+    // Only initialize when transitioning from closed → open
+    if (!open || wasOpen) return
 
     if (editingTask) {
       setProjectId(editingTask.projectId)
