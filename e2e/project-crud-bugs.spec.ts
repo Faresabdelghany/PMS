@@ -404,8 +404,11 @@ test.describe('Project CRUD Bug-Hunting Tests', () => {
       // Submit update
       await page.getByRole('button', { name: 'Update Project' }).click();
 
-      // Wait for update and verify
-      await page.waitForTimeout(2000);
+      // Wait for the edit form to close (signals update completed on server)
+      await expect(page.getByRole('textbox', { name: 'Project title' })).not.toBeVisible({ timeout: 15000 });
+      await page.waitForTimeout(1000);
+
+      // Navigate and verify
       await projectsPage.goTo();
       await projectsPage.waitForProjectsLoad();
 
@@ -497,8 +500,9 @@ test.describe('Project CRUD Bug-Hunting Tests', () => {
       await projectsPage.goTo();
       await projectsPage.waitForProjectsLoad();
 
-      // The project should display with escaped HTML
-      const projectCard = page.getByRole('button', { name: new RegExp('XSS Test') });
+      // The project should display with escaped HTML — use exact timestamp to avoid stale matches
+      const escapedName = xssName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const projectCard = page.getByRole('button', { name: new RegExp(escapedName) });
       await expect(projectCard).toBeVisible({ timeout: 10000 });
 
       // Should contain the raw HTML text, not rendered HTML
@@ -583,8 +587,8 @@ test.describe('Project CRUD Bug-Hunting Tests', () => {
       const value = await titleInput.inputValue();
       expect(value).toBe(projectName);
 
-      // Verify High priority is shown
-      const priorityButton = page.getByRole('button', { name: 'High' });
+      // Verify High priority is shown (use exact to avoid matching project cards containing "High")
+      const priorityButton = page.getByRole('button', { name: 'High', exact: true });
       await expect(priorityButton).toBeVisible();
 
       // Verify Update button is shown (not Create)

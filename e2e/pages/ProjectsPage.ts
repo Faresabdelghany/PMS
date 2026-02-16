@@ -80,9 +80,9 @@ export class ProjectsPage extends BasePage {
 
     // Projects container
     this.projectsContainer = page.locator('[data-testid="projects-container"]').or(page.locator('main'));
-    // Project cards are buttons with "Open project" in the accessible name
+    // Project cards are div[role="button"] with rounded-2xl class (the ProjectCard component)
     this.projectCards = page.locator('[data-testid="project-card"]')
-      .or(page.getByRole('button', { name: /^Open project/ }));
+      .or(page.locator('div[role="button"].rounded-2xl'));
     this.projectRows = page.locator('[data-testid="project-row"]').or(page.locator('tr[data-project-id]'));
     // Empty state - target the heading specifically
     this.emptyState = page.getByRole('heading', { name: 'No projects yet' });
@@ -109,7 +109,7 @@ export class ProjectsPage extends BasePage {
    * Navigate to projects page
    */
   async goTo(): Promise<this> {
-    await this.navigate('/');
+    await this.navigate('/projects');
     await this.waitForDOMReady();
     return this;
   }
@@ -343,8 +343,9 @@ export class ProjectsPage extends BasePage {
    * Test cases: PV-006, PV-011
    */
   async clickProject(name: string): Promise<void> {
-    const project = this.getProjectByName(name);
-    await project.click();
+    // Use the card's project name text (inside .font-semibold) for precise matching
+    const projectCard = this.page.locator('div[role="button"].rounded-2xl').filter({ hasText: name }).first();
+    await projectCard.click();
     await this.page.waitForURL(/\/projects\//, { timeout: 10000 });
   }
 
