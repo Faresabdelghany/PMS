@@ -296,6 +296,7 @@ export function ProjectDetailsPage({
                       workstreams={project.workstreams}
                       allProjectTasks={tasks.map(t => ({ id: t.id, name: t.name, workstream_id: t.workstream_id }))}
                       organizationMembers={organizationMembers}
+                      organizationTags={organizationTags}
                       onAddTask={handleAddTaskFromWorkstream}
                       onEditTask={handleEditTaskFromWorkstream}
                     />

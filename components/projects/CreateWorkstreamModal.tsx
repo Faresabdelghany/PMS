@@ -16,7 +16,7 @@ import { QuickCreateModalLayout } from '@/components/QuickCreateModalLayout'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { toast } from 'sonner'
 import { createWorkstream, updateWorkstream, type CreateWorkstreamInput, type UpdateWorkstreamInput } from '@/lib/actions/workstreams'
-import type { Workstream } from '@/lib/supabase/types'
+import type { Workstream, OrganizationTagLean } from '@/lib/supabase/types'
 
 type TaskOption = {
   id: string
@@ -25,19 +25,6 @@ type TaskOption = {
   workstreamName: string | null
 }
 
-export type TagOption = {
-  id: string
-  label: string
-}
-
-const TAG_OPTIONS: TagOption[] = [
-  { id: 'planning', label: 'Planning' },
-  { id: 'development', label: 'Development' },
-  { id: 'design', label: 'Design' },
-  { id: 'testing', label: 'Testing' },
-  { id: 'deployment', label: 'Deployment' },
-]
-
 interface CreateWorkstreamModalProps {
   open: boolean
   onClose: () => void
@@ -45,6 +32,7 @@ interface CreateWorkstreamModalProps {
   projectEndDate?: string | null
   existingTasks?: TaskOption[]
   editingWorkstream?: Workstream | null
+  organizationTags?: OrganizationTagLean[]
   onWorkstreamCreated?: (workstream: Workstream) => void
   onWorkstreamUpdated?: (workstream: Workstream) => void
 }
@@ -56,6 +44,7 @@ export function CreateWorkstreamModal({
   projectEndDate,
   existingTasks = [],
   editingWorkstream,
+  organizationTags = [],
   onWorkstreamCreated,
   onWorkstreamUpdated,
 }: CreateWorkstreamModalProps) {
@@ -66,7 +55,7 @@ export function CreateWorkstreamModal({
 
   const [startDate, setStartDate] = useState<Date | undefined>(undefined)
   const [endDate, setEndDate] = useState<Date | undefined>(undefined)
-  const [selectedTag, setSelectedTag] = useState<TagOption | undefined>(undefined)
+  const [selectedTag, setSelectedTag] = useState<OrganizationTagLean | undefined>(undefined)
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([])
 
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -92,7 +81,7 @@ export function CreateWorkstreamModal({
       setStartDate(editingWorkstream.start_date ? new Date(editingWorkstream.start_date) : undefined)
       setEndDate(editingWorkstream.end_date ? new Date(editingWorkstream.end_date) : undefined)
       const tagOption = editingWorkstream.tag
-        ? TAG_OPTIONS.find((t) => t.label.toLowerCase() === editingWorkstream.tag?.toLowerCase())
+        ? organizationTags.find((t) => t.name.toLowerCase() === editingWorkstream.tag?.toLowerCase())
         : undefined
       setSelectedTag(tagOption)
       // Pre-select tasks that are already in this workstream
@@ -112,7 +101,7 @@ export function CreateWorkstreamModal({
       setCreateMore(false)
       setIsDescriptionExpanded(false)
     }
-  }, [open, editingWorkstream])
+  }, [open, editingWorkstream, organizationTags])
 
   const toggleTaskSelection = useCallback((taskId: string) => {
     setSelectedTaskIds((prev) =>
@@ -151,7 +140,7 @@ export function CreateWorkstreamModal({
           description: description || null,
           startDate: startDate?.toISOString().split('T')[0] || null,
           endDate: endDate?.toISOString().split('T')[0] || null,
-          tag: selectedTag?.label || null,
+          tag: selectedTag?.name || null,
           taskIds: selectedTaskIds, // Include task assignments
         }
 
@@ -173,7 +162,7 @@ export function CreateWorkstreamModal({
           description: description || null,
           startDate: startDate?.toISOString().split('T')[0] || null,
           endDate: endDate?.toISOString().split('T')[0] || null,
-          tag: selectedTag?.label || null,
+          tag: selectedTag?.name || null,
           taskIds: selectedTaskIds.length > 0 ? selectedTaskIds : undefined,
         }
 
@@ -285,25 +274,38 @@ export function CreateWorkstreamModal({
         />
 
         {/* Tag */}
-        <GenericPicker
-          items={TAG_OPTIONS}
-          onSelect={setSelectedTag}
-          selectedId={selectedTag?.id}
-          placeholder="Add tag..."
-          renderItem={(item) => (
-            <div className="flex items-center gap-2 w-full">
-              <span className="flex-1">{item.label}</span>
-            </div>
-          )}
-          trigger={
-            <button className="bg-background flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:bg-black/5 transition-colors">
-              <TagIcon className="size-4 text-muted-foreground" />
-              <span className="font-medium text-foreground text-sm leading-5">
-                {selectedTag?.label ?? 'Tag'}
-              </span>
-            </button>
-          }
-        />
+        {organizationTags.length > 0 && (
+          <GenericPicker
+            items={organizationTags}
+            onSelect={setSelectedTag}
+            selectedId={selectedTag?.id}
+            placeholder="Search tags..."
+            renderItem={(item) => (
+              <div className="flex items-center gap-2 w-full">
+                <span
+                  className="size-3 rounded-full shrink-0"
+                  style={{ backgroundColor: item.color }}
+                />
+                <span className="flex-1">{item.name}</span>
+              </div>
+            )}
+            trigger={
+              <button className="bg-background flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:bg-black/5 transition-colors">
+                {selectedTag ? (
+                  <span
+                    className="size-3.5 rounded-full shrink-0"
+                    style={{ backgroundColor: selectedTag.color }}
+                  />
+                ) : (
+                  <TagIcon className="size-4 text-muted-foreground" />
+                )}
+                <span className="font-medium text-foreground text-sm leading-5">
+                  {selectedTag?.name ?? 'Tag'}
+                </span>
+              </button>
+            }
+          />
+        )}
       </div>
 
       {/* Project end date info */}

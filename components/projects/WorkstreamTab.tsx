@@ -76,7 +76,7 @@ import {
   type TaskStatus,
   type TaskPriority,
 } from "@/lib/constants/status"
-import type { Database } from "@/lib/supabase/types"
+import type { Database, OrganizationTagLean } from "@/lib/supabase/types"
 
 type TaskRow = Database["public"]["Tables"]["tasks"]["Row"]
 type WorkstreamRow = Database["public"]["Tables"]["workstreams"]["Row"]
@@ -105,6 +105,7 @@ type WorkstreamTabProps = {
   workstreams: WorkstreamGroup[] | undefined
   allProjectTasks?: ProjectTask[] // All project tasks for the modal picker
   organizationMembers?: OrganizationMember[]
+  organizationTags?: OrganizationTagLean[]
   onAddTask?: (workstreamId: string, workstreamName: string) => void
   onEditTask?: (task: WorkstreamTask, workstreamId: string, workstreamName: string) => void
   onRefresh?: () => void
@@ -116,6 +117,7 @@ export function WorkstreamTab({
   workstreams,
   allProjectTasks = [],
   organizationMembers = [],
+  organizationTags = [],
   onAddTask,
   onEditTask,
   onRefresh,
@@ -556,6 +558,7 @@ export function WorkstreamTab({
           projectId={projectId}
           projectEndDate={projectEndDate}
           existingTasks={existingTasks}
+          organizationTags={organizationTags}
           onWorkstreamCreated={handleWorkstreamCreated}
         />
       </section>
@@ -751,6 +754,7 @@ export function WorkstreamTab({
         projectEndDate={projectEndDate}
         existingTasks={existingTasks}
         editingWorkstream={editingWorkstream}
+        organizationTags={organizationTags}
         onWorkstreamCreated={handleWorkstreamCreated}
         onWorkstreamUpdated={handleWorkstreamUpdated}
       />
