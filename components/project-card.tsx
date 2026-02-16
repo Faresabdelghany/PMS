@@ -21,20 +21,23 @@ type ProjectCardProps = {
   variant?: "list" | "board"
 }
 
+import { getProjectStatusLabel } from "@/lib/constants/status"
+
 function statusConfig(status: Project["status"]) {
+  const label = getProjectStatusLabel(status)
   switch (status) {
     case "active":
-      return { label: "Active", dot: "bg-teal-600", pill: "text-teal-700 border-teal-200 bg-teal-50" }
+      return { label, dot: "bg-teal-600", pill: "text-teal-700 border-teal-200 bg-teal-50" }
     case "planned":
-      return { label: "Planned", dot: "bg-zinc-900", pill: "text-zinc-900 border-zinc-200 bg-zinc-50" }
+      return { label, dot: "bg-zinc-900", pill: "text-zinc-900 border-zinc-200 bg-zinc-50" }
     case "backlog":
-      return { label: "Backlog", dot: "bg-orange-600", pill: "text-orange-700 border-orange-200 bg-orange-50" }
+      return { label, dot: "bg-orange-600", pill: "text-orange-700 border-orange-200 bg-orange-50" }
     case "completed":
-      return { label: "Completed", dot: "bg-blue-600", pill: "text-blue-700 border-blue-200 bg-blue-50" }
+      return { label, dot: "bg-blue-600", pill: "text-blue-700 border-blue-200 bg-blue-50" }
     case "cancelled":
-      return { label: "Cancelled", dot: "bg-rose-600", pill: "text-rose-700 border-rose-200 bg-rose-50" }
+      return { label, dot: "bg-rose-600", pill: "text-rose-700 border-rose-200 bg-rose-50" }
     default:
-      return { label: status, dot: "bg-zinc-400", pill: "text-zinc-700 border-zinc-200 bg-zinc-50" }
+      return { label, dot: "bg-zinc-400", pill: "text-zinc-700 border-zinc-200 bg-zinc-50" }
   }
 }
 

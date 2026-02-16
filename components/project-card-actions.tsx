@@ -23,6 +23,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
+import { useRouter } from "next/navigation"
 import { deleteProject } from "@/lib/actions/projects"
 import type { Project } from "@/lib/data/projects"
 
@@ -32,6 +33,7 @@ type ProjectCardActionsProps = {
 }
 
 export function ProjectCardActions({ project, onEdit }: ProjectCardActionsProps) {
+  const router = useRouter()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -43,6 +45,8 @@ export function ProjectCardActions({ project, onEdit }: ProjectCardActionsProps)
         toast.error(result.error)
       } else {
         toast.success(`Project "${project.name}" deleted`)
+        // Refresh the page to update the list — Realtime may not fire immediately
+        router.refresh()
       }
     } catch {
       toast.error("Failed to delete project")

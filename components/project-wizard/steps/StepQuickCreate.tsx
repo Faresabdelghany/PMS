@@ -34,6 +34,7 @@ import { SquaresFour } from "@phosphor-icons/react/dist/ssr/SquaresFour"
 import { Bookmark } from "@phosphor-icons/react/dist/ssr/Bookmark"
 import { ProjectDescriptionEditorLazy as ProjectDescriptionEditor } from "../ProjectDescriptionEditorLazy";
 import type { ProjectStatus, ProjectPriority, OrganizationTag, OrganizationLabel } from "@/lib/supabase/types";
+import type { WorkflowStatus } from "@/lib/actions/workflow-statuses";
 import type { OrganizationMember } from "./StepOwnership";
 
 type Client = { id: string; name: string };
@@ -80,13 +81,42 @@ export type EditingProjectData = {
 
 // --- Static Options (not user data) ---
 
-const STATUSES = [
-  { id: "backlog", label: "Pre-Sales", dotClass: "bg-orange-600" },
-  { id: "todo", label: "Planned", dotClass: "bg-neutral-300" },
-  { id: "in-progress", label: "Active", dotClass: "bg-yellow-400" },
-  { id: "done", label: "Completed", dotClass: "bg-green-600" },
-  { id: "canceled", label: "Cancelled", dotClass: "bg-neutral-400" },
+type StatusOption = { id: string; label: string; dotClass: string };
+
+// Fallback statuses when no workflow_statuses configured in settings.
+// IDs match the DB ENUM values directly — no remapping needed.
+const FALLBACK_STATUSES: StatusOption[] = [
+  { id: "backlog", label: "Backlog", dotClass: "bg-orange-600" },
+  { id: "planned", label: "Planned", dotClass: "bg-neutral-300" },
+  { id: "active", label: "Active", dotClass: "bg-yellow-400" },
+  { id: "completed", label: "Completed", dotClass: "bg-green-600" },
+  { id: "cancelled", label: "Cancelled", dotClass: "bg-neutral-400" },
 ];
+
+// Map workflow category to a dot color
+const CATEGORY_COLORS: Record<string, string> = {
+  unstarted: "bg-orange-600",
+  started: "bg-yellow-400",
+  finished: "bg-green-600",
+  canceled: "bg-neutral-400",
+};
+
+// Map workflow status name to the DB ENUM value
+const STATUS_NAME_TO_DB: Record<string, ProjectStatus> = {
+  backlog: "backlog",
+  planned: "planned",
+  active: "active",
+  completed: "completed",
+  cancelled: "cancelled",
+};
+
+function workflowStatusesToOptions(statuses: WorkflowStatus[]): StatusOption[] {
+  return statuses.map((s) => ({
+    id: STATUS_NAME_TO_DB[s.name.toLowerCase()] ?? s.name.toLowerCase(),
+    label: s.name,
+    dotClass: CATEGORY_COLORS[s.category] ?? "bg-neutral-300",
+  }));
+}
 
 const PRIORITIES = [
   { id: "no-priority", label: "No Priority", icon: "BarChart" },
@@ -221,6 +251,7 @@ interface StepQuickCreateProps {
   organizationMembers?: OrganizationMember[];
   tags?: OrganizationTag[];
   labels?: OrganizationLabel[];
+  workflowStatuses?: WorkflowStatus[];
   editingProject?: EditingProjectData | null;
 }
 
@@ -233,6 +264,7 @@ export function StepQuickCreate({
   organizationMembers = [],
   tags = [],
   labels = [],
+  workflowStatuses = [],
   editingProject,
 }: StepQuickCreateProps) {
   const isEditing = !!editingProject;
@@ -283,6 +315,13 @@ export function StepQuickCreate({
   const effectiveGroupLabels = groupLabels.length > 0 ? groupLabels : FALLBACK_GROUPS;
   const effectiveBadgeLabels = badgeLabels.length > 0 ? badgeLabels : FALLBACK_BADGES;
 
+  // Use workflow statuses from settings if available, otherwise fallback.
+  // IDs now match DB ENUM values directly (backlog, planned, active, completed, cancelled).
+  const effectiveStatuses: StatusOption[] = useMemo(() =>
+    workflowStatuses.length > 0 ? workflowStatusesToOptions(workflowStatuses) : FALLBACK_STATUSES,
+    [workflowStatuses]
+  );
+
   // Convert org members to picker format (filter out members without profiles)
   const memberOptions = organizationMembers
     .filter((m) => m.profile !== null)
@@ -292,16 +331,9 @@ export function StepQuickCreate({
       avatar: m.profile!.avatar_url || "",
     }));
 
-  // Helper to map Supabase status to UI status
+  // Helper to map Supabase status to UI status — IDs now match DB values directly
   const mapSupabaseToUIStatus = (status: ProjectStatus) => {
-    const mapping: Record<ProjectStatus, string> = {
-      "backlog": "backlog",
-      "planned": "todo",
-      "active": "in-progress",
-      "completed": "done",
-      "cancelled": "canceled",
-    };
-    return STATUSES.find(s => s.id === mapping[status]) || STATUSES[1];
+    return effectiveStatuses.find(s => s.id === status) || effectiveStatuses.find(s => s.id === "planned") || effectiveStatuses[0];
   };
 
   // Helper to find owner from project members
@@ -321,9 +353,10 @@ export function StepQuickCreate({
   const [startDate, setStartDate] = useState<Date | undefined>(
     editingProject?.start_date ? new Date(editingProject.start_date) : new Date()
   );
-  const [status, setStatus] = useState(
-    isEditing && editingProject?.status ? mapSupabaseToUIStatus(editingProject.status) : STATUSES[1]
-  );
+  const [status, setStatus] = useState<StatusOption>(() => {
+    if (isEditing && editingProject?.status) return mapSupabaseToUIStatus(editingProject.status);
+    return effectiveStatuses.find(s => s.id === "planned") || effectiveStatuses[0];
+  });
   const [sprintType, setSprintType] = useState<LabelOption | null>(null);
   const [targetDate, setTargetDate] = useState<Date | undefined>(
     editingProject?.end_date ? new Date(editingProject.end_date) : undefined
@@ -389,15 +422,11 @@ export function StepQuickCreate({
     }
   }, [isEditing, editingProject, effectiveTypeLabels, effectiveGroupLabels, effectiveBadgeLabels, sprintType, group, label]);
 
+  // IDs now match DB ENUM values directly — cast is safe since effectiveStatuses
+  // are derived from the DB enum or FALLBACK_STATUSES which use DB enum values
   const mapStatusToSupabase = (statusId: string): ProjectStatus => {
-    const mapping: Record<string, ProjectStatus> = {
-      "backlog": "backlog",
-      "todo": "planned",
-      "in-progress": "active",
-      "done": "completed",
-      "canceled": "cancelled",
-    };
-    return mapping[statusId] || "planned";
+    const valid: ProjectStatus[] = ["backlog", "planned", "active", "completed", "cancelled"];
+    return valid.includes(statusId as ProjectStatus) ? (statusId as ProjectStatus) : "planned";
   };
 
   const mapPriorityToSupabase = (priorityId: string | undefined): ProjectPriority => {
@@ -574,7 +603,7 @@ export function StepQuickCreate({
 
           {/* Status Picker */}
           <GenericPicker
-            items={STATUSES}
+            items={effectiveStatuses}
             onSelect={setStatus}
             selectedId={status.id}
             placeholder="Change status..."

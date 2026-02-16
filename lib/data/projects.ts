@@ -7,8 +7,8 @@ export type Project = {
   name: string
   taskCount: number
   progress: number
-  startDate: Date
-  endDate: Date
+  startDate: Date | null
+  endDate: Date | null
   status: ProjectStatus
   priority: ProjectPriority
   tags: string[]

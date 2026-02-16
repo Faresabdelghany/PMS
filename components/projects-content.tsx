@@ -29,17 +29,14 @@ import type { EditingProjectData } from "@/components/project-wizard/steps/StepQ
 type ProjectRow = Database["public"]["Tables"]["projects"]["Row"]
 
 // Convert Supabase project to mock project format for compatibility with existing views
-// Note: Use a stable fallback date to avoid hydration mismatch (server vs client time diff)
-const FALLBACK_DATE = new Date("2000-01-01")
-
 function toMockProject(p: ProjectWithRelations): MockProject {
   return {
     id: p.id,
     name: p.name,
     taskCount: 0,
     progress: p.progress || 0,
-    startDate: p.start_date ? new Date(p.start_date) : FALLBACK_DATE,
-    endDate: p.end_date ? new Date(p.end_date) : FALLBACK_DATE,
+    startDate: p.start_date ? new Date(p.start_date) : null,
+    endDate: p.end_date ? new Date(p.end_date) : null,
     status: p.status,
     priority: p.priority,
     tags: p.tags || [],
@@ -140,25 +137,27 @@ export function ProjectsContent({
     return supabaseProjects.map(toMockProject)
   }, [supabaseProjects])
 
-  // Map projects to timeline format
+  // Map projects to timeline format — exclude projects without any dates since timeline requires date bounds
   const timelineProjects = useMemo(() =>
-    projects.map((p) => ({
-      id: p.id,
-      name: p.name,
-      startDate: p.startDate,
-      endDate: p.endDate,
-      progress: p.progress,
-      priority: p.priority,
-      taskCount: p.taskCount,
-      tasks: p.tasks.map((t) => ({
-        id: t.id,
-        name: t.name,
-        startDate: t.startDate,
-        endDate: t.endDate,
-        status: t.status,
-        assignee: t.assignee,
+    projects
+      .filter((p) => p.startDate || p.endDate)
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        startDate: p.startDate ?? p.endDate!,
+        endDate: p.endDate ?? p.startDate!,
+        progress: p.progress,
+        priority: p.priority,
+        taskCount: p.taskCount,
+        tasks: p.tasks.map((t) => ({
+          id: t.id,
+          name: t.name,
+          startDate: t.startDate,
+          endDate: t.endDate,
+          status: t.status,
+          assignee: t.assignee,
+        })),
       })),
-    })),
     [projects]
   )
 
@@ -175,8 +174,9 @@ export function ProjectsContent({
   const handleProjectCreated = () => {
     setIsWizardOpen(false)
     setEditingProject(null)
-    // Refresh projects after creation/update
+    // Refresh projects list and trigger server re-render (updates sidebar active projects)
     fetchProjects()
+    router.refresh()
   }
 
   // Convert ProjectWithRelations to EditingProjectData format
@@ -291,7 +291,7 @@ export function ProjectsContent({
     // Ordering
     const sorted = list.slice()
     if (viewOptions.ordering === "alphabetical") sorted.sort((a, b) => a.name.localeCompare(b.name))
-    if (viewOptions.ordering === "date") sorted.sort((a, b) => (a.endDate?.getTime() || 0) - (b.endDate?.getTime() || 0))
+    if (viewOptions.ordering === "date") sorted.sort((a, b) => (a.endDate?.getTime() ?? Infinity) - (b.endDate?.getTime() ?? Infinity))
     return sorted
   }, [filters, viewOptions, projects])
 

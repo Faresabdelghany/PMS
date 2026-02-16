@@ -43,15 +43,17 @@ export const ProjectRow = memo(function ProjectRow({ project, isExpanded, onTogg
 
         {/* Project Timeline */}
         <div className="relative py-3 pr-4 pt-4 pb-4 shrink-0" style={{ width: timelineWidth }}>
-          <TimelineBar
-            startDate={project.startDate}
-            endDate={project.endDate}
-            dates={dates}
-            cellWidth={cellWidth}
-            label={project.name}
-            progress={project.progress}
-            variant="project"
-          />
+          {project.startDate && project.endDate && (
+            <TimelineBar
+              startDate={project.startDate}
+              endDate={project.endDate}
+              dates={dates}
+              cellWidth={cellWidth}
+              label={project.name}
+              progress={project.progress}
+              variant="project"
+            />
+          )}
         </div>
       </div>
 

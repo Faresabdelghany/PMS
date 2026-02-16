@@ -21,6 +21,7 @@ import { createProject, updateProject } from "@/lib/actions/projects";
 import { getOrganizationMembers } from "@/lib/actions/organizations";
 import { getTags } from "@/lib/actions/tags";
 import { getLabels } from "@/lib/actions/labels";
+import { getWorkflowStatuses, type WorkflowStatus } from "@/lib/actions/workflow-statuses";
 import type { OrganizationTag, OrganizationLabel } from "@/lib/supabase/types";
 import { useUser } from "@/hooks/use-user";
 
@@ -61,17 +62,19 @@ export function ProjectWizard({ onClose, onCreate, organizationId, clients = EMP
   const [organizationMembers, setOrganizationMembers] = useState<OrganizationMember[]>([]);
   const [organizationTags, setOrganizationTags] = useState<OrganizationTag[]>([]);
   const [organizationLabels, setOrganizationLabels] = useState<OrganizationLabel[]>([]);
+  const [workflowStatuses, setWorkflowStatuses] = useState<WorkflowStatus[]>([]);
   const [data, setData] = useState<ProjectData>(() => ({ ...DEFAULT_PROJECT_DATA }));
 
-  // Fetch organization members, tags, and labels on mount
+  // Fetch organization members, tags, labels, and workflow statuses on mount
   useEffect(() => {
     async function fetchData() {
       if (!organizationId) return;
 
-      const [membersResult, tagsResult, labelsResult] = await Promise.all([
+      const [membersResult, tagsResult, labelsResult, statusesResult] = await Promise.all([
         getOrganizationMembers(organizationId),
         getTags(organizationId),
         getLabels(organizationId),
+        getWorkflowStatuses(organizationId, "project"),
       ]);
 
       if (membersResult.data) {
@@ -82,6 +85,9 @@ export function ProjectWizard({ onClose, onCreate, organizationId, clients = EMP
       }
       if (labelsResult.data) {
         setOrganizationLabels(labelsResult.data);
+      }
+      if (statusesResult.data) {
+        setWorkflowStatuses(statusesResult.data);
       }
     }
     fetchData();
@@ -198,6 +204,7 @@ export function ProjectWizard({ onClose, onCreate, organizationId, clients = EMP
                 organizationMembers={organizationMembers}
                 tags={organizationTags}
                 labels={organizationLabels}
+                workflowStatuses={workflowStatuses}
                 editingProject={editingProject}
                 onCreate={async (projectData: QuickCreateProjectData) => {
                   if (!organizationId) {

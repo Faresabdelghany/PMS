@@ -33,7 +33,7 @@ export const BacklogCard = memo(function BacklogCard({ backlog }: BacklogCardPro
   return (
     <div>
       <div className="pb-6">
-        <div className="text-base font-medium">Backlog</div>
+        <div className="text-base font-medium">{backlog.statusLabel}</div>
       </div>
       <div className="space-y-5">
         <StatRow
