@@ -111,9 +111,7 @@ export const ProjectCard = memo(function ProjectCard({ project, actions, variant
         goToDetails()
       }}
       onKeyDown={onKeyNavigate}
-      onMouseDown={onMouseDown}
-      onMouseMove={onMouseMove}
-      onMouseUp={onMouseUp}
+      {...(isBoard ? { onMouseDown, onMouseMove, onMouseUp } : undefined)}
       className="rounded-2xl border border-border bg-background hover:shadow-lg/5 transition-shadow cursor-pointer focus:outline-none [content-visibility:auto] [contain-intrinsic-size:auto_200px]"
     >
       <div className="p-4">

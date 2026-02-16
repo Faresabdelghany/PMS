@@ -29,36 +29,39 @@ export function StatCardSkeleton() {
  */
 export function ProjectCardSkeleton() {
   return (
-    <Card className="p-4">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <Skeleton className="h-5 w-48 mb-2" />
-          <Skeleton className="h-4 w-32 mb-3" />
-          <SkeletonText lines={2} />
-        </div>
+    <div className="rounded-2xl border border-border bg-background p-4" style={{ minHeight: 200 }}>
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-5 w-5 rounded" />
         <SkeletonBadge />
       </div>
-      <div className="flex items-center gap-2 mt-4">
-        <SkeletonAvatar size="sm" />
-        <SkeletonAvatar size="sm" />
+      <div className="mt-3">
+        <Skeleton className="h-5 w-48 mb-2" />
+        <Skeleton className="h-4 w-32" />
+      </div>
+      <div className="mt-2 flex items-center justify-between">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-4 w-16" />
+      </div>
+      <div className="mt-4 border-t border-border/60" />
+      <div className="mt-3 flex items-center justify-between">
+        <Skeleton className="h-2 w-24 rounded-full" />
         <SkeletonAvatar size="sm" />
       </div>
-      <div className="flex gap-2 mt-3">
-        <Skeleton className="h-2 flex-1 rounded-full" />
-      </div>
-    </Card>
+    </div>
   )
 }
 
 /**
- * Projects list skeleton (shows 6 cards in grid)
+ * Projects list skeleton (shows 8 cards in grid matching ProjectCardsView layout)
  */
 export function ProjectsListSkeleton() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <ProjectCardSkeleton key={i} />
-      ))}
+    <div className="p-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <ProjectCardSkeleton key={i} />
+        ))}
+      </div>
     </div>
   )
 }

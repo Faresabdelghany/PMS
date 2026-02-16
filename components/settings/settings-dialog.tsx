@@ -105,7 +105,7 @@ export function SettingsDialog({ open, onOpenChange, initialSection = "account" 
             onItemSelect={setActiveItemId}
           />
           <main className="flex-1 min-h-0 overflow-y-auto px-6 py-6 sm:min-h-0">
-            <Suspense fallback={<SettingsPaneSkeleton />}>
+            <Suspense key={activeItemId} fallback={<SettingsPaneSkeleton />}>
               {renderPane()}
             </Suspense>
           </main>
