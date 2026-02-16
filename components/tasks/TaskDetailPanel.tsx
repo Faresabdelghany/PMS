@@ -276,6 +276,8 @@ export function TaskDetailPanel({
               <TaskDetailDescription
                 description={task.description}
                 onSave={(desc) => handleUpdateTask("description", desc)}
+                taskName={task.name}
+                projectName={task.project?.name}
               />
 
               <div className="h-px w-full bg-border/80" />

@@ -3,7 +3,15 @@
 import { cachedGetUser } from "@/lib/request-cache"
 import { rateLimiters, checkRateLimit, rateLimitError } from "@/lib/rate-limit/limiter"
 import type { ActionResult } from "../types"
-import type { AIGenerationResult, GenerationOptions, ProjectContext } from "./types"
+import type {
+  AIGenerationResult,
+  GenerationOptions,
+  ProjectContext,
+  TaskDescriptionContext,
+  WorkstreamDescriptionContext,
+  ClientNotesContext,
+  FileDescriptionContext,
+} from "./types"
 import { verifyAIConfig } from "./config"
 import {
   callOpenAI,
@@ -348,6 +356,147 @@ Return the enhanced HTML content.`
   }
 
   return { data: enhancedContent.trim() }
+}
+
+// Generate task description
+export async function generateTaskDescription(
+  context: TaskDescriptionContext
+): Promise<ActionResult<string>> {
+  const isEnhance = Boolean(context.existingDescription?.trim())
+
+  const systemPrompt = isEnhance
+    ? `You are a project management assistant. Improve and expand the given task description while keeping the original intent. Output clean HTML using <p>, <strong>, <ul>/<li>, <ol>/<li> tags. Do NOT use markdown.`
+    : `You are a project management assistant. Generate clear, actionable task descriptions that help team members understand what needs to be done. Output clean HTML using <p>, <strong>, <ul>/<li>, <ol>/<li> tags. Do NOT use markdown.`
+
+  const userPrompt = isEnhance
+    ? `Improve this task description:
+Task: ${sanitizeForPrompt(context.taskName)}
+${context.projectName ? `Project: ${sanitizeForPrompt(context.projectName)}` : ""}
+${context.priority ? `Priority: ${sanitizeForPrompt(context.priority)}` : ""}
+
+Current description:
+"""
+${sanitizeForPrompt(context.existingDescription!)}
+"""
+
+Enhance the description to be clearer and more actionable while preserving the original intent. Return HTML.`
+    : `Generate a task description for:
+Task: ${sanitizeForPrompt(context.taskName)}
+${context.projectName ? `Project: ${sanitizeForPrompt(context.projectName)}` : ""}
+${context.priority ? `Priority: ${sanitizeForPrompt(context.priority)}` : ""}
+${context.status ? `Status: ${sanitizeForPrompt(context.status)}` : ""}
+
+Write a focused description that:
+1. Clarifies the objective
+2. Lists key steps or acceptance criteria
+3. Notes any dependencies or considerations
+
+Return HTML.`
+
+  const result = await generateText(userPrompt, systemPrompt, { temperature: 0.5 })
+
+  if (result.error) {
+    return { error: result.error }
+  }
+
+  let text = result.data!.text.trim()
+  if (text.startsWith("```html")) text = text.slice(7)
+  else if (text.startsWith("```")) text = text.slice(3)
+  if (text.endsWith("```")) text = text.slice(0, -3)
+
+  return { data: text.trim() }
+}
+
+// Generate workstream description
+export async function generateWorkstreamDescription(
+  context: WorkstreamDescriptionContext
+): Promise<ActionResult<string>> {
+  const systemPrompt = `You are a project management assistant. Generate concise workstream descriptions that explain the purpose and scope of a project phase. Output clean HTML using <p>, <strong>, <ul>/<li> tags. Do NOT use markdown.`
+
+  const userPrompt = `Generate a workstream description for:
+Workstream: ${sanitizeForPrompt(context.workstreamName)}
+${context.projectName ? `Project: ${sanitizeForPrompt(context.projectName)}` : ""}
+
+Write a brief description (1-2 paragraphs) that:
+1. Explains the purpose of this workstream
+2. Outlines the scope of work
+3. Mentions expected outcomes
+
+Return HTML.`
+
+  const result = await generateText(userPrompt, systemPrompt, { temperature: 0.5 })
+
+  if (result.error) {
+    return { error: result.error }
+  }
+
+  let text = result.data!.text.trim()
+  if (text.startsWith("```html")) text = text.slice(7)
+  else if (text.startsWith("```")) text = text.slice(3)
+  if (text.endsWith("```")) text = text.slice(0, -3)
+
+  return { data: text.trim() }
+}
+
+// Generate client notes
+export async function generateClientNotes(
+  context: ClientNotesContext
+): Promise<ActionResult<string>> {
+  const systemPrompt = `You are a professional account manager assistant. Generate brief client notes that capture key context about a client relationship. Output plain text (NOT HTML). Keep it concise — 3-5 short paragraphs.`
+
+  const userPrompt = `Generate client notes for:
+Client: ${sanitizeForPrompt(context.clientName)}
+${context.industry ? `Industry: ${sanitizeForPrompt(context.industry)}` : ""}
+${context.status ? `Status: ${sanitizeForPrompt(context.status)}` : ""}
+${context.contactName ? `Primary contact: ${sanitizeForPrompt(context.contactName)}` : ""}
+${context.contactEmail ? `Contact email: ${sanitizeForPrompt(context.contactEmail)}` : ""}
+${context.location ? `Location: ${sanitizeForPrompt(context.location)}` : ""}
+${context.website ? `Website: ${sanitizeForPrompt(context.website)}` : ""}
+
+Write a brief client summary covering:
+1. Client overview and relationship context
+2. Key focus areas or expectations
+3. Any relevant notes for the team
+
+Return plain text only. No HTML or markdown.`
+
+  const result = await generateText(userPrompt, systemPrompt, { temperature: 0.5 })
+
+  if (result.error) {
+    return { error: result.error }
+  }
+
+  let text = result.data!.text.trim()
+  if (text.startsWith("```")) text = text.slice(3)
+  if (text.endsWith("```")) text = text.slice(0, -3)
+
+  return { data: text.trim() }
+}
+
+// Generate file/asset description
+export async function generateFileDescription(
+  context: FileDescriptionContext
+): Promise<ActionResult<string>> {
+  const systemPrompt = `You are a project management assistant. Generate short, descriptive asset descriptions. Output clean HTML using <p> tags. Keep it to 1-2 sentences. Do NOT use markdown.`
+
+  const userPrompt = `Generate a short description for this project asset:
+Asset name: ${sanitizeForPrompt(context.fileName)}
+${context.projectName ? `Project: ${sanitizeForPrompt(context.projectName)}` : ""}
+
+Write 1-2 sentences describing what this asset likely contains and its purpose in the project. Return HTML.`
+
+  const result = await generateText(userPrompt, systemPrompt, { temperature: 0.4 })
+
+  if (result.error) {
+    return { error: result.error }
+  }
+
+  let text = result.data!.text.trim()
+  if (text.startsWith("```html")) text = text.slice(7)
+  else if (text.startsWith("```")) text = text.slice(3)
+  if (text.endsWith("```")) text = text.slice(0, -3)
+
+  return { data: text.trim() }
 }
 
 // Test AI connection

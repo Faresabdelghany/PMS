@@ -20,6 +20,7 @@ import { ProjectDescriptionEditorLazy as ProjectDescriptionEditor } from '@/comp
 import { QuickCreateModalLayout } from '@/components/QuickCreateModalLayout'
 import { toast } from 'sonner'
 import { createTask, updateTask } from '@/lib/actions/tasks'
+import { generateTaskDescription } from '@/lib/actions/ai'
 import type { OrganizationTagLean as OrganizationTag, TaskPriority } from "@/lib/supabase/types"
 
 // Types for data passed from parent
@@ -289,6 +290,21 @@ export function TaskQuickCreateModal({
 
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const handleAIGenerate = useCallback(async () => {
+    if (!title.trim()) {
+      toast.error("Enter a task title first")
+      return null
+    }
+    const projectName = projects.find(p => p.id === projectId)?.name
+    const result = await generateTaskDescription({
+      taskName: title.trim(),
+      projectName,
+      priority: priority?.id,
+      status: status?.id,
+    })
+    return result.data ?? null
+  }, [title, projects, projectId, priority, status])
+
   const handleSubmit = async () => {
     if (isSubmitting) return
     setIsSubmitting(true)
@@ -512,6 +528,7 @@ export function TaskQuickCreateModal({
         onExpandChange={setIsDescriptionExpanded}
         placeholder="Briefly describe the goal or details of this task..."
         showTemplates={false}
+        onAIGenerate={handleAIGenerate}
       />
 
       {/* Properties */}

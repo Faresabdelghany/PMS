@@ -6,6 +6,7 @@ import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
 import { Check } from "@phosphor-icons/react/dist/ssr/Check"
 import { X } from "@phosphor-icons/react/dist/ssr/X"
 import { Button } from "@/components/ui/button"
+import { generateTaskDescription } from "@/lib/actions/ai"
 import dynamic from "next/dynamic"
 
 const ProjectDescriptionEditor = dynamic(
@@ -16,11 +17,15 @@ const ProjectDescriptionEditor = dynamic(
 interface TaskDetailDescriptionProps {
   description: string | null
   onSave: (description: string | null) => void
+  taskName?: string
+  projectName?: string
 }
 
 export function TaskDetailDescription({
   description,
   onSave,
+  taskName,
+  projectName,
 }: TaskDetailDescriptionProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editedDescription, setEditedDescription] = useState(description || "")
@@ -48,6 +53,16 @@ export function TaskDetailDescription({
     setEditedDescription(description || "")
     setIsEditing(false)
   }, [description])
+
+  const handleAIGenerate = useCallback(async () => {
+    if (!taskName?.trim()) return null
+    const result = await generateTaskDescription({
+      taskName: taskName.trim(),
+      projectName,
+      existingDescription: editedDescription || undefined,
+    })
+    return result.data ?? null
+  }, [taskName, projectName, editedDescription])
 
   if (isEditing) {
     return (
@@ -80,6 +95,7 @@ export function TaskDetailDescription({
           placeholder="Add a description..."
           showTemplates={false}
           className="min-h-[120px]"
+          onAIGenerate={taskName ? handleAIGenerate : undefined}
         />
       </div>
     )

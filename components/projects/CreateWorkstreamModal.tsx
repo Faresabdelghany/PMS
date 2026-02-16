@@ -16,6 +16,7 @@ import { QuickCreateModalLayout } from '@/components/QuickCreateModalLayout'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { toast } from 'sonner'
 import { createWorkstream, updateWorkstream, type CreateWorkstreamInput, type UpdateWorkstreamInput } from '@/lib/actions/workstreams'
+import { generateWorkstreamDescription } from '@/lib/actions/ai'
 import type { Workstream, OrganizationTagLean } from '@/lib/supabase/types'
 
 type TaskOption = {
@@ -30,6 +31,7 @@ interface CreateWorkstreamModalProps {
   onClose: () => void
   projectId: string
   projectEndDate?: string | null
+  projectName?: string
   existingTasks?: TaskOption[]
   editingWorkstream?: Workstream | null
   organizationTags?: OrganizationTagLean[]
@@ -42,6 +44,7 @@ export function CreateWorkstreamModal({
   onClose,
   projectId,
   projectEndDate,
+  projectName,
   existingTasks = [],
   editingWorkstream,
   organizationTags = [],
@@ -59,6 +62,18 @@ export function CreateWorkstreamModal({
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([])
 
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleAIGenerate = useCallback(async () => {
+    if (!title.trim()) {
+      toast.error("Enter a workstream title first")
+      return null
+    }
+    const result = await generateWorkstreamDescription({
+      workstreamName: title.trim(),
+      projectName,
+    })
+    return result.data ?? null
+  }, [title, projectName])
 
   // Parse project end date for validation
   const maxEndDate = projectEndDate ? new Date(projectEndDate) : undefined
@@ -241,6 +256,7 @@ export function CreateWorkstreamModal({
         onExpandChange={setIsDescriptionExpanded}
         placeholder="Describe the purpose or goals of this workstream..."
         showTemplates={false}
+        onAIGenerate={handleAIGenerate}
       />
 
       {/* Properties */}

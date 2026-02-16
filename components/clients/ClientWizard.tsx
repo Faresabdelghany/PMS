@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type ChangeEvent } from "react"
+import { useState, useCallback, type ChangeEvent } from "react"
 import { MotionDiv } from "@/components/ui/motion-lazy"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -10,6 +10,10 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Client, ClientStatus } from "@/lib/supabase/types"
 import { createClientAction, updateClient } from "@/lib/actions/clients"
+import { generateClientNotes } from "@/lib/actions/ai"
+import { useAIStatus } from "@/hooks/use-ai-status"
+import { AIGenerateButton } from "@/components/ai/ai-generate-button"
+import { AISetupPrompt } from "@/components/ai/ai-setup-prompt"
 import { X } from "@phosphor-icons/react/dist/ssr/X"
 
 interface ClientWizardProps {
@@ -30,8 +34,42 @@ export function ClientWizard({ mode, initialClient, organizationId, onClose, onS
   const [location, setLocation] = useState(initialClient?.location ?? "")
   const [notes, setNotes] = useState(initialClient?.notes ?? "")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isGeneratingNotes, setIsGeneratingNotes] = useState(false)
+
+  const { isConfigured: isAIConfigured, refetch: refetchAIStatus } = useAIStatus()
 
   const isEdit = mode === "edit"
+
+  const handleGenerateNotes = useCallback(async () => {
+    if (!name.trim()) {
+      toast.error("Enter a client name first")
+      return
+    }
+    setIsGeneratingNotes(true)
+    try {
+      const result = await generateClientNotes({
+        clientName: name.trim(),
+        industry: industry.trim() || undefined,
+        status,
+        contactName: primaryContactName.trim() || undefined,
+        contactEmail: primaryContactEmail.trim() || undefined,
+        location: location.trim() || undefined,
+        website: website.trim() || undefined,
+      })
+      if (result.error) {
+        toast.error(result.error)
+      } else if (result.data) {
+        setNotes(result.data)
+      }
+    } finally {
+      setIsGeneratingNotes(false)
+    }
+  }, [name, industry, status, primaryContactName, primaryContactEmail, location, website])
+
+  const handleAISetupComplete = useCallback(async () => {
+    await refetchAIStatus()
+    handleGenerateNotes()
+  }, [refetchAIStatus, handleGenerateNotes])
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -203,7 +241,27 @@ export function ClientWizard({ mode, initialClient, organizationId, onClose, onS
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground">Notes</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-medium text-muted-foreground">Notes</Label>
+              {isAIConfigured ? (
+                <AIGenerateButton
+                  onClick={handleGenerateNotes}
+                  isLoading={isGeneratingNotes}
+                  size="sm"
+                  label="Write with AI"
+                  loadingLabel="Generating..."
+                />
+              ) : (
+                <AISetupPrompt onSetupComplete={handleAISetupComplete}>
+                  <AIGenerateButton
+                    onClick={() => {}}
+                    isLoading={false}
+                    size="sm"
+                    label="Write with AI"
+                  />
+                </AISetupPrompt>
+              )}
+            </div>
             <Textarea
               value={notes}
               onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setNotes(e.target.value)}

@@ -102,6 +102,7 @@ type ProjectTask = {
 type WorkstreamTabProps = {
   projectId: string
   projectEndDate?: string | null
+  projectName?: string
   workstreams: WorkstreamGroup[] | undefined
   allProjectTasks?: ProjectTask[] // All project tasks for the modal picker
   organizationMembers?: OrganizationMember[]
@@ -114,6 +115,7 @@ type WorkstreamTabProps = {
 export function WorkstreamTab({
   projectId,
   projectEndDate,
+  projectName,
   workstreams,
   allProjectTasks = [],
   organizationMembers = [],
@@ -557,6 +559,7 @@ export function WorkstreamTab({
           onClose={() => setIsCreateWorkstreamOpen(false)}
           projectId={projectId}
           projectEndDate={projectEndDate}
+          projectName={projectName}
           existingTasks={existingTasks}
           organizationTags={organizationTags}
           onWorkstreamCreated={handleWorkstreamCreated}
@@ -752,6 +755,7 @@ export function WorkstreamTab({
         }}
         projectId={projectId}
         projectEndDate={projectEndDate}
+        projectName={projectName}
         existingTasks={existingTasks}
         editingWorkstream={editingWorkstream}
         organizationTags={organizationTags}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Paperclip } from "@phosphor-icons/react/dist/ssr/Paperclip"
 import { UploadSimple } from "@phosphor-icons/react/dist/ssr/UploadSimple"
 import { X } from "@phosphor-icons/react/dist/ssr/X"
@@ -11,11 +11,14 @@ import { QuickCreateModalLayout } from "@/components/QuickCreateModalLayout"
 import { ProjectDescriptionEditorLazy as ProjectDescriptionEditor } from "@/components/project-wizard/ProjectDescriptionEditorLazy"
 import { UploadAssetFilesModal } from "@/components/projects/UploadAssetFilesModal"
 import { createLinkAsset, uploadFile } from "@/lib/actions/files"
+import { generateFileDescription } from "@/lib/actions/ai"
+import { toast } from "sonner"
 
 type AddFileModalProps = {
     open: boolean
     onOpenChange: (open: boolean) => void
     projectId: string
+    projectName?: string
     currentUser: User
     onCreate: (files: ProjectFile[]) => void
 }
@@ -29,7 +32,7 @@ function toQuickLinkType(ext: string): QuickLink["type"] {
     return "file"
 }
 
-export function AddFileModal({ open, onOpenChange, projectId, currentUser, onCreate }: AddFileModalProps) {
+export function AddFileModal({ open, onOpenChange, projectId, projectName, currentUser, onCreate }: AddFileModalProps) {
     const [title, setTitle] = useState("")
     const [description, setDescription] = useState<string | undefined>(undefined)
     const [link, setLink] = useState("")
@@ -51,6 +54,18 @@ export function AddFileModal({ open, onOpenChange, projectId, currentUser, onCre
         setIsSubmitting(false)
         setSubmitError(null)
     }, [open])
+
+    const handleAIGenerate = useCallback(async () => {
+        if (!title.trim()) {
+            toast.error("Enter an asset title first")
+            return null
+        }
+        const result = await generateFileDescription({
+            fileName: title.trim(),
+            projectName,
+        })
+        return result.data ?? null
+    }, [title, projectName])
 
     const attachmentSummaries = useMemo(
         () =>
@@ -190,6 +205,7 @@ export function AddFileModal({ open, onOpenChange, projectId, currentUser, onCre
                     onExpandChange={setIsExpanded}
                     placeholder="Describe this asset..."
                     showTemplates={false}
+                    onAIGenerate={handleAIGenerate}
                 />
 
                 <div className="flex items-center gap-2 mt-2">

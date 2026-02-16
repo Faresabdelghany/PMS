@@ -293,6 +293,7 @@ export function ProjectDetailsPage({
                     <WorkstreamTabLazy
                       projectId={projectId}
                       projectEndDate={supabaseProject.end_date}
+                      projectName={supabaseProject.name}
                       workstreams={project.workstreams}
                       allProjectTasks={tasks.map(t => ({ id: t.id, name: t.name, workstream_id: t.workstream_id }))}
                       organizationMembers={organizationMembers}
@@ -427,6 +428,7 @@ export function ProjectDetailsPage({
             open={isFileModalOpen}
             onOpenChange={setIsFileModalOpen}
             projectId={projectId}
+            projectName={supabaseProject.name}
             currentUser={{
               id: user.id,
               name: profile?.full_name || user.email,

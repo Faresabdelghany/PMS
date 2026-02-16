@@ -5,6 +5,10 @@ export type {
   AIGenerationResult,
   ChatMessage,
   ChatResponse,
+  TaskDescriptionContext,
+  WorkstreamDescriptionContext,
+  ClientNotesContext,
+  FileDescriptionContext,
 } from "./types"
 
 // Re-export config functions
@@ -15,6 +19,10 @@ export { getDefaultModel } from "./utils"
 export {
   generateText,
   generateProjectDescription,
+  generateTaskDescription,
+  generateWorkstreamDescription,
+  generateClientNotes,
+  generateFileDescription,
   generateTasks,
   generateWorkstreams,
   summarizeNotes,

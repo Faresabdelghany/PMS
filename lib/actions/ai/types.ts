@@ -23,6 +23,38 @@ export type AIGenerationResult = {
   tokensUsed?: number
 }
 
+// AI generation context for tasks
+export type TaskDescriptionContext = {
+  taskName: string
+  projectName?: string
+  priority?: string
+  status?: string
+  existingDescription?: string
+}
+
+// AI generation context for workstreams
+export type WorkstreamDescriptionContext = {
+  workstreamName: string
+  projectName?: string
+}
+
+// AI generation context for client notes
+export type ClientNotesContext = {
+  clientName: string
+  industry?: string
+  status?: string
+  contactName?: string
+  contactEmail?: string
+  location?: string
+  website?: string
+}
+
+// AI generation context for file descriptions
+export type FileDescriptionContext = {
+  fileName: string
+  projectName?: string
+}
+
 // Chat message types
 export interface ChatMessage {
   role: "user" | "assistant"
