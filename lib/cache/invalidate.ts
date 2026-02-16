@@ -61,7 +61,10 @@ export const invalidate = {
     assigneeId: string | null,
     orgId: string
   ): Promise<void> {
-    const keys = [CacheKeys.projectTasks(projectId)]
+    const keys = [
+      CacheKeys.projectTasks(projectId),
+      CacheKeys.sidebar(orgId),
+    ]
     if (assigneeId) {
       keys.push(CacheKeys.userTasks(assigneeId, orgId))
     }
@@ -76,7 +79,10 @@ export const invalidate = {
     assigneeIds: string[],
     orgId: string
   ): Promise<void> {
-    const keys = [CacheKeys.projectTasks(projectId)]
+    const keys = [
+      CacheKeys.projectTasks(projectId),
+      CacheKeys.sidebar(orgId),
+    ]
     for (const assigneeId of assigneeIds) {
       if (assigneeId) {
         keys.push(CacheKeys.userTasks(assigneeId, orgId))
