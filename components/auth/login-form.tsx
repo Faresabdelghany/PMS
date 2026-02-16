@@ -47,7 +47,7 @@ function LoginForm() {
       email: "",
       password: "",
     },
-    mode: "onChange",
+    mode: "onTouched",
   })
 
   function onSubmit(values: LoginFormValues) {
@@ -73,7 +73,6 @@ function LoginForm() {
   }
 
   const isLoading = isPending || isGooglePending
-  const isFormValid = form.formState.isValid
 
   return (
     <div className="space-y-8">
@@ -196,7 +195,7 @@ function LoginForm() {
             <Button
               type="submit"
               className="w-full h-12 text-base font-semibold bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-colors duration-200 group"
-              disabled={isLoading || !isFormValid}
+              disabled={isLoading}
             >
               {isPending ? (
                 <>
