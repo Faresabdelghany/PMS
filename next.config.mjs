@@ -108,6 +108,16 @@ const nextConfig = {
           },
         ],
       },
+      {
+        // Allow bfcache for auth pages (no-cache allows bfcache, no-store blocks it)
+        source: '/(login|signup)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, max-age=0, must-revalidate',
+          },
+        ],
+      },
     ]
   },
   experimental: {
@@ -138,6 +148,8 @@ const nextConfig = {
       'remark-gfm',
       'swr',
       '@tanstack/react-virtual',
+      'zod',
+      '@hookform/resolvers',
     ],
     // Client-side router cache durations.
     // Next.js 15+ defaults dynamic to 0s, causing a full server roundtrip on every

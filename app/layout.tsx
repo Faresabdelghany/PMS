@@ -43,9 +43,11 @@ export default async function RootLayout({
   return (
     <html lang="en" className={`${geist.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <head>
-        {/* Preconnect to external origins for faster resource loading */}
+        {/* Preconnect to Supabase for faster API + Realtime connections.
+            Two entries: one for CORS requests (REST API), one for non-CORS (WebSocket).
+            dns-prefetch removed — preconnect already performs DNS lookup. */}
         <link rel="preconnect" href="https://lazhmdyajdqbnxxwyxun.supabase.co" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://lazhmdyajdqbnxxwyxun.supabase.co" />
+        <link rel="preconnect" href="https://lazhmdyajdqbnxxwyxun.supabase.co" />
         {/* Inline script to prevent color theme flash - runs before React hydrates */}
         <script
           nonce={nonce}

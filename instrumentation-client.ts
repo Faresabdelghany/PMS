@@ -13,9 +13,10 @@ Sentry.init({
   replaysSessionSampleRate: 0.05,
   replaysOnErrorSampleRate: 1.0,
 
-  integrations: [
-    Sentry.replayIntegration(),
-  ],
+  // Replay is lazy-loaded below to save ~100KB from the initial bundle.
+  // The replaysSessionSampleRate and replaysOnErrorSampleRate above still
+  // control sampling — Sentry picks them up when the integration is added.
+  integrations: [],
 
   // Filter out noisy errors
   ignoreErrors: [
@@ -33,5 +34,21 @@ Sentry.init({
     "is not a valid selector",
   ],
 })
+
+// Lazy-load Session Replay after the page becomes idle (~100KB deferred).
+// This removes the replay bundle from the critical path while preserving
+// full replay functionality for sampled sessions and error captures.
+if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_SENTRY_DSN) {
+  const loadReplay = () => {
+    Sentry.lazyLoadIntegration("replayIntegration").then((replay) => {
+      Sentry.addIntegration(replay())
+    })
+  }
+  if ("requestIdleCallback" in window) {
+    requestIdleCallback(loadReplay)
+  } else {
+    setTimeout(loadReplay, 3000)
+  }
+}
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart
