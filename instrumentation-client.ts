@@ -28,6 +28,9 @@ Sentry.init({
     // Next.js navigation
     "NEXT_REDIRECT",
     "NEXT_NOT_FOUND",
+    // Sentry Replay uses querySelector with Tailwind CSS class names containing "/"
+    // (e.g. bg-destructive/10) which is invalid in CSS selectors without escaping
+    "is not a valid selector",
   ],
 })
 
