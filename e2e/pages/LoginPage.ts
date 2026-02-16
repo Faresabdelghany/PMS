@@ -42,16 +42,16 @@ export class LoginPage extends BasePage {
 
     // Navigation links
     this.forgotPasswordLink = page.getByRole('link', { name: /forgot password/i });
-    this.signUpLink = page.getByRole('link', { name: /sign up/i });
+    this.signUpLink = page.getByRole('link', { name: /create one/i });
 
-    // Error messages
-    this.formError = page.locator('.bg-destructive\\/10');
+    // Error messages — use attribute selector because Tailwind's "/" in class names breaks CSS selectors
+    this.formError = page.locator('[class*="bg-destructive"]').filter({ hasText: /.+/ });
     this.emailError = page.locator('[id$="-form-item-message"]').first();
     this.passwordError = page.locator('[id$="-form-item-message"]').nth(1);
 
     // Page headers
     this.cardTitle = page.getByRole('heading', { name: 'Sign in' });
-    this.cardDescription = page.getByText('Enter your email and password to sign in');
+    this.cardDescription = page.getByText('Welcome back. Enter your credentials to continue.');
   }
 
   /**
