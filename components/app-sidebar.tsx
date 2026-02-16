@@ -44,11 +44,13 @@ import { useUser } from "@/hooks/use-user"
 import { signOut } from "@/lib/actions/auth"
 import { getUnreadCount } from "@/lib/actions/inbox"
 import { useInboxRealtime } from "@/hooks/use-realtime"
+import { usePooledProjectsRealtime } from "@/hooks/realtime-context"
+import { useOrganization } from "@/hooks/use-organization"
 import type { Project } from "@/lib/supabase/types"
 import { useCommandPalette } from "@/components/command-palette"
 import { useSettingsDialog } from "@/components/providers/settings-dialog-provider"
 import { cn } from "@/lib/utils"
-import { PROGRESS_THRESHOLDS, BADGE_CAP } from "@/lib/constants"
+import { PROGRESS_THRESHOLDS, BADGE_CAP, SIDEBAR_PROJECT_LIMIT } from "@/lib/constants"
 
 // Navigation items defined inline (no mock data dependency)
 type NavItemId = "inbox" | "my-tasks" | "projects" | "clients" | "chat"
@@ -190,9 +192,53 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { profile, user } = useUser()
+  const { organization } = useOrganization()
   const { open: openCommandPalette } = useCommandPalette()
   const { openSettings } = useSettingsDialog()
   const [unreadCount, setUnreadCount] = useState(0)
+  const [projects, setProjects] = useState<Project[]>(activeProjects)
+
+  // Sync with server props when they change (e.g. on navigation/revalidation)
+  useEffect(() => {
+    setProjects(activeProjects)
+  }, [activeProjects])
+
+  // Real-time updates for sidebar projects
+  usePooledProjectsRealtime(organization?.id, {
+    onInsert: (project) => {
+      if (project.status === "active") {
+        setProjects((prev) => {
+          // Avoid duplicates
+          if (prev.some((p) => p.id === project.id)) return prev
+          // Add to front (most recently updated), cap at limit
+          return [project as Project, ...prev].slice(0, SIDEBAR_PROJECT_LIMIT)
+        })
+      }
+    },
+    onUpdate: (project, oldProject) => {
+      setProjects((prev) => {
+        const exists = prev.some((p) => p.id === project.id)
+
+        if (project.status === "active") {
+          if (exists) {
+            // Update in place
+            return prev.map((p) => (p.id === project.id ? (project as Project) : p))
+          }
+          // Newly active — add to front, cap at limit
+          return [project as Project, ...prev].slice(0, SIDEBAR_PROJECT_LIMIT)
+        }
+
+        // No longer active — remove from list
+        if (exists) {
+          return prev.filter((p) => p.id !== project.id)
+        }
+        return prev
+      })
+    },
+    onDelete: (oldProject) => {
+      setProjects((prev) => prev.filter((p) => p.id !== oldProject.id))
+    },
+  })
 
   // Hover-based prefetch callback - more bandwidth-efficient than viewport prefetching
   // Only prefetches when user shows intent by hovering
@@ -356,8 +402,8 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {activeProjects.length > 0 ? (
-                activeProjects.map((project) => (
+              {projects.length > 0 ? (
+                projects.map((project) => (
                   <ProjectMenuItem key={project.id} project={project} onPrefetch={handlePrefetch} />
                 ))
               ) : (
