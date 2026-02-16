@@ -67,6 +67,15 @@ import { moveTaskToWorkstream, reorderTasks, updateTaskStatus, deleteTask } from
 import { deleteWorkstream } from "@/lib/actions/workstreams"
 import { usePooledTasksRealtime, usePooledWorkstreamsRealtime } from "@/hooks/realtime-context"
 import { formatDueLabel, getDueTone } from "@/lib/date-utils"
+import {
+  getTaskStatusLabel,
+  getTaskStatusColor,
+  getTaskPriorityLabel,
+  getTaskPriorityColor,
+  getDueToneColor,
+  type TaskStatus,
+  type TaskPriority,
+} from "@/lib/constants/status"
 import type { Database } from "@/lib/supabase/types"
 
 type TaskRow = Database["public"]["Tables"]["tasks"]["Row"]
@@ -860,59 +869,6 @@ function WorkstreamTasks({
   )
 }
 
-// Status formatting helpers
-const STATUS_LABELS: Record<string, string> = {
-  "todo": "To do",
-  "in-progress": "In Progress",
-  "done": "Done"
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  "todo": "text-muted-foreground",
-  "in-progress": "text-amber-600",
-  "done": "text-green-600"
-}
-
-function getStatusLabel(status: string): string {
-  return STATUS_LABELS[status] || "To do"
-}
-
-function getStatusColor(status: string): string {
-  return STATUS_COLORS[status] || "text-muted-foreground"
-}
-
-// Priority formatting helpers
-const PRIORITY_LABELS: Record<string, string | null> = {
-  "no-priority": null,
-  "low": "Low",
-  "medium": "Medium",
-  "high": "High",
-  "urgent": "Urgent"
-}
-
-const PRIORITY_COLORS: Record<string, string> = {
-  "low": "text-green-600",
-  "medium": "text-amber-600",
-  "high": "text-orange-600",
-  "urgent": "text-red-600"
-}
-
-function getPriorityLabel(priority: string | undefined): string | null {
-  if (!priority) return null
-  return PRIORITY_LABELS[priority] ?? null
-}
-
-function getPriorityColor(priority: string | undefined): string {
-  if (!priority) return "text-muted-foreground"
-  return PRIORITY_COLORS[priority] || "text-muted-foreground"
-}
-
-// Due tone color helper
-function getDueToneColor(dueTone?: string): string {
-  if (dueTone === "danger") return "text-red-500"
-  if (dueTone === "warning") return "text-amber-500"
-  return "text-muted-foreground"
-}
 
 type TaskRowProps = {
   task: WorkstreamTask
@@ -938,10 +894,10 @@ const TaskRow = memo(function TaskRow({ task, onEdit, onDelete, onToggle, active
   const showDropLine = !isDragging && (isOver || overTaskId === task.id)
 
   // Use helper functions for status/priority formatting
-  const statusLabel = getStatusLabel(task.status)
-  const statusColor = getStatusColor(task.status)
-  const priorityLabel = getPriorityLabel(task.priority)
-  const priorityColor = getPriorityColor(task.priority)
+  const statusLabel = getTaskStatusLabel(task.status as TaskStatus)
+  const statusColor = getTaskStatusColor(task.status as TaskStatus)
+  const priorityLabel = task.priority ? getTaskPriorityLabel(task.priority as TaskPriority) : null
+  const priorityColor = task.priority ? getTaskPriorityColor(task.priority as TaskPriority) : "text-muted-foreground"
 
   return (
     <div ref={setNodeRef} style={style} className="space-y-1">

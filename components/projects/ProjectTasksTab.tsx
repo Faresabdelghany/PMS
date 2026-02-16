@@ -23,6 +23,7 @@ import { CSS } from "@dnd-kit/utilities"
 import { toast } from "sonner"
 import { format } from "date-fns"
 
+import { getTaskStatusLabel, getTaskStatusColor } from "@/lib/constants/status"
 import type { TaskWithRelations } from "@/lib/actions/tasks"
 import { deleteTask, updateTaskStatus, reorderTasks } from "@/lib/actions/tasks"
 import type { FilterChip as FilterChipType } from "@/lib/view-options"
@@ -515,32 +516,10 @@ type TaskStatusProps = {
 }
 
 function TaskStatus({ status }: TaskStatusProps) {
-  const label = getStatusLabel(status)
-  const color = getStatusColor(status)
+  const label = getTaskStatusLabel(status)
+  const color = getTaskStatusColor(status)
 
   return <span className={cn("font-medium", color)}>{label}</span>
-}
-
-function getStatusLabel(status: TaskLike["status"]): string {
-  switch (status) {
-    case "done":
-      return "Done"
-    case "in-progress":
-      return "In Progress"
-    default:
-      return "To do"
-  }
-}
-
-function getStatusColor(status: TaskLike["status"]): string {
-  switch (status) {
-    case "done":
-      return "text-emerald-500"
-    case "in-progress":
-      return "text-amber-500"
-    default:
-      return "text-muted-foreground"
-  }
 }
 
 type TaskRowDnDProps = {

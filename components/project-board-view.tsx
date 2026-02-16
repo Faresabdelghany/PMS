@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import type { Project } from "@/lib/data/projects"
+import { getProjectStatusLabel, type ProjectStatus } from "@/lib/constants/status"
 import { ProjectCard } from "@/components/project-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -52,20 +53,7 @@ type ProjectBoardViewProps = {
 const COLUMN_ORDER: Array<Project["status"]> = ["backlog", "planned", "active", "completed"]
 
 function columnStatusLabel(status: Project["status"]): string {
-  switch (status) {
-    case "backlog":
-      return "Backlog"
-    case "planned":
-      return "Planned"
-    case "active":
-      return "Active"
-    case "completed":
-      return "Completed"
-    case "cancelled":
-      return "Cancelled"
-    default:
-      return status
-  }
+  return getProjectStatusLabel(status as ProjectStatus)
 }
 
 export function ProjectBoardView({ projects, loading = false, onAddProject, onEditProject }: ProjectBoardViewProps) {

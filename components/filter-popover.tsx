@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { cn } from "@/lib/utils"
+import { cn, capitalize } from "@/lib/utils"
 import { Funnel } from "@phosphor-icons/react/dist/ssr/Funnel"
 import { Spinner } from "@phosphor-icons/react/dist/ssr/Spinner"
 import { Tag } from "@phosphor-icons/react/dist/ssr/Tag"
@@ -333,6 +333,3 @@ export function FilterPopover({ initialChips, onApply, onClear, counts, members,
   )
 }
 
-function capitalize(s: string) {
-  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s
-}

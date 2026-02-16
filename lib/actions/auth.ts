@@ -15,18 +15,11 @@ import {
   formDataToObject,
 } from "@/lib/validations"
 import { rateLimiters, checkRateLimit, rateLimitError } from "@/lib/rate-limit/limiter"
+import { generateSlug } from "@/lib/utils"
 
 export type AuthResult = {
   error?: string
   success?: boolean
-}
-
-// Generate slug from name
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
 }
 
 // Auto-create personal organization for new users

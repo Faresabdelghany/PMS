@@ -21,8 +21,12 @@ import {
   TASK_STATUS_COLORS,
   TASK_PRIORITY_LABELS,
   getProjectStatusLabel as getProjectStatusLabelFromConstants,
+  getTaskStatusLabel,
+  getTaskStatusColor,
+  getTaskPriorityLabel,
   type TaskStatus,
 } from "@/lib/constants/status"
+import { capitalize } from "@/lib/utils"
 import { TaskRowBase } from "@/components/tasks/TaskRowBase"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -168,29 +172,15 @@ export type TaskStatusProps = {
 }
 
 export function TaskStatus({ status }: TaskStatusProps) {
-  const label = getStatusLabel(status)
-  const color = getStatusColor(status)
+  const label = getTaskStatusLabel(status)
+  const color = getTaskStatusColor(status)
 
   return <span className={cn("font-medium", color)}>{label}</span>
 }
 
-function getStatusLabel(status: TaskStatus): string {
-  return TASK_STATUS_LABELS[status] ?? "To do"
-}
-
-function getStatusColor(status: TaskStatus): string {
-  return TASK_STATUS_COLORS[status] ?? "text-muted-foreground"
-}
-
 function getProjectStatusLabel(status: string): string {
-  // Use the centralized function, fallback to capitalize for unknown statuses
   const label = getProjectStatusLabelFromConstants(status as import("@/lib/constants/status").ProjectStatus)
   return label !== status ? label : capitalize(status)
-}
-
-function capitalize(value: string): string {
-  if (!value) return value
-  return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
 export type TaskPriorityProps = {
@@ -209,7 +199,7 @@ export function TaskPriority({ priority, className }: TaskPriorityProps) {
 }
 
 function getPriorityLabel(priority: string): string {
-  return TASK_PRIORITY_LABELS[priority as keyof typeof TASK_PRIORITY_LABELS] ?? "No priority"
+  return getTaskPriorityLabel(priority as import("@/lib/constants/status").TaskPriority)
 }
 
 export type TaskRowDnDProps = {

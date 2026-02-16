@@ -137,8 +137,26 @@ export function getTaskStatusColor(status: TaskStatus): string {
   return TASK_STATUS_COLORS[status] ?? "text-muted-foreground"
 }
 
+export const TASK_PRIORITY_COLORS: Record<TaskPriority, string> = {
+  "no-priority": "text-muted-foreground",
+  low: "text-green-600",
+  medium: "text-amber-600",
+  high: "text-orange-600",
+  urgent: "text-red-600",
+}
+
 export function getTaskPriorityLabel(priority: TaskPriority): string {
   return TASK_PRIORITY_LABELS[priority] ?? "No priority"
+}
+
+export function getTaskPriorityColor(priority: TaskPriority): string {
+  return TASK_PRIORITY_COLORS[priority] ?? "text-muted-foreground"
+}
+
+export function getDueToneColor(dueTone?: string): string {
+  if (dueTone === "danger") return "text-red-500"
+  if (dueTone === "warning") return "text-amber-500"
+  return "text-muted-foreground"
 }
 
 export function getProjectPriorityLabel(priority: ProjectPriority): string {

@@ -9,27 +9,12 @@ import { cacheGet, CacheKeys, CacheTTL, invalidateCache } from "@/lib/cache"
 import { requireAuth, requireOrgMember } from "./auth-helpers"
 import type { Organization, OrganizationInsert, OrganizationUpdate, OrgMemberRole } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
+import { generateSlug } from "@/lib/utils"
 
 // Helper to clear the organization membership cache cookie
 async function clearOrgMembershipCache() {
   const cookieStore = await cookies()
   cookieStore.delete("has_organization")
-}
-
-
-// Generate slug from name with optional uniqueness suffix
-function generateSlug(name: string, addSuffix = false): string {
-  const base = name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-
-  if (addSuffix) {
-    // Add a short random suffix for uniqueness (6 chars from UUID)
-    const suffix = crypto.randomUUID().split("-")[0]
-    return `${base}-${suffix}`
-  }
-  return base
 }
 
 // Create organization

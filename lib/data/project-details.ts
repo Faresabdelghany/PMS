@@ -1,7 +1,5 @@
 // Project detail types - data is now fetched from Supabase via lib/actions/projects.ts
-// Converters are available in lib/utils/ for transforming Supabase data to these UI types
 
-import { getAvatarUrl } from "@/lib/assets/avatars"
 import type { TaskStatus, TaskPriority } from "@/lib/constants/status"
 
 // Re-export TaskStatus as WorkstreamTaskStatus for backwards compatibility
@@ -164,25 +162,3 @@ export type ProjectDetails = {
   notes: ProjectNote[]
 }
 
-export function getProjectTasks(details: ProjectDetails): ProjectTask[] {
-  const workstreams = details.workstreams ?? []
-
-  return workstreams.flatMap((group) =>
-    group.tasks.map((task) => ({
-      ...task,
-      projectId: details.id,
-      projectName: details.name,
-      workstreamId: group.id,
-      workstreamName: group.name,
-    })),
-  )
-}
-
-export function userFromName(name: string, role?: string): User {
-  return {
-    id: name.trim().toLowerCase().replace(/\s+/g, "-"),
-    name,
-    avatarUrl: getAvatarUrl(name),
-    role,
-  }
-}
