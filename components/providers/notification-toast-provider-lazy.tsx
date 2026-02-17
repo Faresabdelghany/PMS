@@ -32,7 +32,7 @@ export function NotificationToastProviderLazy({ userId }: NotificationToastProvi
     }
   }, [])
 
-  if (!shouldLoad) return null
-
-  return <NotificationToastProviderImpl userId={userId} />
+  // Always render something to avoid hook count mismatch
+  // This prevents "Rendered more hooks than during the previous render" error
+  return shouldLoad ? <NotificationToastProviderImpl userId={userId} /> : null
 }

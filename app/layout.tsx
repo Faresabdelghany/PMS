@@ -38,7 +38,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const nonce = (await headers()).get("x-nonce") ?? undefined
+  const nonce = (await headers()).get("x-nonce") || ""
 
   return (
     <html lang="en" className={`${geist.variable} ${geistMono.variable}`} suppressHydrationWarning>
