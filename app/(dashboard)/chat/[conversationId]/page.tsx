@@ -1,9 +1,9 @@
 import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { ChatPageContent } from "@/components/ai/chat-page-content"
-import { getConversationWithMessages, getConversations } from "@/lib/actions/conversations"
+import { getConversationWithMessages } from "@/lib/actions/conversations"
 import { getPageOrganization } from "@/lib/page-auth"
-import { getCachedAIConfigured } from "@/lib/server-cache"
+import { getCachedAIConfigured, getCachedConversations } from "@/lib/server-cache"
 import { ChatPageSkeleton } from "@/components/skeletons/chat-skeletons"
 
 type PageProps = {
@@ -17,7 +17,7 @@ async function ChatContent({ conversationId }: { conversationId: string }) {
   const [convResult, aiConfigResult, conversationsResult] = await Promise.all([
     getConversationWithMessages(conversationId),
     getCachedAIConfigured(),
-    getConversations(orgId),
+    getCachedConversations(orgId),
   ])
 
   // If conversation not found, redirect to new chat

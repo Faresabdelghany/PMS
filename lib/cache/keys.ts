@@ -96,7 +96,7 @@ export const CacheTTL = {
 
   // Tier 3: Volatile data
   INBOX: 30, // 30 seconds
-  TASKS: 30, // 30 seconds
+  TASKS: 120, // 2 minutes (realtime pushes live updates; KV is only for initial hydration)
   WORKSTREAMS: 60, // 1 minute
   SEARCH: 30, // 30 seconds
   DASHBOARD_STATS: 30, // 30 seconds

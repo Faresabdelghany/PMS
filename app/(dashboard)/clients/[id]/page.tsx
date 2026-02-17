@@ -1,8 +1,10 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 import { notFound } from "next/navigation"
-import { getClientWithProjects } from "@/lib/actions/clients"
 import { ClientDetailsContent } from "@/components/clients/ClientDetailsContent"
 import { getPageOrganization } from "@/lib/page-auth"
+import { getCachedClientWithProjects } from "@/lib/server-cache"
+import { ClientDetailsSkeleton } from "@/components/skeletons"
 
 type PageProps = {
   params: Promise<{ id: string }>
@@ -10,21 +12,28 @@ type PageProps = {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params
-  const result = await getClientWithProjects(id)
+  const result = await getCachedClientWithProjects(id)
   const name = result.data?.name ?? "Client"
   return { title: `${name} - PMS` }
 }
 
-export default async function Page({ params }: PageProps) {
-  const { id } = await params
-
+async function ClientDetailStreamed({ id }: { id: string }) {
   await getPageOrganization()
-
-  const result = await getClientWithProjects(id)
+  const result = await getCachedClientWithProjects(id)
 
   if (result.error || !result.data) {
     notFound()
   }
 
   return <ClientDetailsContent client={result.data} />
+}
+
+export default async function Page({ params }: PageProps) {
+  const { id } = await params
+
+  return (
+    <Suspense fallback={<ClientDetailsSkeleton />}>
+      <ClientDetailStreamed id={id} />
+    </Suspense>
+  )
 }
