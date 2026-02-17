@@ -449,7 +449,10 @@ export function ReportDetailContent({
       } : null,
     }
     setItems(prev => {
-      if (prev.some(t => t.id === newTask.id)) return prev
+      // Realtime may have already added this task — merge with our richer data
+      if (prev.some(t => t.id === newTask.id)) {
+        return prev.map(t => t.id === newTask.id ? newTask : t)
+      }
       return [...prev, newTask]
     })
   }, [effectiveProjectId, report.id, report.project?.name])

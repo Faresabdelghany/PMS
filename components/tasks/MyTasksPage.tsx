@@ -437,6 +437,10 @@ export function MyTasksPage({
           avatar_url: task.assignee.avatarUrl || null
         } : null,
       }
+      // Realtime onInsert may have already added this task — merge with our richer data
+      if (prev.some((t) => t.id === newTask.id)) {
+        return prev.map((t) => t.id === newTask.id ? newTask : t)
+      }
       return [...prev, newTask]
     })
   }, [])
