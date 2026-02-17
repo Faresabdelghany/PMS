@@ -43,8 +43,7 @@ import {
 import { useUser } from "@/hooks/use-user"
 import { signOut } from "@/lib/actions/auth"
 import { getUnreadCount } from "@/lib/actions/inbox"
-import { useInboxRealtime } from "@/hooks/use-realtime"
-import { usePooledProjectsRealtime } from "@/hooks/realtime-context"
+import { usePooledProjectsRealtime, usePooledInboxRealtime } from "@/hooks/realtime-context"
 import { useOrganization } from "@/hooks/use-organization"
 import type { Project } from "@/lib/supabase/types"
 import { useCommandPalette } from "@/components/command-palette"
@@ -263,8 +262,8 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
     return () => clearTimeout(id)
   }, [])
 
-  // Real-time updates for inbox
-  useInboxRealtime(user?.id, {
+  // Real-time updates for inbox (pooled — shares WebSocket with other subscriptions)
+  usePooledInboxRealtime(user?.id, {
     onInsert: () => setUnreadCount((prev) => prev + 1),
     onUpdate: (item, oldItem) => {
       // Decrement when marked as read

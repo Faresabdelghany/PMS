@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { useInboxRealtime } from "@/hooks/use-realtime"
+import { usePooledInboxRealtime } from "@/hooks/realtime-context"
 import { getPreferences } from "@/lib/actions/user-settings"
 import type { InboxItem } from "@/lib/supabase/types"
 
@@ -29,7 +29,7 @@ export function NotificationToastProvider({ userId }: NotificationToastProviderP
   }, [])
 
   // Listen for new inbox items and show toast
-  useInboxRealtime(userId, {
+  usePooledInboxRealtime(userId, {
     onInsert: (item: InboxItem) => {
       if (!enabled) return
 

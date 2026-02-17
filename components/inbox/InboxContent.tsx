@@ -27,7 +27,7 @@ import Link from "next/link"
 import { timeAgo } from "@/lib/date-utils"
 import type { InboxItemWithRelations, InboxItemType } from "@/lib/supabase/types"
 import { markAsRead, markAllAsRead, deleteInboxItem } from "@/lib/actions/inbox"
-import { useInboxRealtime } from "@/hooks/use-realtime"
+import { usePooledInboxRealtime } from "@/hooks/realtime-context"
 import { useUser } from "@/hooks/use-user"
 import type { Icon } from "@phosphor-icons/react"
 
@@ -196,7 +196,7 @@ export function InboxContent({
   const [selectedTypes, setSelectedTypes] = useState<Set<InboxItemType>>(new Set())
 
   // Realtime updates
-  useInboxRealtime(user?.id, {
+  usePooledInboxRealtime(user?.id, {
     onInsert: (newItem) => {
       setItems((prev) => [newItem as InboxItemWithRelations, ...prev])
       if (!newItem.is_read) {

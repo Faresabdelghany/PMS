@@ -92,7 +92,8 @@ export async function getTasks(
   }
 
   // No cursor: return all tasks (board view, drag-drop, timeline need full set)
-  const { data, error } = await query.order("sort_order", { ascending: true }).order("id", { ascending: true })
+  // Safety limit prevents unbounded queries on projects with extreme task counts
+  const { data, error } = await query.order("sort_order", { ascending: true }).order("id", { ascending: true }).limit(1000)
 
   if (error) {
     return { error: error.message }

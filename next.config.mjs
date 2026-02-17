@@ -156,7 +156,7 @@ const nextConfig = {
     // client navigation. Setting staleTimes lets the router reuse prefetched data
     // for repeat visits within the window, reducing redundant requests.
     staleTimes: {
-      dynamic: 180, // 3 minutes - dashboard data has real-time subscriptions for live updates
+      dynamic: 30,  // 30 seconds - enough to prevent redundant fetches during rapid navigation
       static: 300,  // 5 minutes for static pages
     },
   },

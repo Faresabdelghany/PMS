@@ -7,6 +7,7 @@ import {
   useEffect,
   useCallback,
   useState,
+  useMemo,
   type ReactNode,
 } from "react"
 import { createClient } from "@/lib/supabase/client"
@@ -45,12 +46,17 @@ type SubscriptionState = {
 /** Connection health status for the realtime system */
 export type RealtimeConnectionStatus = "connecting" | "connected" | "disconnected" | "error"
 
-type RealtimeContextValue = {
+/** Context for the stable subscribe function — rarely changes */
+type RealtimeSubscribeContextValue = {
   subscribe: <T extends TableName>(
     table: T,
     filter: string | undefined,
     listener: Listener<T>
   ) => () => void
+}
+
+/** Context for connection status — changes frequently */
+type RealtimeStatusContextValue = {
   /** Whether at least one channel is actively connected */
   isConnected: boolean
   /** Overall connection health status */
@@ -59,7 +65,10 @@ type RealtimeContextValue = {
   lastError: string | null
 }
 
-const RealtimeContext = createContext<RealtimeContextValue | null>(null)
+// Split into two contexts so connection status changes don't re-render
+// components that only need `subscribe` (which is the majority)
+const RealtimeSubscribeContext = createContext<RealtimeSubscribeContextValue | null>(null)
+const RealtimeStatusContext = createContext<RealtimeStatusContextValue | null>(null)
 
 /**
  * Provider that manages pooled real-time subscriptions
@@ -217,20 +226,48 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // Memoize subscribe context — `subscribe` is already a stable useCallback
+  const subscribeValue = useMemo<RealtimeSubscribeContextValue>(
+    () => ({ subscribe }),
+    [subscribe]
+  )
+
+  // Memoize status context — only re-creates when status actually changes
+  const statusValue = useMemo<RealtimeStatusContextValue>(
+    () => ({ isConnected, connectionStatus, lastError }),
+    [isConnected, connectionStatus, lastError]
+  )
+
   return (
-    <RealtimeContext.Provider value={{ subscribe, isConnected, connectionStatus, lastError }}>
-      {children}
-    </RealtimeContext.Provider>
+    <RealtimeSubscribeContext.Provider value={subscribeValue}>
+      <RealtimeStatusContext.Provider value={statusValue}>
+        {children}
+      </RealtimeStatusContext.Provider>
+    </RealtimeSubscribeContext.Provider>
   )
 }
 
 /**
- * Hook to access the pooled real-time subscription context
+ * Hook to access the pooled real-time subscription context.
+ * Returns both subscribe function and connection status for backward compatibility.
  */
 export function useRealtimeContext() {
-  const context = useContext(RealtimeContext)
-  if (!context) {
+  const subscribeCtx = useContext(RealtimeSubscribeContext)
+  const statusCtx = useContext(RealtimeStatusContext)
+  if (!subscribeCtx || !statusCtx) {
     throw new Error("useRealtimeContext must be used within a RealtimeProvider")
+  }
+  return { ...subscribeCtx, ...statusCtx }
+}
+
+/**
+ * Hook to access just the subscribe function.
+ * Components using this will NOT re-render when connection status changes.
+ */
+function useRealtimeSubscribe() {
+  const context = useContext(RealtimeSubscribeContext)
+  if (!context) {
+    throw new Error("useRealtimeSubscribe must be used within a RealtimeProvider")
   }
   return context
 }
@@ -238,6 +275,7 @@ export function useRealtimeContext() {
 /**
  * Hook to access just the connection health status.
  * Useful for building connection indicators in the UI.
+ * Only components that actually display status will re-render on status changes.
  *
  * @example
  * ```tsx
@@ -248,8 +286,11 @@ export function useRealtimeContext() {
  * ```
  */
 export function useRealtimeConnectionStatus() {
-  const { connectionStatus, lastError, isConnected } = useRealtimeContext()
-  return { connectionStatus, lastError, isConnected }
+  const context = useContext(RealtimeStatusContext)
+  if (!context) {
+    throw new Error("useRealtimeConnectionStatus must be used within a RealtimeProvider")
+  }
+  return context
 }
 
 /**
@@ -284,7 +325,7 @@ export function usePooledRealtime<T extends TableName>({
   onDelete?: (oldRecord: TableRow<T>) => void
   enabled?: boolean
 }) {
-  const { subscribe } = useRealtimeContext()
+  const { subscribe } = useRealtimeSubscribe()
 
   // Store callbacks in refs to prevent subscription recreation
   const onInsertRef = useRef(onInsert)
@@ -375,6 +416,22 @@ export function usePooledWorkstreamsRealtime(
     table: "workstreams",
     filter: projectId ? `project_id=eq.${projectId}` : undefined,
     enabled: !!projectId,
+    ...callbacks,
+  })
+}
+
+export function usePooledInboxRealtime(
+  userId: string | undefined,
+  callbacks: {
+    onInsert?: (item: TableRow<"inbox_items">) => void
+    onUpdate?: (item: TableRow<"inbox_items">, oldItem: TableRow<"inbox_items">) => void
+    onDelete?: (item: TableRow<"inbox_items">) => void
+  }
+) {
+  usePooledRealtime({
+    table: "inbox_items",
+    filter: userId ? `user_id=eq.${userId}` : undefined,
+    enabled: !!userId,
     ...callbacks,
   })
 }
