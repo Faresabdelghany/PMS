@@ -307,6 +307,10 @@ export function TaskQuickCreateModal({
 
   const handleSubmit = async () => {
     if (isSubmitting) return
+    if (!title.trim()) {
+      toast.error("Task name is required")
+      return
+    }
     setIsSubmitting(true)
 
     try {
@@ -320,7 +324,7 @@ export function TaskQuickCreateModal({
         // Use null for workstream if "None" is selected or no workstream
         const effectiveWorkstreamId = workstreamId === NONE_WORKSTREAM_ID ? null : (workstreamId || null)
         const result = await updateTask(editingTask.id, {
-          name: title.trim() || 'Untitled task',
+          name: title.trim(),
           status: status.id,
           priority: priority?.id || 'no-priority',
           tag: selectedTag?.name || null,
@@ -338,7 +342,7 @@ export function TaskQuickCreateModal({
 
         const updatedTask: TaskData = {
           ...editingTask,
-          name: title.trim() || 'Untitled task',
+          name: title.trim(),
           status: status.id,
           dueLabel: targetDate ? format(targetDate, 'dd/MM/yyyy') : editingTask.dueLabel,
           assignee: toUser(assignee),
@@ -374,7 +378,7 @@ export function TaskQuickCreateModal({
       // Use null for workstream if "None" is selected or no workstream
       const effectiveWorkstreamId = workstreamId === NONE_WORKSTREAM_ID ? null : (workstreamId || null)
       const result = await createTask(effectiveProjectId, {
-        name: title.trim() || 'Untitled task',
+        name: title.trim(),
         status: status.id,
         priority: priority?.id || 'no-priority',
         tag: selectedTag?.name || null,
@@ -393,7 +397,7 @@ export function TaskQuickCreateModal({
 
       const newTask: TaskData = {
         id: result.data!.id,
-        name: title.trim() || 'Untitled task',
+        name: title.trim(),
         status: status.id,
         dueLabel: targetDate ? format(targetDate, 'dd/MM/yyyy') : undefined,
         assignee: toUser(assignee),
@@ -709,7 +713,7 @@ export function TaskQuickCreateModal({
             </div>
           )}
 
-          <Button type="button" onClick={handleSubmit} disabled={isSubmitting} className="h-10 px-4 rounded-xl">
+          <Button type="button" onClick={handleSubmit} disabled={isSubmitting || !title.trim()} className="h-10 px-4 rounded-xl">
             {isSubmitting ? 'Saving...' : editingTask ? 'Save changes' : 'Create Task'}
           </Button>
         </div>

@@ -42,7 +42,9 @@ export function TaskCommentEditor({
   const [editorActivated, setEditorActivated] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const isEmpty = !content.trim() && attachments.length === 0
+  // Tiptap getHTML() returns "<p></p>" for empty content, so strip HTML tags before checking
+  const hasText = content.replace(/<[^>]*>/g, "").trim().length > 0
+  const isEmpty = !hasText && attachments.length === 0
 
   const handleSubmit = useCallback(async () => {
     if (isEmpty || isSubmitting) return

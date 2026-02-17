@@ -1,6 +1,6 @@
 /**
  * Format a date into a human-readable "due" label
- * Returns labels like "Overdue", "Today", "Tomorrow", "3 days", or a formatted date
+ * Returns labels like "Overdue", "Today", "Tomorrow", "3 days", or "Feb 28, 2026"
  */
 export function formatDueLabel(date: Date): string {
   const now = new Date()
@@ -10,7 +10,9 @@ export function formatDueLabel(date: Date): string {
   if (diffDays === 0) return "Today"
   if (diffDays === 1) return "Tomorrow"
   if (diffDays <= 7) return `${diffDays} days`
-  return date.toLocaleDateString()
+  // Use consistent "MMM d, yyyy" format (e.g. "Feb 28, 2026") instead of locale-dependent toLocaleDateString()
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+  return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`
 }
 
 /**

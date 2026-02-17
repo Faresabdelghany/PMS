@@ -237,7 +237,7 @@ export function TaskRowDnD({ task, onToggle, onTitleClick, onEdit, onDelete }: T
             <TaskStatus status={task.status} />
             {task.startDate && (
               <span className="text-muted-foreground hidden sm:inline">
-                Start: {format(task.startDate, "dd/MM")}
+                Start: {format(task.startDate, "MMM d")}
               </span>
             )}
             {task.dueLabel && (
