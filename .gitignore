@@ -40,6 +40,7 @@ next-env.d.ts
 # next-agents-md
 .next-docs/
 .playwright-mcp/
+.playwright-cli/
 
 # lighthouse / perf audit artifacts
 .lighthouseci/
