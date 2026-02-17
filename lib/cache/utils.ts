@@ -28,28 +28,33 @@ export async function cacheGet<T>(
   try {
     const cached = await cache.get<T>(key)
     if (cached !== null) {
-      // SWR: check if entry is stale (< 25% of TTL remaining)
-      // If so, serve stale data immediately and refresh in background
+      // SWR: fire-and-forget stale check — never blocks the cache hit return.
+      // Previously this awaited kv.ttl() which added a second KV roundtrip
+      // (~5-20ms) to every single cache hit, doubling effective KV latency.
       if (!refreshing.has(key)) {
-        try {
-          const remaining = useKV
-            ? await kv.ttl(key)
-            : await memCache.ttl(key)
+        const checkAndRefresh = async () => {
+          try {
+            const remaining = useKV
+              ? await kv.ttl(key)
+              : await memCache.ttl(key)
 
-          if (remaining >= 0 && remaining < ttlSeconds * SWR_STALE_THRESHOLD) {
-            refreshing.add(key)
-            fetcher()
-              .then(async (fresh) => {
+            if (remaining >= 0 && remaining < ttlSeconds * SWR_STALE_THRESHOLD) {
+              refreshing.add(key)
+              try {
+                const fresh = await fetcher()
                 if (fresh !== null && fresh !== undefined) {
                   await cache.set(key, fresh, { ex: ttlSeconds })
                 }
-              })
-              .catch(() => {})
-              .finally(() => refreshing.delete(key))
+              } finally {
+                refreshing.delete(key)
+              }
+            }
+          } catch {
+            // TTL check or refresh failed — non-fatal
           }
-        } catch {
-          // TTL check failed — serve cached data, skip SWR
         }
+        // Don't await — return cached data immediately
+        checkAndRefresh()
       }
       return cached
     }

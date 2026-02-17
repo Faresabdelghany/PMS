@@ -92,7 +92,7 @@ export const CacheTTL = {
   AI_CONTEXT: 120, // 2 minutes
 
   // Session
-  SESSION: 300, // 5 minutes
+  SESSION: 900, // 15 minutes (middleware refreshes token via getSession; KV just skips getUser)
 
   // Tier 3: Volatile data
   INBOX: 30, // 30 seconds

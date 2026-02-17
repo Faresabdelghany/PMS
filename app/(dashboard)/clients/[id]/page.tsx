@@ -2,7 +2,6 @@ import type { Metadata } from "next"
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { ClientDetailsContent } from "@/components/clients/ClientDetailsContent"
-import { getPageOrganization } from "@/lib/page-auth"
 import { getCachedClientWithProjects } from "@/lib/server-cache"
 import { ClientDetailsSkeleton } from "@/components/skeletons"
 
@@ -18,7 +17,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 async function ClientDetailStreamed({ id }: { id: string }) {
-  await getPageOrganization()
+  // Auth is handled by the dashboard layout — no need for getPageOrganization()
+  // since this entity detail page derives context from the client ID, not org ID
   const result = await getCachedClientWithProjects(id)
 
   if (result.error || !result.data) {
