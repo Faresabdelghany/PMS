@@ -303,7 +303,7 @@ export function ProjectDetailsPage({
                     />
                   </TabsContent>
 
-                  <TabsContent value="tasks">
+                  <TabsContent value="tasks" forceMount className="data-[state=inactive]:hidden">
                     <Suspense fallback={<TabSkeleton />}>
                       <ProjectTasksTabLazy
                         projectId={projectId}
