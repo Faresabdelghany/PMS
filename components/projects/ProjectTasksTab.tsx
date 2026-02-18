@@ -25,8 +25,10 @@ import { format } from "date-fns"
 
 import { getTaskStatusLabel, getTaskStatusColor } from "@/lib/constants/status"
 import type { TaskWithRelations } from "@/lib/actions/tasks"
-import { deleteTask, updateTaskStatus, reorderTasks } from "@/lib/actions/tasks"
-import type { FilterChip as FilterChipType } from "@/lib/view-options"
+import { deleteTask, updateTask, updateTaskStatus, reorderTasks } from "@/lib/actions/tasks"
+import type { TaskStatus } from "@/lib/constants/status"
+import { DEFAULT_VIEW_OPTIONS, type FilterChip as FilterChipType, type ViewOptions } from "@/lib/view-options"
+import type { ProjectTask } from "@/lib/data/project-details"
 import {
   filterTasksByChips,
   computeTaskFilterCounts,
@@ -62,6 +64,16 @@ import dynamic from "next/dynamic"
 // Lazy-load task detail panel - defers Tiptap/comment editor until a task is opened
 const TaskDetailPanel = dynamic(
   () => import("@/components/tasks/TaskDetailPanel").then(m => ({ default: m.TaskDetailPanel })),
+  { ssr: false }
+)
+
+const TaskKanbanBoardView = dynamic(
+  () => import("@/components/tasks/TaskKanbanBoardView").then(m => ({ default: m.TaskKanbanBoardView })),
+  { ssr: false, loading: () => <div className="flex items-center justify-center py-20 text-muted-foreground text-sm">Loading kanban view...</div> }
+)
+
+const ViewOptionsPopover = dynamic(
+  () => import("@/components/view-options-popover").then(m => ({ default: m.ViewOptionsPopover })),
   { ssr: false }
 )
 import type { OrganizationTagLean, TaskPriority as TaskPriorityType, Workstream } from "@/lib/supabase/types"
@@ -132,6 +144,29 @@ function toTaskData(task: TaskLike, projectId: string, projectName: string): Tas
   }
 }
 
+// Convert TaskLike to ProjectTask format (for TaskKanbanBoardView)
+function toProjectTask(task: TaskLike, projectId: string, projectName: string): ProjectTask {
+  const validPriorities = ["no-priority", "low", "medium", "high", "urgent"] as const
+  return {
+    id: task.id,
+    name: task.name,
+    status: task.status,
+    priority: task.priority && (validPriorities as readonly string[]).includes(task.priority)
+      ? (task.priority as ProjectTask["priority"])
+      : undefined,
+    tag: task.tag ?? undefined,
+    assignee: task.assignee ? { id: "", name: task.assignee.name, avatarUrl: task.assignee.avatarUrl ?? undefined } : undefined,
+    startDate: task.startDate ?? undefined,
+    endDate: task.endDate ?? undefined,
+    dueLabel: task.dueLabel ?? undefined,
+    description: task.description ?? undefined,
+    projectId,
+    projectName,
+    workstreamId: task.workstreamId || "",
+    workstreamName: task.workstreamName || "",
+  }
+}
+
 type ProjectTasksTabProps = {
   projectId: string
   projectName: string
@@ -159,6 +194,7 @@ export function ProjectTasksTab({
   const [editingTask, setEditingTask] = useState<TaskLike | null>(null)
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [viewOptions, setViewOptions] = useState<ViewOptions>(DEFAULT_VIEW_OPTIONS)
 
   // Realtime subscription for tasks
   usePooledTasksRealtime(projectId, {
@@ -241,6 +277,52 @@ export function ProjectTasksTab({
         )
       )
       toast.error("Failed to update task status")
+    }
+  }, [tasks])
+
+  const changeTaskStatus = useCallback(async (taskId: string, newStatus: TaskStatus) => {
+    const task = tasks.find(t => t.id === taskId)
+    if (!task) return
+
+    // Optimistic update
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId ? { ...t, status: newStatus } : t
+      )
+    )
+
+    const result = await updateTaskStatus(taskId, newStatus)
+    if (result.error) {
+      // Revert on error
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId ? { ...t, status: task.status } : t
+        )
+      )
+      toast.error("Failed to update task status")
+    }
+  }, [tasks])
+
+  const changeTaskTag = useCallback(async (taskId: string, tagLabel?: string) => {
+    const task = tasks.find(t => t.id === taskId)
+    if (!task) return
+
+    // Optimistic update
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId ? { ...t, tag: tagLabel || null } : t
+      )
+    )
+
+    const result = await updateTask(taskId, { tag: tagLabel || null })
+    if (result.error) {
+      // Revert on error
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId ? { ...t, tag: task.tag } : t
+        )
+      )
+      toast.error("Failed to update task tag")
     }
   }, [tasks])
 
@@ -413,13 +495,7 @@ export function ProjectTasksTab({
           />
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 rounded-lg border-border/60 bg-transparent px-3 text-xs font-medium"
-          >
-            View
-          </Button>
+          <ViewOptionsPopover options={viewOptions} onChange={setViewOptions} allowedViewTypes={["list", "kanban"]} />
           <Button size="sm" className="h-8 rounded-lg px-3 text-xs font-medium" onClick={() => setIsCreateModalOpen(true)}>
             <Plus className="mr-1.5 h-4 w-4" />
             New Task
@@ -427,29 +503,44 @@ export function ProjectTasksTab({
         </div>
       </header>
 
-      <div className="space-y-1 px-2 py-3">
-        <DndContext
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-          measuring={{
-            droppable: {
-              strategy: MeasuringStrategy.BeforeDragging,
-            },
-          }}
-        >
-          <SortableContext items={filteredTasks.map((task) => task.id)} strategy={verticalListSortingStrategy}>
-            {filteredTasks.map((task) => (
-              <TaskRowDnD
-                key={task.id}
-                task={task}
-                onToggle={() => toggleTask(task.id)}
-                onTitleClick={openTaskDetail}
-                onEdit={openEditTask}
-                onDelete={(taskId) => setTaskToDelete(taskId)}
-              />
-            ))}
-          </SortableContext>
-        </DndContext>
+      <div className="px-2 py-3">
+        {viewOptions.viewType === "list" && (
+          <div className="space-y-1">
+            <DndContext
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+              measuring={{
+                droppable: {
+                  strategy: MeasuringStrategy.BeforeDragging,
+                },
+              }}
+            >
+              <SortableContext items={filteredTasks.map((task) => task.id)} strategy={verticalListSortingStrategy}>
+                {filteredTasks.map((task) => (
+                  <TaskRowDnD
+                    key={task.id}
+                    task={task}
+                    onToggle={() => toggleTask(task.id)}
+                    onTitleClick={openTaskDetail}
+                    onEdit={openEditTask}
+                    onDelete={(taskId) => setTaskToDelete(taskId)}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+          </div>
+        )}
+        {viewOptions.viewType === "kanban" && (
+          <TaskKanbanBoardView
+            tasks={filteredTasks.map(t => toProjectTask(t, projectId, projectName))}
+            onAddTask={() => setIsCreateModalOpen(true)}
+            onToggleTask={toggleTask}
+            onChangeTag={changeTaskTag}
+            onChangeStatus={changeTaskStatus}
+            onOpenTask={(task) => openTaskDetail(task.id)}
+            tags={organizationTags}
+          />
+        )}
       </div>
 
       <TaskQuickCreateModal

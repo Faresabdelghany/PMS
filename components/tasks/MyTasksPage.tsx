@@ -73,6 +73,7 @@ function toProjectTask(task: TaskLike): ProjectTask {
 }
 
 import { deleteTask, updateTask, updateTaskStatus, reorderTasks } from "@/lib/actions/tasks"
+import type { TaskStatus } from "@/lib/constants/status"
 import { DEFAULT_VIEW_OPTIONS, type FilterChip as FilterChipType, type ViewOptions } from "@/lib/view-options"
 import type { FilterCounts } from "@/lib/data/projects"
 import dynamic from "next/dynamic"
@@ -80,6 +81,11 @@ import dynamic from "next/dynamic"
 const TaskWeekBoardView = dynamic(
   () => import("@/components/tasks/TaskWeekBoardView").then(m => ({ default: m.TaskWeekBoardView })),
   { ssr: false, loading: () => <div className="flex items-center justify-center py-20 text-muted-foreground text-sm">Loading board view...</div> }
+)
+
+const TaskKanbanBoardView = dynamic(
+  () => import("@/components/tasks/TaskKanbanBoardView").then(m => ({ default: m.TaskKanbanBoardView })),
+  { ssr: false, loading: () => <div className="flex items-center justify-center py-20 text-muted-foreground text-sm">Loading kanban view...</div> }
 )
 
 // Lazy-load DnD wrapper — keeps @dnd-kit/core + @dnd-kit/sortable out of the initial bundle (~25kB savings)
@@ -493,6 +499,29 @@ export function MyTasksPage({
     }
   }, [tasks])
 
+  const changeTaskStatus = useCallback(async (taskId: string, newStatus: TaskStatus) => {
+    const task = tasks.find(t => t.id === taskId)
+    if (!task) return
+
+    // Optimistic update
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId ? { ...t, status: newStatus } : t
+      )
+    )
+
+    const result = await updateTaskStatus(taskId, newStatus)
+    if (result.error) {
+      // Revert on error
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId ? { ...t, status: task.status } : t
+        )
+      )
+      toast.error("Failed to update task status")
+    }
+  }, [tasks])
+
   const moveTaskDate = useCallback(async (taskId: string, newDate: Date) => {
     const task = tasks.find(t => t.id === taskId)
     if (!task) return
@@ -649,7 +678,7 @@ export function MyTasksPage({
             />
           </div>
           <div className="flex items-center gap-2">
-            <ViewOptionsPopover options={viewOptions} onChange={setViewOptions} allowedViewTypes={["list", "board"]} />
+            <ViewOptionsPopover options={viewOptions} onChange={setViewOptions} allowedViewTypes={["list", "board", "kanban"]} />
             <div className="relative">
               <div className="relative rounded-xl border border-border bg-card/80 shadow-sm overflow-hidden">
                 <Button className="h-8 gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 relative z-10 px-3">
@@ -682,6 +711,17 @@ export function MyTasksPage({
             onToggleTask={toggleTask}
             onChangeTag={changeTaskTag}
             onMoveTaskDate={moveTaskDate}
+            onOpenTask={(task) => openTaskDetail(task.id)}
+            tags={organizationTags}
+          />
+        )}
+        {viewOptions.viewType === "kanban" && (
+          <TaskKanbanBoardView
+            tasks={allVisibleTasks.map(toProjectTask)}
+            onAddTask={(context) => openCreateTask(context)}
+            onToggleTask={toggleTask}
+            onChangeTag={changeTaskTag}
+            onChangeStatus={changeTaskStatus}
             onOpenTask={(task) => openTaskDetail(task.id)}
             tags={organizationTags}
           />

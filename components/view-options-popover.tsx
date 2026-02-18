@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch"
 import { Sliders } from "@phosphor-icons/react/dist/ssr/Sliders"
 import { ListBullets } from "@phosphor-icons/react/dist/ssr/ListBullets"
 import { Kanban } from "@phosphor-icons/react/dist/ssr/Kanban"
+import { Columns } from "@phosphor-icons/react/dist/ssr/Columns"
 import { ChartBar } from "@phosphor-icons/react/dist/ssr/ChartBar"
 import { TextIndent } from "@phosphor-icons/react/dist/ssr/TextIndent"
 import { CaretUpDown } from "@phosphor-icons/react/dist/ssr/CaretUpDown"
@@ -20,7 +21,7 @@ import { Calendar } from "@phosphor-icons/react/dist/ssr/Calendar"
 import { cn } from "@/lib/utils"
 
 type Options = {
-  viewType: "list" | "board" | "timeline"
+  viewType: "list" | "board" | "kanban" | "timeline"
   tasks: "indented" | "collapsed" | "flat"
   ordering: "manual" | "alphabetical" | "date"
   showAbsentParent: boolean
@@ -43,6 +44,7 @@ export function ViewOptionsPopover({ options, onChange, allowedViewTypes }: View
   const viewTypes = [
     { id: "list", label: "List", icon: ListBullets },
     { id: "board", label: "Board", icon: Kanban },
+    { id: "kanban", label: "Kanban", icon: Columns },
     { id: "timeline", label: "Timeline", icon: ChartBar },
   ].filter((type) => !allowedViewTypes || allowedViewTypes.includes(type.id))
 
