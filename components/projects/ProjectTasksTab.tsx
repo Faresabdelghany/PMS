@@ -196,17 +196,26 @@ export function ProjectTasksTab({
   const [isDeleting, setIsDeleting] = useState(false)
   const [viewOptions, setViewOptions] = useState<ViewOptions>(DEFAULT_VIEW_OPTIONS)
 
+  // Build O(1) lookup maps for enriching realtime inserts (js-index-maps)
+  const memberMap = useMemo(
+    () => new Map(organizationMembers.map((m) => [m.user_id, m.profile])),
+    [organizationMembers]
+  )
+  const workstreamMap = useMemo(
+    () => new Map(workstreams.map((ws) => [ws.id, ws.name])),
+    [workstreams]
+  )
+
   // Realtime subscription for tasks
   usePooledTasksRealtime(projectId, {
     onInsert: (newTask) => {
       setTasks((prev) => {
-        // Avoid duplicates
         if (prev.some((t) => t.id === newTask.id)) return prev
-        // Add with minimal relations (will be properly fetched on next page load)
+        const profile = newTask.assignee_id ? memberMap.get(newTask.assignee_id) : null
         return [...prev, {
           ...newTask,
-          assignee: null,
-          workstream: null,
+          assignee: profile ? { id: profile.id, full_name: profile.full_name, email: profile.email, avatar_url: profile.avatar_url } : null,
+          workstream: newTask.workstream_id ? { id: newTask.workstream_id, name: workstreamMap.get(newTask.workstream_id) || "" } : null,
           project: { id: projectId, name: projectName },
         } as TaskWithRelations]
       })

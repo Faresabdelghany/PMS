@@ -138,15 +138,18 @@ export function WorkstreamTab({
   const [workstreamToDelete, setWorkstreamToDelete] = useState<{ id: string; name: string } | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
+  // O(1) member lookup map (js-index-maps)
+  const memberMap = useMemo(
+    () => new Map(organizationMembers.map((m) => [m.user_id, m])),
+    [organizationMembers]
+  )
+
   // Helper function to convert database task to WorkstreamTask
   const convertTaskToWorkstreamTask = useCallback((task: TaskRow): WorkstreamTask => {
     const startDate = task.start_date ? new Date(task.start_date) : undefined
     const endDate = task.end_date ? new Date(task.end_date) : undefined
 
-    // Find assignee from organization members
-    const assigneeMember = task.assignee_id
-      ? organizationMembers.find((m) => m.user_id === task.assignee_id)
-      : undefined
+    const assigneeMember = task.assignee_id ? memberMap.get(task.assignee_id) : undefined
 
     return {
       id: task.id,
@@ -165,7 +168,7 @@ export function WorkstreamTab({
           }
         : undefined,
     }
-  }, [organizationMembers])
+  }, [memberMap])
 
   // Sync state when workstreams prop changes
   useEffect(() => {

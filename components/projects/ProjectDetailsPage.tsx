@@ -289,7 +289,7 @@ export function ProjectDetailsPage({
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="workstream">
+                  <TabsContent value="workstream" forceMount className="data-[state=inactive]:hidden">
                     <WorkstreamTabLazy
                       projectId={projectId}
                       projectEndDate={supabaseProject.end_date}
