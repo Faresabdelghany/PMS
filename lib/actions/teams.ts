@@ -1,6 +1,5 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
 import { invalidateCache } from "@/lib/cache"
 import type { Team, TeamUpdate } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
@@ -36,7 +35,7 @@ export async function createTeam(
       return { error: error.message }
     }
 
-    revalidatePath("/", "layout")
+
     await invalidateCache.teams({ orgId })
     return { data }
   } catch {
@@ -121,7 +120,7 @@ export async function updateTeam(
       return { error: error.message }
     }
 
-    revalidatePath("/", "layout")
+
     if (data) await invalidateCache.teams({ orgId: data.organization_id })
     return { data }
   } catch {
@@ -140,7 +139,7 @@ export async function deleteTeam(id: string, orgId?: string): Promise<ActionResu
       return { error: error.message }
     }
 
-    revalidatePath("/", "layout")
+
     if (orgId) await invalidateCache.teams({ orgId })
     return {}
   } catch {

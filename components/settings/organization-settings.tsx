@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { getOptimizedAvatarUrl } from "@/lib/assets/avatars"
 import { Badge } from "@/components/ui/badge"
 import {
   Select,
@@ -260,7 +261,7 @@ export function OrganizationSettings() {
                 <div key={member.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Avatar>
-                      <AvatarImage src={member.profile.avatar_url || undefined} alt={member.profile.full_name || "Member"} />
+                      <AvatarImage src={getOptimizedAvatarUrl(member.profile.avatar_url)} alt={member.profile.full_name || "Member"} />
                       <AvatarFallback>
                         {member.profile.full_name?.[0] || member.profile.email[0].toUpperCase()}
                       </AvatarFallback>

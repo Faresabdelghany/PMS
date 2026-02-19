@@ -2,11 +2,9 @@ import type { Metadata } from "next"
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { getReport, getReportActionItems } from "@/lib/actions/reports"
-import { getTags } from "@/lib/actions/tags"
-import { getCachedOrganizationMembers } from "@/lib/server-cache"
+import { getCachedOrganizationMembers, getCachedTags, getCachedWorkstreamsWithTasks } from "@/lib/server-cache"
 import { ReportDetailContent } from "@/components/reports/ReportDetailContent"
 import { ReportDetailSkeleton } from "@/components/skeletons"
-import { createClient } from "@/lib/supabase/server"
 
 export const metadata: Metadata = {
   title: "Report - PMS",
@@ -29,14 +27,8 @@ async function ReportDetail({ projectId, reportId }: { projectId: string; report
   const [membersResult, actionItemsResult, tagsResult, workstreamsResult] = await Promise.all([
     getCachedOrganizationMembers(report.organization_id),
     actionItemsPromise,
-    getTags(report.organization_id),
-    createClient().then((supabase) =>
-      supabase
-        .from("workstreams")
-        .select("id, name")
-        .eq("project_id", projectId)
-        .order("sort_order")
-    ),
+    getCachedTags(report.organization_id),
+    getCachedWorkstreamsWithTasks(projectId),
   ])
 
   // Pass raw org members (full format for TaskQuickCreateModal)

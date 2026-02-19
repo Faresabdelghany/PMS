@@ -30,6 +30,7 @@ import { markAsRead, markAllAsRead, deleteInboxItem } from "@/lib/actions/inbox"
 import { usePooledInboxRealtime } from "@/hooks/realtime-context"
 import { useUser } from "@/hooks/use-user"
 import type { Icon } from "@phosphor-icons/react"
+import { getOptimizedAvatarUrl } from "@/lib/assets/avatars"
 
 type TabFilter = "all" | "unread" | InboxItemType
 
@@ -77,7 +78,7 @@ const InboxItemRow = memo(function InboxItemRow({ item, onMarkAsRead, onDelete }
       <div className="relative flex-shrink-0">
         {item.actor ? (
           <Avatar className="h-9 w-9">
-            <AvatarImage src={item.actor.avatar_url || undefined} alt={item.actor.full_name || "User"} />
+            <AvatarImage src={getOptimizedAvatarUrl(item.actor.avatar_url)} alt={item.actor.full_name || "User"} />
             <AvatarFallback className="text-xs">
               {item.actor.full_name
                 ?.split(" ")

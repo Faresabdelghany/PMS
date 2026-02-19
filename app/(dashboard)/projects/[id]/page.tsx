@@ -11,8 +11,8 @@ import {
   getCachedClients,
   getCachedOrganizationMembers,
   getCachedTags,
+  getCachedProjectReports,
 } from "@/lib/server-cache"
-import { getProjectReports } from "@/lib/actions/reports"
 import { transformProjectToUI } from "@/lib/transforms/project-details"
 import type { ProjectDetailLean } from "@/components/projects/ProjectDetailsPage"
 
@@ -49,7 +49,7 @@ export default async function Page({ params }: PageProps) {
   const tasksPromise = getCachedTasks(id)
   const workstreamsPromise = getCachedWorkstreamsWithTasks(id)
   const orgDataPromise = fetchOrgData(orgId)
-  const reportsPromise = getProjectReports(id)
+  const reportsPromise = getCachedProjectReports(id)
 
   return (
     <Suspense fallback={
@@ -85,7 +85,7 @@ async function ProjectDetailStreamed({
   tasksPromise: ReturnType<typeof getCachedTasks>
   workstreamsPromise: ReturnType<typeof getCachedWorkstreamsWithTasks>
   orgDataPromise: ReturnType<typeof fetchOrgData>
-  reportsPromise: ReturnType<typeof getProjectReports>
+  reportsPromise: ReturnType<typeof getCachedProjectReports>
   projectId: string
 }) {
   const [projectResult, tasksResult, workstreamsResult, orgData, reportsResult] = await Promise.all([

@@ -2,6 +2,7 @@
 
 import { timeAgo } from "@/lib/date-utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { getOptimizedAvatarUrl } from "@/lib/assets/avatars"
 import { formatActivityMessage } from "@/lib/utils/activity-formatter"
 import type { TaskActivityWithRelations } from "@/lib/supabase/types"
 
@@ -16,7 +17,7 @@ export function TaskActivityItem({ activity }: TaskActivityItemProps) {
   return (
     <div className="flex gap-3 py-2">
       <Avatar className="h-6 w-6 flex-shrink-0">
-        <AvatarImage src={actor?.avatar_url ?? undefined} alt={actor?.full_name || "User"} />
+        <AvatarImage src={getOptimizedAvatarUrl(actor?.avatar_url)} alt={actor?.full_name || "User"} />
         <AvatarFallback className="text-xs">
           {(actor?.full_name || actor?.email || "?").charAt(0).toUpperCase()}
         </AvatarFallback>

@@ -127,7 +127,6 @@ const nextConfig = {
       'lucide-react',
       '@phosphor-icons/react',
       'date-fns',
-      '@radix-ui/react-icons',
       'react-day-picker',
       '@dnd-kit/core',
       '@dnd-kit/sortable',
@@ -168,6 +167,14 @@ export default withSentryConfig(withBundleAnalyzer(nextConfig), {
   // Disable source map upload unless auth token is set
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
+
+  // Reduce Sentry client bundle size (~80-100KB savings)
+  bundleSizeOptimizations: {
+    excludeDebugStatements: true,
+    excludeReplayShadowDom: true,
+    excludeReplayIframe: true,
+    excludeReplayWorker: true,
+  },
 
   // Turbopack doesn't support webpack.treeshake — Sentry handles it automatically
 })

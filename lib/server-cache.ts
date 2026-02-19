@@ -395,6 +395,18 @@ export const getCachedDashboardStats = cache(async (orgId: string) => {
 })
 
 // ============================================
+// REPORTS
+// ============================================
+
+/**
+ * Get project reports (request-level cached)
+ */
+export const getCachedProjectReports = cache(async (projectId: string) => {
+  const { getProjectReports } = await import("./actions/reports")
+  return getProjectReports(projectId)
+})
+
+// ============================================
 // CONVERSATIONS
 // ============================================
 

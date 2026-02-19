@@ -9,6 +9,7 @@ import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
 import { Smiley } from "@phosphor-icons/react/dist/ssr/Smiley"
 import { Paperclip } from "@phosphor-icons/react/dist/ssr/Paperclip"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { getOptimizedAvatarUrl } from "@/lib/assets/avatars"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -100,7 +101,7 @@ export function TaskCommentItem({
   return (
     <div className="flex gap-3 group">
       <Avatar className="h-8 w-8 flex-shrink-0">
-        <AvatarImage src={author?.avatar_url ?? undefined} alt={author?.full_name || "User"} />
+        <AvatarImage src={getOptimizedAvatarUrl(author?.avatar_url)} alt={author?.full_name || "User"} />
         <AvatarFallback className="text-xs">
           {(author?.full_name || author?.email || "?").charAt(0).toUpperCase()}
         </AvatarFallback>

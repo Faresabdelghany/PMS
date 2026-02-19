@@ -2,6 +2,7 @@ import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { cacheGet, CacheKeys, CacheTTL } from "@/lib/cache"
 import { cachedGetUser } from "@/lib/request-cache"
+import { getCachedUnreadCount } from "@/lib/server-cache"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { OrganizationProvider } from "@/components/providers/organization-provider"
@@ -17,6 +18,7 @@ import { getUserColorTheme, type ColorThemeType } from "@/lib/actions/user-setti
 import type { OrganizationWithRole } from "@/hooks/use-organization"
 import type { Profile, Project } from "@/lib/supabase/types"
 import { Toaster } from "@/components/ui/sonner"
+import { MotionProvider } from "@/components/ui/motion-lazy"
 import { SIDEBAR_PROJECT_LIMIT } from "@/lib/constants"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/supabase/database.types"
@@ -108,11 +110,13 @@ async function getCachedColorTheme(
 
 async function SidebarWithData({
   activeProjectsPromise,
+  unreadCountPromise,
 }: {
   activeProjectsPromise: Promise<Project[]>
+  unreadCountPromise: Promise<{ data?: number }>
 }) {
-  const activeProjects = await activeProjectsPromise
-  return <AppSidebar activeProjects={activeProjects} />
+  const [activeProjects, unreadResult] = await Promise.all([activeProjectsPromise, unreadCountPromise])
+  return <AppSidebar activeProjects={activeProjects} initialUnreadCount={unreadResult.data ?? 0} />
 }
 
 export default async function DashboardLayout({
@@ -140,8 +144,9 @@ export default async function DashboardLayout({
     redirect("/onboarding")
   }
 
-  // activeProjects needs org ID - start it but DON'T block layout render
+  // activeProjects and unreadCount need org/user ID - start but DON'T block layout render
   const activeProjectsPromise = getActiveProjects(supabase, organizations[0].id)
+  const unreadCountPromise = getCachedUnreadCount()
 
   // Only await profile and colorTheme (they started in parallel, likely already resolved)
   const [profile, colorTheme] = await Promise.all([
@@ -157,13 +162,14 @@ export default async function DashboardLayout({
       >
         <OrganizationProvider initialOrganizations={organizations}>
           <RealtimeProvider>
+            <MotionProvider>
             <SettingsDialogProvider>
               <CommandPaletteProvider>
                 <ColorThemeSyncer serverTheme={colorTheme} />
                 <NotificationToastProviderLazy userId={user.id} />
                 <SidebarProvider>
                   <Suspense fallback={<AppSidebar activeProjects={[]} />}>
-                    <SidebarWithData activeProjectsPromise={activeProjectsPromise} />
+                    <SidebarWithData activeProjectsPromise={activeProjectsPromise} unreadCountPromise={unreadCountPromise} />
                   </Suspense>
                   <SidebarInset>
                     <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
@@ -172,6 +178,7 @@ export default async function DashboardLayout({
                 <Toaster richColors closeButton />
               </CommandPaletteProvider>
             </SettingsDialogProvider>
+            </MotionProvider>
           </RealtimeProvider>
         </OrganizationProvider>
       </UserProvider>

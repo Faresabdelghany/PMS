@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useState, useEffect, startTransition, useCallback } from "react"
+import { memo, useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
@@ -42,7 +42,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useUser } from "@/hooks/use-user"
 import { signOut } from "@/lib/actions/auth"
-import { getUnreadCount } from "@/lib/actions/inbox"
 import { usePooledProjectsRealtime, usePooledInboxRealtime } from "@/hooks/realtime-context"
 import { useOrganization } from "@/hooks/use-organization"
 import type { Project } from "@/lib/supabase/types"
@@ -125,6 +124,7 @@ const preloadProjectDetails = () => {
 
 interface AppSidebarProps {
   activeProjects?: Project[]
+  initialUnreadCount?: number
 }
 
 const navItemIcons: Record<NavItemId, React.ComponentType<{ className?: string }>> = {
@@ -187,14 +187,14 @@ const ProjectMenuItem = memo(function ProjectMenuItem({
   )
 })
 
-export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
+export function AppSidebar({ activeProjects = [], initialUnreadCount = 0 }: AppSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { profile, user } = useUser()
   const { organization } = useOrganization()
   const { open: openCommandPalette } = useCommandPalette()
   const { openSettings } = useSettingsDialog()
-  const [unreadCount, setUnreadCount] = useState(0)
+  const [unreadCount, setUnreadCount] = useState(initialUnreadCount)
   const [projects, setProjects] = useState<Project[]>(activeProjects)
 
   // Sync with server props when they change (e.g. on navigation/revalidation)
@@ -245,22 +245,8 @@ export function AppSidebar({ activeProjects = [] }: AppSidebarProps) {
     router.prefetch(href)
   }, [router])
 
-  // Fetch initial unread count - deferred to not block hydration
-  useEffect(() => {
-    const fetchCount = async () => {
-      const { data } = await getUnreadCount()
-      if (data !== undefined) {
-        startTransition(() => setUnreadCount(data))
-      }
-    }
-
-    if ("requestIdleCallback" in globalThis) {
-      const id = globalThis.requestIdleCallback(() => { fetchCount() }, { timeout: 3000 })
-      return () => globalThis.cancelIdleCallback(id)
-    }
-    const id = setTimeout(fetchCount, 100)
-    return () => clearTimeout(id)
-  }, [])
+  // Initial unread count is now server-rendered via initialUnreadCount prop,
+  // eliminating the client-side fetch and 0→N badge flash.
 
   // Real-time updates for inbox (pooled — shares WebSocket with other subscriptions)
   usePooledInboxRealtime(user?.id, {

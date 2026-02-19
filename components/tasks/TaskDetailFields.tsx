@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/command"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
+import { getOptimizedAvatarUrl } from "@/lib/assets/avatars"
 import type { TaskWithRelations } from "@/lib/actions/tasks"
 import type {
   TaskPriority,
@@ -84,7 +85,7 @@ export function TaskDetailFields({
       renderIcon: () =>
         task.assignee ? (
           <Avatar className="h-9 w-9">
-            <AvatarImage src={task.assignee.avatar_url ?? undefined} alt={task.assignee.full_name || task.assignee.email} />
+            <AvatarImage src={getOptimizedAvatarUrl(task.assignee.avatar_url)} alt={task.assignee.full_name || task.assignee.email} />
             <AvatarFallback className="text-xs font-medium">
               {(task.assignee.full_name || task.assignee.email).charAt(0).toUpperCase()}
             </AvatarFallback>
@@ -117,7 +118,7 @@ export function TaskDetailFields({
                   }}
                 >
                   <Avatar className="h-5 w-5 mr-2">
-                    <AvatarImage src={member.profile.avatar_url ?? undefined} alt={member.profile.full_name || member.profile.email} />
+                    <AvatarImage src={getOptimizedAvatarUrl(member.profile.avatar_url)} alt={member.profile.full_name || member.profile.email} />
                     <AvatarFallback className="text-xs">
                       {(member.profile.full_name || member.profile.email).charAt(0).toUpperCase()}
                     </AvatarFallback>
