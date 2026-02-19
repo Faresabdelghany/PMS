@@ -79,12 +79,32 @@ npx supabase db reset --linked          # Reset remote database
 npx supabase gen types typescript --project-id lazhmdyajdqbnxxwyxun > lib/supabase/database.types.ts
 ```
 
+**After modifying Supabase RPC functions or database schema**, always manually update the TypeScript type definitions in `lib/supabase/database.types.ts` or extend types locally in `lib/supabase/types.ts`, since Supabase generated types won't automatically include new RPC functions without running `supabase gen types`.
+
 **Local Development (optional):**
 ```bash
 npx supabase start                      # Start local Supabase stack
 npx supabase stop                       # Stop local Supabase
 npx supabase status                     # Check local services status
 ```
+
+## Git Workflow
+
+Always commit and push after completing a task. The standard workflow is: make changes → verify build passes → `git add` → `git commit` with descriptive message → `git push` → close related GitHub issue if applicable.
+
+## Code Standards
+
+- Always ensure imports are placed at the top of the file (ESM standard). After editing files, run `pnpm build` to catch type errors before committing.
+- When making changes that add/remove exports or modify module interfaces, always check and update all re-export files (`index.ts`, compatibility shims like `ai.ts`) to ensure they stay in sync. Run a full build to verify.
+
+## Environment
+
+When running shell commands, use PowerShell syntax on this Windows environment. Avoid Git Bash-specific syntax for process management. For environment variables, use `$env:VAR='value'` syntax instead of `VAR=value`.
+
+## Debugging Guidelines
+
+- When the user reports a real-time/live update issue, investigate missing Supabase Realtime subscriptions first rather than dismissing it as a cache TTL issue.
+- Before making any fix, analyze the root cause. List hypotheses with evidence from the codebase, then confirm the approach before editing files.
 
 ## Architecture
 
@@ -102,19 +122,22 @@ npx supabase status                     # Check local services status
   - `tasks/TaskDetailPanel.tsx` - Slide-over panel for task details with timeline
   - `tasks/TaskTimeline.tsx` - Combined comments and activity feed
   - `tasks/TaskCommentEditor.tsx` - Rich text comment input with @mentions
+  - `tasks/TaskKanbanBoardView.tsx` - Kanban board view with drag-and-drop columns
   - `project-wizard/` - Multi-step project creation wizard
   - `ai/` - AI chat components (chat view, input, history sidebar)
   - `dashboard/` - Cached dashboard stat cards and project lists
   - `skeletons/` - Loading skeleton components for all major views
 - **`lib/`** - Utilities and data
   - `supabase/` - Supabase clients and types
-  - `actions/` - Server Actions for data mutations
+  - `supabase/storage-utils.ts` - `getStoragePublicUrl()` and `removeStorageFile()` wrappers
+  - `actions/` - Server Actions for data mutations (see Server Actions section below)
   - `page-auth.ts` - `getPageOrganization()` helper for standardized auth + org resolution in pages
   - `request-cache.ts` - Core request-level caching (`cachedGetUser`, `getSupabaseClient`, and cached action wrappers)
   - `server-cache.ts` - Additional request-level cached functions (wraps actions with React `cache()`)
   - `cache-tags.ts` - Cache tag constants for granular revalidation
   - `cache/` - KV caching layer (Vercel KV/Redis) for cross-request caching
   - `rate-limit/` - Rate limiting with Upstash/Vercel KV
+  - `constants.ts` - Extracted magic numbers (page sizes, limits, timeouts)
   - `data/` - Type definitions and interfaces
   - `utils.ts` - Utility helpers including `cn()` for class merging
   - `utils/activity-formatter.ts` - Activity message formatting helpers
@@ -132,36 +155,13 @@ npx supabase status                     # Check local services status
 - `lib/supabase/server.ts` - Server client with cookies (use in Server Components/Actions)
 - `lib/supabase/admin.ts` - Service role client (bypasses RLS, server-only)
 
-**Server Actions:** All actions return `ActionResult<T>` type (`{ data?, error? }`) from `lib/actions/types.ts`.
-- `lib/actions/auth.ts` - Authentication (signIn, signUp, signOut, OAuth)
-- `lib/actions/auth-helpers.ts` - Authorization helpers (`requireAuth`, `requireOrgMember`, `requireProjectMember`, `requireProjectOwnerOrPIC`)
-- `lib/actions/organizations.ts` - Organization CRUD and member management
-- `lib/actions/projects.ts` - Project CRUD and member management
-- `lib/actions/project-details.ts` - Project details fetching with relations
-- `lib/actions/clients.ts` - Client CRUD
-- `lib/actions/tasks.ts` - Task CRUD, reordering, status updates
-- `lib/actions/task-comments.ts` - Task comments with reactions and attachments
-- `lib/actions/task-activities.ts` - Task activity logging and timeline
-- `lib/actions/workstreams.ts` - Workstream CRUD and reordering
-- `lib/actions/files.ts` - File upload/download to Supabase Storage
-- `lib/actions/notes.ts` - Notes CRUD with audio support
-- `lib/actions/inbox.ts` - User inbox/notifications
-- `lib/actions/invitations.ts` - Organization member invitations
-- `lib/actions/teams.ts` - Team CRUD
-- `lib/actions/tags.ts` - Organization tags CRUD
-- `lib/actions/labels.ts` - Project labels CRUD
-- `lib/actions/deliverables.ts` - Project deliverables CRUD
-- `lib/actions/workflow-statuses.ts` - Custom workflow status management
-- `lib/actions/ai.ts` - AI generation (OpenAI, Anthropic, Google)
-- `lib/actions/ai-context.ts` - AI context helpers for project/task data
-- `lib/actions/ai-types.ts` - AI action types and proposed action schemas
-- `lib/actions/ai-helpers.ts` - AI prompt building and response parsing
-- `lib/actions/execute-ai-action.ts` - Execute AI-proposed actions (create task, update project, etc.)
-- `lib/actions/conversations.ts` - AI chat conversations and messages CRUD
-- `lib/actions/user-settings.ts` - User preferences, AI settings, color theme
-- `lib/actions/search.ts` - Global search across projects, tasks, and clients
-- `lib/actions/notifications.ts` - Send notifications via inbox system
-- `lib/actions/import.ts` - CSV import for tasks
+**Server Actions:** All actions return `ActionResult<T>` type (`{ data?, error? }`) from `lib/actions/types.ts`. Each file in `lib/actions/` maps to a domain:
+- `auth.ts` / `auth-helpers.ts` — Authentication and authorization helpers (`requireAuth`, `requireOrgMember`, `requireProjectMember`, `requireProjectOwnerOrPIC`)
+- `projects.ts`, `tasks.ts`, `clients.ts`, `workstreams.ts`, `teams.ts`, `tags.ts`, `labels.ts`, `deliverables.ts` — Entity CRUD
+- `task-comments.ts`, `task-activities.ts` — Task timeline (comments with reactions/attachments, activity log)
+- `workflow-statuses.ts` — Custom workflow status management
+- `ai.ts`, `ai-context.ts`, `ai-helpers.ts`, `ai-types.ts`, `execute-ai-action.ts`, `conversations.ts` — AI chat system
+- `files.ts`, `notes.ts`, `inbox.ts`, `invitations.ts`, `notifications.ts`, `search.ts`, `import.ts`, `user-settings.ts`, `organizations.ts` — Supporting features
 
 **Database Schema:**
 - 22 tables with full RLS policies
@@ -399,6 +399,13 @@ KV_REST_API_TOKEN=<vercel-kv-token>
 - Rate Limiting: Upstash + Vercel KV
 
 **Note:** `pnpm.overrides` in `package.json` pins `tar>=7.5.7` to patch CVEs in the `@tailwindcss/oxide` dependency chain.
+
+## CI Workflows
+
+GitHub Actions in `.github/workflows/`:
+- `lighthouse.yml` — Lighthouse CI performance checks
+- `navigation-perf.yml` — Client-side route transition timing tests
+- `perf-regression.yml` — Performance regression detection
 
 ## Deployment
 
