@@ -98,7 +98,14 @@ export async function getAgents(
   const { data, error } = await query.order("sort_order").order("name")
 
   if (error) return { error: error.message }
-  return { data: (data ?? []) as AgentWithSupervisor[] }
+
+  // Supabase returns supervisor as array from join — unwrap to single object
+  const agents = (data ?? []).map((row) => ({
+    ...row,
+    supervisor: Array.isArray(row.supervisor) ? row.supervisor[0] ?? null : row.supervisor,
+  })) as AgentWithSupervisor[]
+
+  return { data: agents }
 }
 
 export async function getAgent(id: string): Promise<ActionResult<AgentWithSupervisor>> {
@@ -111,7 +118,14 @@ export async function getAgent(id: string): Promise<ActionResult<AgentWithSuperv
     .single()
 
   if (error) return { error: error.message }
-  return { data: data as AgentWithSupervisor }
+
+  // Supabase returns supervisor as array from join — unwrap to single object
+  const agent = {
+    ...data,
+    supervisor: Array.isArray(data.supervisor) ? data.supervisor[0] ?? null : data.supervisor,
+  } as AgentWithSupervisor
+
+  return { data: agent }
 }
 
 export async function createAgent(
