@@ -167,7 +167,7 @@ export async function upsertSkill(
       result = data
     }
 
-    after(() => revalidatePath("/mission-control/skills"))
+    after(() => { revalidatePath("/skills/marketplace"); revalidatePath("/skills") })
 
     return { data: result as unknown as Skill }
   } catch {
@@ -201,7 +201,7 @@ export async function updateSkill(
 
     if (error) return { error: error.message }
 
-    after(() => revalidatePath("/mission-control/skills"))
+    after(() => { revalidatePath("/skills/marketplace"); revalidatePath("/skills") })
 
     return { data: data as unknown as Skill }
   } catch {
@@ -226,7 +226,7 @@ export async function deleteSkill(id: string): Promise<ActionResult> {
     const { error } = await supabase.from("skills" as any).delete().eq("id", id)
     if (error) return { error: error.message }
 
-    after(() => revalidatePath("/mission-control/skills"))
+    after(() => { revalidatePath("/skills/marketplace"); revalidatePath("/skills") })
 
     return {}
   } catch {
@@ -255,7 +255,7 @@ export async function seedDefaultSkills(
 
     if (error) return { error: error.message }
 
-    after(() => revalidatePath("/mission-control/skills"))
+    after(() => { revalidatePath("/skills/marketplace"); revalidatePath("/skills") })
 
     return { data: { seeded: data?.length ?? 0 } }
   } catch {

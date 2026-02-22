@@ -4,6 +4,7 @@ import { getPageOrganization } from "@/lib/page-auth"
 import { getActivityFeed } from "@/lib/actions/activity"
 import { getAgents } from "@/lib/actions/agents"
 import { PageSkeleton } from "@/components/ui/page-skeleton"
+import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Pulse } from "@phosphor-icons/react/dist/ssr/Pulse"
 
@@ -69,20 +70,20 @@ async function ActivityContent({
       {/* Filters */}
       <div className="flex flex-wrap gap-2 items-center">
         <span className="text-sm text-muted-foreground">Filter by agent:</span>
-        <a href="/activity">
+        <Link href="/activity">
           <Badge variant={!currentAgentId ? "default" : "outline"} className="cursor-pointer">
             All Agents
           </Badge>
-        </a>
+        </Link>
         {agents.map((agent) => (
-          <a key={agent.id} href={`/activity?agentId=${agent.id}`}>
+          <Link key={agent.id} href={`/activity?agentId=${agent.id}`}>
             <Badge
               variant={currentAgentId === agent.id ? "default" : "outline"}
               className="cursor-pointer"
             >
               {agent.name}
             </Badge>
-          </a>
+          </Link>
         ))}
       </div>
 

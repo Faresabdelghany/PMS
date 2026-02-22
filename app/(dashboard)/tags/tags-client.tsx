@@ -7,8 +7,8 @@ import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
 import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
 import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
 import { Tag } from "@phosphor-icons/react/dist/ssr/Tag"
-import { createTag, updateTag, deleteTag } from "@/lib/actions/tags"
-import type { OrganizationTag } from "@/lib/supabase/types"
+import { createMCTag, updateMCTag, deleteMCTag } from "@/lib/actions/mc-tags"
+import type { MCTag } from "@/lib/actions/mc-tags"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -50,42 +50,39 @@ const COLOR_PRESETS = [
 ]
 
 interface TagsClientProps {
-  tags: OrganizationTag[]
+  tags: MCTag[]
   orgId: string
 }
 
 export function TagsClient({ tags: initialTags, orgId }: TagsClientProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [tags, setTags] = useState<OrganizationTag[]>(initialTags)
+  const [tags, setTags] = useState<MCTag[]>(initialTags)
 
   // Create dialog
   const [createOpen, setCreateOpen] = useState(false)
   const [newName, setNewName] = useState("")
   const [newColor, setNewColor] = useState(COLOR_PRESETS[4])
-  const [newDesc, setNewDesc] = useState("")
 
   // Edit dialog
-  const [editTag, setEditTag] = useState<OrganizationTag | null>(null)
+  const [editTag, setEditTag] = useState<MCTag | null>(null)
   const [editName, setEditName] = useState("")
   const [editColor, setEditColor] = useState("")
-  const [editDesc, setEditDesc] = useState("")
 
   // Delete dialog
-  const [deleteTarget, setDeleteTarget] = useState<OrganizationTag | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<MCTag | null>(null)
 
-  function openEdit(tag: OrganizationTag) {
+  function openEdit(tag: MCTag) {
     setEditTag(tag)
     setEditName(tag.name)
     setEditColor(tag.color)
-    setEditDesc(tag.description || "")
   }
 
   const handleCreate = () => {
     if (!newName.trim()) return
 
     startTransition(async () => {
-      const result = await createTag(orgId, { name: newName.trim(), description: newDesc, color: newColor })
+      const result = await createMCTag(orgId, { name: newName.trim(), color: newColor })
       if (result.error) {
         toast.error(result.error)
         return
@@ -94,7 +91,6 @@ export function TagsClient({ tags: initialTags, orgId }: TagsClientProps) {
       setTags((prev) => [...prev, result.data!])
       setCreateOpen(false)
       setNewName("")
-      setNewDesc("")
       setNewColor(COLOR_PRESETS[4])
       router.refresh()
     })
@@ -104,9 +100,8 @@ export function TagsClient({ tags: initialTags, orgId }: TagsClientProps) {
     if (!editTag || !editName.trim()) return
 
     startTransition(async () => {
-      const result = await updateTag(editTag.id, {
+      const result = await updateMCTag(editTag.id, {
         name: editName.trim(),
-        description: editDesc,
         color: editColor,
       })
       if (result.error) {
@@ -125,7 +120,7 @@ export function TagsClient({ tags: initialTags, orgId }: TagsClientProps) {
     const id = deleteTarget.id
 
     startTransition(async () => {
-      const result = await deleteTag(id, orgId)
+      const result = await deleteMCTag(id)
       if (result.error) {
         toast.error(result.error)
         return
@@ -171,34 +166,27 @@ export function TagsClient({ tags: initialTags, orgId }: TagsClientProps) {
               />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{tag.name}</p>
-                {tag.description && (
-                  <p className="text-xs text-muted-foreground truncate">{tag.description}</p>
-                )}
               </div>
-              {tag.is_system ? (
-                <span className="text-xs text-muted-foreground/60 px-1">system</span>
-              ) : (
-                <div className="flex gap-1 shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => openEdit(tag)}
-                    disabled={isPending}
-                  >
-                    <PencilSimple className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-destructive hover:text-destructive"
-                    onClick={() => setDeleteTarget(tag)}
-                    disabled={isPending}
-                  >
-                    <Trash className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              )}
+              <div className="flex gap-1 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => openEdit(tag)}
+                  disabled={isPending}
+                >
+                  <PencilSimple className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-destructive hover:text-destructive"
+                  onClick={() => setDeleteTarget(tag)}
+                  disabled={isPending}
+                >
+                  <Trash className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </div>
           ))}
         </div>
@@ -219,15 +207,6 @@ export function TagsClient({ tags: initialTags, orgId }: TagsClientProps) {
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="e.g. urgent"
                 maxLength={50}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Description</Label>
-              <Input
-                value={newDesc}
-                onChange={(e) => setNewDesc(e.target.value)}
-                placeholder="Optional description"
-                maxLength={200}
               />
             </div>
             <div className="space-y-1.5">
@@ -282,14 +261,6 @@ export function TagsClient({ tags: initialTags, orgId }: TagsClientProps) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Description</Label>
-              <Input
-                value={editDesc}
-                onChange={(e) => setEditDesc(e.target.value)}
-                maxLength={200}
-              />
-            </div>
-            <div className="space-y-1.5">
               <Label>Color</Label>
               <div className="flex flex-wrap gap-2">
                 {COLOR_PRESETS.map((color) => (
@@ -331,7 +302,7 @@ export function TagsClient({ tags: initialTags, orgId }: TagsClientProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Tag?</AlertDialogTitle>
             <AlertDialogDescription>
-              Delete <strong>{deleteTarget?.name}</strong>? This will remove the tag from all items it's assigned to.
+              Delete <strong>{deleteTarget?.name}</strong>? This will remove the tag from all items it&apos;s assigned to.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

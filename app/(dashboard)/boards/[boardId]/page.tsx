@@ -2,6 +2,8 @@ import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { getBoard } from "@/lib/actions/boards"
+import { getAgent } from "@/lib/actions/agents"
+import { getGateway } from "@/lib/actions/gateways"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -24,6 +26,14 @@ export default async function BoardDetailPage({
   if (!result.data) return notFound()
 
   const board = result.data
+
+  // Resolve agent and gateway names in parallel
+  const [agentResult, gatewayResult] = await Promise.all([
+    board.agent_id ? getAgent(board.agent_id) : Promise.resolve({ data: null }),
+    board.gateway_id ? getGateway(board.gateway_id) : Promise.resolve({ data: null }),
+  ])
+  const agentName = agentResult.data?.name ?? board.agent_id
+  const gatewayName = gatewayResult.data?.name ?? board.gateway_id
 
   const statusColor = {
     active: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
@@ -66,7 +76,7 @@ export default async function BoardDetailPage({
           <CardContent>
             {board.agent_id ? (
               <Link href={`/agents/${board.agent_id}`} className="hover:underline">
-                <p className="text-sm font-medium font-mono">{board.agent_id}</p>
+                <p className="text-sm font-medium">{agentName}</p>
               </Link>
             ) : (
               <p className="text-sm text-muted-foreground">No agent assigned</p>
@@ -83,7 +93,7 @@ export default async function BoardDetailPage({
           <CardContent>
             {board.gateway_id ? (
               <Link href={`/gateways/${board.gateway_id}`} className="hover:underline">
-                <p className="text-sm font-medium font-mono">{board.gateway_id}</p>
+                <p className="text-sm font-medium">{gatewayName}</p>
               </Link>
             ) : (
               <p className="text-sm text-muted-foreground">No gateway assigned</p>

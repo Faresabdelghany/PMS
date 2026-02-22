@@ -97,7 +97,7 @@ export async function createApproval(
 
     if (error) return { error: error.message }
 
-    after(() => revalidatePath("/mission-control/approvals"))
+    after(() => revalidatePath("/approvals"))
 
     return { data: data as unknown as Approval }
   } catch {
@@ -138,7 +138,7 @@ export async function updateApproval(
 
     if (error) return { error: error.message }
 
-    after(() => revalidatePath("/mission-control/approvals"))
+    after(() => revalidatePath("/approvals"))
 
     return { data: data as unknown as Approval }
   } catch {
