@@ -34,6 +34,11 @@ import { Robot } from "@phosphor-icons/react/dist/ssr/Robot"
 import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 import { SquaresFour } from "@phosphor-icons/react/dist/ssr/SquaresFour"
 import { User } from "@phosphor-icons/react/dist/ssr/User"
+import { Pulse } from "@phosphor-icons/react/dist/ssr/Pulse"
+import { Kanban } from "@phosphor-icons/react/dist/ssr/Kanban"
+import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText"
+import { PlugsConnected } from "@phosphor-icons/react/dist/ssr/PlugsConnected"
+import { Tag } from "@phosphor-icons/react/dist/ssr/Tag"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,7 +58,7 @@ import { cn } from "@/lib/utils"
 import { PROGRESS_THRESHOLDS, BADGE_CAP, SIDEBAR_PROJECT_LIMIT } from "@/lib/constants"
 
 // Navigation items defined inline (no mock data dependency)
-type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "chat"
+type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "chat" | "activity" | "boards" | "approvals" | "gateways" | "skills" | "tags"
 type SidebarFooterItemId = "settings" | "templates" | "help"
 
 type NavItem = {
@@ -74,6 +79,12 @@ const navItems: NavItem[] = [
   { id: "projects", label: "Projects" },
   { id: "clients", label: "Clients" },
   { id: "agents", label: "Agents" },
+  { id: "activity", label: "Activity" },
+  { id: "boards", label: "Boards" },
+  { id: "approvals", label: "Approvals" },
+  { id: "gateways", label: "Gateways" },
+  { id: "skills", label: "Skills" },
+  { id: "tags", label: "Tags" },
   { id: "chat", label: "AI Chat" },
 ]
 
@@ -119,6 +130,12 @@ const preloadHandlers: Record<NavItemId, () => void> = {
       void import("@/components/agents/agents-table")
     }
   },
+  activity: () => {},
+  boards: () => {},
+  approvals: () => {},
+  gateways: () => {},
+  skills: () => {},
+  tags: () => {},
   chat: () => {
     if (typeof window !== "undefined") {
       void import("@/components/ai/chat-page-content")
@@ -135,6 +152,7 @@ const preloadProjectDetails = () => {
 interface AppSidebarProps {
   activeProjects?: Project[]
   initialUnreadCount?: number
+  initialPendingApprovalsCount?: number
 }
 
 const navItemIcons: Record<NavItemId, React.ComponentType<{ className?: string }>> = {
@@ -144,6 +162,12 @@ const navItemIcons: Record<NavItemId, React.ComponentType<{ className?: string }
   projects: Folder,
   clients: Users,
   agents: Robot,
+  activity: Pulse,
+  boards: Kanban,
+  approvals: ClipboardText,
+  gateways: PlugsConnected,
+  skills: Sparkle,
+  tags: Tag,
   chat: Sparkle,
 }
 
@@ -199,7 +223,7 @@ const ProjectMenuItem = memo(function ProjectMenuItem({
   )
 })
 
-export function AppSidebar({ activeProjects = [], initialUnreadCount = 0 }: AppSidebarProps) {
+export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initialPendingApprovalsCount = 0 }: AppSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { profile, user } = useUser()
@@ -207,6 +231,7 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0 }: AppS
   const { open: openCommandPalette } = useCommandPalette()
   const { openSettings } = useSettingsDialog()
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount)
+  const [pendingApprovalsCount] = useState(initialPendingApprovalsCount)
   const [projects, setProjects] = useState<Project[]>(activeProjects)
 
   // Sync with server props when they change (e.g. on navigation/revalidation)
@@ -288,6 +313,12 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0 }: AppS
     if (id === "inbox") return "/inbox"
     if (id === "clients") return "/clients"
     if (id === "agents") return "/agents"
+    if (id === "activity") return "/activity"
+    if (id === "boards") return "/boards"
+    if (id === "approvals") return "/approvals"
+    if (id === "gateways") return "/gateways"
+    if (id === "skills") return "/skills/marketplace"
+    if (id === "tags") return "/tags"
     if (id === "chat") return "/chat"
     return "#"
   }
@@ -310,6 +341,24 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0 }: AppS
     }
     if (id === "agents") {
       return pathname.startsWith("/agents")
+    }
+    if (id === "activity") {
+      return pathname.startsWith("/activity")
+    }
+    if (id === "boards") {
+      return pathname.startsWith("/boards")
+    }
+    if (id === "approvals") {
+      return pathname.startsWith("/approvals")
+    }
+    if (id === "gateways") {
+      return pathname.startsWith("/gateways")
+    }
+    if (id === "skills") {
+      return pathname.startsWith("/skills")
+    }
+    if (id === "tags") {
+      return pathname.startsWith("/tags")
     }
     if (id === "chat") {
       return pathname.startsWith("/chat")
@@ -392,6 +441,11 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0 }: AppS
                         aria-hidden={unreadCount === 0}
                       >
                         {unreadCount > 0 ? (unreadCount > BADGE_CAP ? `${BADGE_CAP}+` : unreadCount) : "0"}
+                      </SidebarMenuBadge>
+                    )}
+                    {item.id === "approvals" && pendingApprovalsCount > 0 && (
+                      <SidebarMenuBadge className="rounded-full px-2 bg-amber-500/10 text-amber-600">
+                        {pendingApprovalsCount > BADGE_CAP ? `${BADGE_CAP}+` : pendingApprovalsCount}
                       </SidebarMenuBadge>
                     )}
                   </SidebarMenuItem>

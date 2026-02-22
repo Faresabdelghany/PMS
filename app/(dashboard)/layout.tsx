@@ -111,12 +111,24 @@ async function getCachedColorTheme(
 async function SidebarWithData({
   activeProjectsPromise,
   unreadCountPromise,
+  pendingApprovalsPromise,
 }: {
   activeProjectsPromise: Promise<Project[]>
   unreadCountPromise: Promise<{ data?: number }>
+  pendingApprovalsPromise: Promise<{ data?: number }>
 }) {
-  const [activeProjects, unreadResult] = await Promise.all([activeProjectsPromise, unreadCountPromise])
-  return <AppSidebar activeProjects={activeProjects} initialUnreadCount={unreadResult.data ?? 0} />
+  const [activeProjects, unreadResult, pendingResult] = await Promise.all([
+    activeProjectsPromise,
+    unreadCountPromise,
+    pendingApprovalsPromise,
+  ])
+  return (
+    <AppSidebar
+      activeProjects={activeProjects}
+      initialUnreadCount={unreadResult.data ?? 0}
+      initialPendingApprovalsCount={pendingResult.data ?? 0}
+    />
+  )
 }
 
 export default async function DashboardLayout({
@@ -147,6 +159,10 @@ export default async function DashboardLayout({
   // activeProjects and unreadCount need org/user ID - start but DON'T block layout render
   const activeProjectsPromise = getActiveProjects(supabase, organizations[0].id)
   const unreadCountPromise = getCachedUnreadCount()
+  // Pending approvals count (gracefully handles missing table)
+  const pendingApprovalsPromise = import("@/lib/actions/approvals").then(
+    (m) => m.getPendingApprovalsCount(organizations[0].id)
+  ).catch(() => ({ data: 0 }))
 
   // Only await profile and colorTheme (they started in parallel, likely already resolved)
   const [profile, colorTheme] = await Promise.all([
@@ -169,7 +185,11 @@ export default async function DashboardLayout({
                 <NotificationToastProviderLazy userId={user.id} />
                 <SidebarProvider>
                   <Suspense fallback={<AppSidebar activeProjects={[]} />}>
-                    <SidebarWithData activeProjectsPromise={activeProjectsPromise} unreadCountPromise={unreadCountPromise} />
+                    <SidebarWithData
+                      activeProjectsPromise={activeProjectsPromise}
+                      unreadCountPromise={unreadCountPromise}
+                      pendingApprovalsPromise={pendingApprovalsPromise}
+                    />
                   </Suspense>
                   <SidebarInset>
                     <Suspense fallback={<PageSkeleton />}>{children}</Suspense>

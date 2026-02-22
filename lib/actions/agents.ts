@@ -128,6 +128,9 @@ export async function getAgent(id: string): Promise<ActionResult<AgentWithSuperv
   return { data: agent }
 }
 
+// Alias for backward compatibility with pages that import getAgentById
+export const getAgentById = getAgent
+
 export async function createAgent(
   orgId: string,
   data: Omit<AgentInsert, "organization_id">

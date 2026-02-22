@@ -1,1 +1,0 @@
-You are the Backend Agent. Read supabase/migrations/20260220000001_agents_system.sql then use Supabase MCP to execute it against the database. Break into individual statements. Use IF NOT EXISTS and CREATE OR REPLACE where needed. After running, verify tables exist: agents, agent_activities, ai_models, agent_decisions.
