@@ -272,6 +272,93 @@ export async function createAgentActivity(
   return { data: activity as AgentActivityRow }
 }
 
+// ── Org-wide Agent Activities ───────────────────────────────────────
+
+export type AgentActivityWithAgent = AgentActivityRow & {
+  agent: Pick<Agent, "id" | "name" | "role" | "avatar_url">
+}
+
+export async function getOrgAgentActivities(
+  orgId: string,
+  limit = 100
+): Promise<ActionResult<AgentActivityWithAgent[]>> {
+  const orgValidation = validate(uuidSchema, orgId)
+  if (!orgValidation.success) return { error: "Invalid organization ID" }
+
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from("agent_activities")
+    .select("*, agent:agents!agent_activities_agent_id_fkey(id, name, role, avatar_url)")
+    .eq("organization_id", orgId)
+    .order("created_at", { ascending: false })
+    .limit(limit)
+
+  if (error) return { error: error.message }
+
+  const activities = (data ?? []).map((row) => ({
+    ...row,
+    agent: Array.isArray(row.agent) ? row.agent[0] ?? { id: "", name: "Unknown", role: "", avatar_url: null } : row.agent,
+  })) as AgentActivityWithAgent[]
+
+  return { data: activities }
+}
+
+// ── Dashboard Agent Stats ──────────────────────────────────────────
+
+export async function getDashboardAgentStats(orgId: string): Promise<ActionResult<{
+  activeAgents: number
+  totalAgents: number
+  tasksInProgress: number
+  completedThisWeek: number
+  errorRate: number
+  agentsByStatus: { online: number; busy: number; idle: number; offline: number }
+}>> {
+  const orgValidation = validate(uuidSchema, orgId)
+  if (!orgValidation.success) return { error: "Invalid organization ID" }
+
+  const supabase = await createClient()
+
+  const [agentsResult, activitiesResult] = await Promise.all([
+    supabase
+      .from("agents")
+      .select("id, status, is_active")
+      .eq("organization_id", orgId),
+    supabase
+      .from("agent_activities")
+      .select("id, activity_type, created_at")
+      .eq("organization_id", orgId)
+      .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+  ])
+
+  const agents = agentsResult.data ?? []
+  const activities = activitiesResult.data ?? []
+
+  const activeAgents = agents.filter((a) => a.status === "online" || a.status === "busy").length
+  const agentsByStatus = {
+    online: agents.filter((a) => a.status === "online").length,
+    busy: agents.filter((a) => a.status === "busy").length,
+    idle: agents.filter((a) => a.status === "idle").length,
+    offline: agents.filter((a) => a.status === "offline").length,
+  }
+
+  const completedThisWeek = activities.filter((a) => a.activity_type === "task_completed").length
+  const tasksInProgress = activities.filter((a) => a.activity_type === "task_assigned").length
+  const errors = activities.filter((a) => a.activity_type === "error").length
+  const errorRate = activities.length > 0 ? (errors / activities.length) * 100 : 0
+
+  return {
+    data: {
+      activeAgents,
+      totalAgents: agents.length,
+      tasksInProgress,
+      completedThisWeek,
+      errorRate,
+      agentsByStatus,
+    },
+  }
+}
+
 // ── Agent Decisions ─────────────────────────────────────────────────
 
 export async function getAgentDecisions(

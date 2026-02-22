@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { Suspense } from "react"
-import { AgentList } from "@/components/agents/agent-list"
-import { AgentsPageSkeleton } from "@/components/skeletons"
+import { AgentsTable } from "@/components/agents/agents-table"
+import { PageSkeleton } from "@/components/ui/page-skeleton"
 import { getPageOrganization } from "@/lib/page-auth"
 import { getAgents } from "@/lib/actions/agents"
 import type { AgentWithSupervisor } from "@/lib/supabase/types"
@@ -12,13 +12,21 @@ export const metadata: Metadata = {
 
 export default async function Page() {
   const { orgId } = await getPageOrganization()
-
   const agentsPromise = getAgents(orgId)
 
   return (
-    <Suspense fallback={<AgentsPageSkeleton />}>
-      <AgentsStreamed agentsPromise={agentsPromise} orgId={orgId} />
-    </Suspense>
+    <div className="flex flex-col gap-6 p-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Agents</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Manage your AI agent team
+        </p>
+      </div>
+
+      <Suspense fallback={<PageSkeleton />}>
+        <AgentsStreamed agentsPromise={agentsPromise} orgId={orgId} />
+      </Suspense>
+    </div>
   )
 }
 
@@ -31,7 +39,6 @@ async function AgentsStreamed({
 }) {
   const result = await agentsPromise
 
-  // Map to minimal shape for RSC serialization
   const agents: AgentWithSupervisor[] = (result.data || []).map((a) => ({
     id: a.id,
     organization_id: a.organization_id,
@@ -58,5 +65,5 @@ async function AgentsStreamed({
     supervisor: a.supervisor,
   }))
 
-  return <AgentList initialAgents={agents} organizationId={orgId} />
+  return <AgentsTable agents={agents} organizationId={orgId} />
 }

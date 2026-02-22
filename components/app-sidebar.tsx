@@ -32,6 +32,7 @@ import { CaretUpDown } from "@phosphor-icons/react/dist/ssr/CaretUpDown"
 import { SignOut } from "@phosphor-icons/react/dist/ssr/SignOut"
 import { Robot } from "@phosphor-icons/react/dist/ssr/Robot"
 import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
+import { SquaresFour } from "@phosphor-icons/react/dist/ssr/SquaresFour"
 import { User } from "@phosphor-icons/react/dist/ssr/User"
 import {
   DropdownMenu,
@@ -52,7 +53,7 @@ import { cn } from "@/lib/utils"
 import { PROGRESS_THRESHOLDS, BADGE_CAP, SIDEBAR_PROJECT_LIMIT } from "@/lib/constants"
 
 // Navigation items defined inline (no mock data dependency)
-type NavItemId = "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "chat"
+type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "chat"
 type SidebarFooterItemId = "settings" | "templates" | "help"
 
 type NavItem = {
@@ -67,6 +68,7 @@ type FooterItem = {
 }
 
 const navItems: NavItem[] = [
+  { id: "dashboard", label: "Dashboard" },
   { id: "inbox", label: "Inbox" },
   { id: "my-tasks", label: "My task" },
   { id: "projects", label: "Projects" },
@@ -91,6 +93,7 @@ const getProjectColor = (progress: number): string => {
 
 // Preload functions for navigation - triggered on hover for faster perceived navigation
 const preloadHandlers: Record<NavItemId, () => void> = {
+  dashboard: () => {},
   inbox: () => {
     if (typeof window !== "undefined") {
       void import("@/components/inbox/InboxContent")
@@ -113,7 +116,7 @@ const preloadHandlers: Record<NavItemId, () => void> = {
   },
   agents: () => {
     if (typeof window !== "undefined") {
-      void import("@/components/agents/agent-list")
+      void import("@/components/agents/agents-table")
     }
   },
   chat: () => {
@@ -135,6 +138,7 @@ interface AppSidebarProps {
 }
 
 const navItemIcons: Record<NavItemId, React.ComponentType<{ className?: string }>> = {
+  dashboard: SquaresFour,
   inbox: Tray,
   "my-tasks": CheckSquare,
   projects: Folder,
@@ -278,6 +282,7 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0 }: AppS
   })
 
   const getHrefForNavItem = (id: NavItemId): string => {
+    if (id === "dashboard") return "/"
     if (id === "my-tasks") return "/tasks"
     if (id === "projects") return "/projects"
     if (id === "inbox") return "/inbox"
@@ -288,6 +293,9 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0 }: AppS
   }
 
   const isItemActive = (id: NavItemId): boolean => {
+    if (id === "dashboard") {
+      return pathname === "/"
+    }
     if (id === "projects") {
       return pathname.startsWith("/projects")
     }

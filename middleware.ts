@@ -171,12 +171,10 @@ export async function middleware(request: NextRequest) {
   const { data: { session } } = await supabase.auth.getSession()
   const sessionUserId = session?.user?.id
 
-  // Rewrite "/" to /inbox (no round trip — saves ~300ms)
+  // "/" renders the dashboard page directly (app/(dashboard)/page.tsx)
   if (sessionUserId && pathname === '/') {
     await cacheSessionInKV(sessionUserId)
-    const url = request.nextUrl.clone()
-    url.pathname = '/inbox'
-    return applyCSP(NextResponse.rewrite(url, { request: { headers: requestHeaders } }), cspHeaderValue)
+    return applyCSP(supabaseResponse, cspHeaderValue)
   }
 
   // Redirect /login and /signup to /inbox (URL change is desired here)
@@ -198,10 +196,9 @@ export async function middleware(request: NextRequest) {
 
   if (!user && !isPublic) return applyCSP(redirectTo(request, "/login", { redirect: pathname }), cspHeaderValue)
   if (user && (pathname === '/login' || pathname === '/signup')) return applyCSP(redirectTo(request, "/inbox"), cspHeaderValue)
+  // "/" renders the dashboard page directly (app/(dashboard)/page.tsx)
   if (user && pathname === '/') {
-    const url = request.nextUrl.clone()
-    url.pathname = '/inbox'
-    return applyCSP(NextResponse.rewrite(url, { request: { headers: requestHeaders } }), cspHeaderValue)
+    return applyCSP(supabaseResponse, cspHeaderValue)
   }
 
   return applyCSP(supabaseResponse, cspHeaderValue)
