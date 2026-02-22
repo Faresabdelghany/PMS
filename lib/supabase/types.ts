@@ -67,6 +67,12 @@ export type RiskSeverity = 'low' | 'medium' | 'high' | 'critical'
 export type RiskStatus = 'open' | 'mitigated' | 'resolved'
 export type ReportHighlightType = 'highlight' | 'decision'
 
+// Agent system enums
+export type AgentType = 'supreme' | 'lead' | 'specialist' | 'integration'
+export type AgentStatus = 'online' | 'busy' | 'offline' | 'idle'
+export type AgentSquad = 'engineering' | 'marketing' | 'all'
+export type AgentActivityType = 'task_completed' | 'task_assigned' | 'message' | 'status_change' | 'model_change' | 'error'
+
 export type TaskActivityAction =
   | "created"
   | "status_changed"
@@ -1595,6 +1601,267 @@ export interface Database {
           }
         ]
       }
+      agents: {
+        Row: {
+          id: string
+          organization_id: string
+          name: string
+          role: string
+          description: string | null
+          agent_type: AgentType
+          squad: AgentSquad
+          status: AgentStatus
+          ai_provider: string | null
+          ai_model: string | null
+          ai_api_key_encrypted: string | null
+          system_prompt: string | null
+          capabilities: string[]
+          skills: Json
+          reports_to: string | null
+          last_active_at: string | null
+          performance_notes: string | null
+          avatar_url: string | null
+          sort_order: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          name: string
+          role: string
+          description?: string | null
+          agent_type?: AgentType
+          squad?: AgentSquad
+          status?: AgentStatus
+          ai_provider?: string | null
+          ai_model?: string | null
+          ai_api_key_encrypted?: string | null
+          system_prompt?: string | null
+          capabilities?: string[]
+          skills?: Json
+          reports_to?: string | null
+          last_active_at?: string | null
+          performance_notes?: string | null
+          avatar_url?: string | null
+          sort_order?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          name?: string
+          role?: string
+          description?: string | null
+          agent_type?: AgentType
+          squad?: AgentSquad
+          status?: AgentStatus
+          ai_provider?: string | null
+          ai_model?: string | null
+          ai_api_key_encrypted?: string | null
+          system_prompt?: string | null
+          capabilities?: string[]
+          skills?: Json
+          reports_to?: string | null
+          last_active_at?: string | null
+          performance_notes?: string | null
+          avatar_url?: string | null
+          sort_order?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agents_reports_to_fkey"
+            columns: ["reports_to"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      agent_activities: {
+        Row: {
+          id: string
+          agent_id: string
+          organization_id: string
+          activity_type: string
+          title: string
+          description: string | null
+          metadata: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          agent_id: string
+          organization_id: string
+          activity_type: string
+          title: string
+          description?: string | null
+          metadata?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          agent_id?: string
+          organization_id?: string
+          activity_type?: string
+          title?: string
+          description?: string | null
+          metadata?: Json
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_activities_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_activities_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      ai_models: {
+        Row: {
+          id: string
+          organization_id: string
+          provider: string
+          model_id: string
+          display_name: string
+          api_key_encrypted: string | null
+          base_url: string | null
+          is_active: boolean
+          cost_input: number | null
+          cost_output: number | null
+          context_window: number | null
+          max_tokens: number | null
+          supports_vision: boolean
+          supports_reasoning: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          provider: string
+          model_id: string
+          display_name: string
+          api_key_encrypted?: string | null
+          base_url?: string | null
+          is_active?: boolean
+          cost_input?: number | null
+          cost_output?: number | null
+          context_window?: number | null
+          max_tokens?: number | null
+          supports_vision?: boolean
+          supports_reasoning?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          provider?: string
+          model_id?: string
+          display_name?: string
+          api_key_encrypted?: string | null
+          base_url?: string | null
+          is_active?: boolean
+          cost_input?: number | null
+          cost_output?: number | null
+          context_window?: number | null
+          max_tokens?: number | null
+          supports_vision?: boolean
+          supports_reasoning?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_models_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      agent_decisions: {
+        Row: {
+          id: string
+          organization_id: string
+          title: string
+          question: string | null
+          decision_summary: string
+          consulted_agents: string[]
+          decided_by: string | null
+          project_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          title: string
+          question?: string | null
+          decision_summary: string
+          consulted_agents?: string[]
+          decided_by?: string | null
+          project_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          title?: string
+          question?: string | null
+          decision_summary?: string
+          consulted_agents?: string[]
+          decided_by?: string | null
+          project_id?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_decisions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_decisions_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_decisions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1691,6 +1958,9 @@ export interface Database {
       risk_severity: RiskSeverity
       risk_status: RiskStatus
       report_highlight_type: ReportHighlightType
+      agent_type: AgentType
+      agent_status: AgentStatus
+      agent_squad: AgentSquad
     }
   }
 }
@@ -1883,4 +2153,23 @@ export type ReportWithFullRelations = Report & {
   project: Pick<Project, 'id' | 'name' | 'client_id' | 'status' | 'progress' | 'currency'> | null
   report_risks: ReportRisk[]
   report_highlights: ReportHighlight[]
+}
+
+// Agent types
+export type Agent = Database['public']['Tables']['agents']['Row']
+export type AgentInsert = Database['public']['Tables']['agents']['Insert']
+export type AgentUpdate = Database['public']['Tables']['agents']['Update']
+
+export type AgentActivityRow = Database['public']['Tables']['agent_activities']['Row']
+export type AgentActivityInsert = Database['public']['Tables']['agent_activities']['Insert']
+
+export type AIModel = Database['public']['Tables']['ai_models']['Row']
+export type AIModelInsert = Database['public']['Tables']['ai_models']['Insert']
+export type AIModelUpdate = Database['public']['Tables']['ai_models']['Update']
+
+export type AgentDecision = Database['public']['Tables']['agent_decisions']['Row']
+export type AgentDecisionInsert = Database['public']['Tables']['agent_decisions']['Insert']
+
+export type AgentWithSupervisor = Agent & {
+  supervisor?: Pick<Agent, 'id' | 'name' | 'role'> | null
 }

@@ -30,6 +30,7 @@ import { Layout } from "@phosphor-icons/react/dist/ssr/Layout"
 import { Question } from "@phosphor-icons/react/dist/ssr/Question"
 import { CaretUpDown } from "@phosphor-icons/react/dist/ssr/CaretUpDown"
 import { SignOut } from "@phosphor-icons/react/dist/ssr/SignOut"
+import { Robot } from "@phosphor-icons/react/dist/ssr/Robot"
 import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 import { User } from "@phosphor-icons/react/dist/ssr/User"
 import {
@@ -51,7 +52,7 @@ import { cn } from "@/lib/utils"
 import { PROGRESS_THRESHOLDS, BADGE_CAP, SIDEBAR_PROJECT_LIMIT } from "@/lib/constants"
 
 // Navigation items defined inline (no mock data dependency)
-type NavItemId = "inbox" | "my-tasks" | "projects" | "clients" | "chat"
+type NavItemId = "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "chat"
 type SidebarFooterItemId = "settings" | "templates" | "help"
 
 type NavItem = {
@@ -70,6 +71,7 @@ const navItems: NavItem[] = [
   { id: "my-tasks", label: "My task" },
   { id: "projects", label: "Projects" },
   { id: "clients", label: "Clients" },
+  { id: "agents", label: "Agents" },
   { id: "chat", label: "AI Chat" },
 ]
 
@@ -109,6 +111,11 @@ const preloadHandlers: Record<NavItemId, () => void> = {
       void import("@/components/clients-content")
     }
   },
+  agents: () => {
+    if (typeof window !== "undefined") {
+      void import("@/components/agents/agent-list")
+    }
+  },
   chat: () => {
     if (typeof window !== "undefined") {
       void import("@/components/ai/chat-page-content")
@@ -132,6 +139,7 @@ const navItemIcons: Record<NavItemId, React.ComponentType<{ className?: string }
   "my-tasks": CheckSquare,
   projects: Folder,
   clients: Users,
+  agents: Robot,
   chat: Sparkle,
 }
 
@@ -274,6 +282,7 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0 }: AppS
     if (id === "projects") return "/projects"
     if (id === "inbox") return "/inbox"
     if (id === "clients") return "/clients"
+    if (id === "agents") return "/agents"
     if (id === "chat") return "/chat"
     return "#"
   }
@@ -290,6 +299,9 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0 }: AppS
     }
     if (id === "clients") {
       return pathname.startsWith("/clients")
+    }
+    if (id === "agents") {
+      return pathname.startsWith("/agents")
     }
     if (id === "chat") {
       return pathname.startsWith("/chat")

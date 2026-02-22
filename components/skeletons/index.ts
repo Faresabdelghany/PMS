@@ -63,3 +63,9 @@ export {
   ReportsListSkeleton,
   ReportDetailSkeleton,
 } from "./report-skeletons"
+
+// Agent skeletons
+export {
+  AgentCardSkeleton,
+  AgentsPageSkeleton,
+} from "./agent-skeletons"
