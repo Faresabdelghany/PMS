@@ -144,6 +144,20 @@ OpenClaw ────calls──► POST /api/agent-events ───────
 
 ---
 
+## Mandatory Pipeline — NO EXCEPTIONS
+
+```
+1. Agent builds → commits to branch
+2. Omar reviews code → approves or sends back
+3. Hady (QA) tests → writes report to docs/reports/hady-qa-report.md
+4. Omar signs off (only after Hady passes)
+5. Omar pushes to main → Vercel deploys
+6. Omar notifies Ziko
+7. Ziko reviews → reports to Fares
+```
+
+**Hady is NOT optional.** No sprint is complete without a QA report. Omar does NOT sign off until Hady passes.
+
 ## Quality Standards
 
 - **0 TypeScript errors** — always run `pnpm.cmd build` before reporting done
