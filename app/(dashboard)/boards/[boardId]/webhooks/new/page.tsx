@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
+import { PageHeader } from "@/components/ui/page-header"
 
 const ALL_EVENTS = [
   "task.created",
@@ -66,83 +67,83 @@ export default function NewWebhookPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6 max-w-xl">
-      <div className="flex items-center gap-4">
-        <Link href={`/boards/${boardId}/webhooks`}>
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Add Webhook</h1>
-          <p className="text-sm text-muted-foreground">Receive board events at an external URL</p>
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Webhook Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="wh-url">URL *</Label>
-              <Input
-                id="wh-url"
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://your-server.com/webhook"
-                required
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="wh-secret">Secret (optional)</Label>
-              <Input
-                id="wh-secret"
-                type="password"
-                value={secret}
-                onChange={(e) => setSecret(e.target.value)}
-                placeholder="Used to sign payloads"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Events</Label>
-              <div className="space-y-2">
-                {ALL_EVENTS.map((evt) => (
-                  <div key={evt} className="flex items-center gap-2">
-                    <Checkbox
-                      id={`evt-${evt}`}
-                      checked={selectedEvents.includes(evt)}
-                      onCheckedChange={() => toggleEvent(evt)}
-                    />
-                    <Label htmlFor={`evt-${evt}`} className="font-mono text-sm cursor-pointer">
-                      {evt}
-                    </Label>
-                  </div>
-                ))}
+    <div className="flex flex-col flex-1">
+      <PageHeader
+        title="Add Webhook"
+        actions={
+          <Link href={`/boards/${boardId}/webhooks`}>
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+          </Link>
+        }
+      />
+      <div className="p-6 max-w-xl">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Webhook Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="wh-url">URL *</Label>
+                <Input
+                  id="wh-url"
+                  type="url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://your-server.com/webhook"
+                  required
+                />
               </div>
-            </div>
 
-            <div className="flex items-center gap-3">
-              <Switch checked={enabled} onCheckedChange={setEnabled} id="wh-enabled" />
-              <Label htmlFor="wh-enabled">Enabled</Label>
-            </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="wh-secret">Secret (optional)</Label>
+                <Input
+                  id="wh-secret"
+                  type="password"
+                  value={secret}
+                  onChange={(e) => setSecret(e.target.value)}
+                  placeholder="Used to sign payloads"
+                />
+              </div>
 
-            <div className="flex justify-end gap-2 pt-2">
-              <Link href={`/boards/${boardId}/webhooks`}>
-                <Button variant="outline" type="button">Cancel</Button>
-              </Link>
-              <Button type="submit" disabled={loading || !url}>
-                {loading ? "Creating..." : "Create Webhook"}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+              <div className="space-y-2">
+                <Label>Events</Label>
+                <div className="space-y-2">
+                  {ALL_EVENTS.map((evt) => (
+                    <div key={evt} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`evt-${evt}`}
+                        checked={selectedEvents.includes(evt)}
+                        onCheckedChange={() => toggleEvent(evt)}
+                      />
+                      <Label htmlFor={`evt-${evt}`} className="font-mono text-sm cursor-pointer">
+                        {evt}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Switch checked={enabled} onCheckedChange={setEnabled} id="wh-enabled" />
+                <Label htmlFor="wh-enabled">Enabled</Label>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Link href={`/boards/${boardId}/webhooks`}>
+                  <Button variant="outline" type="button">Cancel</Button>
+                </Link>
+                <Button type="submit" disabled={loading || !url}>
+                  {loading ? "Creating..." : "Create Webhook"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

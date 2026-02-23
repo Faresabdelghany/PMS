@@ -7,13 +7,15 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
+import { PageHeader } from "@/components/ui/page-header"
 import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr/MagnifyingGlass"
 import { Check } from "@phosphor-icons/react/dist/ssr/Check"
 import { Code } from "@phosphor-icons/react/dist/ssr/Code"
 import { Megaphone } from "@phosphor-icons/react/dist/ssr/Megaphone"
 import { PaintBrush } from "@phosphor-icons/react/dist/ssr/PaintBrush"
 import { Lightning } from "@phosphor-icons/react/dist/ssr/Lightning"
+import { ArrowLeft } from "@phosphor-icons/react/dist/ssr/ArrowLeft"
+import Link from "next/link"
 import { updateSkill } from "@/lib/actions/skills"
 import type { Skill } from "@/lib/actions/skills"
 
@@ -89,106 +91,113 @@ export function SkillsMarketplaceClient({
   const installedCount = skills.filter((s) => s.installed).length
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center gap-3">
-        <Sparkle className="h-6 w-6 text-muted-foreground" />
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Skills Marketplace</h1>
-          <p className="text-sm text-muted-foreground">
-            {installedCount} of {skills.length} skills installed
-          </p>
-        </div>
-      </div>
-
-      {/* Search + Category Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1 max-w-sm">
-          <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search skills..."
-            className="pl-9"
-          />
-        </div>
-        <div className="flex gap-1.5 flex-wrap">
-          {availableCategories.map((cat) => (
-            <Button
-              key={cat}
-              variant={category === cat ? "default" : "outline"}
-              size="sm"
-              onClick={() => setCategory(cat)}
-              className="h-8 capitalize"
-            >
-              {cat}
+    <div className="flex flex-col flex-1">
+      <PageHeader
+        title="Skills Marketplace"
+        actions={
+          <Link href="/skills">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back to Skills
             </Button>
-          ))}
-        </div>
-      </div>
-
-      {/* Skills Grid */}
-      {filtered.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <Sparkle className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No skills match your search.</p>
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filtered.map((skill) => {
-            const Icon = skill.category ? CATEGORY_ICONS[skill.category] : undefined
-            const colorClass = skill.category ? CATEGORY_COLORS[skill.category] ?? "text-muted-foreground" : "text-muted-foreground"
-            const isToggling = togglingId === skill.id
-
-            return (
-              <Card
-                key={skill.id}
-                className={`flex flex-col ${skill.installed ? "border-primary/30 bg-primary/[0.02]" : ""}`}
+          </Link>
+        }
+      >
+        {/* Filter bar in the secondary row */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative flex-1 max-w-sm">
+            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search skills..."
+              className="pl-9 h-8"
+            />
+          </div>
+          <div className="flex gap-1.5 flex-wrap">
+            {availableCategories.map((cat) => (
+              <Button
+                key={cat}
+                variant={category === cat ? "default" : "outline"}
+                size="sm"
+                onClick={() => setCategory(cat)}
+                className="h-7 capitalize"
               >
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-2">
-                    {Icon && <Icon className={`h-5 w-5 mt-0.5 shrink-0 ${colorClass}`} />}
-                    {skill.installed && (
-                      <Badge
-                        variant="outline"
-                        className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-500/20 shrink-0"
-                      >
-                        <Check className="h-3 w-3 mr-1" />
-                        Installed
+                {cat}
+              </Button>
+            ))}
+          </div>
+          <span className="text-xs text-muted-foreground ml-auto shrink-0">
+            {installedCount} of {skills.length} installed
+          </span>
+        </div>
+      </PageHeader>
+
+      <div className="p-6">
+        {/* Skills Grid */}
+        {filtered.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <MagnifyingGlass className="h-10 w-10 mx-auto mb-3 opacity-30" />
+            <p className="text-sm">No skills match your search.</p>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filtered.map((skill) => {
+              const Icon = skill.category ? CATEGORY_ICONS[skill.category] : undefined
+              const colorClass = skill.category ? CATEGORY_COLORS[skill.category] ?? "text-muted-foreground" : "text-muted-foreground"
+              const isToggling = togglingId === skill.id
+
+              return (
+                <Card
+                  key={skill.id}
+                  className={`flex flex-col ${skill.installed ? "border-primary/30 bg-primary/[0.02]" : ""}`}
+                >
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between gap-2">
+                      {Icon && <Icon className={`h-5 w-5 mt-0.5 shrink-0 ${colorClass}`} />}
+                      {skill.installed && (
+                        <Badge
+                          variant="outline"
+                          className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-500/20 shrink-0"
+                        >
+                          <Check className="h-3 w-3 mr-1" />
+                          Installed
+                        </Badge>
+                      )}
+                    </div>
+                    <CardTitle className="text-sm font-semibold font-mono">{skill.name}</CardTitle>
+                    {skill.category && (
+                      <Badge variant="secondary" className="w-fit text-xs capitalize">
+                        {skill.category}
                       </Badge>
                     )}
-                  </div>
-                  <CardTitle className="text-sm font-semibold font-mono">{skill.name}</CardTitle>
-                  {skill.category && (
-                    <Badge variant="secondary" className="w-fit text-xs capitalize">
-                      {skill.category}
-                    </Badge>
-                  )}
-                </CardHeader>
-                <CardContent className="flex-1">
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {skill.description ?? ""}
-                  </p>
-                </CardContent>
-                <CardFooter>
-                  <Button
-                    variant={skill.installed ? "outline" : "default"}
-                    size="sm"
-                    className="w-full"
-                    onClick={() => toggleInstall(skill)}
-                    disabled={isPending || isToggling}
-                  >
-                    {isToggling
-                      ? "Saving..."
-                      : skill.installed
-                      ? "Uninstall"
-                      : "Install"}
-                  </Button>
-                </CardFooter>
-              </Card>
-            )
-          })}
-        </div>
-      )}
+                  </CardHeader>
+                  <CardContent className="flex-1">
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {skill.description ?? ""}
+                    </p>
+                  </CardContent>
+                  <CardFooter>
+                    <Button
+                      variant={skill.installed ? "outline" : "default"}
+                      size="sm"
+                      className="w-full"
+                      onClick={() => toggleInstall(skill)}
+                      disabled={isPending || isToggling}
+                    >
+                      {isToggling
+                        ? "Saving..."
+                        : skill.installed
+                        ? "Uninstall"
+                        : "Install"}
+                    </Button>
+                  </CardFooter>
+                </Card>
+              )
+            })}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

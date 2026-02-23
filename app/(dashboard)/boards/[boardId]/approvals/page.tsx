@@ -6,6 +6,7 @@ import { getBoard } from "@/lib/actions/boards"
 import { getApprovals } from "@/lib/actions/approvals"
 import { ApprovalsClient } from "@/app/(dashboard)/approvals/approvals-client"
 import { Button } from "@/components/ui/button"
+import { PageHeader } from "@/components/ui/page-header"
 import { ArrowLeft } from "@phosphor-icons/react/dist/ssr/ArrowLeft"
 
 export const metadata: Metadata = { title: "Board Approvals - PMS" }
@@ -34,27 +35,24 @@ export default async function BoardApprovalsPage({
     : []
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center gap-4">
-        <Link href={`/boards/${boardId}`}>
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back to Board
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Approvals — {board.name}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {board.agent_id
-              ? "Approval requests from this board's agent"
-              : "No agent assigned to this board"}
-          </p>
-        </div>
+    <div className="flex flex-col flex-1">
+      <PageHeader
+        title={`Approvals — ${board.name}`}
+        actions={
+          <Link href={`/boards/${boardId}`}>
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back to Board
+            </Button>
+          </Link>
+        }
+      />
+      <div className="p-6 flex flex-col gap-6">
+        {!board.agent_id && (
+          <p className="text-sm text-muted-foreground">No agent assigned to this board</p>
+        )}
+        <ApprovalsClient approvals={approvals} currentStatus={undefined} />
       </div>
-
-      <ApprovalsClient approvals={approvals} currentStatus={undefined} />
     </div>
   )
 }

@@ -8,6 +8,7 @@ import type { BoardGroup } from "@/lib/actions/board-groups"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PageHeader } from "@/components/ui/page-header"
 import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
 import { Kanban } from "@phosphor-icons/react/dist/ssr/Kanban"
 import { Robot } from "@phosphor-icons/react/dist/ssr/Robot"
@@ -92,80 +93,77 @@ export default async function BoardsPage() {
   const hasGroups = groups.length > 0
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Kanban className="h-6 w-6 text-muted-foreground" />
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Boards</h1>
-            <p className="text-sm text-muted-foreground">Agent work boards connecting agents to gateways</p>
-          </div>
-        </div>
-        <Link href="/boards/new">
-          <Button size="sm">
-            <Plus className="h-4 w-4 mr-1" />
-            New Board
-          </Button>
-        </Link>
-      </div>
-
-      {boards.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center rounded-lg border border-dashed">
-          <Kanban className="h-12 w-12 text-muted-foreground/30 mb-3" />
-          <p className="text-sm font-medium text-muted-foreground">No boards yet</p>
-          <p className="text-xs text-muted-foreground/60 mt-1 mb-4">
-            Create a board to connect an agent with a gateway for mission control.
-          </p>
+    <div className="flex flex-col flex-1">
+      <PageHeader
+        title="Boards"
+        actions={
           <Link href="/boards/new">
-            <Button size="sm" variant="outline">Create your first board</Button>
+            <Button variant="ghost" size="sm">
+              <Plus className="h-4 w-4" weight="bold" />
+              New Board
+            </Button>
           </Link>
-        </div>
-      ) : hasGroups ? (
-        <div className="flex flex-col gap-8">
-          {groups.map((group) => {
-            const groupBoards = boardsByGroup.get(group.id) ?? []
-            if (groupBoards.length === 0) return null
-            return (
-              <div key={group.id}>
+        }
+      />
+      <div className="p-6 flex flex-col gap-6">
+        {boards.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center rounded-lg border border-dashed">
+            <Kanban className="h-12 w-12 text-muted-foreground/30 mb-3" />
+            <p className="text-sm font-medium text-muted-foreground">No boards yet</p>
+            <p className="text-xs text-muted-foreground/60 mt-1 mb-4">
+              Create a board to connect an agent with a gateway for mission control.
+            </p>
+            <Link href="/boards/new">
+              <Button size="sm" variant="outline">Create your first board</Button>
+            </Link>
+          </div>
+        ) : hasGroups ? (
+          <div className="flex flex-col gap-8">
+            {groups.map((group) => {
+              const groupBoards = boardsByGroup.get(group.id) ?? []
+              if (groupBoards.length === 0) return null
+              return (
+                <div key={group.id}>
+                  <div className="mb-3">
+                    <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                      {group.name}
+                    </h2>
+                    {group.description && (
+                      <p className="text-xs text-muted-foreground mt-0.5">{group.description}</p>
+                    )}
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {groupBoards.map((board) => (
+                      <BoardCard key={board.id} board={board} />
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+
+            {ungrouped.length > 0 && (
+              <div>
                 <div className="mb-3">
                   <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                    {group.name}
+                    Ungrouped
                   </h2>
-                  {group.description && (
-                    <p className="text-xs text-muted-foreground mt-0.5">{group.description}</p>
-                  )}
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {groupBoards.map((board) => (
+                  {ungrouped.map((board) => (
                     <BoardCard key={board.id} board={board} />
                   ))}
                 </div>
               </div>
-            )
-          })}
-
-          {ungrouped.length > 0 && (
-            <div>
-              <div className="mb-3">
-                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                  Ungrouped
-                </h2>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {ungrouped.map((board) => (
-                  <BoardCard key={board.id} board={board} />
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {boards.map((board) => (
-            <BoardCard key={board.id} board={board} />
-          ))}
-        </div>
-      )}
+            )}
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {boards.map((board) => (
+              <BoardCard key={board.id} board={board} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

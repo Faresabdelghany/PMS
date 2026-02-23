@@ -4,6 +4,7 @@ import { getPageOrganization } from "@/lib/page-auth"
 import { getActivityFeed } from "@/lib/actions/activity"
 import { getAgents } from "@/lib/actions/agents"
 import { PageSkeleton } from "@/components/ui/page-skeleton"
+import { PageHeader } from "@/components/ui/page-header"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Pulse } from "@phosphor-icons/react/dist/ssr/Pulse"
@@ -28,23 +29,18 @@ export default async function ActivityPage({
   const agentsPromise = getAgents(orgId)
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center gap-3">
-        <Pulse className="h-6 w-6 text-muted-foreground" />
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Activity</h1>
-          <p className="text-sm text-muted-foreground">Timeline of all agent activities across your organization</p>
-        </div>
+    <div className="flex flex-col flex-1">
+      <PageHeader title="Activity" />
+      <div className="p-6 flex flex-col gap-6">
+        <Suspense fallback={<PageSkeleton />}>
+          <ActivityContent
+            activityPromise={activityPromise}
+            agentsPromise={agentsPromise}
+            currentAgentId={agentId}
+            currentDate={date}
+          />
+        </Suspense>
       </div>
-
-      <Suspense fallback={<PageSkeleton />}>
-        <ActivityContent
-          activityPromise={activityPromise}
-          agentsPromise={agentsPromise}
-          currentAgentId={agentId}
-          currentDate={date}
-        />
-      </Suspense>
     </div>
   )
 }

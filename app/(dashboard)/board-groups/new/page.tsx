@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { PageHeader } from "@/components/ui/page-header"
 
 export default function NewBoardGroupPage() {
   const router = useRouter()
@@ -38,57 +39,57 @@ export default function NewBoardGroupPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6 max-w-xl">
-      <div className="flex items-center gap-4">
-        <Link href="/board-groups">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">New Board Group</h1>
-          <p className="text-sm text-muted-foreground">Organize your boards into a logical group</p>
-        </div>
+    <div className="flex flex-col flex-1">
+      <PageHeader
+        title="New Board Group"
+        actions={
+          <Link href="/board-groups">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+          </Link>
+        }
+      />
+      <div className="p-6 max-w-xl">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Group Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="grp-name">Name *</Label>
+                <Input
+                  id="grp-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Engineering"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="grp-desc">Description</Label>
+                <Textarea
+                  id="grp-desc"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="What boards belong here?"
+                  rows={2}
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Link href="/board-groups">
+                  <Button variant="outline" type="button">Cancel</Button>
+                </Link>
+                <Button type="submit" disabled={loading || !name}>
+                  {loading ? "Creating..." : "Create Group"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Group Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="grp-name">Name *</Label>
-              <Input
-                id="grp-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Engineering"
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="grp-desc">Description</Label>
-              <Textarea
-                id="grp-desc"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="What boards belong here?"
-                rows={2}
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Link href="/board-groups">
-                <Button variant="outline" type="button">Cancel</Button>
-              </Link>
-              <Button type="submit" disabled={loading || !name}>
-                {loading ? "Creating..." : "Create Group"}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
     </div>
   )
 }

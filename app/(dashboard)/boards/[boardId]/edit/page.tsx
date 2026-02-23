@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { PageHeader } from "@/components/ui/page-header"
 import {
   Select,
   SelectContent,
@@ -96,132 +97,135 @@ export default function EditBoardPage() {
 
   if (!board) {
     return (
-      <div className="flex flex-col gap-6 p-6 max-w-xl">
-        <div className="h-8 w-48 bg-muted animate-pulse rounded" />
-        <div className="h-64 bg-muted animate-pulse rounded-lg" />
+      <div className="flex flex-col flex-1">
+        <PageHeader title="Edit Board" />
+        <div className="p-6 max-w-xl flex flex-col gap-6">
+          <div className="h-8 w-48 bg-muted animate-pulse rounded" />
+          <div className="h-64 bg-muted animate-pulse rounded-lg" />
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6 max-w-xl">
-      <div className="flex items-center gap-4">
-        <Link href={`/boards/${boardId}`}>
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Edit Board</h1>
-          <p className="text-sm text-muted-foreground">Update board settings</p>
-        </div>
+    <div className="flex flex-col flex-1">
+      <PageHeader
+        title="Edit Board"
+        actions={
+          <Link href={`/boards/${boardId}`}>
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+          </Link>
+        }
+      />
+      <div className="p-6 max-w-xl">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Board Details — {board.name}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="board-name">Name *</Label>
+                <Input
+                  id="board-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Engineering Sprint Board"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="board-desc">Description</Label>
+                <Textarea
+                  id="board-desc"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="What is this board for?"
+                  rows={2}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Status</Label>
+                <Select value={status} onValueChange={(v) => setStatus(v as any)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="paused">Paused</SelectItem>
+                    <SelectItem value="archived">Archived</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Agent</Label>
+                <Select value={agentId} onValueChange={setAgentId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select agent (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {agents.map((agent) => (
+                      <SelectItem key={agent.id} value={agent.id}>
+                        {agent.name} — {agent.role}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Gateway</Label>
+                <Select value={gatewayId} onValueChange={setGatewayId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select gateway (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {gateways.map((gw) => (
+                      <SelectItem key={gw.id} value={gw.id}>
+                        {gw.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Board Group</Label>
+                <Select value={boardGroupId} onValueChange={setBoardGroupId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select group (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {boardGroups.map((g) => (
+                      <SelectItem key={g.id} value={g.id}>
+                        {g.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Link href={`/boards/${boardId}`}>
+                  <Button variant="outline" type="button">Cancel</Button>
+                </Link>
+                <Button type="submit" disabled={loading || !name}>
+                  {loading ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Board Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="board-name">Name *</Label>
-              <Input
-                id="board-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Engineering Sprint Board"
-                required
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="board-desc">Description</Label>
-              <Textarea
-                id="board-desc"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="What is this board for?"
-                rows={2}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Status</Label>
-              <Select value={status} onValueChange={(v) => setStatus(v as any)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="paused">Paused</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Agent</Label>
-              <Select value={agentId} onValueChange={setAgentId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select agent (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {agents.map((agent) => (
-                    <SelectItem key={agent.id} value={agent.id}>
-                      {agent.name} — {agent.role}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Gateway</Label>
-              <Select value={gatewayId} onValueChange={setGatewayId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select gateway (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {gateways.map((gw) => (
-                    <SelectItem key={gw.id} value={gw.id}>
-                      {gw.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Board Group</Label>
-              <Select value={boardGroupId} onValueChange={setBoardGroupId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select group (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {boardGroups.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>
-                      {g.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <Link href={`/boards/${boardId}`}>
-                <Button variant="outline" type="button">Cancel</Button>
-              </Link>
-              <Button type="submit" disabled={loading || !name}>
-                {loading ? "Saving..." : "Save Changes"}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
     </div>
   )
 }

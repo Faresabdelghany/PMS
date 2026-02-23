@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { PageHeader } from "@/components/ui/page-header"
 import {
   Select,
   SelectContent,
@@ -56,97 +57,97 @@ export default function NewGatewayPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6 max-w-xl">
-      <div className="flex items-center gap-4">
-        <Link href="/gateways">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">New Gateway</h1>
-          <p className="text-sm text-muted-foreground">Connect a new OpenClaw gateway</p>
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Gateway Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="gw-name">Name *</Label>
-              <Input
-                id="gw-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Local Gateway"
-                required
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="gw-url">Gateway URL</Label>
-              <Input
-                id="gw-url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="http://localhost:18789"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="gw-workspace">Workspace Root</Label>
-              <Input
-                id="gw-workspace"
-                value={workspaceRoot}
-                onChange={(e) => setWorkspaceRoot(e.target.value)}
-                placeholder="/path/to/workspace (optional)"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Authentication Mode</Label>
-              <Select value={authMode} onValueChange={(v) => setAuthMode(v as "none" | "token" | "basic")}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="token">Token</SelectItem>
-                  <SelectItem value="basic">Basic</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {authMode !== "none" && (
+    <div className="flex flex-col flex-1">
+      <PageHeader
+        title="New Gateway"
+        actions={
+          <Link href="/gateways">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+          </Link>
+        }
+      />
+      <div className="p-6 max-w-xl">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Gateway Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="gw-token">
-                  {authMode === "token" ? "Auth Token" : "Password"}
-                </Label>
+                <Label htmlFor="gw-name">Name *</Label>
                 <Input
-                  id="gw-token"
-                  type="password"
-                  value={authToken}
-                  onChange={(e) => setAuthToken(e.target.value)}
-                  placeholder="Enter token..."
+                  id="gw-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Local Gateway"
+                  required
                 />
               </div>
-            )}
 
-            <div className="flex justify-end gap-2 pt-2">
-              <Link href="/gateways">
-                <Button variant="outline" type="button">Cancel</Button>
-              </Link>
-              <Button type="submit" disabled={loading || !name}>
-                {loading ? "Creating..." : "Create Gateway"}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+              <div className="space-y-1.5">
+                <Label htmlFor="gw-url">Gateway URL</Label>
+                <Input
+                  id="gw-url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="http://localhost:18789"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="gw-workspace">Workspace Root</Label>
+                <Input
+                  id="gw-workspace"
+                  value={workspaceRoot}
+                  onChange={(e) => setWorkspaceRoot(e.target.value)}
+                  placeholder="/path/to/workspace (optional)"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Authentication Mode</Label>
+                <Select value={authMode} onValueChange={(v) => setAuthMode(v as "none" | "token" | "basic")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="token">Token</SelectItem>
+                    <SelectItem value="basic">Basic</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {authMode !== "none" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="gw-token">
+                    {authMode === "token" ? "Auth Token" : "Password"}
+                  </Label>
+                  <Input
+                    id="gw-token"
+                    type="password"
+                    value={authToken}
+                    onChange={(e) => setAuthToken(e.target.value)}
+                    placeholder="Enter token..."
+                  />
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Link href="/gateways">
+                  <Button variant="outline" type="button">Cancel</Button>
+                </Link>
+                <Button type="submit" disabled={loading || !name}>
+                  {loading ? "Creating..." : "Create Gateway"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
