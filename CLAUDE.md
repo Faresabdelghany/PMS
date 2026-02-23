@@ -1,196 +1,209 @@
-# PMS — Project Context for All Agents
+# CLAUDE.md — PMS Project Bible
 
-**READ THIS FIRST. Before writing a single line of code.**
-
----
-
-## What We Are Building
-
-PMS is **Mission Control** — a live command center where Fares manages his entire AI team and everything OpenClaw does.
-
-This is NOT a generic project management tool. Every feature, every page, every design decision must serve this goal:
-
-> **Fares opens PMS and from there he can manage EVERYTHING:**
-> - All 24 AI agents (status, ping, assign tasks, pause, resume)
-> - All tasks — his own + agent tasks — in one unified Kanban board
-> - All AI models (which model each agent uses, switch models)
-> - All skills (what each agent can do, install/remove)
-> - Live activity (what every agent is doing RIGHT NOW)
-> - Active sessions (ongoing OpenClaw sessions, chat with agents)
-> - Approvals (agents ask permission, Fares approves/rejects)
-> - Memory (what agents remember)
-> - Gateways (OpenClaw connection health, pause/resume)
-
-**Telegram is temporary.** PMS replaces it. Everything Fares does via Telegram with Ziko today, he should be able to do from PMS.
+**READ THIS ENTIRE FILE BEFORE TOUCHING ANY CODE.**
 
 ---
 
-## Design System — NON-NEGOTIABLE
+## The Mission
 
-**You MUST follow the existing PMS design. Do NOT invent new patterns.**
+PMS is being evolved into **Mission Control** — a live command center where Fares manages his entire AI team (24 agents) and everything OpenClaw does, while also being a full project management SaaS.
 
-### Stack
-- Next.js 15 + App Router
-- TypeScript (strict mode, 0 errors required)
-- Tailwind CSS — no inline styles, no arbitrary values unless necessary
-- shadcn/ui components — use what's already installed
-- Phosphor icons — NOT Heroicons, NOT Lucide (unless already used)
-- Dark mode first
+> **From PMS, Fares manages EVERYTHING:**
+> agents, models, tasks (his + agent tasks), skills, live activity, sessions, approvals, memory, gateways
 
-### Before writing any UI, read these files:
-```
-components/projects-content.tsx       ← gold standard for complex pages
-components/project-header.tsx         ← header pattern
-components/project-cards-view.tsx     ← card layout
-components/project-board-view.tsx     ← Kanban/board pattern
-components/ui/page-header.tsx         ← PageHeader component (use this for ALL pages)
-app/(dashboard)/projects/page.tsx     ← how pages are structured
-app/(dashboard)/clients/page.tsx      ← another reference
-```
-
-### Rules
-1. **Every page uses `PageHeader`** — title in top bar, action buttons on right, sidebar trigger on left
-2. **Kanban boards** follow `project-board-view.tsx` — same card style, same column style
-3. **Cards** follow `project-cards-view.tsx` — same spacing, same border, same hover
-4. **No custom layouts** — if a layout pattern exists in the codebase, use it
-5. **Colors**: use CSS variables (`--foreground`, `--muted-foreground`, `--border`, `--accent`) not hardcoded hex
-6. **Spacing**: p-4, p-6, gap-4, gap-6 — consistent with rest of app
-7. **Agent squad colors**: blue=engineering, purple=marketing, green=design/product, gold=supreme
-
-### 🎨 MANDATORY Design Files — Read Before Any UI Work
-```
-docs/design-system.json     ← ALL design tokens: colors (OKLCH), typography, spacing, shadows, 
-                               borders, components specs, animations — THE SOURCE OF TRUTH
-docs/design_concept.json    ← Design philosophy, principles, hierarchy, whitespace, feedback 
-                               patterns, consistency rules — WHY things look the way they do
-```
-These two files define EVERYTHING about how PMS looks. Every color, every spacing value, every component behavior. If you are about to use a color or spacing value that is NOT in these files — stop and find the right token.
-
-### Use these skills before building UI:
-- `~/.agents/skills/ui-ux-pro-max/SKILL.md` — read this for any design decisions
-- `~/.agents/skills/superdesign/SKILL.md` — for frontend design guidelines
-
----
-
-## Architecture
-
-### Tech Stack
-- Database: Supabase (PostgreSQL + RLS + Realtime)
-- Auth: Supabase Auth (cookie-based sessions)
-- Hosting: Vercel (auto-deploys from main branch)
-- Live URL: https://pms-nine-gold.vercel.app
-
-### Key Patterns
-- **Server Components by default** — use `'use client'` only when needed
-- **Server Actions** for all mutations (not API routes, not client-side fetch)
-- **Supabase Realtime** for live updates (see `hooks/realtime-context.tsx`)
-- **`createClient()`** from `lib/supabase/server.ts` for server-side queries
-- **`createServiceClient()`** from `lib/supabase/service.ts` for service-role operations
-- **New tables** not in generated types: use `.from("tablename" as any)` + `as unknown as T` cast
-
-### Agent Bridge Architecture
-```
-PMS (Vercel) ──writes──► agent_commands (Supabase) ──► OpenClaw picks up + executes
-OpenClaw ────writes──► agent_events (Supabase) ──────► PMS shows live via Realtime
-OpenClaw ────calls──► POST /api/agent-events ────────► PMS updates task status
-```
-
-### Key Tables
-- `agents` — 24 AI agents with hierarchy (reports_to FK)
-- `tasks` — unified tasks (user + agent tasks), has `assigned_agent_id`
-- `agent_commands` — PMS → OpenClaw channel (command_type: run_task, ping, pause, cancel)
-- `agent_events` — OpenClaw → PMS channel (event_type: task_started, progress, completed, etc.)
-- `approvals` — human-in-the-loop approval requests from agents
-- `gateways` — OpenClaw gateway connections
-- `boards` — agent task boards linked to gateways
-- `skills` — skills available to agents
-
----
-
-## What's Built (Do Not Rebuild)
-
-- ✅ Agents CRUD (`/agents`, `/agents/new`, `/agents/[id]/edit`)
-- ✅ Agent Network visualization (`/agents/communication`)
-- ✅ Approvals (`/approvals`)
-- ✅ Gateways CRUD (`/gateways`)
-- ✅ Boards + Board Groups + Webhooks + Custom Fields
-- ✅ Skills Marketplace (`/skills/marketplace`)
-- ✅ Tags, Activity feed
-- ✅ Tasks Mission Control (`/tasks`) — Kanban + Live Activity Feed
-- ✅ Agent Commands + Events tables (Supabase bridge)
-- ✅ POST `/api/agent-events` (OpenClaw → PMS push endpoint)
-- ✅ 24 agents seeded in DB with correct hierarchy
-
----
-
-## What's Missing (Build These Next)
-
-### Sprint 4 — Live Connection
-- [ ] Models management page (`/models`) — see/switch which model each agent uses
-- [ ] Sessions viewer (`/sessions`) — list active OpenClaw sessions, send messages
-- [ ] Agent ping from UI — "Ping Agent" button dispatches a ping command
-- [ ] Global pause/resume — pause all agent activity from PMS
-- [ ] Memory viewer (`/memory`) — see what agents remember
-- [ ] Agent heartbeat — agents ping PMS every 30s so status is live
-- [ ] Real dashboard metrics — actual charts (task completion, WIP, velocity)
-
-### Sprint 5 — Complete
-- [ ] Skill install/uninstall from UI (calls OpenClaw via agent_commands)
-- [ ] Model switching per agent (updates agent record + dispatches model change command)
-- [ ] Webhook payload history viewer
-- [ ] Agent nudge button (poke stuck agent to continue)
-- [ ] Souls directory (searchable agent directory)
-- [ ] Board onboarding chat (AI chat to set up boards)
+Telegram is temporary. PMS replaces it.
 
 ---
 
 ## Mandatory Pipeline — NO EXCEPTIONS
 
 ```
-1. Agent builds → commits to branch
-2. Omar reviews code → approves or sends back
-3. Hady (QA) tests → writes report to docs/reports/hady-qa-report.md
-4. Omar signs off (only after Hady passes)
-5. Omar pushes to main → Vercel deploys
-6. Omar notifies Ziko
-7. Ziko reviews → reports to Fares
+1. Product Analyst writes PRD / creates tasks → distributes to all squads
+2. Agent builds (Frontend: Sara, Backend: Mostafa, etc.)
+3. Agent reports back to Product Analyst when done
+4. Product Analyst collects all squad outputs → reports to Ziko
+5. Ziko reviews → reports to Fares
+
+For code quality:
+2a. Omar reviews code after each agent
+2b. Hady (QA) tests → writes report to docs/reports/hady-qa-report.md
+2c. Omar signs off (only after Hady passes)
+3. Product Analyst collects sign-offs from all leads → reports to Ziko
 ```
 
-**Hady is NOT optional.** No sprint is complete without a QA report. Omar does NOT sign off until Hady passes.
+**Hady is NOT optional.** No sprint ships without a QA report.
+**Product Analyst is the hub.** No squad starts without an approved task from Product Analyst.
+**All agents report back to Product Analyst** when their work is done — not to Ziko directly.
+
+---
+
+## Design System — NON-NEGOTIABLE
+
+### What This Project Uses
+- **Next.js 16** App Router + React 19 + TypeScript (strict)
+- **Tailwind CSS 4.1** — CSS custom properties, no hardcoded hex colors
+- **shadcn/ui** "new-york" style — `npx shadcn@latest add <component>` to add new ones
+- **Icons: Lucide + Phosphor Icons** — check what's already imported in nearby files; be consistent
+- **Forms: React Hook Form + Zod** — all forms use these
+- **Drag/drop: @dnd-kit** — for any sortable/draggable UI
+
+### MANDATORY: Read Before Any UI Work
+```
+docs/design-system.json          ← ALL design tokens (OKLCH colors, spacing, shadows, etc.)
+docs/design_concept.json         ← Design philosophy and principles
+components/tasks/MyTasksPage.tsx ← Gold standard for complex task UI
+components/tasks/TaskKanbanBoardView.tsx ← Existing Kanban (use/extend, DO NOT rebuild)
+components/projects-content.tsx  ← Gold standard for page layout
+components/project-header.tsx    ← Header pattern
+components/ui/page-header.tsx    ← PageHeader component (use on ALL new pages)
+app/(dashboard)/projects/page.tsx ← How dashboard pages are structured
+app/(dashboard)/tasks/page.tsx   ← How tasks pages are structured
+```
+
+### Rules
+1. **DO NOT rebuild existing components.** `TaskKanbanBoardView.tsx`, `TaskDetailPanel.tsx`, `MyTasksPage.tsx`, etc. already exist — extend them.
+2. **Every new page uses `PageHeader`** — title in top bar, action buttons on right, sidebar trigger on left
+3. **Colors** from CSS variables only: `--foreground`, `--muted-foreground`, `--border`, `--accent`, etc.
+4. **Icons** — check what existing pages use. DO NOT switch icon libraries mid-codebase.
+5. **No custom layouts** — if a layout pattern exists in the codebase, use it.
+
+---
+
+## Architecture
+
+### Project Overview
+A modern project & task management SaaS + Mission Control for AI agents.
+
+**GitHub:** https://github.com/Faresabdelghany/PMS
+**Supabase:** lazhmdyajdqbnxxwyxun
+**Production:** https://pms-nine-gold.vercel.app (auto-deploys from `main`)
+
+### Directory Structure
+- `app/(dashboard)/` — Main app routes (projects, clients, tasks, agents, boards, etc.)
+- `components/ui/` — shadcn/ui primitives
+- `components/tasks/` — All task components (DO NOT duplicate these)
+- `components/projects/` — Project components
+- `components/agents/` — Agent components
+- `lib/actions/` — Server Actions (return `ActionResult<T>` = `{ data?, error? }`)
+- `lib/supabase/` — Supabase clients and types
+- `lib/server-cache.ts` — ALL cached data-fetching functions (use these, don't bypass)
+- `lib/cache/invalidation.ts` — Unified cache invalidation (ALWAYS use `invalidateCache.*`)
+- `lib/page-auth.ts` — `getPageOrganization()` — use in every dashboard page
+- `hooks/` — Custom hooks including realtime subscriptions
+
+### Key Patterns
+
+**Auth in pages:**
+```typescript
+const { user, orgId } = await getPageOrganization() // Always use this
+```
+
+**Auth in server actions:**
+```typescript
+const { user, supabase } = await requireAuth()
+const ctx = await requireOrgMember(orgId)
+```
+
+**Cache invalidation** — ALWAYS use unified helpers, never `revalidatePath()` directly:
+```typescript
+import { invalidateCache } from "@/lib/cache"
+await invalidateCache.task({ taskId, projectId, assigneeId, orgId })
+```
+
+**New tables not in generated types:**
+```typescript
+.from("tablename" as any).select(...)  // then cast: as unknown as MyType[]
+```
+
+**Realtime subscriptions** — use pooled realtime from context:
+```typescript
+import { usePooledRealtime } from "@/hooks/realtime-context"
+```
+
+### Supabase Clients
+- `lib/supabase/client.ts` — Browser client (Client Components)
+- `lib/supabase/server.ts` — Server client with cookies (Server Components/Actions)
+- `lib/supabase/admin.ts` — Service role, bypasses RLS (server-only, use sparingly)
+
+---
+
+## What's Built — DO NOT REBUILD
+
+### Original PMS Features (mature, tested, fully working)
+- Projects with Kanban, list, card views + realtime
+- Tasks with `TaskDetailPanel`, `TaskKanbanBoardView`, `TaskWeekBoardView`, timeline, comments, reactions, @mentions
+- Clients management
+- AI Chat (`/chat`) with streaming and persistence
+- Dashboard with live stats
+- Inbox, Settings, Reports, Workstreams
+- Full auth (login, signup, OAuth, invitations)
+- E2E tests with Playwright
+
+### Mission Control Features (added in our sprints — some may need fixing)
+- `/agents` — list agents ✅
+- `/agents/new` — create agent ⚠️ needs QA
+- `/agents/[id]/edit` — edit agent ⚠️ needs QA
+- `/agents/communication` — Agent Network visualization ⚠️ needs QA
+- `/approvals`, `/gateways`, `/boards`, `/board-groups`, `/custom-fields` ✅
+- `/skills/marketplace`, `/tags`, `/activity` ✅
+- `/tasks` — now has Mission Control Kanban (verify it didn't break existing tasks)
+- `/tasks/new` — new task with agent assignment ⚠️ needs QA
+- DB: `agent_commands`, `agent_events` tables for Supabase bridge ✅
+- `POST /api/agent-events` — OpenClaw push endpoint ✅
+
+---
+
+## What's Missing — Build These Next
+
+### Sprint 4 — Live Connection
+- [ ] Models management page (`/models`) — see/switch model per agent
+- [ ] Sessions viewer (`/sessions`) — list active OpenClaw sessions
+- [ ] Agent ping from UI (button dispatches ping command)
+- [ ] Global pause/resume all agents
+- [ ] Memory viewer (`/memory`)
+- [ ] Real dashboard metrics (actual charts)
+- [ ] Agent heartbeat (30s ping to keep status live)
+
+### Sprint 5 — Complete
+- [ ] Skill install/uninstall from UI
+- [ ] Model switching per agent
+- [ ] Board onboarding chat
+- [ ] Webhook payload history
+- [ ] Agent nudge button
+
+---
+
+## Agent Bridge Architecture (Supabase as message bus)
+```
+PMS (Vercel) ──writes──► agent_commands (Supabase) ──► OpenClaw picks up + executes
+OpenClaw ────writes──► agent_events (Supabase) ──────► PMS shows live via Realtime
+OpenClaw ────calls──► POST /api/agent-events ────────► PMS updates task status
+```
+
+---
 
 ## Quality Standards
-
 - **0 TypeScript errors** — always run `pnpm.cmd build` before reporting done
 - **No console.log** in production code
-- **Error states** — every fetch must handle errors gracefully
-- **Loading states** — every async operation needs a loading UI
-- **Mobile responsive** — PMS is used on all screen sizes
-- **RLS policies** — every new table needs Row Level Security
-- **Realtime** — tables that need live updates must be added to `supabase_realtime` publication
+- **Error + loading states** on every async operation
+- **RLS policies** on every new table
+- **Realtime** — new tables needing live updates must be added to `supabase_realtime` publication
+- **Cache invalidation** — use `invalidateCache.*` after every mutation
 
 ---
 
 ## Organization Context
+- Fares's org ID: `9c52b861-abb7-4774-9b5b-3fa55c8392cb`
+- Test user: `e2e-test@example.com`
 
-- **Fares's org ID**: `9c52b861-abb7-4774-9b5b-3fa55c8392cb`
-- **Test user**: `e2e-test@example.com`
-- **Supabase project**: `lazhmdyajdqbnxxwyxun.supabase.co`
-- **GitHub**: `https://github.com/Faresabdelghany/PMS.git`
-- **Vercel**: auto-deploys from `main` branch
-
----
-
-## Agent Hierarchy (for reference)
+## Agent Hierarchy
 ```
 Fares
-  └── Ziko (Main Assistant — orchestrates everything)
+  └── Ziko (orchestrates, talks to Fares)
         └── Nabil (Supreme Commander)
+              ├── Product Analyst (hub — creates PRDs, collects all outputs, reports to Ziko)
+              │     └── Researcher
               ├── Omar (Tech Lead) → Mostafa, Sara, Ali, Yasser, Hady, Farah, Bassem
               ├── Karim (Marketing Lead) → Sami, Maya, Amir, Rami, Tarek, Mariam, Nour, Salma, Ziad
-              ├── Design Lead → Design Agent
-              └── Product Analyst → Researcher
+              └── Design Lead → Design Agent
 ```
-
----
-
-**If you are about to build something and you are not sure it matches the existing design — STOP. Read the reference files listed above. Then build.**
