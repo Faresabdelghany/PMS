@@ -492,6 +492,10 @@ export interface Database {
           source_report_id: string | null
           created_at: string
           updated_at: string
+          // Sprint 3 columns (added via migration 20260223000004)
+          assigned_agent_id?: string | null
+          task_type?: "user" | "agent" | "recurring"
+          dispatch_status?: "pending" | "dispatched" | "running" | "completed" | "failed"
         }
         Insert: {
           id?: string
@@ -509,6 +513,10 @@ export interface Database {
           source_report_id?: string | null
           created_at?: string
           updated_at?: string
+          // Sprint 3 columns (added via migration 20260223000004)
+          assigned_agent_id?: string | null
+          task_type?: "user" | "agent" | "recurring"
+          dispatch_status?: "pending" | "dispatched" | "running" | "completed" | "failed"
         }
         Update: {
           id?: string
@@ -526,6 +534,10 @@ export interface Database {
           source_report_id?: string | null
           created_at?: string
           updated_at?: string
+          // Sprint 3 columns (added via migration 20260223000004)
+          assigned_agent_id?: string | null
+          task_type?: "user" | "agent" | "recurring"
+          dispatch_status?: "pending" | "dispatched" | "running" | "completed" | "failed"
         }
         Relationships: [
           {
@@ -1858,6 +1870,128 @@ export interface Database {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      agent_commands: {
+        Row: {
+          id: string
+          organization_id: string
+          agent_id: string
+          task_id: string | null
+          command_type: "run_task" | "ping" | "pause" | "resume" | "cancel"
+          payload: Record<string, unknown>
+          status: "pending" | "picked_up" | "completed" | "failed"
+          picked_up_at: string | null
+          completed_at: string | null
+          error: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          agent_id: string
+          task_id?: string | null
+          command_type: "run_task" | "ping" | "pause" | "resume" | "cancel"
+          payload?: Record<string, unknown>
+          status?: "pending" | "picked_up" | "completed" | "failed"
+          picked_up_at?: string | null
+          completed_at?: string | null
+          error?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          agent_id?: string
+          task_id?: string | null
+          command_type?: "run_task" | "ping" | "pause" | "resume" | "cancel"
+          payload?: Record<string, unknown>
+          status?: "pending" | "picked_up" | "completed" | "failed"
+          picked_up_at?: string | null
+          completed_at?: string | null
+          error?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_commands_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_commands_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_commands_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      agent_events: {
+        Row: {
+          id: string
+          organization_id: string
+          agent_id: string | null
+          task_id: string | null
+          event_type: "task_started" | "task_progress" | "task_completed" | "task_failed" | "agent_message" | "approval_request" | "status_change" | "heartbeat"
+          message: string
+          payload: Record<string, unknown>
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          agent_id?: string | null
+          task_id?: string | null
+          event_type: "task_started" | "task_progress" | "task_completed" | "task_failed" | "agent_message" | "approval_request" | "status_change" | "heartbeat"
+          message: string
+          payload?: Record<string, unknown>
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          agent_id?: string | null
+          task_id?: string | null
+          event_type?: "task_started" | "task_progress" | "task_completed" | "task_failed" | "agent_message" | "approval_request" | "status_change" | "heartbeat"
+          message?: string
+          payload?: Record<string, unknown>
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_events_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_events_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           }
         ]
