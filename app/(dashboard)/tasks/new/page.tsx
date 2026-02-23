@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { getPageOrganization } from "@/lib/page-auth"
-import { getCachedProjects } from "@/lib/server-cache"
+import { getCachedProjects, getCachedOrganizationMembers } from "@/lib/server-cache"
 import { getAgents } from "@/lib/actions/agents"
 import { PageHeader } from "@/components/ui/page-header"
 import { NewTaskForm } from "@/components/tasks/NewTaskForm"
@@ -12,9 +12,10 @@ export const metadata: Metadata = {
 export default async function NewTaskPage() {
   const { orgId } = await getPageOrganization()
 
-  const [projectsResult, agentsResult] = await Promise.all([
+  const [projectsResult, agentsResult, membersResult] = await Promise.all([
     getCachedProjects(orgId),
     getAgents(orgId),
+    getCachedOrganizationMembers(orgId),
   ])
 
   const projects = (projectsResult.data ?? []).map((p) => ({
@@ -31,11 +32,18 @@ export default async function NewTaskPage() {
     avatar_url: a.avatar_url,
   }))
 
+  const members = (membersResult.data ?? []).map((m) => ({
+    id: m.id,
+    user_id: m.user_id,
+    role: m.role,
+    profile: m.profile,
+  }))
+
   return (
     <div className="flex flex-col h-full">
-      <PageHeader title="New Task" description="Create a task and optionally assign it to an AI agent" />
+      <PageHeader title="New Task" description="Create a task and assign it to a team member or AI agent" />
       <div className="flex-1 overflow-y-auto px-4 py-6 max-w-2xl mx-auto w-full">
-        <NewTaskForm projects={projects} agents={agents} orgId={orgId} />
+        <NewTaskForm projects={projects} agents={agents} members={members} orgId={orgId} />
       </div>
     </div>
   )

@@ -3,6 +3,7 @@ import { Suspense } from "react"
 import { getPageOrganization } from "@/lib/page-auth"
 import { getProjects } from "@/lib/actions/projects"
 import { getMyTasks } from "@/lib/actions/tasks"
+import { getCachedOrganizationMembers, getCachedTags } from "@/lib/server-cache"
 import { MyTasksPage } from "@/components/tasks/MyTasksPage"
 
 export const metadata: Metadata = {
@@ -22,9 +23,11 @@ export default async function TasksPage() {
 }
 
 async function MyTasksData({ orgId, userId }: { orgId: string; userId: string }) {
-  const [tasksResult, projectsResult] = await Promise.all([
+  const [tasksResult, projectsResult, membersResult, tagsResult] = await Promise.all([
     getMyTasks(orgId),
     getProjects(orgId),
+    getCachedOrganizationMembers(orgId),
+    getCachedTags(orgId),
   ])
 
   const tasks = tasksResult.data ?? []
@@ -37,6 +40,8 @@ async function MyTasksData({ orgId, userId }: { orgId: string; userId: string })
     status: p.status,
     workstreams: (p as any).workstreams ?? [],
   }))
+  const members = membersResult.data ?? []
+  const tags = tagsResult.data ?? []
 
   return (
     <MyTasksPage
@@ -46,6 +51,8 @@ async function MyTasksData({ orgId, userId }: { orgId: string; userId: string })
       projects={projects}
       organizationId={orgId}
       userId={userId}
+      organizationMembers={members}
+      organizationTags={tags}
     />
   )
 }

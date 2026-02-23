@@ -194,7 +194,7 @@ export function CommandPalette({ open, onOpenChange, onCreateProject, onCreateTa
           </CommandItem>
           <CommandItem onSelect={() => navigate("/tasks")}>
             <CheckSquareIcon className="size-4" />
-            <span>Go to My Tasks</span>
+            <span>Go to Tasks</span>
             <CommandShortcut>G T</CommandShortcut>
           </CommandItem>
           <CommandItem onSelect={() => navigate("/clients")}>

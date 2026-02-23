@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,17 +20,29 @@ const STATUSES = [
 ]
 
 const PRIORITIES = [
-  { value: "urgent", label: "🔴 Urgent" },
-  { value: "high", label: "🟠 High" },
-  { value: "medium", label: "🟡 Medium" },
-  { value: "low", label: "🟢 Low" },
-  { value: "no-priority", label: "⬛ No Priority" },
+  { value: "urgent", label: "Urgent" },
+  { value: "high", label: "High" },
+  { value: "medium", label: "Medium" },
+  { value: "low", label: "Low" },
+  { value: "no-priority", label: "No Priority" },
 ]
 
 const squadColors: Record<string, string> = {
   engineering: "bg-blue-500",
   marketing: "bg-purple-500",
   all: "bg-emerald-500",
+}
+
+type MemberProp = {
+  id: string
+  user_id: string
+  role: string
+  profile: {
+    id: string
+    full_name: string | null
+    email: string
+    avatar_url: string | null
+  }
 }
 
 interface NewTaskFormProps {
@@ -42,14 +55,16 @@ interface NewTaskFormProps {
     status: string
     avatar_url: string | null
   }>
+  members?: MemberProp[]
   orgId: string
 }
 
-export function NewTaskForm({ projects, agents, orgId }: NewTaskFormProps) {
+export function NewTaskForm({ projects, agents, members = [], orgId }: NewTaskFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [assignType, setAssignType] = useState<"user" | "agent">("user")
+  const [assignType, setAssignType] = useState<"member" | "agent">("member")
   const [selectedAgentId, setSelectedAgentId] = useState<string>("")
+  const [selectedMemberId, setSelectedMemberId] = useState<string>("")
   const [selectedProjectId, setSelectedProjectId] = useState<string>(projects[0]?.id ?? "")
   const [status, setStatus] = useState<string>("todo")
   const [priority, setPriority] = useState<string>("medium")
@@ -78,13 +93,20 @@ export function NewTaskForm({ projects, agents, orgId }: NewTaskFormProps) {
     }
 
     startTransition(async () => {
-      // Create the task
-      const result = await createTask(selectedProjectId, {
+      // Build task data with optional assignee
+      const taskData: Record<string, unknown> = {
         name,
         description,
         status: status as "todo" | "in-progress" | "done",
         priority: priority as "urgent" | "high" | "medium" | "low" | "no-priority",
-      })
+      }
+
+      // Add member assignee if selected
+      if (assignType === "member" && selectedMemberId) {
+        taskData.assignee_id = selectedMemberId
+      }
+
+      const result = await createTask(selectedProjectId, taskData as any)
 
       if (result.error) {
         setErrorMsg(result.error)
@@ -117,8 +139,12 @@ export function NewTaskForm({ projects, agents, orgId }: NewTaskFormProps) {
           <h3 className="text-lg font-semibold text-foreground">Task Created!</h3>
           {assignType === "agent" ? (
             <p className="text-sm text-muted-foreground mt-1">Agent has been dispatched. Redirecting...</p>
+          ) : selectedMemberId ? (
+            <p className="text-sm text-muted-foreground mt-1">
+              Assigned to {members.find(m => m.user_id === selectedMemberId)?.profile.full_name || "member"}. Redirecting...
+            </p>
           ) : (
-            <p className="text-sm text-muted-foreground mt-1">Redirecting to board...</p>
+            <p className="text-sm text-muted-foreground mt-1">Redirecting to tasks...</p>
           )}
         </div>
       </div>
@@ -134,7 +160,7 @@ export function NewTaskForm({ projects, agents, orgId }: NewTaskFormProps) {
         className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeft size={16} />
-        Back to board
+        Back to tasks
       </button>
 
       {/* Task Name */}
@@ -160,7 +186,7 @@ export function NewTaskForm({ projects, agents, orgId }: NewTaskFormProps) {
         <textarea
           id="description"
           name="description"
-          placeholder="Add details, context, or instructions for the agent..."
+          placeholder="Add details, context, or instructions..."
           rows={4}
           className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-ring"
         />
@@ -234,16 +260,16 @@ export function NewTaskForm({ projects, agents, orgId }: NewTaskFormProps) {
         <div className="flex rounded-lg border border-border overflow-hidden">
           <button
             type="button"
-            onClick={() => setAssignType("user")}
+            onClick={() => setAssignType("member")}
             className={cn(
               "flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-all",
-              assignType === "user"
+              assignType === "member"
                 ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground hover:bg-accent/40"
             )}
           >
             <User size={16} />
-            User
+            Team Member
           </button>
           <button
             type="button"
@@ -259,6 +285,41 @@ export function NewTaskForm({ projects, agents, orgId }: NewTaskFormProps) {
             AI Agent
           </button>
         </div>
+
+        {assignType === "member" && members.length > 0 && (
+          <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
+            <SelectTrigger className="h-10">
+              <SelectValue placeholder="Select a team member..." />
+            </SelectTrigger>
+            <SelectContent>
+              {members.map((member) => (
+                <SelectItem key={member.user_id} value={member.user_id}>
+                  <div className="flex items-center gap-2">
+                    {member.profile.avatar_url ? (
+                      <Image
+                        src={member.profile.avatar_url}
+                        alt=""
+                        width={20}
+                        height={20}
+                        className="h-5 w-5 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold">
+                        {(member.profile.full_name || member.profile.email).charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span>{member.profile.full_name || member.profile.email}</span>
+                    <span className="text-muted-foreground text-xs">({member.role})</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {assignType === "member" && members.length === 0 && (
+          <p className="text-sm text-muted-foreground">No team members found. Invite members from Settings.</p>
+        )}
 
         {assignType === "agent" && (
           <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>

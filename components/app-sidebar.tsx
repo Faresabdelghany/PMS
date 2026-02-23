@@ -77,7 +77,7 @@ type FooterItem = {
 const navItems: NavItem[] = [
   { id: "dashboard", label: "Dashboard" },
   { id: "inbox", label: "Inbox" },
-  { id: "my-tasks", label: "My task" },
+  { id: "my-tasks", label: "Tasks" },
   { id: "projects", label: "Projects" },
   { id: "clients", label: "Clients" },
   { id: "agents", label: "Agents" },
