@@ -39,6 +39,8 @@ import { Kanban } from "@phosphor-icons/react/dist/ssr/Kanban"
 import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText"
 import { PlugsConnected } from "@phosphor-icons/react/dist/ssr/PlugsConnected"
 import { Tag } from "@phosphor-icons/react/dist/ssr/Tag"
+import { Rows } from "@phosphor-icons/react/dist/ssr/Rows"
+import { TextT } from "@phosphor-icons/react/dist/ssr/TextT"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,7 +60,7 @@ import { cn } from "@/lib/utils"
 import { PROGRESS_THRESHOLDS, BADGE_CAP, SIDEBAR_PROJECT_LIMIT } from "@/lib/constants"
 
 // Navigation items defined inline (no mock data dependency)
-type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "chat" | "activity" | "boards" | "approvals" | "gateways" | "skills" | "tags"
+type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "chat" | "activity" | "boards" | "board-groups" | "custom-fields" | "approvals" | "gateways" | "skills" | "tags"
 type SidebarFooterItemId = "settings" | "templates" | "help"
 
 type NavItem = {
@@ -81,6 +83,8 @@ const navItems: NavItem[] = [
   { id: "agents", label: "Agents" },
   { id: "activity", label: "Activity" },
   { id: "boards", label: "Boards" },
+  { id: "board-groups", label: "Board Groups" },
+  { id: "custom-fields", label: "Custom Fields" },
   { id: "approvals", label: "Approvals" },
   { id: "gateways", label: "Gateways" },
   { id: "skills", label: "Skills" },
@@ -132,6 +136,8 @@ const preloadHandlers: Record<NavItemId, () => void> = {
   },
   activity: () => {},
   boards: () => {},
+  "board-groups": () => {},
+  "custom-fields": () => {},
   approvals: () => {},
   gateways: () => {},
   skills: () => {},
@@ -164,6 +170,8 @@ const navItemIcons: Record<NavItemId, React.ComponentType<{ className?: string }
   agents: Robot,
   activity: Pulse,
   boards: Kanban,
+  "board-groups": Rows,
+  "custom-fields": TextT,
   approvals: ClipboardText,
   gateways: PlugsConnected,
   skills: Sparkle,
@@ -315,6 +323,8 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
     if (id === "agents") return "/agents"
     if (id === "activity") return "/activity"
     if (id === "boards") return "/boards"
+    if (id === "board-groups") return "/board-groups"
+    if (id === "custom-fields") return "/custom-fields"
     if (id === "approvals") return "/approvals"
     if (id === "gateways") return "/gateways"
     if (id === "skills") return "/skills/marketplace"
@@ -347,6 +357,12 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
     }
     if (id === "boards") {
       return pathname.startsWith("/boards")
+    }
+    if (id === "board-groups") {
+      return pathname.startsWith("/board-groups")
+    }
+    if (id === "custom-fields") {
+      return pathname.startsWith("/custom-fields")
     }
     if (id === "approvals") {
       return pathname.startsWith("/approvals")

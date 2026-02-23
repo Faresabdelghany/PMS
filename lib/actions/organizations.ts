@@ -10,6 +10,7 @@ import { requireAuth, requireOrgMember } from "./auth-helpers"
 import type { Organization, OrganizationInsert, OrganizationUpdate, OrgMemberRole } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
 import { generateSlug } from "@/lib/utils"
+import { seedDefaultSkills } from "./skills"
 
 // Helper to clear the organization membership cache cookie
 async function clearOrgMembershipCache() {
@@ -71,7 +72,9 @@ export async function createOrganization(
     // Clear the membership cache to reflect the new organization
     await clearOrgMembershipCache()
 
+    // Seed default skills for the new organization (non-blocking)
     after(async () => {
+      try { await seedDefaultSkills(org.id) } catch {}
       revalidatePath("/", "layout")
       await invalidateCache.orgMembers({ orgId: org.id, userId: user.id })
     })

@@ -10,6 +10,9 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "@phosphor-icons/react/dist/ssr/ArrowLeft"
 import { Robot } from "@phosphor-icons/react/dist/ssr/Robot"
 import { PlugsConnected } from "@phosphor-icons/react/dist/ssr/PlugsConnected"
+import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
+import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText"
+import { WebhooksLogo } from "@phosphor-icons/react/dist/ssr/WebhooksLogo"
 
 export const metadata: Metadata = {
   title: "Board Detail - PMS",
@@ -63,6 +66,28 @@ export default async function BoardDetailPage({
             )}
           </div>
         </div>
+        <Link href={`/boards/${boardId}/edit`}>
+          <Button variant="outline" size="sm">
+            <PencilSimple className="h-4 w-4 mr-1" />
+            Edit
+          </Button>
+        </Link>
+      </div>
+
+      {/* Quick Navigation Tabs */}
+      <div className="flex items-center gap-2 border-b pb-2">
+        <Link href={`/boards/${boardId}/approvals`}>
+          <Button variant="ghost" size="sm" className="gap-1.5">
+            <ClipboardText className="h-4 w-4" />
+            Approvals
+          </Button>
+        </Link>
+        <Link href={`/boards/${boardId}/webhooks`}>
+          <Button variant="ghost" size="sm" className="gap-1.5">
+            <WebhooksLogo className="h-4 w-4" />
+            Webhooks
+          </Button>
+        </Link>
       </div>
 
       {/* Details */}

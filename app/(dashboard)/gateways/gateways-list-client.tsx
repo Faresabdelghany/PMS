@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
@@ -49,6 +49,10 @@ const STATUS_STYLE: Record<string, { badge: string; dot: string; label: string }
   },
 }
 
+interface GatewayWithChecked extends Gateway {
+  _lastChecked?: Date
+}
+
 interface GatewaysListClientProps {
   gateways: Gateway[]
 }
@@ -56,8 +60,47 @@ interface GatewaysListClientProps {
 export function GatewaysListClient({ gateways: initialGateways }: GatewaysListClientProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [gateways, setGateways] = useState<Gateway[]>(initialGateways)
+  const [gateways, setGateways] = useState<GatewayWithChecked[]>(initialGateways)
   const [deleteTarget, setDeleteTarget] = useState<Gateway | null>(null)
+
+  const checkGatewayHealth = useCallback(async (gateway: GatewayWithChecked) => {
+    try {
+      const encodedUrl = encodeURIComponent(gateway.url)
+      const res = await fetch(`/api/gateway?url=${encodedUrl}&path=/`, { signal: AbortSignal.timeout(8000) })
+      const newStatus: Gateway["status"] = res.ok ? "online" : "offline"
+      setGateways((prev) =>
+        prev.map((g) =>
+          g.id === gateway.id
+            ? { ...g, status: newStatus, _lastChecked: new Date() }
+            : g
+        )
+      )
+    } catch {
+      setGateways((prev) =>
+        prev.map((g) =>
+          g.id === gateway.id
+            ? { ...g, status: "offline" as const, _lastChecked: new Date() }
+            : g
+        )
+      )
+    }
+  }, [])
+
+  // Poll all gateways every 30 seconds
+  useEffect(() => {
+    // Initial check
+    gateways.forEach(checkGatewayHealth)
+
+    const interval = setInterval(() => {
+      setGateways((prev) => {
+        prev.forEach(checkGatewayHealth)
+        return prev
+      })
+    }, 30_000)
+
+    return () => clearInterval(interval)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleDelete = () => {
     if (!deleteTarget) return
@@ -124,10 +167,17 @@ export function GatewaysListClient({ gateways: initialGateways }: GatewaysListCl
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={statusStyle.badge}>
-                      <span className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${statusStyle.dot}`} />
-                      {statusStyle.label}
-                    </Badge>
+                    <div>
+                      <Badge variant="outline" className={statusStyle.badge}>
+                        <span className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${statusStyle.dot}`} />
+                        {statusStyle.label}
+                      </Badge>
+                      {gateway._lastChecked && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          Checked {gateway._lastChecked.toLocaleTimeString()}
+                        </p>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {gateway.last_seen_at

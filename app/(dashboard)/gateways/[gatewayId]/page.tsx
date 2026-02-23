@@ -59,7 +59,7 @@ export default async function GatewayDetailPage({
           </div>
         </div>
         <div className="flex gap-2">
-          <GatewayTestButton gatewayUrl={gateway.url} />
+          <GatewayTestButton gatewayId={gatewayId} gatewayUrl={gateway.url} />
           <Link href={`/gateways/${gatewayId}/edit`}>
             <Button variant="outline" size="sm">
               <PencilSimple className="h-4 w-4 mr-1" />
