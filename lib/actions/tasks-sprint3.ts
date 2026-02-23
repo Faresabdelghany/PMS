@@ -142,7 +142,7 @@ export async function getOrgTaskStats(orgId: string): Promise<ActionResult<OrgTa
 
   const total = tasks.length
   const thisWeek = tasks.filter((t) => new Date(t.created_at) >= weekStart).length
-  const inProgress = tasks.filter((t) => t.status === "in_progress").length
+  const inProgress = tasks.filter((t) => t.status === "in-progress").length
   const done = tasks.filter((t) => t.status === "done").length
   const completionRate = total > 0 ? Math.round((done / total) * 100) : 0
 
@@ -205,7 +205,7 @@ export async function dispatchTaskToAgent(
     return { error: commandResult.error }
   }
 
-  revalidatePath("/(dashboard)/tasks", "page")
+  revalidatePath("/tasks")
 
   return { data: { commandId: commandResult.data!.id } }
 }
@@ -231,6 +231,6 @@ export async function assignAgentToTask(
     return { error: error.message }
   }
 
-  revalidatePath("/(dashboard)/tasks", "page")
+  revalidatePath("/tasks")
   return { data: undefined }
 }
