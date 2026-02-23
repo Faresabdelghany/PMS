@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -44,6 +45,7 @@ export function AgentsTable({
   agents: AgentWithSupervisor[]
   organizationId: string
 }) {
+  const router = useRouter()
   const [search, setSearch] = useState("")
   const [squadFilter, setSquadFilter] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<string>("all")
@@ -163,7 +165,7 @@ export function AgentsTable({
               </TableRow>
             ) : (
               filtered.map((agent) => (
-                <TableRow key={agent.id}>
+                <TableRow key={agent.id} className="cursor-pointer" onClick={() => router.push(`?agent=${agent.id}`)}>
                   <TableCell className="font-medium">{agent.name}</TableCell>
                   <TableCell className="text-muted-foreground">{agent.role}</TableCell>
                   <TableCell>

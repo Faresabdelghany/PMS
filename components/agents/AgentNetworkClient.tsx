@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { toast } from "sonner"
+import { pingAgent } from "@/lib/actions/agent-commands"
 import { cn } from "@/lib/utils"
 import {
   Sheet,
@@ -198,17 +199,32 @@ interface AgentDetailSheetProps {
   agent: AgentWithSupervisor | null
   open: boolean
   onClose: () => void
+  orgId: string
 }
 
-function AgentDetailSheet({ agent, open, onClose }: AgentDetailSheetProps) {
+function AgentDetailSheet({ agent, open, onClose, orgId }: AgentDetailSheetProps) {
+  const [pinging, setPinging] = useState(false)
+
   if (!agent) return null
 
   const avatarBg = getAvatarBg(agent)
   const statusDot = STATUS_DOT[agent.status] ?? STATUS_DOT.offline
   const statusLabel = agent.status.charAt(0).toUpperCase() + agent.status.slice(1)
 
-  const handlePing = () => {
-    toast.success(`Ping sent to ${agent.name}`)
+  const handlePing = async () => {
+    setPinging(true)
+    try {
+      const result = await pingAgent(orgId, agent.id, `Ping from Mission Control UI`)
+      if (result.error) {
+        toast.error(`Ping failed: ${result.error}`)
+      } else {
+        toast.success(`Ping sent to ${agent.name}`)
+      }
+    } catch {
+      toast.error("Failed to send ping")
+    } finally {
+      setPinging(false)
+    }
   }
 
   return (
@@ -325,9 +341,10 @@ function AgentDetailSheet({ agent, open, onClose }: AgentDetailSheetProps) {
             size="sm"
             className="w-full gap-2"
             onClick={handlePing}
+            disabled={pinging}
           >
             <Broadcast className="h-4 w-4" />
-            Ping Agent
+            {pinging ? "Pinging..." : "Ping Agent"}
           </Button>
         </div>
       </SheetContent>
@@ -396,9 +413,10 @@ function EmptyNetwork() {
 
 interface AgentNetworkClientProps {
   agents: AgentWithSupervisor[]
+  orgId: string
 }
 
-export function AgentNetworkClient({ agents }: AgentNetworkClientProps) {
+export function AgentNetworkClient({ agents, orgId }: AgentNetworkClientProps) {
   const [selectedAgent, setSelectedAgent] = useState<AgentWithSupervisor | null>(null)
   const [faresSheetOpen, setFaresSheetOpen] = useState(false)
 
@@ -496,6 +514,7 @@ export function AgentNetworkClient({ agents }: AgentNetworkClientProps) {
         agent={selectedAgent}
         open={!!selectedAgent}
         onClose={() => setSelectedAgent(null)}
+        orgId={orgId}
       />
       <FaresDetailSheet
         open={faresSheetOpen}

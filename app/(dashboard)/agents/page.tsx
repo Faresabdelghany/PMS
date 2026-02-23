@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { Suspense } from "react"
 import { AgentsTable } from "@/components/agents/agents-table"
+import { AgentDetailPanel } from "@/components/agents/AgentDetailPanel"
 import { PageSkeleton } from "@/components/ui/page-skeleton"
 import { PageHeader } from "@/components/ui/page-header"
 import { getPageOrganization } from "@/lib/page-auth"
@@ -23,7 +24,7 @@ export default async function Page() {
       <PageHeader
         title="Agents"
         actions={
-          <Link href="/agents/new">
+          <Link href="?agent=new">
             <Button variant="ghost" size="sm">
               <Plus className="h-4 w-4" weight="bold" />
               New Agent
@@ -75,5 +76,12 @@ async function AgentsStreamed({
     supervisor: a.supervisor,
   }))
 
-  return <AgentsTable agents={agents} organizationId={orgId} />
+  return (
+    <>
+      <AgentsTable agents={agents} organizationId={orgId} />
+      <Suspense fallback={null}>
+        <AgentDetailPanel agents={agents} orgId={orgId} />
+      </Suspense>
+    </>
+  )
 }

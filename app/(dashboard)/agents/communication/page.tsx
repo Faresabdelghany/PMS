@@ -39,7 +39,7 @@ function AgentNetworkSkeleton() {
 async function AgentNetworkData({ orgId }: { orgId: string }) {
   const result = await getAgents(orgId)
   const agents = result.data ?? []
-  return <AgentNetworkClient agents={agents} />
+  return <AgentNetworkClient agents={agents} orgId={orgId} />
 }
 
 export default async function AgentCommunicationPage() {
