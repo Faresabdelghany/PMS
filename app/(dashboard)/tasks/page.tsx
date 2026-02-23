@@ -3,6 +3,7 @@ import { Suspense } from "react"
 import { getPageOrganization } from "@/lib/page-auth"
 import { getProjects } from "@/lib/actions/projects"
 import { getMyTasks } from "@/lib/actions/tasks"
+import { getAgents } from "@/lib/actions/agents"
 import { getCachedOrganizationMembers, getCachedTags } from "@/lib/server-cache"
 import { MyTasksPage } from "@/components/tasks/MyTasksPage"
 
@@ -23,10 +24,11 @@ export default async function TasksPage() {
 }
 
 async function MyTasksData({ orgId, userId }: { orgId: string; userId: string }) {
-  const [tasksResult, projectsResult, membersResult, tagsResult] = await Promise.all([
+  const [tasksResult, projectsResult, membersResult, agentsResult, tagsResult] = await Promise.all([
     getMyTasks(orgId),
     getProjects(orgId),
     getCachedOrganizationMembers(orgId),
+    getAgents(orgId),
     getCachedTags(orgId),
   ])
 
@@ -41,6 +43,14 @@ async function MyTasksData({ orgId, userId }: { orgId: string; userId: string })
     workstreams: (p as any).workstreams ?? [],
   }))
   const members = membersResult.data ?? []
+  const agents = (agentsResult.data ?? []).map((a) => ({
+    id: a.id,
+    name: a.name,
+    role: a.role,
+    squad: a.squad,
+    status: a.status,
+    avatar_url: a.avatar_url,
+  }))
   const tags = tagsResult.data ?? []
 
   return (
@@ -52,6 +62,7 @@ async function MyTasksData({ orgId, userId }: { orgId: string; userId: string })
       organizationId={orgId}
       userId={userId}
       organizationMembers={members}
+      agents={agents}
       organizationTags={tags}
     />
   )

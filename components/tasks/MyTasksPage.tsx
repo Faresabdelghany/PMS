@@ -172,6 +172,15 @@ type OrganizationMember = {
   }
 }
 
+type AgentLean = {
+  id: string
+  name: string
+  role: string
+  squad: string
+  status: string
+  avatar_url: string | null
+}
+
 interface MyTasksPageProps {
   initialTasks?: TaskWithRelations[]
   initialHasMore?: boolean
@@ -180,6 +189,7 @@ interface MyTasksPageProps {
   organizationId?: string
   userId?: string
   organizationMembers?: OrganizationMember[]
+  agents?: AgentLean[]
   organizationTags?: OrganizationTag[]
 }
 
@@ -191,6 +201,7 @@ export function MyTasksPage({
   organizationId,
   userId,
   organizationMembers = [],
+  agents = [],
   organizationTags = [],
 }: MyTasksPageProps) {
   const router = useRouter()
@@ -633,6 +644,8 @@ export function MyTasksPage({
           onTaskUpdated={handleTaskUpdated}
           projects={projectOptions}
           organizationMembers={organizationMembers}
+          agents={agents}
+          orgId={organizationId}
           tags={organizationTags}
         />
       </div>
@@ -742,6 +755,8 @@ export function MyTasksPage({
         onTaskUpdated={handleTaskUpdated}
         projects={projectOptions}
         organizationMembers={organizationMembers}
+        agents={agents}
+        orgId={organizationId}
         tags={organizationTags}
       />
 

@@ -11,6 +11,7 @@ import { Microphone } from "@phosphor-icons/react/dist/ssr/Microphone"
 import { UserCircle } from "@phosphor-icons/react/dist/ssr/UserCircle"
 import { X } from "@phosphor-icons/react/dist/ssr/X"
 import { Folder } from "@phosphor-icons/react/dist/ssr/Folder"
+import { Robot } from "@phosphor-icons/react/dist/ssr/Robot"
 import { Rows } from "@phosphor-icons/react/dist/ssr/Rows"
 
 import { Button } from '@/components/ui/button'
@@ -20,6 +21,7 @@ import { ProjectDescriptionEditorLazy as ProjectDescriptionEditor } from '@/comp
 import { QuickCreateModalLayout } from '@/components/QuickCreateModalLayout'
 import { toast } from 'sonner'
 import { createTask, updateTask } from '@/lib/actions/tasks'
+import { dispatchTaskToAgent } from '@/lib/actions/tasks-sprint3'
 import { generateTaskDescription } from '@/lib/actions/ai'
 import type { OrganizationTagLean as OrganizationTag, TaskPriority } from "@/lib/supabase/types"
 
@@ -40,6 +42,15 @@ type OrganizationMember = {
     email: string
     avatar_url: string | null
   }
+}
+
+type AgentOption = {
+  id: string
+  name: string
+  role: string
+  squad: string
+  status: string
+  avatar_url: string | null
 }
 
 type User = {
@@ -81,6 +92,8 @@ interface TaskQuickCreateModalProps {
   onTaskUpdated?: (task: TaskData) => void
   projects?: ProjectOption[]
   organizationMembers?: OrganizationMember[]
+  agents?: AgentOption[]
+  orgId?: string
   tags?: OrganizationTag[]
   /** Pre-select a tag by name on open */
   defaultTag?: string
@@ -101,6 +114,8 @@ type AssigneeOption = {
   id: string
   name: string
   avatar?: string | null
+  type: 'member' | 'agent'
+  role?: string
 }
 
 type PriorityOption = {
@@ -139,6 +154,8 @@ export function TaskQuickCreateModal({
   onTaskUpdated,
   projects = [],
   organizationMembers = [],
+  agents = [],
+  orgId,
   tags = [],
   defaultTag,
   sourceReportId,
@@ -153,15 +170,23 @@ export function TaskQuickCreateModal({
   const [workstreamId, setWorkstreamId] = useState<string | undefined>(undefined)
   const [workstreamName, setWorkstreamName] = useState<string | undefined>(undefined)
 
-  // Convert org members to picker format
-  const assigneeOptions: AssigneeOption[] = useMemo(() =>
-    organizationMembers.map((m) => ({
+  // Convert org members + agents to picker format
+  const assigneeOptions: AssigneeOption[] = useMemo(() => {
+    const memberOptions: AssigneeOption[] = organizationMembers.map((m) => ({
       id: m.user_id,
       name: m.profile.full_name || m.profile.email,
       avatar: m.profile.avatar_url,
-    })),
-    [organizationMembers]
-  )
+      type: 'member' as const,
+    }))
+    const agentOptions: AssigneeOption[] = agents.map((a) => ({
+      id: `agent:${a.id}`,
+      name: a.name,
+      avatar: a.avatar_url,
+      type: 'agent' as const,
+      role: a.role,
+    }))
+    return [...memberOptions, ...agentOptions]
+  }, [organizationMembers, agents])
 
   const [assignee, setAssignee] = useState<AssigneeOption | undefined>(undefined)
 
@@ -323,6 +348,7 @@ export function TaskQuickCreateModal({
         // Call updateTask server action
         // Use null for workstream if "None" is selected or no workstream
         const effectiveWorkstreamId = workstreamId === NONE_WORKSTREAM_ID ? null : (workstreamId || null)
+        const isAgentAssignee = assignee?.type === 'agent'
         const result = await updateTask(editingTask.id, {
           name: title.trim(),
           status: status.id,
@@ -332,8 +358,14 @@ export function TaskQuickCreateModal({
           start_date: startDate?.toISOString().split('T')[0] || null,
           end_date: targetDate?.toISOString().split('T')[0] || null,
           workstream_id: effectiveWorkstreamId,
-          assignee_id: assignee?.id || null,
+          assignee_id: isAgentAssignee ? null : (assignee?.id || null),
         })
+
+        // Dispatch to agent if an agent was selected
+        if (!result.error && isAgentAssignee && orgId) {
+          const agentId = assignee.id.replace('agent:', '')
+          await dispatchTaskToAgent(orgId, editingTask.id, agentId)
+        }
 
         if (result.error) {
           toast.error(result.error)
@@ -377,6 +409,7 @@ export function TaskQuickCreateModal({
       // Call createTask server action
       // Use null for workstream if "None" is selected or no workstream
       const effectiveWorkstreamId = workstreamId === NONE_WORKSTREAM_ID ? null : (workstreamId || null)
+      const isAgentAssignee = assignee?.type === 'agent'
       const result = await createTask(effectiveProjectId, {
         name: title.trim(),
         status: status.id,
@@ -386,13 +419,22 @@ export function TaskQuickCreateModal({
         start_date: startDate?.toISOString().split('T')[0] || null,
         end_date: targetDate?.toISOString().split('T')[0] || null,
         workstream_id: effectiveWorkstreamId,
-        assignee_id: assignee?.id || null,
+        assignee_id: isAgentAssignee ? null : (assignee?.id || null),
         source_report_id: sourceReportId || null,
       })
 
       if (result.error) {
         toast.error(result.error)
         return
+      }
+
+      // Dispatch to agent if an agent was selected
+      if (isAgentAssignee && orgId && result.data) {
+        const agentId = assignee.id.replace('agent:', '')
+        const dispatchResult = await dispatchTaskToAgent(orgId, result.data.id, agentId)
+        if (dispatchResult.error) {
+          toast.error(`Task created but agent dispatch failed: ${dispatchResult.error}`)
+        }
       }
 
       const newTask: TaskData = {
@@ -546,7 +588,11 @@ export function TaskQuickCreateModal({
             placeholder="Assign owner..."
             renderItem={(item) => (
               <div className="flex items-center gap-2 w-full">
-                {item.avatar ? (
+                {item.type === 'agent' ? (
+                  <div className="size-5 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Robot className="size-3 text-primary" />
+                  </div>
+                ) : item.avatar ? (
                   <Image
                     src={item.avatar}
                     alt=""
@@ -560,13 +606,22 @@ export function TaskQuickCreateModal({
                   </div>
                 )}
                 <span className="flex-1">{item.name}</span>
+                {item.type === 'agent' && (
+                  <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Agent</span>
+                )}
               </div>
             )}
             trigger={
               <button className="bg-muted flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:border-primary/50 transition-colors">
-                <div className="size-4 rounded-full bg-background flex items-center justify-center text-[10px] font-medium">
-                  {assignee?.name.charAt(0) ?? '?'}
-                </div>
+                {assignee?.type === 'agent' ? (
+                  <div className="size-4 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Robot className="size-2.5 text-primary" />
+                  </div>
+                ) : (
+                  <div className="size-4 rounded-full bg-background flex items-center justify-center text-[10px] font-medium">
+                    {assignee?.name.charAt(0) ?? '?'}
+                  </div>
+                )}
                 <span className="font-medium text-foreground text-sm leading-5">
                   {assignee?.name ?? 'Assignee'}
                 </span>
