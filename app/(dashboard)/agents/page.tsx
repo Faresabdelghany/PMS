@@ -2,9 +2,13 @@ import type { Metadata } from "next"
 import { Suspense } from "react"
 import { AgentsTable } from "@/components/agents/agents-table"
 import { PageSkeleton } from "@/components/ui/page-skeleton"
+import { PageHeader } from "@/components/ui/page-header"
 import { getPageOrganization } from "@/lib/page-auth"
 import { getAgents } from "@/lib/actions/agents"
 import type { AgentWithSupervisor } from "@/lib/supabase/types"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
 
 export const metadata: Metadata = {
   title: "Agents - PMS",
@@ -15,17 +19,23 @@ export default async function Page() {
   const agentsPromise = getAgents(orgId)
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Agents</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Manage your AI agent team
-        </p>
+    <div className="flex flex-col flex-1">
+      <PageHeader
+        title="Agents"
+        actions={
+          <Link href="/agents/new">
+            <Button variant="ghost" size="sm">
+              <Plus className="h-4 w-4" weight="bold" />
+              New Agent
+            </Button>
+          </Link>
+        }
+      />
+      <div className="p-6 flex flex-col gap-6">
+        <Suspense fallback={<PageSkeleton />}>
+          <AgentsStreamed agentsPromise={agentsPromise} orgId={orgId} />
+        </Suspense>
       </div>
-
-      <Suspense fallback={<PageSkeleton />}>
-        <AgentsStreamed agentsPromise={agentsPromise} orgId={orgId} />
-      </Suspense>
     </div>
   )
 }
