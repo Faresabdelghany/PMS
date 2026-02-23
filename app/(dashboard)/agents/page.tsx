@@ -81,7 +81,7 @@ async function AgentsStreamed(props: {
     <>
       <AgentsTable agents={agents} organizationId={orgId} />
       <Suspense fallback={null}>
-        <AgentQuickView />
+        <AgentQuickView agents={agents} skills={skills} />
       </Suspense>
       <Suspense fallback={null}>
         <AgentDetailPanel agents={agents} orgId={orgId} skills={skills} />

@@ -1,7 +1,10 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useForm, Controller } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
 import {
   Sheet,
   SheetContent,
@@ -9,11 +12,34 @@ import {
 } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Switch } from "@/components/ui/switch"
 import { AgentActivityFeed } from "./agent-activity-feed"
 import { Button } from "@/components/ui/button"
-import { Bot, Clock, Cpu, Shield, GitBranch, Users, Star, Circle, Pencil } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Bot,
+  Clock,
+  Cpu,
+  Shield,
+  GitBranch,
+  Users,
+  Star,
+  Circle,
+  Pencil,
+  Save,
+  X,
+  Zap,
+  Power,
+  Plus,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getAgent } from "@/lib/actions/agents"
+import { getAgent, updateAgent } from "@/lib/actions/agents"
 import { getAgentActivities } from "@/lib/actions/agents"
 import { toast } from "sonner"
 import type {
@@ -23,6 +49,7 @@ import type {
   AgentStatus,
   AgentSquad,
 } from "@/lib/supabase/types"
+import type { Skill } from "@/lib/actions/skills"
 
 // ── Status styling ──────────────────────────────────────────────────
 
@@ -83,7 +110,51 @@ function formatLastActive(date: string | null): string {
   return `${diffDay}d ago`
 }
 
-export function AgentQuickView() {
+// ── Edit form schema ────────────────────────────────────────────────
+
+const editSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(200),
+  role: z.string().trim().min(1, "Role is required").max(200),
+  description: z.string().max(2000).optional().nullable(),
+  agent_type: z.enum(["supreme", "lead", "specialist", "integration"]),
+  squad: z.enum(["engineering", "marketing", "all"]),
+  status: z.enum(["online", "busy", "idle", "offline"]),
+  ai_provider: z.string().max(100).optional().nullable(),
+  ai_model: z.string().max(200).optional().nullable(),
+  reports_to: z.string().uuid().optional().nullable(),
+  is_active: z.boolean(),
+  skills: z.array(z.object({ id: z.string(), name: z.string() })).default([]),
+})
+
+type EditFormValues = z.infer<typeof editSchema>
+
+const MODEL_MAP: Record<string, { id: string; label: string }[]> = {
+  anthropic: [
+    { id: "claude-opus-4-6", label: "Claude Opus 4.6" },
+    { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
+    { id: "claude-haiku-3-5", label: "Claude Haiku 3.5" },
+  ],
+  google: [
+    { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
+    { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+  ],
+  openai: [
+    { id: "gpt-4o", label: "GPT-4o" },
+    { id: "gpt-4o-mini", label: "GPT-4o mini" },
+    { id: "o1", label: "o1" },
+    { id: "o3-mini", label: "o3-mini" },
+  ],
+  other: [{ id: "custom", label: "Custom / Other" }],
+}
+
+// ── Component ───────────────────────────────────────────────────────
+
+interface AgentQuickViewProps {
+  agents?: AgentWithSupervisor[]
+  skills?: Skill[]
+}
+
+export function AgentQuickView({ agents = [], skills = [] }: AgentQuickViewProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const agentId = searchParams.get("view")
@@ -91,13 +162,59 @@ export function AgentQuickView() {
   const [agent, setAgent] = useState<AgentWithSupervisor | null>(null)
   const [activities, setActivities] = useState<AgentActivityRow[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   const isOpen = !!agentId
+
+  const form = useForm<EditFormValues>({
+    resolver: zodResolver(editSchema),
+    defaultValues: {
+      name: "",
+      role: "",
+      description: "",
+      agent_type: "specialist",
+      squad: "engineering",
+      status: "offline",
+      ai_provider: "anthropic",
+      ai_model: "claude-sonnet-4-6",
+      reports_to: null,
+      is_active: true,
+      skills: [],
+    },
+  })
+
+  const watchedProvider = form.watch("ai_provider") ?? "anthropic"
+  const watchedSkills = form.watch("skills")
+
+  // Reset form when agent data loads
+  const populateForm = useCallback(
+    (a: AgentWithSupervisor) => {
+      const existingSkills = Array.isArray(a.skills)
+        ? (a.skills as { id: string; name: string }[])
+        : []
+      form.reset({
+        name: a.name,
+        role: a.role,
+        description: a.description ?? "",
+        agent_type: a.agent_type as EditFormValues["agent_type"],
+        squad: a.squad as EditFormValues["squad"],
+        status: a.status as EditFormValues["status"],
+        ai_provider: a.ai_provider ?? "anthropic",
+        ai_model: a.ai_model ?? "claude-sonnet-4-6",
+        reports_to: a.reports_to ?? null,
+        is_active: a.is_active ?? true,
+        skills: existingSkills,
+      })
+    },
+    [form]
+  )
 
   useEffect(() => {
     if (!agentId) {
       setAgent(null)
       setActivities([])
+      setIsEditing(false)
       return
     }
 
@@ -105,6 +222,7 @@ export function AgentQuickView() {
 
     async function fetchData() {
       setIsLoading(true)
+      setIsEditing(false)
       try {
         const [agentResult, activitiesResult] = await Promise.all([
           getAgent(currentId),
@@ -115,7 +233,10 @@ export function AgentQuickView() {
           toast.error(agentResult.error)
           return
         }
-        if (agentResult.data) setAgent(agentResult.data)
+        if (agentResult.data) {
+          setAgent(agentResult.data)
+          populateForm(agentResult.data)
+        }
         if (activitiesResult.data) setActivities(activitiesResult.data)
       } catch {
         toast.error("Failed to load agent details")
@@ -125,7 +246,7 @@ export function AgentQuickView() {
     }
 
     fetchData()
-  }, [agentId])
+  }, [agentId, populateForm])
 
   const handleClose = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString())
@@ -135,6 +256,62 @@ export function AgentQuickView() {
       : window.location.pathname
     router.push(newPath, { scroll: false })
   }, [router, searchParams])
+
+  const handleCancelEdit = useCallback(() => {
+    if (agent) populateForm(agent)
+    setIsEditing(false)
+  }, [agent, populateForm])
+
+  const handleSave = useCallback(
+    async (values: EditFormValues) => {
+      if (!agent) return
+      setIsSaving(true)
+      try {
+        const result = await updateAgent(agent.id, values)
+        if (result.error) {
+          toast.error(result.error)
+          return
+        }
+        toast.success("Agent updated")
+        // Re-fetch to get fresh data including supervisor join
+        const refreshed = await getAgent(agent.id)
+        if (refreshed.data) {
+          setAgent(refreshed.data)
+          populateForm(refreshed.data)
+        }
+        setIsEditing(false)
+        router.refresh()
+      } finally {
+        setIsSaving(false)
+      }
+    },
+    [agent, populateForm, router]
+  )
+
+  const toggleSkill = useCallback(
+    (skill: Skill) => {
+      const current = form.getValues("skills")
+      const exists = current.some((s) => s.id === skill.id)
+      if (exists) {
+        form.setValue(
+          "skills",
+          current.filter((s) => s.id !== skill.id),
+          { shouldDirty: true }
+        )
+      } else {
+        form.setValue("skills", [...current, { id: skill.id, name: skill.name }], {
+          shouldDirty: true,
+        })
+      }
+    },
+    [form]
+  )
+
+  const installedSkills = skills.filter((s) => s.installed && s.enabled)
+
+  const modelOptions = (MODEL_MAP[watchedProvider] ?? MODEL_MAP.anthropic)
+
+  const reportsToOptions = agents.filter((a) => a.id !== agentId)
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
@@ -170,112 +347,389 @@ export function AgentQuickView() {
                   />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-lg font-semibold truncate">{agent.name}</h2>
-                  <p className="text-sm text-muted-foreground truncate">{agent.role}</p>
+                  {isEditing ? (
+                    <div className="space-y-1">
+                      <input
+                        {...form.register("name")}
+                        className="w-full text-lg font-semibold text-foreground bg-transparent border-b border-primary/40 outline-none pb-0.5 placeholder:text-muted-foreground"
+                        placeholder="Agent name"
+                      />
+                      <input
+                        {...form.register("role")}
+                        className="w-full text-sm text-muted-foreground bg-transparent border-b border-border outline-none pb-0.5 placeholder:text-muted-foreground/60"
+                        placeholder="Role"
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <h2 className="text-lg font-semibold truncate">{agent.name}</h2>
+                      <p className="text-sm text-muted-foreground truncate">{agent.role}</p>
+                    </>
+                  )}
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0 gap-1.5 rounded-lg"
-                  onClick={() => {
-                    const params = new URLSearchParams(searchParams.toString())
-                    params.delete("view")
-                    params.set("agent", agent.id)
-                    router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false })
-                  }}
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                  Edit
-                </Button>
+                {isEditing ? (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="gap-1.5 rounded-lg text-muted-foreground"
+                      onClick={handleCancelEdit}
+                      disabled={isSaving}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="gap-1.5 rounded-lg"
+                      onClick={form.handleSubmit(handleSave)}
+                      disabled={isSaving}
+                    >
+                      <Save className="h-3.5 w-3.5" />
+                      {isSaving ? "Saving..." : "Save"}
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 gap-1.5 rounded-lg"
+                    onClick={() => setIsEditing(true)}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    Edit
+                  </Button>
+                )}
               </div>
 
               {/* Badges */}
-              <div className="flex flex-wrap items-center gap-1.5">
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "rounded-full border-transparent px-2 py-0.5 text-[10px] font-medium",
-                    typeBadgeColors[agent.agent_type]
+              {!isEditing && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "rounded-full border-transparent px-2 py-0.5 text-[10px] font-medium",
+                      typeBadgeColors[agent.agent_type]
+                    )}
+                  >
+                    {typeLabels[agent.agent_type]}
+                  </Badge>
+                  <Badge
+                    variant="outline"
+                    className="rounded-full border-transparent bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+                  >
+                    {squadLabels[agent.squad]}
+                  </Badge>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-full border-transparent px-2 py-0.5 text-[10px] font-medium",
+                      statusConfig[agent.status].badge
+                    )}
+                  >
+                    <span className={cn("h-1.5 w-1.5 rounded-full", statusConfig[agent.status].dot)} />
+                    {statusConfig[agent.status].label}
+                  </Badge>
+                  {!agent.is_active && (
+                    <Badge
+                      variant="outline"
+                      className="rounded-full border-transparent bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-200 px-2 py-0.5 text-[10px] font-medium"
+                    >
+                      Inactive
+                    </Badge>
                   )}
-                >
-                  {typeLabels[agent.agent_type]}
-                </Badge>
-                <Badge
-                  variant="outline"
-                  className="rounded-full border-transparent bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
-                >
-                  {squadLabels[agent.squad]}
-                </Badge>
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "inline-flex items-center gap-1 rounded-full border-transparent px-2 py-0.5 text-[10px] font-medium",
-                    statusConfig[agent.status].badge
-                  )}
-                >
-                  <span className={cn("h-1.5 w-1.5 rounded-full", statusConfig[agent.status].dot)} />
-                  {statusConfig[agent.status].label}
-                </Badge>
-              </div>
+                </div>
+              )}
             </div>
 
             {/* Scrollable content */}
             <div className="flex-1 overflow-y-auto px-5 pb-4 pt-4 space-y-5">
               {/* Description */}
-              {agent.description && (
+              {isEditing ? (
                 <div className="space-y-1.5">
                   <h3 className="text-sm font-medium text-foreground">Description</h3>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{agent.description}</p>
+                  <textarea
+                    {...form.register("description")}
+                    rows={3}
+                    className="w-full text-sm leading-relaxed text-muted-foreground bg-muted/50 rounded-lg border border-border p-3 outline-none focus:border-primary/40 resize-none placeholder:text-muted-foreground/60"
+                    placeholder="What does this agent do?"
+                  />
+                </div>
+              ) : (
+                agent.description && (
+                  <div className="space-y-1.5">
+                    <h3 className="text-sm font-medium text-foreground">Description</h3>
+                    <p className="text-sm leading-relaxed text-muted-foreground">{agent.description}</p>
+                  </div>
+                )
+              )}
+
+              {/* Details — editable or static */}
+              {isEditing ? (
+                <div className="rounded-2xl border border-border bg-card/80 px-5 py-4 space-y-4">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Properties</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Type */}
+                    <EditSelectField
+                      label="Type"
+                      icon={<Star className="h-3.5 w-3.5" />}
+                      control={form.control}
+                      name="agent_type"
+                      options={[
+                        { value: "supreme", label: "Supreme" },
+                        { value: "lead", label: "Lead" },
+                        { value: "specialist", label: "Specialist" },
+                        { value: "integration", label: "Integration" },
+                      ]}
+                    />
+
+                    {/* Squad */}
+                    <EditSelectField
+                      label="Squad"
+                      icon={<Users className="h-3.5 w-3.5" />}
+                      control={form.control}
+                      name="squad"
+                      options={[
+                        { value: "engineering", label: "Engineering" },
+                        { value: "marketing", label: "Marketing" },
+                        { value: "all", label: "All" },
+                      ]}
+                    />
+
+                    {/* Status */}
+                    <EditSelectField
+                      label="Status"
+                      icon={<Circle className="h-3.5 w-3.5" />}
+                      control={form.control}
+                      name="status"
+                      options={[
+                        { value: "online", label: "Online" },
+                        { value: "busy", label: "Busy" },
+                        { value: "idle", label: "Idle" },
+                        { value: "offline", label: "Offline" },
+                      ]}
+                    />
+
+                    {/* Provider */}
+                    <EditSelectField
+                      label="Provider"
+                      icon={<Shield className="h-3.5 w-3.5" />}
+                      control={form.control}
+                      name="ai_provider"
+                      options={[
+                        { value: "anthropic", label: "Anthropic" },
+                        { value: "google", label: "Google" },
+                        { value: "openai", label: "OpenAI" },
+                        { value: "other", label: "Other" },
+                      ]}
+                      onChange={(val) => {
+                        const models = MODEL_MAP[val] ?? MODEL_MAP.anthropic
+                        form.setValue("ai_model", models[0].id)
+                      }}
+                    />
+
+                    {/* Model */}
+                    <EditSelectField
+                      label="Model"
+                      icon={<Cpu className="h-3.5 w-3.5" />}
+                      control={form.control}
+                      name="ai_model"
+                      options={modelOptions.map((m) => ({ value: m.id, label: m.label }))}
+                    />
+
+                    {/* Reports To */}
+                    <Controller
+                      control={form.control}
+                      name="reports_to"
+                      render={({ field }) => (
+                        <div className="space-y-1.5">
+                          <label className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                            <GitBranch className="h-3.5 w-3.5" />
+                            Reports To
+                          </label>
+                          <Select
+                            value={field.value ?? "none"}
+                            onValueChange={(v) => field.onChange(v === "none" ? null : v)}
+                          >
+                            <SelectTrigger className="h-9 text-xs rounded-lg">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">No supervisor</SelectItem>
+                              {reportsToOptions.map((a) => (
+                                <SelectItem key={a.id} value={a.id}>
+                                  {a.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                    />
+
+                    {/* Active */}
+                    <Controller
+                      control={form.control}
+                      name="is_active"
+                      render={({ field }) => (
+                        <div className="space-y-1.5">
+                          <label className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                            <Power className="h-3.5 w-3.5" />
+                            Active
+                          </label>
+                          <div className="flex items-center gap-2 h-9 px-3 rounded-lg border border-border bg-background">
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              className="scale-75"
+                            />
+                            <span className="text-xs text-foreground">
+                              {field.value ? "Active" : "Inactive"}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-border bg-card/80 px-5 py-4">
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                    <DetailField
+                      icon={Cpu}
+                      label="AI Model"
+                      value={agent.ai_model || "Not configured"}
+                    />
+                    <DetailField
+                      icon={Shield}
+                      label="Provider"
+                      value={agent.ai_provider || "None"}
+                    />
+                    <DetailField
+                      icon={Circle}
+                      label="Status"
+                      value={statusConfig[agent.status].label}
+                      renderIcon={() => (
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+                          <span className={cn("w-2.5 h-2.5 rounded-full", statusConfig[agent.status].dot)} />
+                        </div>
+                      )}
+                    />
+                    <DetailField
+                      icon={Users}
+                      label="Squad"
+                      value={squadLabels[agent.squad]}
+                    />
+                    <DetailField
+                      icon={Star}
+                      label="Type"
+                      value={typeLabels[agent.agent_type]}
+                    />
+                    <DetailField
+                      icon={GitBranch}
+                      label="Reports To"
+                      value={agent.supervisor?.name || "None"}
+                    />
+                    <DetailField
+                      icon={Clock}
+                      label="Last Active"
+                      value={formatLastActive(agent.last_active_at)}
+                    />
+                  </div>
                 </div>
               )}
 
-              {/* Details — icon-in-circle grid matching TaskDetailFields */}
-              <div className="rounded-2xl border border-border bg-card/80 px-5 py-4">
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                  <DetailField
-                    icon={Cpu}
-                    label="AI Model"
-                    value={agent.ai_model || "Not configured"}
-                  />
-                  <DetailField
-                    icon={Shield}
-                    label="Provider"
-                    value={agent.ai_provider || "None"}
-                  />
-                  <DetailField
-                    icon={Circle}
-                    label="Status"
-                    value={statusConfig[agent.status].label}
-                    renderIcon={() => (
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
-                        <span className={cn("w-2.5 h-2.5 rounded-full", statusConfig[agent.status].dot)} />
-                      </div>
-                    )}
-                  />
-                  <DetailField
-                    icon={Users}
-                    label="Squad"
-                    value={squadLabels[agent.squad]}
-                  />
-                  <DetailField
-                    icon={Star}
-                    label="Type"
-                    value={typeLabels[agent.agent_type]}
-                  />
-                  <DetailField
-                    icon={GitBranch}
-                    label="Reports To"
-                    value={agent.supervisor?.name || "None"}
-                  />
-                  <DetailField
-                    icon={Clock}
-                    label="Last Active"
-                    value={formatLastActive(agent.last_active_at)}
-                  />
+              {/* Skills section */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                    <Zap className="h-4 w-4 text-muted-foreground" />
+                    Skills
+                  </h3>
+                  {!isEditing && installedSkills.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs text-muted-foreground gap-1"
+                      onClick={() => setIsEditing(true)}
+                    >
+                      <Plus className="h-3 w-3" />
+                      Manage
+                    </Button>
+                  )}
                 </div>
+
+                {isEditing ? (
+                  installedSkills.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {installedSkills.map((skill) => {
+                        const isSelected = watchedSkills.some((s) => s.id === skill.id)
+                        return (
+                          <button
+                            key={skill.id}
+                            type="button"
+                            onClick={() => toggleSkill(skill)}
+                            className={cn(
+                              "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors border",
+                              isSelected
+                                ? "bg-primary/10 text-primary border-primary/30"
+                                : "bg-muted text-muted-foreground border-border hover:border-primary/30 hover:text-foreground"
+                            )}
+                          >
+                            {isSelected && (
+                              <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none">
+                                <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            )}
+                            {skill.name}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      No skills available. Install skills from the{" "}
+                      <button
+                        type="button"
+                        onClick={() => router.push("/skills/marketplace")}
+                        className="text-primary underline underline-offset-2"
+                      >
+                        Skills Marketplace
+                      </button>
+                      .
+                    </p>
+                  )
+                ) : (
+                  <>
+                    {(() => {
+                      const agentSkills = Array.isArray(agent.skills)
+                        ? (agent.skills as { id: string; name: string }[])
+                        : []
+                      if (agentSkills.length > 0) {
+                        return (
+                          <div className="flex flex-wrap gap-1.5">
+                            {agentSkills.map((s) => (
+                              <Badge
+                                key={s.id}
+                                variant="secondary"
+                                className="rounded-full text-[11px] font-normal gap-1"
+                              >
+                                <Zap className="h-3 w-3" />
+                                {s.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        )
+                      }
+                      return (
+                        <p className="text-xs text-muted-foreground">No skills assigned</p>
+                      )
+                    })()}
+                  </>
+                )}
               </div>
 
-              {/* Capabilities */}
+              {/* Capabilities (read-only always) */}
               {agent.capabilities.length > 0 && (
                 <div className="space-y-2">
                   <h3 className="text-sm font-medium text-foreground">Capabilities</h3>
@@ -305,6 +759,57 @@ export function AgentQuickView() {
         )}
       </SheetContent>
     </Sheet>
+  )
+}
+
+// ── Editable select field ───────────────────────────────────────────
+
+function EditSelectField({
+  label,
+  icon,
+  control,
+  name,
+  options,
+  onChange,
+}: {
+  label: string
+  icon: React.ReactNode
+  control: ReturnType<typeof useForm<EditFormValues>>["control"]
+  name: keyof EditFormValues
+  options: { value: string; label: string }[]
+  onChange?: (value: string) => void
+}) {
+  return (
+    <Controller
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <div className="space-y-1.5">
+          <label className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+            {icon}
+            {label}
+          </label>
+          <Select
+            value={(field.value as string) ?? ""}
+            onValueChange={(v) => {
+              field.onChange(v)
+              onChange?.(v)
+            }}
+          >
+            <SelectTrigger className="h-9 text-xs rounded-lg">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {options.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+    />
   )
 }
 
