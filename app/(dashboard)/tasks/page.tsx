@@ -22,14 +22,13 @@ export default async function TasksMissionControlPage() {
   const { orgId } = await getPageOrganization()
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-1 flex-col bg-background mx-2 my-2 border border-border rounded-lg min-w-0">
       <PageHeader
         title="Mission Control"
-        description="Task board + live agent activity"
         actions={
-          <Button asChild size="sm" className="gap-1.5 bg-purple-600 hover:bg-purple-700">
+          <Button variant="ghost" size="sm" asChild>
             <Link href="/tasks/new">
-              <Plus size={14} weight="bold" />
+              <Plus size={14} weight="bold" className="mr-1.5" />
               New Task
             </Link>
           </Button>
@@ -69,23 +68,21 @@ async function MissionControlData({ orgId }: { orgId: string }) {
   }))
 
   return (
-    <div className="flex-1 min-h-0">
-      <TasksBoard
-        tasks={tasks as Parameters<typeof TasksBoard>[0]["tasks"]}
-        stats={stats}
-        agents={agents}
-        events={events}
-        orgId={orgId}
-      />
-    </div>
+    <TasksBoard
+      tasks={tasks as Parameters<typeof TasksBoard>[0]["tasks"]}
+      stats={stats}
+      agents={agents}
+      events={events}
+      orgId={orgId}
+    />
   )
 }
 
 function MissionControlSkeleton() {
   return (
-    <div className="flex flex-col h-full animate-pulse">
+    <div className="flex flex-col flex-1 animate-pulse">
       {/* Stats bar skeleton */}
-      <div className="h-14 border-b border-border/40 px-4 flex items-center gap-6">
+      <div className="h-14 border-b border-border px-4 flex items-center gap-6">
         {[1, 2, 3, 4].map((i) => (
           <div key={i} className="flex items-baseline gap-2">
             <div className="h-7 w-10 bg-accent rounded" />
@@ -94,17 +91,18 @@ function MissionControlSkeleton() {
         ))}
       </div>
       {/* Filter bar skeleton */}
-      <div className="h-12 border-b border-border/40 px-4 flex items-center gap-3">
+      <div className="h-12 border-b border-border px-4 flex items-center gap-3">
         <div className="h-8 w-24 bg-accent rounded-lg" />
         <div className="h-8 w-16 bg-accent/60 rounded-lg" />
         <div className="h-8 w-20 bg-accent/60 rounded-lg" />
       </div>
       {/* Board skeleton */}
-      <div className="flex-1 flex gap-3 p-4 overflow-x-auto">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="w-72 min-w-72 rounded-xl bg-accent/20 border border-border/40 h-64" />
-        ))}
-        <div className="w-[300px] border-l border-border/40" />
+      <div className="flex-1 p-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="rounded-xl bg-muted h-64" />
+          ))}
+        </div>
       </div>
     </div>
   )

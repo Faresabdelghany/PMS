@@ -36,6 +36,7 @@ import { SquaresFour } from "@phosphor-icons/react/dist/ssr/SquaresFour"
 import { User } from "@phosphor-icons/react/dist/ssr/User"
 import { Pulse } from "@phosphor-icons/react/dist/ssr/Pulse"
 import { Kanban } from "@phosphor-icons/react/dist/ssr/Kanban"
+import { GitFork } from "@phosphor-icons/react/dist/ssr/GitFork"
 import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText"
 import { PlugsConnected } from "@phosphor-icons/react/dist/ssr/PlugsConnected"
 import { Tag } from "@phosphor-icons/react/dist/ssr/Tag"
@@ -60,7 +61,7 @@ import { cn } from "@/lib/utils"
 import { PROGRESS_THRESHOLDS, BADGE_CAP, SIDEBAR_PROJECT_LIMIT } from "@/lib/constants"
 
 // Navigation items defined inline (no mock data dependency)
-type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "chat" | "activity" | "boards" | "board-groups" | "custom-fields" | "approvals" | "gateways" | "skills" | "tags"
+type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "agent-network" | "chat" | "activity" | "boards" | "board-groups" | "custom-fields" | "approvals" | "gateways" | "skills" | "tags"
 type SidebarFooterItemId = "settings" | "templates" | "help"
 
 type NavItem = {
@@ -81,6 +82,7 @@ const navItems: NavItem[] = [
   { id: "projects", label: "Projects" },
   { id: "clients", label: "Clients" },
   { id: "agents", label: "Agents" },
+  { id: "agent-network", label: "Agent Network" },
   { id: "activity", label: "Activity" },
   { id: "boards", label: "Boards" },
   { id: "board-groups", label: "Board Groups" },
@@ -134,6 +136,11 @@ const preloadHandlers: Record<NavItemId, () => void> = {
       void import("@/components/agents/agents-table")
     }
   },
+  "agent-network": () => {
+    if (typeof window !== "undefined") {
+      void import("@/components/agents/AgentNetworkClient")
+    }
+  },
   activity: () => {},
   boards: () => {},
   "board-groups": () => {},
@@ -168,6 +175,7 @@ const navItemIcons: Record<NavItemId, React.ComponentType<{ className?: string }
   projects: Folder,
   clients: Users,
   agents: Robot,
+  "agent-network": GitFork,
   activity: Pulse,
   boards: Kanban,
   "board-groups": Rows,
@@ -321,6 +329,7 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
     if (id === "inbox") return "/inbox"
     if (id === "clients") return "/clients"
     if (id === "agents") return "/agents"
+    if (id === "agent-network") return "/agents/communication"
     if (id === "activity") return "/activity"
     if (id === "boards") return "/boards"
     if (id === "board-groups") return "/board-groups"
@@ -350,7 +359,13 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
       return pathname.startsWith("/clients")
     }
     if (id === "agents") {
-      return pathname.startsWith("/agents")
+      return (
+        pathname === "/agents" ||
+        (pathname.startsWith("/agents/") && !pathname.startsWith("/agents/communication"))
+      )
+    }
+    if (id === "agent-network") {
+      return pathname.startsWith("/agents/communication")
     }
     if (id === "activity") {
       return pathname.startsWith("/activity")
