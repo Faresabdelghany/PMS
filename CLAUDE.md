@@ -1,416 +1,173 @@
-# CLAUDE.md
+# PMS — Project Context for All Agents
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+**READ THIS FIRST. Before writing a single line of code.**
 
-## Project Overview
+---
 
-A modern project & task management SaaS application built with Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4, and Supabase for the backend.
+## What We Are Building
 
-**GitHub:** https://github.com/Faresabdelghany/PMS
-**Supabase Project:** lazhmdyajdqbnxxwyxun
+PMS is **Mission Control** — a live command center where Fares manages his entire AI team and everything OpenClaw does.
 
-## Development Commands
+This is NOT a generic project management tool. Every feature, every page, every design decision must serve this goal:
 
-```bash
-pnpm install          # Install dependencies (Node.js 20+ required)
-pnpm dev              # Start development server at localhost:3000
-pnpm build            # Production build
-pnpm build:analyze    # Production build with bundle analyzer
-pnpm start            # Run production server
-pnpm lint             # Run ESLint
+> **Fares opens PMS and from there he can manage EVERYTHING:**
+> - All 24 AI agents (status, ping, assign tasks, pause, resume)
+> - All tasks — his own + agent tasks — in one unified Kanban board
+> - All AI models (which model each agent uses, switch models)
+> - All skills (what each agent can do, install/remove)
+> - Live activity (what every agent is doing RIGHT NOW)
+> - Active sessions (ongoing OpenClaw sessions, chat with agents)
+> - Approvals (agents ask permission, Fares approves/rejects)
+> - Memory (what agents remember)
+> - Gateways (OpenClaw connection health, pause/resume)
+
+**Telegram is temporary.** PMS replaces it. Everything Fares does via Telegram with Ziko today, he should be able to do from PMS.
+
+---
+
+## Design System — NON-NEGOTIABLE
+
+**You MUST follow the existing PMS design. Do NOT invent new patterns.**
+
+### Stack
+- Next.js 15 + App Router
+- TypeScript (strict mode, 0 errors required)
+- Tailwind CSS — no inline styles, no arbitrary values unless necessary
+- shadcn/ui components — use what's already installed
+- Phosphor icons — NOT Heroicons, NOT Lucide (unless already used)
+- Dark mode first
+
+### Before writing any UI, read these files:
+```
+components/projects-content.tsx       ← gold standard for complex pages
+components/project-header.tsx         ← header pattern
+components/project-cards-view.tsx     ← card layout
+components/project-board-view.tsx     ← Kanban/board pattern
+components/ui/page-header.tsx         ← PageHeader component (use this for ALL pages)
+app/(dashboard)/projects/page.tsx     ← how pages are structured
+app/(dashboard)/clients/page.tsx      ← another reference
 ```
 
-### E2E Testing (Playwright)
+### Rules
+1. **Every page uses `PageHeader`** — title in top bar, action buttons on right, sidebar trigger on left
+2. **Kanban boards** follow `project-board-view.tsx` — same card style, same column style
+3. **Cards** follow `project-cards-view.tsx` — same spacing, same border, same hover
+4. **No custom layouts** — if a layout pattern exists in the codebase, use it
+5. **Colors**: use CSS variables (`--foreground`, `--muted-foreground`, `--border`, `--accent`) not hardcoded hex
+6. **Spacing**: p-4, p-6, gap-4, gap-6 — consistent with rest of app
+7. **Agent squad colors**: blue=engineering, purple=marketing, green=design/product, gold=supreme
 
-```bash
-pnpm test:e2e              # Run all E2E tests (auto-starts dev server)
-pnpm test:e2e --headed     # Run tests with visible browser
-pnpm test:e2e --debug      # Debug mode with inspector
-pnpm test:e2e --ui         # Interactive UI mode
-pnpm test:e2e login.spec.ts              # Run a single test file
-pnpm test:e2e --project=chromium         # Run on specific browser
-pnpm test:e2e --grep "test name"         # Run specific test by name
-pnpm test:e2e:report       # View HTML test report
-pnpm test:e2e:codegen      # Generate tests via recording
-```
+### Use these skills before building UI:
+- `~/.agents/skills/ui-ux-pro-max/SKILL.md` — read this for any design decisions
+- `~/.agents/skills/superdesign/SKILL.md` — for frontend design guidelines
 
-Tests are in `e2e/` with Page Object Model pattern:
-- `e2e/pages/BasePage.ts` - Base class with common page methods
-- Page objects extend BasePage (LoginPage, DashboardPage, ProjectsPage, etc.)
-- `e2e/fixtures.ts` - Custom test fixtures providing page objects and test data
-- `e2e/auth.setup.ts` - Saves auth state to `e2e/.auth/user.json` for reuse
-- Playwright auto-starts dev server; runs on chromium/firefox/webkit + mobile viewports
-
-**E2E Test Environment:**
-```bash
-TEST_USER_EMAIL=<test-user-email>      # Must be an existing Supabase auth user
-TEST_USER_PASSWORD=<test-user-password>
-```
-Note: The test user must already exist in Supabase auth—it is not created automatically by the test setup.
-
-### Navigation Performance Testing
-
-```bash
-pnpm test:e2e navigation-performance.spec.ts --project=chromium   # Run navigation perf tests
-```
-
-Measures client-side route transition times (what Lighthouse can't). Tests cold loads, sidebar navigation, rapid clicking, and API request counts per route. Thresholds: < 3s per transition. Runs automatically in CI via `.github/workflows/navigation-perf.yml`.
-
-### Performance Auditing
-
-Use the `/perf-audit` skill to run comprehensive performance audits. It auto-detects the framework (Next.js, React, Angular, Vue, .NET), discovers routes, and measures FCP, LCP, CLS, TTFB, bundle size, and Lighthouse scores across all pages.
-
-```
-/perf-audit              # Full audit
-/perf-audit pages        # Page load metrics only
-/perf-audit lighthouse   # Lighthouse detailed audit
-/perf-audit bundle       # Bundle size analysis
-/perf-audit interactions # UI interaction timing
-/perf-audit vitals       # Core Web Vitals summary
-```
-
-**Requires** `TEST_USER_EMAIL` and `TEST_USER_PASSWORD` in `.env.local` for authenticated page testing.
-
-### Supabase Commands
-
-```bash
-npx supabase db push                    # Push migrations to remote database
-npx supabase db reset --linked          # Reset remote database
-npx supabase gen types typescript --project-id lazhmdyajdqbnxxwyxun > lib/supabase/database.types.ts
-```
-
-**After modifying Supabase RPC functions or database schema**, always manually update the TypeScript type definitions in `lib/supabase/database.types.ts` or extend types locally in `lib/supabase/types.ts`, since Supabase generated types won't automatically include new RPC functions without running `supabase gen types`.
-
-**Local Development (optional):**
-```bash
-npx supabase start                      # Start local Supabase stack
-npx supabase stop                       # Stop local Supabase
-npx supabase status                     # Check local services status
-```
-
-## Git Workflow
-
-Always commit and push after completing a task. The standard workflow is: make changes → verify build passes → `git add` → `git commit` with descriptive message → `git push` → close related GitHub issue if applicable.
-
-## Code Standards
-
-- Always ensure imports are placed at the top of the file (ESM standard). After editing files, run `pnpm build` to catch type errors before committing.
-- When making changes that add/remove exports or modify module interfaces, always check and update all re-export files (`index.ts`, compatibility shims like `ai.ts`) to ensure they stay in sync. Run a full build to verify.
-
-## Environment
-
-When running shell commands, use PowerShell syntax on this Windows environment. Avoid Git Bash-specific syntax for process management. For environment variables, use `$env:VAR='value'` syntax instead of `VAR=value`.
-
-## Debugging Guidelines
-
-- When the user reports a real-time/live update issue, investigate missing Supabase Realtime subscriptions first rather than dismissing it as a cache TTL issue.
-- Before making any fix, analyze the root cause. List hypotheses with evidence from the codebase, then confirm the approach before editing files.
+---
 
 ## Architecture
 
-### Directory Structure
-
-- **`app/`** - Next.js App Router pages and layouts
-  - `(auth)/` - Authentication pages (login, signup)
-  - `(dashboard)/` - Main app routes with shared layout (projects, clients, tasks, settings, chat)
-  - `auth/callback/` - OAuth callback handler
-  - `onboarding/` - Organization onboarding
-  - `invite/` - Organization invitation acceptance flow
-- **`components/`** - React components organized by feature
-  - `ui/` - shadcn/ui design system primitives
-  - `projects/`, `tasks/`, `clients/` - Feature components
-  - `tasks/TaskDetailPanel.tsx` - Slide-over panel for task details with timeline
-  - `tasks/TaskTimeline.tsx` - Combined comments and activity feed
-  - `tasks/TaskCommentEditor.tsx` - Rich text comment input with @mentions
-  - `tasks/TaskKanbanBoardView.tsx` - Kanban board view with drag-and-drop columns
-  - `project-wizard/` - Multi-step project creation wizard
-  - `ai/` - AI chat components (chat view, input, history sidebar)
-  - `dashboard/` - Cached dashboard stat cards and project lists
-  - `skeletons/` - Loading skeleton components for all major views
-- **`lib/`** - Utilities and data
-  - `supabase/` - Supabase clients and types
-  - `supabase/storage-utils.ts` - `getStoragePublicUrl()` and `removeStorageFile()` wrappers
-  - `actions/` - Server Actions for data mutations (see Server Actions section below)
-  - `page-auth.ts` - `getPageOrganization()` helper for standardized auth + org resolution in pages
-  - `request-cache.ts` - Core request-level caching (`cachedGetUser`, `getSupabaseClient`, and cached action wrappers)
-  - `server-cache.ts` - Additional request-level cached functions (wraps actions with React `cache()`)
-  - `cache-tags.ts` - Cache tag constants for granular revalidation
-  - `cache/` - KV caching layer (Vercel KV/Redis) for cross-request caching
-  - `rate-limit/` - Rate limiting with Upstash/Vercel KV
-  - `constants.ts` - Extracted magic numbers (page sizes, limits, timeouts)
-  - `data/` - Type definitions and interfaces
-  - `utils.ts` - Utility helpers including `cn()` for class merging
-  - `utils/activity-formatter.ts` - Activity message formatting helpers
-- **`hooks/`** - Custom React hooks
-- **`supabase/`** - Database migrations
-- **`e2e/`** - Playwright E2E tests
-  - `pages/` - Page Object Model classes
-  - `auth.setup.ts` - Authentication setup for tests
-  - `fixtures.ts` - Test fixtures with authenticated context
-
-### Backend (Supabase)
-
-**Clients:**
-- `lib/supabase/client.ts` - Browser client (use in Client Components)
-- `lib/supabase/server.ts` - Server client with cookies (use in Server Components/Actions)
-- `lib/supabase/admin.ts` - Service role client (bypasses RLS, server-only)
-
-**Server Actions:** All actions return `ActionResult<T>` type (`{ data?, error? }`) from `lib/actions/types.ts`. Each file in `lib/actions/` maps to a domain:
-- `auth.ts` / `auth-helpers.ts` — Authentication and authorization helpers (`requireAuth`, `requireOrgMember`, `requireProjectMember`, `requireProjectOwnerOrPIC`)
-- `projects.ts`, `tasks.ts`, `clients.ts`, `workstreams.ts`, `teams.ts`, `tags.ts`, `labels.ts`, `deliverables.ts` — Entity CRUD
-- `task-comments.ts`, `task-activities.ts` — Task timeline (comments with reactions/attachments, activity log)
-- `workflow-statuses.ts` — Custom workflow status management
-- `ai.ts`, `ai-context.ts`, `ai-helpers.ts`, `ai-types.ts`, `execute-ai-action.ts`, `conversations.ts` — AI chat system
-- `files.ts`, `notes.ts`, `inbox.ts`, `invitations.ts`, `notifications.ts`, `search.ts`, `import.ts`, `user-settings.ts`, `organizations.ts` — Supporting features
-
-**Database Schema:**
-- 22 tables with full RLS policies
-- Multi-tenant architecture (organization-based isolation)
-- See `supabase/migrations/` for complete schema
+### Tech Stack
+- Database: Supabase (PostgreSQL + RLS + Realtime)
+- Auth: Supabase Auth (cookie-based sessions)
+- Hosting: Vercel (auto-deploys from main branch)
+- Live URL: https://pms-nine-gold.vercel.app
 
 ### Key Patterns
+- **Server Components by default** — use `'use client'` only when needed
+- **Server Actions** for all mutations (not API routes, not client-side fetch)
+- **Supabase Realtime** for live updates (see `hooks/realtime-context.tsx`)
+- **`createClient()`** from `lib/supabase/server.ts` for server-side queries
+- **`createServiceClient()`** from `lib/supabase/service.ts` for service-role operations
+- **New tables** not in generated types: use `.from("tablename" as any)` + `as unknown as T` cast
 
-**Path aliases:** Use `@/` for imports (e.g., `@/components/ui/button`)
-
-**Server Actions:** All data mutations use Next.js Server Actions in `lib/actions/`. Actions return `ActionResult<T>` (`{ data?, error? }`) pattern. Use auth helpers for authorization:
-```typescript
-const { user, supabase } = await requireAuth()           // Basic auth
-const ctx = await requireOrgMember(orgId)                // Org membership
-const ctx = await requireProjectMember(projectId)       // Project membership
-const ctx = await requireProjectOwnerOrPIC(projectId)   // Elevated access
+### Agent Bridge Architecture
+```
+PMS (Vercel) ──writes──► agent_commands (Supabase) ──► OpenClaw picks up + executes
+OpenClaw ────writes──► agent_events (Supabase) ──────► PMS shows live via Realtime
+OpenClaw ────calls──► POST /api/agent-events ────────► PMS updates task status
 ```
 
-**Page-Level Auth + Org Resolution:** All dashboard pages must use `getPageOrganization()` from `lib/page-auth.ts` for auth + org resolution. This ensures consistent redirect behavior (no auth → `/login`, no org → `/onboarding`) and eliminates duplicated auth/org boilerplate:
-```typescript
-import { getPageOrganization } from "@/lib/page-auth"
+### Key Tables
+- `agents` — 24 AI agents with hierarchy (reports_to FK)
+- `tasks` — unified tasks (user + agent tasks), has `assigned_agent_id`
+- `agent_commands` — PMS → OpenClaw channel (command_type: run_task, ping, pause, cancel)
+- `agent_events` — OpenClaw → PMS channel (event_type: task_started, progress, completed, etc.)
+- `approvals` — human-in-the-loop approval requests from agents
+- `gateways` — OpenClaw gateway connections
+- `boards` — agent task boards linked to gateways
+- `skills` — skills available to agents
 
-// Standard pattern — all dashboard pages use this
-const { user, orgId } = await getPageOrganization()
+---
 
-// Then fetch page-specific data using orgId
-const projects = await getCachedProjects(orgId)
+## What's Built (Do Not Rebuild)
+
+- ✅ Agents CRUD (`/agents`, `/agents/new`, `/agents/[id]/edit`)
+- ✅ Agent Network visualization (`/agents/communication`)
+- ✅ Approvals (`/approvals`)
+- ✅ Gateways CRUD (`/gateways`)
+- ✅ Boards + Board Groups + Webhooks + Custom Fields
+- ✅ Skills Marketplace (`/skills/marketplace`)
+- ✅ Tags, Activity feed
+- ✅ Tasks Mission Control (`/tasks`) — Kanban + Live Activity Feed
+- ✅ Agent Commands + Events tables (Supabase bridge)
+- ✅ POST `/api/agent-events` (OpenClaw → PMS push endpoint)
+- ✅ 24 agents seeded in DB with correct hierarchy
+
+---
+
+## What's Missing (Build These Next)
+
+### Sprint 4 — Live Connection
+- [ ] Models management page (`/models`) — see/switch which model each agent uses
+- [ ] Sessions viewer (`/sessions`) — list active OpenClaw sessions, send messages
+- [ ] Agent ping from UI — "Ping Agent" button dispatches a ping command
+- [ ] Global pause/resume — pause all agent activity from PMS
+- [ ] Memory viewer (`/memory`) — see what agents remember
+- [ ] Agent heartbeat — agents ping PMS every 30s so status is live
+- [ ] Real dashboard metrics — actual charts (task completion, WIP, velocity)
+
+### Sprint 5 — Complete
+- [ ] Skill install/uninstall from UI (calls OpenClaw via agent_commands)
+- [ ] Model switching per agent (updates agent record + dispatches model change command)
+- [ ] Webhook payload history viewer
+- [ ] Agent nudge button (poke stuck agent to continue)
+- [ ] Souls directory (searchable agent directory)
+- [ ] Board onboarding chat (AI chat to set up boards)
+
+---
+
+## Quality Standards
+
+- **0 TypeScript errors** — always run `pnpm.cmd build` before reporting done
+- **No console.log** in production code
+- **Error states** — every fetch must handle errors gracefully
+- **Loading states** — every async operation needs a loading UI
+- **Mobile responsive** — PMS is used on all screen sizes
+- **RLS policies** — every new table needs Row Level Security
+- **Realtime** — tables that need live updates must be added to `supabase_realtime` publication
+
+---
+
+## Organization Context
+
+- **Fares's org ID**: `9c52b861-abb7-4774-9b5b-3fa55c8392cb`
+- **Test user**: `e2e-test@example.com`
+- **Supabase project**: `lazhmdyajdqbnxxwyxun.supabase.co`
+- **GitHub**: `https://github.com/Faresabdelghany/PMS.git`
+- **Vercel**: auto-deploys from `main` branch
+
+---
+
+## Agent Hierarchy (for reference)
 ```
-**IMPORTANT:** Do NOT manually call `cachedGetUser()` + `getCachedActiveOrgFromKV()` + redirect logic in page.tsx files. Always use `getPageOrganization()` instead. The only exceptions are: (1) the dashboard layout itself (which pre-warms the KV cache), and (2) entity detail pages that derive org from the entity (e.g., report detail page gets org from `report.organization_id`).
-
-**Request-Level Caching (two modules, distinct responsibilities):**
-
-1. `lib/request-cache.ts` — Auth & Supabase client only (do NOT add data-fetching wrappers here):
-```typescript
-import { cachedGetUser, getSupabaseClient } from "@/lib/request-cache"
-
-// Shared auth check — layout and pages share one call per request
-const { user, supabase } = await cachedGetUser()
-
-// cachedGetUser uses getSession() (fast local cookie read, ~0ms)
-// instead of getUser() (~300-500ms network call) because middleware refreshes the token
-```
-
-2. `lib/server-cache.ts` — ALL data-fetching cached wrappers (single source of truth):
-```typescript
-import { getCachedProjects, getCachedTasks } from "@/lib/server-cache"
-
-// Multiple components calling this in the same request share one DB query
-const projects = await getCachedProjects(orgId)
-```
-Available cached functions: `getCachedProjects`, `getCachedProject`, `getCachedTasks`, `getCachedClients`, `getCachedOrganizationMembers`, `getCachedProjectCount`, `getCachedTaskStats`, etc.
-
-**IMPORTANT:** Never duplicate `cache()` wrappers across modules. React's `cache()` deduplicates by function identity — two separate `cache()` calls wrapping the same action create independent cache stores, causing redundant DB queries.
-
-**Unified Cache Invalidation:** After mutations, always use `invalidateCache.*` from `lib/cache/invalidation.ts`. This ensures BOTH Next.js tags and KV cache are invalidated together — missing either causes stale data:
-```typescript
-import { invalidateCache } from "@/lib/cache"
-
-// After project mutation — invalidates Next.js tags AND KV cache in one call
-await invalidateCache.project({ projectId, orgId })
-
-// After task mutation
-await invalidateCache.task({ taskId, projectId, assigneeId, orgId })
-
-// After client mutation
-await invalidateCache.client({ clientId, orgId })
-
-// Other helpers: .orgMembers(), .tags(), .labels(), .teams(),
-// .workstreams(), .projectMembership(), .taskTimeline(), .profile()
-```
-**IMPORTANT:** Never call `revalidateTag()` or `invalidate.*()` directly in server actions. Always use the unified helpers. The only exceptions are cross-entity side-effects (e.g., `revalidateTag(CacheTags.projectDetails())` in `createTask`) and complex custom patterns (e.g., `bulkUpdateTaskStatus`).
-
-**Cache Tags:** Defined in `lib/cache-tags.ts`. Used internally by `invalidateCache` helpers — do not call directly.
-
-**KV Caching (Cross-Request):** Use `lib/cache/` for persistent caching with Vercel KV/Redis:
-```typescript
-import { CacheKeys, CacheTTL, cacheGet } from "@/lib/cache"
-
-// TTL tiers: USER (10min), PROJECTS (2min), TASKS (30sec)
-const projects = await cacheGet(CacheKeys.projects(orgId), fetchProjects, CacheTTL.PROJECTS)
-```
-Gracefully degrades when KV is unavailable (local dev).
-
-**Next.js Cache Profiles (`next.config.mjs`):** Custom `cacheLife` profiles defined for future use:
-- `realtimeBacked` (stale: 5min) — data with real-time subscriptions (projects, tasks)
-- `semiStatic` (stale: 15min) — infrequently changing data (members, tags)
-- `static` (stale: 30min) — rarely changing data (organization details)
-- `user` (stale: 1hr) — user profile and preferences
-
-Note: PPR (`cacheComponents`) is disabled because the app is fully auth-protected. Performance is achieved through request-level dedup, KV caching, tag-based invalidation, and Suspense streaming.
-
-**Skeleton Components:** Use `components/skeletons/` for loading states:
-```typescript
-import { ProjectsListSkeleton, TaskListSkeleton } from "@/components/skeletons"
-
-// Use in Suspense boundaries
-<Suspense fallback={<ProjectsListSkeleton />}>
-  <ProjectsList />
-</Suspense>
-```
-
-**Streaming with loading.tsx:** Most dashboard routes have `loading.tsx` files that show skeleton UIs instantly while the page data loads. These use the same skeleton components and enable streaming via App Router.
-
-**Authentication Flow:**
-1. User signs up/in via `/login` or `/signup`
-2. OAuth callback at `/auth/callback` handles session exchange
-3. OAuth callback auto-creates personal organization for new users
-4. `middleware.ts` runs on every request:
-   - Fast-path: No auth cookie + protected route → redirect to `/login?redirect=<path>` (saves ~300-500ms by skipping `getUser()`)
-   - Auth cookie exists → refreshes token via `getUser()`, making `getSession()` safe for downstream Server Components
-   - Redirects authenticated users away from `/login` and `/signup`
-5. Dashboard layout (`app/(dashboard)/layout.tsx`) checks auth via `cachedGetUser()`:
-   - Redirects unauthenticated users to `/login`
-   - Redirects users without organization to `/onboarding`
-
-**Styling:** Tailwind CSS with CSS custom properties for theming. Light/dark mode via `next-themes`. Color themes via `ColorThemeProvider`. Component variants use `class-variance-authority`.
-
-**Color Themes:** 12 color themes available (default, forest, ocean, sunset, rose, supabase, chatgpt, midnight, lavender, ember, mint, slate). Managed by `ColorThemeProvider` in dashboard layout. Use `useColorTheme()` hook to access/set theme.
-
-**shadcn/ui:** Uses "new-york" style with Lucide icons. Add new components via `npx shadcn@latest add <component>`.
-
-**Dynamic routes:** Uses Next.js 16 async params pattern:
-```typescript
-type PageProps = { params: Promise<{ id: string }> }
-export default async function Page({ params }: PageProps) {
-  const { id } = await params
-}
+Fares
+  └── Ziko (Main Assistant — orchestrates everything)
+        └── Nabil (Supreme Commander)
+              ├── Omar (Tech Lead) → Mostafa, Sara, Ali, Yasser, Hady, Farah, Bassem
+              ├── Karim (Marketing Lead) → Sami, Maya, Amir, Rami, Tarek, Mariam, Nour, Salma, Ziad
+              ├── Design Lead → Design Agent
+              └── Product Analyst → Researcher
 ```
 
-**Dashboard Layout Pattern:** All main app pages are under `app/(dashboard)/` route group which:
-- Provides shared layout with sidebar, header, and providers
-- Provider nesting order (outermost first): `UserProvider` → `OrganizationProvider` → `RealtimeProvider` → `SettingsDialogProvider` → `CommandPaletteProvider` → `ColorThemeSyncer` → `NotificationToastProviderLazy` → `SidebarProvider`
-- Fetches orgs, profile, active projects, and color theme in parallel (no waterfall)
-- Server Components fetch Supabase data and pass to Client Components as props
+---
 
-**Command Palette:** Global search and actions via Cmd+K (Mac) / Ctrl+K (Windows):
-- Search projects, tasks, and clients globally
-- Quick create project or task
-- Managed by `CommandPaletteProvider` in dashboard layout
-
-**Task Detail Panel:** URL-driven slide-over panel for viewing and editing tasks:
-- Opens via `?task=<taskId>` URL parameter (enables deep linking and browser back)
-- Shows task header, fields, description, and combined activity/comments timeline
-- Real-time updates via `useTaskTimelineRealtime` hook
-- Comment editor with @mentions and emoji reactions
-- Click task title in any task list to open panel
-
-**RSC Serialization:** When passing data from Server Components to Client Components, map to minimal shapes to reduce payload size. Strip fields like `organization_id`, `created_at`, `updated_at` that the UI doesn't need:
-```typescript
-// In page.tsx — map before passing to client
-const tags = (tagsResult.data || []).map(t => ({ id: t.id, name: t.name, color: t.color }))
-// In client component — use Pick types
-type OrganizationTag = Pick<FullOrganizationTag, "id" | "name" | "color">
-```
-
-**Rate Limiting:** Production uses Upstash + Vercel KV for rate limiting in `lib/rate-limit/`:
-- `rateLimiters.auth` - 5 requests per 15 min (brute force protection)
-- `rateLimiters.ai` - 50 requests per 24h (cost control)
-- `rateLimiters.aiConcurrent` - 3 requests per min
-- `rateLimiters.fileUpload` - 50 requests per hour
-- `rateLimiters.invite` - 20 requests per hour (email spam protection)
-- Gracefully degrades when KV is unavailable (local dev)
-
-### Data Layer
-
-**Supabase Tables:**
-- `profiles` - User profiles (synced from auth.users)
-- `organizations` - Multi-tenant organizations
-- `organization_members` - Org membership with roles (admin/member)
-- `organization_tags` - Organization-level tags
-- `teams` - Teams within organizations
-- `clients` - Client management
-- `projects` - Project management with extended fields
-- `project_members` - Project membership with roles (owner/pic/member/viewer)
-- `organization_labels` - Organization-level labels (type, duration, group, badge categories)
-- `tasks` - Task management
-- `task_comments` - Task comments with rich text content
-- `task_comment_reactions` - Emoji reactions on comments
-- `task_comment_attachments` - File attachments on comments
-- `task_activities` - Activity log for task changes (status, assignee, etc.)
-- `workstreams` - Task grouping within projects
-- `project_files`, `project_notes` - Project assets
-- `inbox_items` - User notifications/inbox
-- `user_settings` - User preferences and AI settings (includes color_theme)
-- `chat_conversations` - AI chat conversation threads
-- `chat_messages` - AI chat messages with action data
-
-**Real-time Hooks:** Two realtime systems available:
-- `hooks/use-realtime.ts` - Individual hooks: `useTasksRealtime`, `useWorkstreamsRealtime`, `useProjectsRealtime`, etc.
-- `hooks/use-task-timeline-realtime.ts` - Real-time updates for task comments, activities, and reactions
-- `hooks/use-project-files-realtime.ts` - Real-time updates for project files
-- `hooks/realtime-context.tsx` - Pooled subscriptions via `RealtimeProvider`:
-  - Multiple components share subscriptions through context
-  - Auto-pauses when browser tab is hidden to reduce connection overhead
-  - Use `usePooledRealtime`, `usePooledTasksRealtime`, `usePooledProjectsRealtime`, etc.
-
-**AI Chat Hooks:**
-- `hooks/use-ai-chat.ts` - Core AI chat hook for streaming responses
-- `hooks/use-persisted-ai-chat.ts` - AI chat with Supabase persistence
-- `hooks/use-ai-status.ts` - Track AI request status and loading states
-
-**Data Types:** `lib/data/` contains UI type definitions only (interfaces and helper functions like `computeFilterCounts`). All data is fetched from Supabase.
-
-## Environment Variables
-
-Required in `.env.local`:
-```
-NEXT_PUBLIC_SUPABASE_URL=https://lazhmdyajdqbnxxwyxun.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
-SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-
-# Required for AI API key encryption (AES-256-GCM)
-# Generate with: openssl rand -hex 32
-ENCRYPTION_KEY=<64-hex-character-key>
-
-# Optional: Rate limiting (production only)
-KV_REST_API_URL=<vercel-kv-url>
-KV_REST_API_TOKEN=<vercel-kv-token>
-```
-
-## Tech Stack
-
-- Next.js 16.1 (App Router, React Server Components)
-- React 19 + TypeScript (strict mode enabled)
-- Tailwind CSS 4.1 + PostCSS
-- Supabase (PostgreSQL, Auth, Realtime, Storage)
-- shadcn/ui + Radix UI primitives
-- Forms: React Hook Form + Zod validation
-- Rich text: Tiptap editor
-- Drag/drop: @dnd-kit
-- Charts: Recharts
-- Icons: Lucide, Phosphor Icons
-- E2E Testing: Playwright with Page Object Model
-- Rate Limiting: Upstash + Vercel KV
-
-**Note:** `pnpm.overrides` in `package.json` pins `tar>=7.5.7` to patch CVEs in the `@tailwindcss/oxide` dependency chain.
-
-## CI Workflows
-
-GitHub Actions in `.github/workflows/`:
-- `lighthouse.yml` — Lighthouse CI performance checks
-- `navigation-perf.yml` — Client-side route transition timing tests
-- `perf-regression.yml` — Performance regression detection
-
-## Deployment
-
-**Production URL:** https://pms-nine-gold-gilt.vercel.app
-
-- Hosted on Vercel with auto-deploy from `main` branch
-- Supabase project: `lazhmdyajdqbnxxwyxun`
-- Google OAuth configured for production
+**If you are about to build something and you are not sure it matches the existing design — STOP. Read the reference files listed above. Then build.**
