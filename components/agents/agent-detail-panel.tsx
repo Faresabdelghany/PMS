@@ -10,7 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AgentActivityFeed } from "./agent-activity-feed"
-import { Bot, Clock, Cpu, Shield, GitBranch } from "lucide-react"
+import { Bot, Clock, Cpu, Shield, GitBranch, Users, Star, Circle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getAgent } from "@/lib/actions/agents"
 import { getAgentActivities } from "@/lib/actions/agents"
@@ -29,22 +29,22 @@ const statusConfig: Record<AgentStatus, { label: string; dot: string; badge: str
   online: {
     label: "Online",
     dot: "bg-emerald-500",
-    badge: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-100",
+    badge: "bg-teal-50 text-teal-700 border-transparent dark:bg-teal-500/15 dark:text-teal-100",
   },
   busy: {
     label: "Busy",
     dot: "bg-amber-500",
-    badge: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-100",
+    badge: "bg-amber-50 text-amber-700 border-transparent dark:bg-amber-500/15 dark:text-amber-100",
   },
   idle: {
     label: "Idle",
     dot: "bg-blue-400",
-    badge: "bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-100",
+    badge: "bg-blue-50 text-blue-700 border-transparent dark:bg-blue-500/15 dark:text-blue-100",
   },
   offline: {
     label: "Offline",
     dot: "bg-zinc-400",
-    badge: "bg-zinc-100 text-zinc-600 dark:bg-zinc-600/30 dark:text-zinc-200",
+    badge: "bg-slate-100 text-slate-600 border-transparent dark:bg-slate-600/30 dark:text-slate-200",
   },
 }
 
@@ -139,7 +139,7 @@ export function AgentDetailPanel() {
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <SheetContent
         side="right"
-        className="w-full sm:w-[550px] lg:w-[600px] sm:max-w-none p-0 flex flex-col sm:rounded-l-[32px] overflow-hidden"
+        className="w-full sm:w-[600px] lg:w-[700px] sm:max-w-none p-0 flex flex-col sm:rounded-l-[32px] overflow-hidden"
         aria-describedby={undefined}
       >
         <SheetTitle className="sr-only">
@@ -157,7 +157,7 @@ export function AgentDetailPanel() {
         {!isLoading && agent && (
           <>
             {/* Header */}
-            <div className="px-5 pt-5 pb-4 flex-shrink-0 border-b border-border/60">
+            <div className="px-5 pt-4 pb-3 flex-shrink-0 border-b border-border/60 space-y-2">
               <div className="flex items-start gap-4">
                 <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted">
                   <Bot className="h-6 w-6 text-muted-foreground" />
@@ -175,7 +175,7 @@ export function AgentDetailPanel() {
               </div>
 
               {/* Badges */}
-              <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <Badge
                   variant="outline"
                   className={cn(
@@ -205,34 +205,65 @@ export function AgentDetailPanel() {
             </div>
 
             {/* Scrollable content */}
-            <div className="flex-1 overflow-y-auto px-5 pb-4 pt-4 space-y-6">
+            <div className="flex-1 overflow-y-auto px-5 pb-4 pt-4 space-y-5">
               {/* Description */}
               {agent.description && (
                 <div className="space-y-1.5">
-                  <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Description</h3>
-                  <p className="text-sm leading-relaxed">{agent.description}</p>
+                  <h3 className="text-sm font-medium text-foreground">Description</h3>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{agent.description}</p>
                 </div>
               )}
 
-              {/* Details grid */}
-              <div className="space-y-1.5">
-                <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Details</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <DetailItem icon={Cpu} label="AI Model" value={agent.ai_model || "Not configured"} />
-                  <DetailItem icon={Shield} label="Provider" value={agent.ai_provider || "None"} />
-                  <DetailItem icon={Clock} label="Last Active" value={formatLastActive(agent.last_active_at)} />
-                  <DetailItem
+              {/* Details — icon-in-circle grid matching TaskDetailFields */}
+              <div className="rounded-2xl border border-border bg-card/80 px-5 py-4">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  <DetailField
+                    icon={Cpu}
+                    label="AI Model"
+                    value={agent.ai_model || "Not configured"}
+                  />
+                  <DetailField
+                    icon={Shield}
+                    label="Provider"
+                    value={agent.ai_provider || "None"}
+                  />
+                  <DetailField
+                    icon={Circle}
+                    label="Status"
+                    value={statusConfig[agent.status].label}
+                    renderIcon={() => (
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+                        <span className={cn("w-2.5 h-2.5 rounded-full", statusConfig[agent.status].dot)} />
+                      </div>
+                    )}
+                  />
+                  <DetailField
+                    icon={Users}
+                    label="Squad"
+                    value={squadLabels[agent.squad]}
+                  />
+                  <DetailField
+                    icon={Star}
+                    label="Type"
+                    value={typeLabels[agent.agent_type]}
+                  />
+                  <DetailField
                     icon={GitBranch}
                     label="Reports To"
                     value={agent.supervisor?.name || "None"}
+                  />
+                  <DetailField
+                    icon={Clock}
+                    label="Last Active"
+                    value={formatLastActive(agent.last_active_at)}
                   />
                 </div>
               </div>
 
               {/* Capabilities */}
               {agent.capabilities.length > 0 && (
-                <div className="space-y-1.5">
-                  <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Capabilities</h3>
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium text-foreground">Capabilities</h3>
                   <div className="flex flex-wrap gap-1.5">
                     {agent.capabilities.map((cap) => (
                       <Badge
@@ -262,21 +293,31 @@ export function AgentDetailPanel() {
   )
 }
 
-function DetailItem({
+// ── Field component matching TaskDetailFields icon-in-circle pattern ──
+
+function DetailField({
   icon: Icon,
   label,
   value,
+  renderIcon,
 }: {
   icon: React.ComponentType<{ className?: string }>
   label: string
   value: string
+  renderIcon?: () => React.ReactNode
 }) {
   return (
-    <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2">
-      <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-      <div className="min-w-0">
-        <p className="text-[10px] text-muted-foreground">{label}</p>
-        <p className="text-xs font-medium truncate">{value}</p>
+    <div className="flex flex-col items-start gap-2 min-w-0">
+      {renderIcon ? (
+        renderIcon()
+      ) : (
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+          <Icon className="h-4 w-4 text-muted-foreground" />
+        </div>
+      )}
+      <div className="space-y-0.5 min-w-0 w-full">
+        <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
+        <p className="text-xs text-foreground truncate">{value}</p>
       </div>
     </div>
   )
@@ -297,12 +338,16 @@ function AgentDetailPanelSkeleton() {
         <Skeleton className="h-5 w-20 rounded-full" />
         <Skeleton className="h-5 w-14 rounded-full" />
       </div>
-      <Skeleton className="h-20 w-full" />
-      <div className="grid grid-cols-2 gap-3">
-        <Skeleton className="h-12" />
-        <Skeleton className="h-12" />
-        <Skeleton className="h-12" />
-        <Skeleton className="h-12" />
+      <div className="rounded-2xl border border-border p-5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+            <div key={i} className="space-y-2">
+              <Skeleton className="h-9 w-9 rounded-full" />
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+          ))}
+        </div>
       </div>
       <div className="space-y-4 pt-4">
         <Skeleton className="h-16" />

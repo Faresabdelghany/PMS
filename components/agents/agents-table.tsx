@@ -1,9 +1,12 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, memo, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import {
   Table,
   TableBody,
@@ -19,24 +22,177 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import type { AgentWithSupervisor } from "@/lib/supabase/types"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { CaretUpDown } from "@phosphor-icons/react/dist/ssr/CaretUpDown"
+import { ArrowDown } from "@phosphor-icons/react/dist/ssr/ArrowDown"
+import { ArrowUp } from "@phosphor-icons/react/dist/ssr/ArrowUp"
+import { DotsThreeVertical } from "@phosphor-icons/react/dist/ssr/DotsThreeVertical"
+import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr/MagnifyingGlass"
+import { Bot } from "lucide-react"
+import { cn } from "@/lib/utils"
+import Link from "next/link"
+import type { AgentWithSupervisor, AgentStatus } from "@/lib/supabase/types"
 
-const STATUS_STYLES: Record<string, string> = {
-  online: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-  busy: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  idle: "bg-slate-500/10 text-slate-600 dark:text-slate-400",
-  offline: "bg-red-500/10 text-red-600 dark:text-red-400",
+// ── Status badge styling (matches client pattern) ────────────────────
+
+const statusBadgeConfig: Record<AgentStatus, { label: string; badge: string; dot: string }> = {
+  online: {
+    label: "Online",
+    badge: "bg-teal-50 text-teal-700 border-transparent dark:bg-teal-500/15 dark:text-teal-100",
+    dot: "bg-teal-600 dark:bg-teal-300",
+  },
+  busy: {
+    label: "Busy",
+    badge: "bg-amber-50 text-amber-700 border-transparent dark:bg-amber-500/15 dark:text-amber-100",
+    dot: "bg-amber-600 dark:bg-amber-300",
+  },
+  idle: {
+    label: "Idle",
+    badge: "bg-blue-50 text-blue-700 border-transparent dark:bg-blue-500/15 dark:text-blue-100",
+    dot: "bg-blue-500 dark:bg-blue-300",
+  },
+  offline: {
+    label: "Offline",
+    badge: "bg-slate-100 text-slate-600 border-transparent dark:bg-slate-600/30 dark:text-slate-200",
+    dot: "bg-slate-500 dark:bg-slate-300",
+  },
 }
 
-const TYPE_STYLES: Record<string, string> = {
-  supreme: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
-  lead: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  specialist: "bg-slate-500/10 text-slate-600 dark:text-slate-400",
-  integration: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
+const statusDotLive: Record<AgentStatus, string> = {
+  online: "bg-emerald-500",
+  busy: "bg-amber-500",
+  idle: "bg-blue-400",
+  offline: "bg-zinc-400",
+}
+
+const TYPE_BADGE: Record<string, string> = {
+  supreme: "bg-purple-50 text-purple-700 border-transparent dark:bg-purple-500/15 dark:text-purple-100",
+  lead: "bg-indigo-50 text-indigo-700 border-transparent dark:bg-indigo-500/15 dark:text-indigo-100",
+  specialist: "bg-sky-50 text-sky-700 border-transparent dark:bg-sky-500/15 dark:text-sky-100",
+  integration: "bg-teal-50 text-teal-700 border-transparent dark:bg-teal-500/15 dark:text-teal-100",
+}
+
+function AgentStatusBadge({ status }: { status: AgentStatus }) {
+  const config = statusBadgeConfig[status]
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium capitalize",
+        config.badge
+      )}
+    >
+      <span className={cn("h-1.5 w-1.5 rounded-full", config.dot)} />
+      {config.label}
+    </Badge>
+  )
 }
 
 type SortField = "name" | "role" | "status" | "squad" | "agent_type"
 type SortDir = "asc" | "desc"
+
+// ── Memoized table row ───────────────────────────────────────────────
+
+const AgentTableRow = memo(function AgentTableRow({
+  agent,
+  onQuickView,
+}: {
+  agent: AgentWithSupervisor
+  onQuickView: (id: string) => void
+}) {
+  return (
+    <TableRow className="hover:bg-muted/80 [content-visibility:auto] [contain-intrinsic-size:auto_56px]">
+      <TableCell
+        className="align-middle text-sm font-medium text-foreground cursor-pointer"
+        onClick={() => onQuickView(agent.id)}
+      >
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="text-xs font-medium bg-muted">
+                <Bot className="h-3.5 w-3.5 text-muted-foreground" />
+              </AvatarFallback>
+            </Avatar>
+            <span
+              className={cn(
+                "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background",
+                statusDotLive[agent.status]
+              )}
+            />
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="truncate">{agent.name}</span>
+            <span className="mt-0.5 text-[11px] text-muted-foreground truncate">
+              {agent.supervisor?.name ? `→ ${agent.supervisor.name}` : "—"}
+            </span>
+          </div>
+        </div>
+      </TableCell>
+      <TableCell className="align-middle text-sm text-muted-foreground truncate">
+        {agent.role}
+      </TableCell>
+      <TableCell className="align-middle">
+        <Badge
+          variant="outline"
+          className={cn(
+            "rounded-full px-2 py-0.5 text-[11px] font-medium capitalize",
+            TYPE_BADGE[agent.agent_type] || ""
+          )}
+        >
+          {agent.agent_type}
+        </Badge>
+      </TableCell>
+      <TableCell className="align-middle">
+        <Badge
+          variant="outline"
+          className="rounded-full border-transparent bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground capitalize"
+        >
+          {agent.squad}
+        </Badge>
+      </TableCell>
+      <TableCell className="align-middle">
+        <AgentStatusBadge status={agent.status} />
+      </TableCell>
+      <TableCell className="align-middle text-xs text-muted-foreground font-mono truncate">
+        {agent.ai_model || "—"}
+      </TableCell>
+      <TableCell className="align-middle text-right">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
+              aria-label={`Actions for ${agent.name}`}
+            >
+              <DotsThreeVertical className="h-4 w-4" weight="regular" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem onClick={() => onQuickView(agent.id)}>
+              Quick view
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href={`/agents/${agent.id}/edit`}>Edit agent</Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href={`/agents/${agent.id}`}>View full page</Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
+  )
+})
+
+// ── Main table component ─────────────────────────────────────────────
 
 export function AgentsTable({
   agents,
@@ -90,111 +246,132 @@ export function AgentsTable({
     }
   }
 
-  const SortIndicator = ({ field }: { field: SortField }) => {
-    if (sortField !== field) return null
-    return <span className="ml-1">{sortDir === "asc" ? "↑" : "↓"}</span>
+  const handleQuickView = useCallback(
+    (id: string) => router.push(`?agent=${id}`, { scroll: false }),
+    [router]
+  )
+
+  function SortButton({ field, label }: { field: SortField; label: string }) {
+    return (
+      <button
+        type="button"
+        className="flex items-center gap-1 hover:text-foreground"
+        onClick={() => toggleSort(field)}
+      >
+        <span>{label}</span>
+        {sortField === field ? (
+          sortDir === "asc" ? (
+            <ArrowUp className="h-3 w-3" />
+          ) : (
+            <ArrowDown className="h-3 w-3" />
+          )
+        ) : (
+          <CaretUpDown className="h-3 w-3" />
+        )}
+      </button>
+    )
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col flex-1 min-h-0">
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <Input
-          placeholder="Search agents..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-xs"
-        />
-        <Select value={squadFilter} onValueChange={setSquadFilter}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Squad" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Squads</SelectItem>
-            <SelectItem value="engineering">Engineering</SelectItem>
-            <SelectItem value="marketing">Marketing</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="online">Online</SelectItem>
-            <SelectItem value="busy">Busy</SelectItem>
-            <SelectItem value="idle">Idle</SelectItem>
-            <SelectItem value="offline">Offline</SelectItem>
-          </SelectContent>
-        </Select>
-        <span className="text-sm text-muted-foreground ml-auto">
-          {filtered.length} agent{filtered.length !== 1 ? "s" : ""}
-        </span>
+      <div className="flex items-center justify-between px-4 pb-3 pt-3 gap-3 flex-wrap border-b border-border/40">
+        <div className="flex-1 min-w-[260px]">
+          <Tabs value={statusFilter} onValueChange={setStatusFilter}>
+            <TabsList className="inline-flex bg-muted rounded-full px-1 py-0.5 text-xs border border-border/50 h-8">
+              {[
+                { id: "all", label: "All" },
+                { id: "online", label: "Online" },
+                { id: "busy", label: "Busy" },
+                { id: "idle", label: "Idle" },
+                { id: "offline", label: "Offline" },
+              ].map((tab) => (
+                <TabsTrigger
+                  key={tab.id}
+                  value={tab.id}
+                  className="h-7 px-3 rounded-full text-xs data-[state=active]:bg-background data-[state=active]:text-foreground"
+                >
+                  {tab.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            <TabsContent value={statusFilter} forceMount className="hidden" />
+          </Tabs>
+        </div>
+
+        <div className="flex items-center gap-3 flex-1 justify-end">
+          <Select value={squadFilter} onValueChange={setSquadFilter}>
+            <SelectTrigger className="w-[130px] h-9 text-xs rounded-lg border-border">
+              <SelectValue placeholder="Squad" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Squads</SelectItem>
+              <SelectItem value="engineering">Engineering</SelectItem>
+              <SelectItem value="marketing">Marketing</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <div className="flex-1 max-w-xs relative">
+            <MagnifyingGlass className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search agents..."
+              className="h-9 rounded-lg bg-muted/50 text-sm placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary/20 border-border border shadow-none pl-9"
+            />
+          </div>
+
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            {filtered.length} agent{filtered.length !== 1 ? "s" : ""}
+          </span>
+        </div>
       </div>
 
       {/* Table */}
-      <div className="rounded-lg border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("name")}>
-                Name <SortIndicator field="name" />
-              </TableHead>
-              <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("role")}>
-                Role <SortIndicator field="role" />
-              </TableHead>
-              <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("agent_type")}>
-                Type <SortIndicator field="agent_type" />
-              </TableHead>
-              <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("squad")}>
-                Squad <SortIndicator field="squad" />
-              </TableHead>
-              <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("status")}>
-                Status <SortIndicator field="status" />
-              </TableHead>
-              <TableHead>Model</TableHead>
-              <TableHead>Reports To</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                  No agents found
-                </TableCell>
-              </TableRow>
-            ) : (
-              filtered.map((agent) => (
-                <TableRow key={agent.id} className="cursor-pointer" onClick={() => router.push(`?agent=${agent.id}`)}>
-                  <TableCell className="font-medium">{agent.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{agent.role}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className={TYPE_STYLES[agent.agent_type] || ""}>
-                      {agent.agent_type}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="capitalize">
-                      {agent.squad}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className={STATUS_STYLES[agent.status] || ""}>
-                      <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-current" />
-                      {agent.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground font-mono">
-                    {agent.ai_model || "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {agent.supervisor?.name || "—"}
-                  </TableCell>
+      <div className="flex-1 overflow-auto px-4 pb-2 pt-5" style={{ contain: "content" }}>
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center border border-dashed border-border/60 rounded-lg bg-muted/30">
+            <p className="text-sm font-medium text-foreground">No agents found</p>
+            <p className="mt-1 text-xs text-muted-foreground">Try adjusting your search or filters.</p>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-border overflow-hidden">
+            <Table>
+              <TableHeader className="bg-muted">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-[28%] text-xs font-medium text-muted-foreground">
+                    <SortButton field="name" label="Name" />
+                  </TableHead>
+                  <TableHead className="w-[20%] text-xs font-medium text-muted-foreground">
+                    <SortButton field="role" label="Role" />
+                  </TableHead>
+                  <TableHead className="w-[12%] text-xs font-medium text-muted-foreground">
+                    <SortButton field="agent_type" label="Type" />
+                  </TableHead>
+                  <TableHead className="w-[12%] text-xs font-medium text-muted-foreground">
+                    <SortButton field="squad" label="Squad" />
+                  </TableHead>
+                  <TableHead className="w-[12%] text-xs font-medium text-muted-foreground">
+                    <SortButton field="status" label="Status" />
+                  </TableHead>
+                  <TableHead className="w-[12%] text-xs font-medium text-muted-foreground">
+                    Model
+                  </TableHead>
+                  <TableHead className="w-[40px]" />
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((agent) => (
+                  <AgentTableRow
+                    key={agent.id}
+                    agent={agent}
+                    onQuickView={handleQuickView}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
     </div>
   )
