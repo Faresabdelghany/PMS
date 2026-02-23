@@ -57,6 +57,15 @@ app/(dashboard)/clients/page.tsx      ← another reference
 6. **Spacing**: p-4, p-6, gap-4, gap-6 — consistent with rest of app
 7. **Agent squad colors**: blue=engineering, purple=marketing, green=design/product, gold=supreme
 
+### 🎨 MANDATORY Design Files — Read Before Any UI Work
+```
+docs/design-system.json     ← ALL design tokens: colors (OKLCH), typography, spacing, shadows, 
+                               borders, components specs, animations — THE SOURCE OF TRUTH
+docs/design_concept.json    ← Design philosophy, principles, hierarchy, whitespace, feedback 
+                               patterns, consistency rules — WHY things look the way they do
+```
+These two files define EVERYTHING about how PMS looks. Every color, every spacing value, every component behavior. If you are about to use a color or spacing value that is NOT in these files — stop and find the right token.
+
 ### Use these skills before building UI:
 - `~/.agents/skills/ui-ux-pro-max/SKILL.md` — read this for any design decisions
 - `~/.agents/skills/superdesign/SKILL.md` — for frontend design guidelines
