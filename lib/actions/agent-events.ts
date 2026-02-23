@@ -1,7 +1,7 @@
 "use server"
 
 import { requireAuth } from "./auth-helpers"
-import { createServiceClient } from "@/lib/supabase/service"
+import { createAdminClient } from "@/lib/supabase/admin"
 import type { ActionResult } from "./types"
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -82,7 +82,7 @@ export async function createAgentEvent(eventData: {
   message: string
   payload?: Record<string, unknown>
 }): Promise<ActionResult<AgentEvent>> {
-  const supabase = createServiceClient()
+  const supabase = createAdminClient()
 
   const { data, error } = await supabase
     .from("agent_events")

@@ -12,7 +12,7 @@ export default async function CustomFieldsPage() {
   const fields = result.data ?? []
 
   return (
-    <div className="flex flex-col flex-1">
+    <div className="flex flex-1 flex-col bg-background mx-2 my-2 border border-border rounded-lg min-w-0">
       <PageHeader title="Custom Fields" />
       <div className="p-6 flex flex-col gap-6">
         <CustomFieldsClient fields={fields} orgId={orgId} />

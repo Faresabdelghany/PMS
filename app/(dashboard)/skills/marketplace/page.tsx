@@ -24,5 +24,9 @@ export default async function SkillsMarketplacePage({
 
   const skills = skillsResult.data ?? []
 
-  return <SkillsMarketplaceClient initialSkills={skills} initialCategory={category} />
+  return (
+    <div className="flex flex-1 flex-col bg-background mx-2 my-2 border border-border rounded-lg min-w-0">
+      <SkillsMarketplaceClient initialSkills={skills} initialCategory={category} />
+    </div>
+  )
 }

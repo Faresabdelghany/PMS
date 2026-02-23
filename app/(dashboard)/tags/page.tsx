@@ -14,7 +14,7 @@ export default async function TagsPage() {
   const tags = tagsResult.data || []
 
   return (
-    <div className="flex flex-col flex-1">
+    <div className="flex flex-1 flex-col bg-background mx-2 my-2 border border-border rounded-lg min-w-0">
       <PageHeader title="Mission Control Tags" />
       <div className="p-6 flex flex-col gap-6">
         <TagsClient tags={tags} orgId={orgId} />

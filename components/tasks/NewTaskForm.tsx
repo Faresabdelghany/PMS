@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -170,18 +171,27 @@ export function NewTaskForm({ projects, agents, orgId }: NewTaskFormProps) {
         <Label className="text-sm font-medium">
           Project <span className="text-red-400">*</span>
         </Label>
-        <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
-          <SelectTrigger className="h-10">
-            <SelectValue placeholder="Select a project..." />
-          </SelectTrigger>
-          <SelectContent>
-            {projects.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                {p.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {projects.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No projects found.{" "}
+            <Link href="/projects/new" className="text-primary underline">
+              Create one first
+            </Link>
+          </p>
+        ) : (
+          <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+            <SelectTrigger className="h-10">
+              <SelectValue placeholder="Select a project..." />
+            </SelectTrigger>
+            <SelectContent>
+              {projects.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Status + Priority */}
@@ -294,7 +304,7 @@ export function NewTaskForm({ projects, agents, orgId }: NewTaskFormProps) {
         </Button>
         <Button
           type="submit"
-          disabled={isPending}
+          disabled={isPending || projects.length === 0}
           className={cn(
             "flex-1 gap-2 font-medium",
             assignType === "agent"

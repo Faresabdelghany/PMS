@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useEffect } from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -58,6 +58,11 @@ export function TaskDetail({ task, agents, orgId, onClose, onTaskUpdated }: Task
   const [dispatchSuccess, setDispatchSuccess] = useState(false)
   const [selectedAgentId, setSelectedAgentId] = useState<string>(task?.assigned_agent_id ?? "")
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  // Reset agent selector when the task changes (prevents stale selection)
+  useEffect(() => {
+    setSelectedAgentId(task?.assigned_agent_id ?? "")
+  }, [task?.id])
 
   if (!task) return null
 

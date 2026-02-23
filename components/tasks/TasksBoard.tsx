@@ -10,7 +10,14 @@ import { CircleNotch } from "@phosphor-icons/react/dist/ssr/CircleNotch"
 import { CheckCircle } from "@phosphor-icons/react/dist/ssr/CheckCircle"
 import { ArrowsClockwise } from "@phosphor-icons/react/dist/ssr/ArrowsClockwise"
 import { DotsThreeVertical } from "@phosphor-icons/react/dist/ssr/DotsThreeVertical"
+import { CaretDown } from "@phosphor-icons/react/dist/ssr/CaretDown"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { TaskCard } from "./TaskCard"
 import { TaskDetail } from "./TaskDetail"
@@ -68,6 +75,20 @@ export function TasksBoard({ tasks, stats, agents, events, orgId }: TasksBoardPr
   const [selectedTask, setSelectedTask] = useState<OrgTaskWithRelations | null>(null)
   const [agentFilter, setAgentFilter] = useState<string | null>(null)
   const [typeFilter, setTypeFilter] = useState<"all" | "user" | "agent">("all")
+
+  // Derive unique agents that actually appear in tasks (have an assigned_agent_id)
+  const activeAgents = useMemo(() => {
+    const seen = new Set<string>()
+    const result: Agent[] = []
+    for (const task of tasks) {
+      if (task.assigned_agent_id && !seen.has(task.assigned_agent_id)) {
+        seen.add(task.assigned_agent_id)
+        const found = agents.find((a) => a.id === task.assigned_agent_id)
+        if (found) result.push(found)
+      }
+    }
+    return result
+  }, [tasks, agents])
 
   // Filter tasks
   const filteredTasks = useMemo(() => {
@@ -142,8 +163,8 @@ export function TasksBoard({ tasks, stats, agents, events, orgId }: TasksBoardPr
           />
         </div>
 
-        {/* Agent chips */}
-        {agents.length > 0 && (
+        {/* Agent chips — derived from tasks, show all unique agents */}
+        {activeAgents.length > 0 && (
           <>
             <div className="h-5 w-px bg-border" />
             <div className="flex items-center gap-1 flex-wrap">
@@ -152,7 +173,7 @@ export function TasksBoard({ tasks, stats, agents, events, orgId }: TasksBoardPr
                 onClick={() => setAgentFilter(null)}
                 label="All Agents"
               />
-              {agents.slice(0, 6).map((agent) => (
+              {(activeAgents.length > 8 ? activeAgents.slice(0, 7) : activeAgents).map((agent) => (
                 <FilterChip
                   key={agent.id}
                   active={agentFilter === agent.id}
@@ -170,6 +191,38 @@ export function TasksBoard({ tasks, stats, agents, events, orgId }: TasksBoardPr
                   }
                 />
               ))}
+              {activeAgents.length > 8 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer bg-accent/50 text-muted-foreground hover:bg-accent hover:text-foreground">
+                      +{activeAgents.length - 7} More
+                      <CaretDown className="h-3 w-3" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="min-w-[160px]">
+                    {activeAgents.slice(7).map((agent) => (
+                      <DropdownMenuItem
+                        key={agent.id}
+                        onClick={() => setAgentFilter(agentFilter === agent.id ? null : agent.id)}
+                        className={cn(
+                          "flex items-center gap-2 cursor-pointer",
+                          agentFilter === agent.id && "bg-accent"
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "h-4 w-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0",
+                            squadColors[agent.squad] ?? "bg-slate-500"
+                          )}
+                        >
+                          {agent.name.charAt(0)}
+                        </div>
+                        <span>{agent.name}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </>
         )}
@@ -203,7 +256,7 @@ export function TasksBoard({ tasks, stats, agents, events, orgId }: TasksBoardPr
             <h3 className="text-sm font-medium text-foreground">Live Activity</h3>
           </div>
           <div className="flex-1 overflow-hidden px-3 py-3">
-            <LiveActivityFeed orgId={orgId} initialEvents={events} />
+            <LiveActivityFeed orgId={orgId} initialEvents={events} agents={agents} />
           </div>
         </div>
       </div>

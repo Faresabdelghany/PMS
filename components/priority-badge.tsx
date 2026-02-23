@@ -9,8 +9,8 @@ function BarsGlyph({ level, className }: { level: Exclude<PriorityLevel, "urgent
   // Match Figma design: stroked bars with varying heights and colors
   const bars = [
     { x: 4, y1: 13.333, y2: level === "low" ? 13.333 : level === "medium" ? 13.333 : 13.333, color: "currentColor" },
-    { x: 8, y1: 6.667, y2: 13.333, color: level === "low" ? "rgb(228, 228, 231)" : "currentColor" },
-    { x: 12, y1: level === "high" ? 2.667 : level === "medium" ? 6.667 : 6.667, y2: 13.333, color: level === "high" ? "currentColor" : "rgb(228, 228, 231)" },
+    { x: 8, y1: 6.667, y2: 13.333, color: level === "low" ? "var(--border)" : "currentColor" },
+    { x: 12, y1: level === "high" ? 2.667 : level === "medium" ? 6.667 : 6.667, y2: 13.333, color: level === "high" ? "currentColor" : "var(--border)" },
   ]
 
   return (

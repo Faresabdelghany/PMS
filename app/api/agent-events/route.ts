@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createServiceClient } from "@/lib/supabase/service"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 /**
  * POST /api/agent-events
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Insert event ───────────────────────────────────────────────────
-  const supabase = createServiceClient()
+  const supabase = createAdminClient()
 
   const { error: insertError } = await supabase.from("agent_events").insert({
     organization_id: org_id,

@@ -46,9 +46,17 @@ function getEventIcon(eventType: string) {
 interface LiveActivityFeedProps {
   orgId: string
   initialEvents: AgentEventWithAgent[]
+  agents?: Array<{
+    id: string
+    name: string
+    role: string
+    squad: string
+    avatar_url: string | null
+    status: string
+  }>
 }
 
-export function LiveActivityFeed({ orgId, initialEvents }: LiveActivityFeedProps) {
+export function LiveActivityFeed({ orgId, initialEvents, agents = [] }: LiveActivityFeedProps) {
   const [events, setEvents] = useState<AgentEventWithAgent[]>(initialEvents)
   const bottomRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
@@ -66,7 +74,23 @@ export function LiveActivityFeed({ orgId, initialEvents }: LiveActivityFeedProps
           filter: `organization_id=eq.${orgId}`,
         },
         (payload) => {
-          const newEvent = payload.new as AgentEventWithAgent
+          const rawEvent = payload.new as AgentEventWithAgent
+          // Real-time payloads don't include joined agent data — look up from agents prop
+          const matchedAgent = rawEvent.agent_id
+            ? agents.find((a) => a.id === rawEvent.agent_id) ?? null
+            : null
+          const newEvent: AgentEventWithAgent = {
+            ...rawEvent,
+            agent: matchedAgent
+              ? {
+                  id: matchedAgent.id,
+                  name: matchedAgent.name,
+                  role: matchedAgent.role,
+                  squad: matchedAgent.squad,
+                  avatar_url: matchedAgent.avatar_url,
+                }
+              : rawEvent.agent,
+          }
           setEvents((prev) => [newEvent, ...prev].slice(0, 20))
         }
       )
@@ -75,7 +99,7 @@ export function LiveActivityFeed({ orgId, initialEvents }: LiveActivityFeedProps
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [orgId, supabase])
+  }, [orgId, supabase, agents])
 
   // Auto-scroll to bottom on new events
   useEffect(() => {
@@ -94,7 +118,7 @@ export function LiveActivityFeed({ orgId, initialEvents }: LiveActivityFeedProps
         ) : (
           events.map((event) => {
             const { Icon, className: iconCls } = getEventIcon(event.event_type)
-            const agentName = event.agent?.name ?? "System"
+            const agentName = event.agent?.name ?? "Agent"
             const squadColor = event.agent?.squad
               ? (squadColors[event.agent.squad] ?? "bg-slate-500")
               : "bg-slate-500"

@@ -153,13 +153,15 @@ export function AgentDetailPanel({ agents, orgId }: AgentDetailPanelProps) {
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <SheetContent className="w-[440px] sm:w-[500px] overflow-y-auto flex flex-col gap-0 p-0">
-        <SheetHeader className="p-6 pb-4 border-b border-border">
-          <SheetTitle>{isNew ? "New Agent" : "Edit Agent"}</SheetTitle>
+      <SheetContent className="w-[440px] sm:w-[500px] flex flex-col gap-0 p-0">
+        <SheetHeader className="px-5 pt-5 pb-4 border-b border-border flex-shrink-0">
+          <SheetTitle className="text-base font-semibold leading-snug">
+            {isNew ? "New Agent" : "Edit Agent"}
+          </SheetTitle>
         </SheetHeader>
 
         {loading ? (
-          <div className="flex-1 p-6 space-y-4">
+          <div className="flex-1 px-5 py-4 space-y-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="space-y-2">
                 <div className="h-4 w-20 bg-accent rounded animate-pulse" />
@@ -170,7 +172,7 @@ export function AgentDetailPanel({ agents, orgId }: AgentDetailPanelProps) {
         ) : (
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1">
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
                 <FormField
                   control={form.control}
                   name="name"
