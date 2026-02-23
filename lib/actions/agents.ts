@@ -78,7 +78,7 @@ export async function getAgents(
 
   let query = supabase
     .from("agents")
-    .select("*, supervisor:agents!agents_reports_to_fkey(id, name, role)")
+    .select("*, supervisor:reports_to(id, name, role)")
     .eq("organization_id", orgId)
 
   if (filters?.squad) {
@@ -113,7 +113,7 @@ export async function getAgent(id: string): Promise<ActionResult<AgentWithSuperv
 
   const { data, error } = await supabase
     .from("agents")
-    .select("*, supervisor:agents!agents_reports_to_fkey(id, name, role)")
+    .select("*, supervisor:reports_to(id, name, role)")
     .eq("id", id)
     .single()
 
