@@ -26,7 +26,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { CaretUpDown } from "@phosphor-icons/react/dist/ssr/CaretUpDown"
@@ -36,7 +35,6 @@ import { DotsThreeVertical } from "@phosphor-icons/react/dist/ssr/DotsThreeVerti
 import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr/MagnifyingGlass"
 import { Bot } from "lucide-react"
 import { cn } from "@/lib/utils"
-import Link from "next/link"
 import type { AgentWithSupervisor, AgentStatus } from "@/lib/supabase/types"
 
 // ── Status badge styling (matches client pattern) ────────────────────
@@ -102,9 +100,11 @@ type SortDir = "asc" | "desc"
 const AgentTableRow = memo(function AgentTableRow({
   agent,
   onQuickView,
+  onEdit,
 }: {
   agent: AgentWithSupervisor
   onQuickView: (id: string) => void
+  onEdit: (id: string) => void
 }) {
   return (
     <TableRow className="hover:bg-muted/80 [content-visibility:auto] [contain-intrinsic-size:auto_56px]">
@@ -178,12 +178,8 @@ const AgentTableRow = memo(function AgentTableRow({
             <DropdownMenuItem onClick={() => onQuickView(agent.id)}>
               Quick view
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href={`/agents/${agent.id}/edit`}>Edit agent</Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href={`/agents/${agent.id}`}>View full page</Link>
+            <DropdownMenuItem onClick={() => onEdit(agent.id)}>
+              Edit agent
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -248,6 +244,11 @@ export function AgentsTable({
 
   const handleQuickView = useCallback(
     (id: string) => router.push(`?view=${id}`, { scroll: false }),
+    [router]
+  )
+
+  const handleEdit = useCallback(
+    (id: string) => router.push(`?agent=${id}`, { scroll: false }),
     [router]
   )
 
@@ -366,6 +367,7 @@ export function AgentsTable({
                     key={agent.id}
                     agent={agent}
                     onQuickView={handleQuickView}
+                    onEdit={handleEdit}
                   />
                 ))}
               </TableBody>

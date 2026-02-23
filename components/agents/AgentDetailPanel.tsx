@@ -1,52 +1,83 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Form, FormControl, FormField, FormItem } from "@/components/ui/form"
+import { QuickCreateModalLayout } from "@/components/QuickCreateModalLayout"
+import { GenericPicker } from "@/components/project-wizard/steps/StepQuickCreate"
+import { X } from "@phosphor-icons/react/dist/ssr/X"
+import { Robot } from "@phosphor-icons/react/dist/ssr/Robot"
+import { Users } from "@phosphor-icons/react/dist/ssr/Users"
+import { Lightning } from "@phosphor-icons/react/dist/ssr/Lightning"
+import { CircleHalf } from "@phosphor-icons/react/dist/ssr/CircleHalf"
+import { Cpu } from "@phosphor-icons/react/dist/ssr/Cpu"
+import { TreeStructure } from "@phosphor-icons/react/dist/ssr/TreeStructure"
+import { Plugs } from "@phosphor-icons/react/dist/ssr/Plugs"
+import { Check } from "@phosphor-icons/react/dist/ssr/Check"
+import { cn } from "@/lib/utils"
 import { getAgent, createAgent, updateAgent } from "@/lib/actions/agents"
 import type { AgentWithSupervisor } from "@/lib/supabase/types"
+import type { Skill } from "@/lib/actions/skills"
 
-const MODEL_MAP: Record<string, { value: string; label: string }[]> = {
+// ── Model map ───────────────────────────────────────────────────────
+
+const MODEL_MAP: Record<string, { id: string; label: string }[]> = {
   anthropic: [
-    { value: "claude-opus-4-6", label: "Claude Opus 4.6" },
-    { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
-    { value: "claude-haiku-3-5", label: "Claude Haiku 3.5" },
+    { id: "claude-opus-4-6", label: "Claude Opus 4.6" },
+    { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
+    { id: "claude-haiku-3-5", label: "Claude Haiku 3.5" },
   ],
   google: [
-    { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
-    { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+    { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
+    { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
   ],
   openai: [
-    { value: "gpt-4o", label: "GPT-4o" },
-    { value: "gpt-4o-mini", label: "GPT-4o mini" },
-    { value: "o1", label: "o1" },
-    { value: "o3-mini", label: "o3-mini" },
+    { id: "gpt-4o", label: "GPT-4o" },
+    { id: "gpt-4o-mini", label: "GPT-4o mini" },
+    { id: "o1", label: "o1" },
+    { id: "o3-mini", label: "o3-mini" },
   ],
-  other: [{ value: "custom", label: "Custom / Other" }],
+  other: [{ id: "custom", label: "Custom / Other" }],
 }
+
+// ── Picker option types ─────────────────────────────────────────────
+
+type PickerOption = { id: string; label: string }
+
+const TYPE_OPTIONS: PickerOption[] = [
+  { id: "supreme", label: "Supreme" },
+  { id: "lead", label: "Lead" },
+  { id: "specialist", label: "Specialist" },
+  { id: "integration", label: "Integration" },
+]
+
+const SQUAD_OPTIONS: PickerOption[] = [
+  { id: "engineering", label: "Engineering" },
+  { id: "marketing", label: "Marketing" },
+  { id: "all", label: "All" },
+]
+
+const STATUS_OPTIONS: PickerOption[] = [
+  { id: "online", label: "Online" },
+  { id: "busy", label: "Busy" },
+  { id: "idle", label: "Idle" },
+  { id: "offline", label: "Offline" },
+]
+
+const PROVIDER_OPTIONS: PickerOption[] = [
+  { id: "anthropic", label: "Anthropic" },
+  { id: "google", label: "Google" },
+  { id: "openai", label: "OpenAI" },
+  { id: "other", label: "Other" },
+]
+
+// ── Form schema ─────────────────────────────────────────────────────
 
 const agentFormSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(200),
@@ -59,6 +90,7 @@ const agentFormSchema = z.object({
   ai_model: z.string().max(200).optional().nullable(),
   reports_to: z.string().uuid().optional().nullable(),
   is_active: z.boolean(),
+  skills: z.array(z.object({ id: z.string(), name: z.string() })).default([]),
 })
 
 type AgentFormValues = z.infer<typeof agentFormSchema>
@@ -74,14 +106,18 @@ const DEFAULTS: AgentFormValues = {
   ai_model: "claude-sonnet-4-6",
   reports_to: null,
   is_active: true,
+  skills: [],
 }
+
+// ── Component ───────────────────────────────────────────────────────
 
 interface AgentDetailPanelProps {
   agents: AgentWithSupervisor[]
   orgId: string
+  skills?: Skill[]
 }
 
-export function AgentDetailPanel({ agents, orgId }: AgentDetailPanelProps) {
+export function AgentDetailPanel({ agents, orgId, skills = [] }: AgentDetailPanelProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const agentParam = searchParams.get("agent")
@@ -98,16 +134,28 @@ export function AgentDetailPanel({ agents, orgId }: AgentDetailPanelProps) {
   })
 
   const provider = form.watch("ai_provider") ?? "anthropic"
+  const selectedSkills = form.watch("skills")
+
+  // Track open transitions to only reset on fresh open
+  const prevOpenRef = useRef(false)
 
   useEffect(() => {
-    if (!agentParam || agentParam === "new") {
+    const wasOpen = prevOpenRef.current
+    prevOpenRef.current = isOpen
+    if (!isOpen || wasOpen) return
+
+    if (isNew) {
       form.reset(DEFAULTS)
       return
     }
+
     setLoading(true)
-    getAgent(agentParam).then((result) => {
+    getAgent(agentParam!).then((result) => {
       if (result.data) {
         const a = result.data
+        const existingSkills = Array.isArray(a.skills)
+          ? (a.skills as { id: string; name: string }[])
+          : []
         form.reset({
           name: a.name,
           role: a.role,
@@ -119,13 +167,19 @@ export function AgentDetailPanel({ agents, orgId }: AgentDetailPanelProps) {
           ai_model: a.ai_model ?? "claude-sonnet-4-6",
           reports_to: a.reports_to ?? null,
           is_active: a.is_active ?? true,
+          skills: existingSkills,
         })
       }
       setLoading(false)
     })
-  }, [agentParam]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen, isNew, agentParam]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleClose = () => router.push("/agents")
+  const handleClose = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete("agent")
+    const qs = params.toString()
+    router.push(qs ? `${window.location.pathname}?${qs}` : window.location.pathname, { scroll: false })
+  }, [router, searchParams])
 
   const onSubmit = async (values: AgentFormValues) => {
     setSaving(true)
@@ -135,7 +189,6 @@ export function AgentDetailPanel({ agents, orgId }: AgentDetailPanelProps) {
             ...values,
             sort_order: 0,
             capabilities: [],
-            skills: [],
           } as Parameters<typeof createAgent>[1])
         : await updateAgent(agentParam!, values)
 
@@ -144,273 +197,372 @@ export function AgentDetailPanel({ agents, orgId }: AgentDetailPanelProps) {
         return
       }
       toast.success(isNew ? "Agent created" : "Agent updated")
-      router.push("/agents")
+      handleClose()
       router.refresh()
     } finally {
       setSaving(false)
     }
   }
 
+  const handleSubmit = form.handleSubmit(onSubmit)
+
+  // Toggle a skill on/off
+  const toggleSkill = useCallback(
+    (skill: Skill) => {
+      const current = form.getValues("skills")
+      const exists = current.some((s) => s.id === skill.id)
+      if (exists) {
+        form.setValue(
+          "skills",
+          current.filter((s) => s.id !== skill.id),
+          { shouldDirty: true }
+        )
+      } else {
+        form.setValue("skills", [...current, { id: skill.id, name: skill.name }], {
+          shouldDirty: true,
+        })
+      }
+    },
+    [form]
+  )
+
+  // Build model options for current provider
+  const modelOptions = (MODEL_MAP[provider] ?? MODEL_MAP.anthropic).map((m) => ({
+    id: m.id,
+    label: m.label,
+  }))
+
+  // Build "reports to" options
+  const reportsToOptions: PickerOption[] = [
+    { id: "none", label: "No supervisor" },
+    ...agents
+      .filter((a) => a.id !== agentParam)
+      .map((a) => ({ id: a.id, label: `${a.name} (${a.role})` })),
+  ]
+
+  // Installed skills only
+  const installedSkills = skills.filter((s) => s.installed && s.enabled)
+
   return (
-    <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <SheetContent className="w-[440px] sm:w-[500px] flex flex-col gap-0 p-0">
-        <SheetHeader className="px-5 pt-5 pb-4 border-b border-border flex-shrink-0">
-          <SheetTitle className="text-base font-semibold leading-snug">
-            {isNew ? "New Agent" : "Edit Agent"}
-          </SheetTitle>
-        </SheetHeader>
-
-        {loading ? (
-          <div className="flex-1 px-5 py-4 space-y-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="space-y-2">
-                <div className="h-4 w-20 bg-accent rounded animate-pulse" />
-                <div className="h-9 bg-accent/60 rounded-md animate-pulse" />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1">
-              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Name *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Agent name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="role"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Role *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. Senior Frontend Engineer" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="What does this agent do?"
-                          rows={3}
-                          {...field}
-                          value={field.value ?? ""}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="agent_type"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Type</FormLabel>
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="supreme">Supreme</SelectItem>
-                            <SelectItem value="lead">Lead</SelectItem>
-                            <SelectItem value="specialist">Specialist</SelectItem>
-                            <SelectItem value="integration">Integration</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="squad"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Squad</FormLabel>
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="engineering">Engineering</SelectItem>
-                            <SelectItem value="marketing">Marketing</SelectItem>
-                            <SelectItem value="all">All</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+    <QuickCreateModalLayout
+      open={isOpen}
+      onClose={handleClose}
+      onSubmitShortcut={handleSubmit}
+    >
+      {loading ? (
+        <div className="space-y-4 py-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-9 bg-accent/60 rounded-md animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <Form {...form}>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+            {/* Header row: icon + close */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                  <Robot className="h-4 w-4 text-primary" />
                 </div>
-
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Status</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="online">Online</SelectItem>
-                          <SelectItem value="busy">Busy</SelectItem>
-                          <SelectItem value="idle">Idle</SelectItem>
-                          <SelectItem value="offline">Offline</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="ai_provider"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>AI Provider</FormLabel>
-                      <Select
-                        value={field.value ?? "anthropic"}
-                        onValueChange={(val) => {
-                          field.onChange(val)
-                          const models = MODEL_MAP[val] ?? MODEL_MAP.anthropic
-                          form.setValue("ai_model", models[0].value)
-                        }}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="anthropic">Anthropic</SelectItem>
-                          <SelectItem value="google">Google</SelectItem>
-                          <SelectItem value="openai">OpenAI</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="ai_model"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>AI Model</FormLabel>
-                      <Select value={field.value ?? ""} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select model" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {(MODEL_MAP[provider] ?? MODEL_MAP.anthropic).map((m) => (
-                            <SelectItem key={m.value} value={m.value}>
-                              {m.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="reports_to"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Reports To</FormLabel>
-                      <Select
-                        value={field.value ?? "none"}
-                        onValueChange={(val) => field.onChange(val === "none" ? null : val)}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="No supervisor" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="none">— No supervisor</SelectItem>
-                          {agents
-                            .filter((a) => a.id !== agentParam)
-                            .map((a) => (
-                              <SelectItem key={a.id} value={a.id}>
-                                {a.name} ({a.role})
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="is_active"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center justify-between rounded-lg border border-border p-3">
-                      <div>
-                        <FormLabel className="text-sm font-medium">Active</FormLabel>
-                        <p className="text-xs text-muted-foreground">
-                          Agent can receive tasks and commands
-                        </p>
-                      </div>
-                      <FormControl>
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
+                <span className="text-xs font-medium text-muted-foreground">
+                  {isNew ? "New Agent" : "Edit Agent"}
+                </span>
               </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={handleClose}
+                className="h-8 w-8 rounded-full opacity-70 hover:opacity-100"
+              >
+                <X className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </div>
 
-              <div className="border-t border-border p-4 flex items-center justify-end gap-2">
-                <Button type="button" variant="ghost" onClick={handleClose} disabled={saving}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={saving}>
-                  {saving ? "Saving..." : isNew ? "Create Agent" : "Save Changes"}
-                </Button>
+            {/* Name input (large) */}
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <input
+                      {...field}
+                      type="text"
+                      placeholder="Agent name"
+                      className="w-full font-normal leading-7 text-foreground placeholder:text-muted-foreground text-xl outline-none bg-transparent border-none p-0"
+                      autoComplete="off"
+                      autoFocus
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            {/* Role input */}
+            <FormField
+              control={form.control}
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <input
+                      {...field}
+                      type="text"
+                      placeholder="Role (e.g. Senior Frontend Engineer)"
+                      className="w-full text-sm text-foreground placeholder:text-muted-foreground outline-none bg-transparent border-none p-0"
+                      autoComplete="off"
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            {/* Description */}
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <textarea
+                      {...field}
+                      value={field.value ?? ""}
+                      placeholder="What does this agent do?"
+                      rows={2}
+                      className="w-full text-sm text-muted-foreground placeholder:text-muted-foreground/60 outline-none bg-transparent border-none p-0 resize-none"
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            {/* Property pills row */}
+            <div className="flex flex-wrap gap-2.5 items-start w-full">
+              {/* Type */}
+              <FormField
+                control={form.control}
+                name="agent_type"
+                render={({ field }) => (
+                  <GenericPicker
+                    items={TYPE_OPTIONS}
+                    selectedId={field.value}
+                    onSelect={(item) => field.onChange(item.id)}
+                    placeholder="Agent type..."
+                    renderItem={(item) => <span>{item.label}</span>}
+                    trigger={
+                      <button
+                        type="button"
+                        className="bg-muted flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:border-primary/50 transition-colors"
+                      >
+                        <Lightning className="size-4 text-muted-foreground" />
+                        <span className="font-medium text-foreground text-sm leading-5">
+                          {TYPE_OPTIONS.find((o) => o.id === field.value)?.label ?? "Type"}
+                        </span>
+                      </button>
+                    }
+                  />
+                )}
+              />
+
+              {/* Squad */}
+              <FormField
+                control={form.control}
+                name="squad"
+                render={({ field }) => (
+                  <GenericPicker
+                    items={SQUAD_OPTIONS}
+                    selectedId={field.value}
+                    onSelect={(item) => field.onChange(item.id)}
+                    placeholder="Squad..."
+                    renderItem={(item) => <span>{item.label}</span>}
+                    trigger={
+                      <button
+                        type="button"
+                        className="bg-muted flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:border-primary/50 transition-colors"
+                      >
+                        <Users className="size-4 text-muted-foreground" />
+                        <span className="font-medium text-foreground text-sm leading-5">
+                          {SQUAD_OPTIONS.find((o) => o.id === field.value)?.label ?? "Squad"}
+                        </span>
+                      </button>
+                    }
+                  />
+                )}
+              />
+
+              {/* Status */}
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <GenericPicker
+                    items={STATUS_OPTIONS}
+                    selectedId={field.value}
+                    onSelect={(item) => field.onChange(item.id)}
+                    placeholder="Status..."
+                    renderItem={(item) => <span>{item.label}</span>}
+                    trigger={
+                      <button
+                        type="button"
+                        className="bg-background flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:bg-black/5 transition-colors"
+                      >
+                        <CircleHalf className="size-4 text-muted-foreground" />
+                        <span className="font-medium text-foreground text-sm leading-5">
+                          {STATUS_OPTIONS.find((o) => o.id === field.value)?.label ?? "Status"}
+                        </span>
+                      </button>
+                    }
+                  />
+                )}
+              />
+
+              {/* Provider */}
+              <FormField
+                control={form.control}
+                name="ai_provider"
+                render={({ field }) => (
+                  <GenericPicker
+                    items={PROVIDER_OPTIONS}
+                    selectedId={field.value ?? "anthropic"}
+                    onSelect={(item) => {
+                      field.onChange(item.id)
+                      const models = MODEL_MAP[item.id] ?? MODEL_MAP.anthropic
+                      form.setValue("ai_model", models[0].id)
+                    }}
+                    placeholder="Provider..."
+                    renderItem={(item) => <span>{item.label}</span>}
+                    trigger={
+                      <button
+                        type="button"
+                        className="bg-background flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:bg-black/5 transition-colors"
+                      >
+                        <Plugs className="size-4 text-muted-foreground" />
+                        <span className="font-medium text-foreground text-sm leading-5">
+                          {PROVIDER_OPTIONS.find((o) => o.id === (field.value ?? "anthropic"))
+                            ?.label ?? "Provider"}
+                        </span>
+                      </button>
+                    }
+                  />
+                )}
+              />
+
+              {/* Model */}
+              <FormField
+                control={form.control}
+                name="ai_model"
+                render={({ field }) => (
+                  <GenericPicker
+                    items={modelOptions}
+                    selectedId={field.value ?? ""}
+                    onSelect={(item) => field.onChange(item.id)}
+                    placeholder="Model..."
+                    renderItem={(item) => <span>{item.label}</span>}
+                    trigger={
+                      <button
+                        type="button"
+                        className="bg-background flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:bg-black/5 transition-colors"
+                      >
+                        <Cpu className="size-4 text-muted-foreground" />
+                        <span className="font-medium text-foreground text-sm leading-5">
+                          {modelOptions.find((o) => o.id === field.value)?.label ?? "Model"}
+                        </span>
+                      </button>
+                    }
+                  />
+                )}
+              />
+
+              {/* Reports To */}
+              <FormField
+                control={form.control}
+                name="reports_to"
+                render={({ field }) => (
+                  <GenericPicker
+                    items={reportsToOptions}
+                    selectedId={field.value ?? "none"}
+                    onSelect={(item) => field.onChange(item.id === "none" ? null : item.id)}
+                    placeholder="Reports to..."
+                    renderItem={(item) => <span>{item.label}</span>}
+                    trigger={
+                      <button
+                        type="button"
+                        className="bg-background flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:bg-black/5 transition-colors"
+                      >
+                        <TreeStructure className="size-4 text-muted-foreground" />
+                        <span className="font-medium text-foreground text-sm leading-5">
+                          {field.value
+                            ? reportsToOptions.find((o) => o.id === field.value)?.label ?? "Reports to"
+                            : "Reports to"}
+                        </span>
+                      </button>
+                    }
+                  />
+                )}
+              />
+
+              {/* Active toggle */}
+              <FormField
+                control={form.control}
+                name="is_active"
+                render={({ field }) => (
+                  <div className="flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border bg-background">
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      className="scale-75"
+                    />
+                    <span className="font-medium text-foreground text-sm leading-5">Active</span>
+                  </div>
+                )}
+              />
+            </div>
+
+            {/* Skills section */}
+            {installedSkills.length > 0 && (
+              <div className="space-y-2 pt-1">
+                <p className="text-xs font-medium text-muted-foreground">Skills</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {installedSkills.map((skill) => {
+                    const isSelected = selectedSkills.some((s) => s.id === skill.id)
+                    return (
+                      <button
+                        key={skill.id}
+                        type="button"
+                        onClick={() => toggleSkill(skill)}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors border",
+                          isSelected
+                            ? "bg-primary/10 text-primary border-primary/30"
+                            : "bg-muted text-muted-foreground border-border hover:border-primary/30 hover:text-foreground"
+                        )}
+                      >
+                        {isSelected && <Check className="size-3" />}
+                        {skill.name}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-            </form>
-          </Form>
-        )}
-      </SheetContent>
-    </Sheet>
+            )}
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 mt-auto pt-4">
+              <Button type="button" variant="ghost" onClick={handleClose} disabled={saving}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={saving || !form.watch("name")?.trim()}
+                className="h-10 px-4 rounded-xl"
+              >
+                {saving ? "Saving..." : isNew ? "Create Agent" : "Save Changes"}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      )}
+    </QuickCreateModalLayout>
   )
 }

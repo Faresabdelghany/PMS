@@ -10,7 +10,8 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AgentActivityFeed } from "./agent-activity-feed"
-import { Bot, Clock, Cpu, Shield, GitBranch, Users, Star, Circle } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Bot, Clock, Cpu, Shield, GitBranch, Users, Star, Circle, Pencil } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getAgent } from "@/lib/actions/agents"
 import { getAgentActivities } from "@/lib/actions/agents"
@@ -172,6 +173,20 @@ export function AgentQuickView() {
                   <h2 className="text-lg font-semibold truncate">{agent.name}</h2>
                   <p className="text-sm text-muted-foreground truncate">{agent.role}</p>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-1.5 rounded-lg"
+                  onClick={() => {
+                    const params = new URLSearchParams(searchParams.toString())
+                    params.delete("view")
+                    params.set("agent", agent.id)
+                    router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false })
+                  }}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Edit
+                </Button>
               </div>
 
               {/* Badges */}

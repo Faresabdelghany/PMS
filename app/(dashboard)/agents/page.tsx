@@ -7,6 +7,7 @@ import { PageSkeleton } from "@/components/ui/page-skeleton"
 import { PageHeader } from "@/components/ui/page-header"
 import { getPageOrganization } from "@/lib/page-auth"
 import { getAgents } from "@/lib/actions/agents"
+import { getSkills, type Skill } from "@/lib/actions/skills"
 import type { AgentWithSupervisor } from "@/lib/supabase/types"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -19,6 +20,7 @@ export const metadata: Metadata = {
 export default async function Page() {
   const { orgId } = await getPageOrganization()
   const agentsPromise = getAgents(orgId)
+  const skillsPromise = getSkills(orgId)
 
   return (
     <div className="flex flex-1 flex-col bg-background mx-2 my-2 border border-border rounded-lg min-w-0">
@@ -34,20 +36,20 @@ export default async function Page() {
         }
       />
       <Suspense fallback={<PageSkeleton />}>
-        <AgentsStreamed agentsPromise={agentsPromise} orgId={orgId} />
+        <AgentsStreamed agentsPromise={agentsPromise} skillsPromise={skillsPromise} orgId={orgId} />
       </Suspense>
     </div>
   )
 }
 
-async function AgentsStreamed({
-  agentsPromise,
-  orgId,
-}: {
-  agentsPromise: ReturnType<typeof getAgents>
+async function AgentsStreamed(props: {
+  agentsPromise: Promise<Awaited<ReturnType<typeof getAgents>>>
+  skillsPromise: Promise<Awaited<ReturnType<typeof getSkills>>>
   orgId: string
 }) {
-  const result = await agentsPromise
+  const { agentsPromise, skillsPromise, orgId } = props
+  const [result, skillsResult] = await Promise.all([agentsPromise, skillsPromise])
+  const skills: Skill[] = skillsResult.data ?? []
 
   const agents: AgentWithSupervisor[] = (result.data || []).map((a) => ({
     id: a.id,
@@ -82,7 +84,7 @@ async function AgentsStreamed({
         <AgentQuickView />
       </Suspense>
       <Suspense fallback={null}>
-        <AgentDetailPanel agents={agents} orgId={orgId} />
+        <AgentDetailPanel agents={agents} orgId={orgId} skills={skills} />
       </Suspense>
     </>
   )
