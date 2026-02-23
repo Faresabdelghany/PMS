@@ -3,11 +3,7 @@ import { Suspense } from "react"
 import { getPageOrganization } from "@/lib/page-auth"
 import { getProjects } from "@/lib/actions/projects"
 import { getMyTasks } from "@/lib/actions/tasks"
-import { PageHeader } from "@/components/ui/page-header"
 import { MyTasksPage } from "@/components/tasks/MyTasksPage"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
-import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
 
 export const metadata: Metadata = {
   title: "Tasks — PMS",
@@ -19,24 +15,9 @@ export default async function TasksPage() {
   const { orgId, user } = await getPageOrganization()
 
   return (
-    <div className="flex flex-1 flex-col bg-background mx-2 my-2 border border-border rounded-lg min-w-0">
-      <PageHeader
-        title="Tasks"
-        actions={
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/tasks/new">
-              <Plus size={14} weight="bold" className="mr-1.5" />
-              New Task
-            </Link>
-          </Button>
-        }
-      />
-      <div className="flex-1 min-h-0">
-        <Suspense fallback={<MyTasksSkeleton />}>
-          <MyTasksData orgId={orgId} userId={user.id} />
-        </Suspense>
-      </div>
-    </div>
+    <Suspense fallback={<MyTasksSkeleton />}>
+      <MyTasksData orgId={orgId} userId={user.id} />
+    </Suspense>
   )
 }
 
@@ -71,7 +52,7 @@ async function MyTasksData({ orgId, userId }: { orgId: string; userId: string })
 
 function MyTasksSkeleton() {
   return (
-    <div className="flex flex-col flex-1 animate-pulse p-4 space-y-4">
+    <div className="flex flex-1 flex-col bg-background mx-2 my-2 border border-border rounded-lg min-w-0 animate-pulse p-4 space-y-4">
       <div className="flex items-center gap-3">
         <div className="h-8 w-32 bg-accent rounded-lg" />
         <div className="h-8 w-24 bg-accent/60 rounded-lg" />
