@@ -82,10 +82,10 @@ function formatLastActive(date: string | null): string {
   return `${diffDay}d ago`
 }
 
-export function AgentDetailPanel() {
+export function AgentQuickView() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const agentId = searchParams.get("agent")
+  const agentId = searchParams.get("view")
 
   const [agent, setAgent] = useState<AgentWithSupervisor | null>(null)
   const [activities, setActivities] = useState<AgentActivityRow[]>([])
@@ -128,7 +128,7 @@ export function AgentDetailPanel() {
 
   const handleClose = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString())
-    params.delete("agent")
+    params.delete("view")
     const newPath = params.toString()
       ? `${window.location.pathname}?${params.toString()}`
       : window.location.pathname

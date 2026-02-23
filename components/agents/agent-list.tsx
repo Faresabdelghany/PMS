@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AgentCard } from "./agent-card"
-import { AgentDetailPanel } from "./agent-detail-panel"
+import { AgentQuickView } from "./agent-detail-panel"
 import { CreateAgentDialog } from "./create-agent-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -154,7 +154,7 @@ export function AgentList({ initialAgents, organizationId }: AgentListProps) {
       )}
 
       {/* Detail panel (URL-driven) */}
-      <AgentDetailPanel />
+      <AgentQuickView />
 
       {/* Create dialog */}
       <CreateAgentDialog

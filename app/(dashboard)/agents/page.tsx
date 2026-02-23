@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Suspense } from "react"
 import { AgentsTable } from "@/components/agents/agents-table"
 import { AgentDetailPanel } from "@/components/agents/AgentDetailPanel"
+import { AgentQuickView } from "@/components/agents/agent-detail-panel"
 import { PageSkeleton } from "@/components/ui/page-skeleton"
 import { PageHeader } from "@/components/ui/page-header"
 import { getPageOrganization } from "@/lib/page-auth"
@@ -32,11 +33,9 @@ export default async function Page() {
           </Link>
         }
       />
-      <div className="p-6 flex flex-col gap-6">
-        <Suspense fallback={<PageSkeleton />}>
-          <AgentsStreamed agentsPromise={agentsPromise} orgId={orgId} />
-        </Suspense>
-      </div>
+      <Suspense fallback={<PageSkeleton />}>
+        <AgentsStreamed agentsPromise={agentsPromise} orgId={orgId} />
+      </Suspense>
     </div>
   )
 }
@@ -79,6 +78,9 @@ async function AgentsStreamed({
   return (
     <>
       <AgentsTable agents={agents} organizationId={orgId} />
+      <Suspense fallback={null}>
+        <AgentQuickView />
+      </Suspense>
       <Suspense fallback={null}>
         <AgentDetailPanel agents={agents} orgId={orgId} />
       </Suspense>

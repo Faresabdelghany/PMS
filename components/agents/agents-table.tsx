@@ -247,7 +247,7 @@ export function AgentsTable({
   }
 
   const handleQuickView = useCallback(
-    (id: string) => router.push(`?agent=${id}`, { scroll: false }),
+    (id: string) => router.push(`?view=${id}`, { scroll: false }),
     [router]
   )
 
