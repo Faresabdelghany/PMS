@@ -18,22 +18,25 @@ Telegram is temporary. PMS replaces it.
 ## Mandatory Pipeline — NO EXCEPTIONS
 
 ```
-1. Product Analyst writes PRD / creates tasks → distributes to all squads
-2. Agent builds (Frontend: Sara, Backend: Mostafa, etc.)
-3. Agent reports back to Product Analyst when done
-4. Product Analyst collects all squad outputs → reports to Ziko
-5. Ziko reviews → reports to Fares
-
-For code quality:
-2a. Omar reviews code after each agent
-2b. Hady (QA) tests → writes report to docs/reports/hady-qa-report.md
-2c. Omar signs off (only after Hady passes)
-3. Product Analyst collects sign-offs from all leads → reports to Ziko
+Specialist → Lead → Product Analyst → Ziko → Fares
 ```
 
-**Hady is NOT optional.** No sprint ships without a QA report.
-**Product Analyst is the hub.** No squad starts without an approved task from Product Analyst.
-**All agents report back to Product Analyst** when their work is done — not to Ziko directly.
+In detail:
+1. **Ziko** gives goal to **Product Analyst**
+2. **Product Analyst** breaks it down → assigns tasks to **Leads only** (Omar / Karim / Design Lead)
+3. **Each Lead** assigns to their own specialists, reviews their work, runs Hady QA, signs off
+4. **Lead** reports back to **Product Analyst** (not to Ziko)
+5. **Product Analyst** collects from all leads → writes consolidated report → reports to **Ziko**
+6. **Ziko** reviews → tells **Fares**
+
+**What is FORBIDDEN:**
+- ❌ Ziko spawning specialists directly (Sara, Mostafa, etc.)
+- ❌ Leads reporting to Ziko directly
+- ❌ Specialists reporting to anyone except their Lead
+- ❌ Any step being skipped
+
+**Hady is NOT optional.** Omar signs off only after Hady passes.
+**Product Analyst is the hub.** Nothing reaches Ziko without going through Product Analyst first.
 
 ---
 
