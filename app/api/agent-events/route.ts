@@ -116,6 +116,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: insertError.message }, { status: 500 })
   }
 
+  // ── On any event, mark org gateways as online ─────────────────────
+  // OpenClaw reaching this endpoint proves it's alive — update gateway status.
+  if (payload?.gateway_id) {
+    // If a specific gateway_id was provided, update just that one
+    await supabase
+      .from("gateways" as any)
+      .update({ status: "online", last_seen_at: new Date().toISOString() })
+      .eq("id", payload.gateway_id)
+      .eq("org_id", org_id)
+  } else {
+    // Otherwise update all gateways for this org
+    await supabase
+      .from("gateways" as any)
+      .update({ status: "online", last_seen_at: new Date().toISOString() })
+      .eq("org_id", org_id)
+  }
+
   // ── If task completed, update task status ──────────────────────────
   if (task_id && event_type === "task_completed") {
     await supabase
