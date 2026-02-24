@@ -115,7 +115,7 @@ export function TaskMessagesPanel({ taskId, orgId, userId }: TaskMessagesPanelPr
         <Textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="Add a comment..."
+          placeholder="Add a comment... Use @AgentName to notify"
           rows={2}
           className="text-sm resize-none"
           onKeyDown={(e) => {

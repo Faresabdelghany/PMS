@@ -59,7 +59,7 @@ export default async function Page() {
           </div>
         }
       >
-        <MissionControlCards pendingApprovalsPromise={pendingApprovalsPromise} />
+        <MissionControlCards pendingApprovalsPromise={pendingApprovalsPromise} orgId={orgId} />
       </Suspense>
 
       {/* Charts */}
@@ -158,8 +158,10 @@ async function Charts({
 
 async function MissionControlCards({
   pendingApprovalsPromise,
+  orgId,
 }: {
   pendingApprovalsPromise: Promise<{ data?: number }>
+  orgId: string
 }) {
   const pendingResult = await pendingApprovalsPromise
   const pendingCount = pendingResult.data ?? 0
@@ -184,8 +186,8 @@ async function MissionControlCards({
         </Card>
       </Link>
 
-      {/* Gateway Status Card */}
-      <GatewayStatusCard />
+      {/* Gateway Status Card — checks last heartbeat in agent_events */}
+      <GatewayStatusCard orgId={orgId} />
     </div>
   )
 }

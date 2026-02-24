@@ -41,6 +41,7 @@ import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText"
 import { PlugsConnected } from "@phosphor-icons/react/dist/ssr/PlugsConnected"
 import { Rows } from "@phosphor-icons/react/dist/ssr/Rows"
 import { TextT } from "@phosphor-icons/react/dist/ssr/TextT"
+import { FileText } from "@phosphor-icons/react/dist/ssr/FileText"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,7 +61,7 @@ import { cn } from "@/lib/utils"
 import { PROGRESS_THRESHOLDS, BADGE_CAP, SIDEBAR_PROJECT_LIMIT } from "@/lib/constants"
 
 // Navigation items defined inline (no mock data dependency)
-type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "agent-network" | "chat" | "activity" | "boards" | "board-groups" | "custom-fields" | "approvals" | "gateways" | "skills"
+type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "agent-network" | "chat" | "activity" | "boards" | "board-groups" | "custom-fields" | "approvals" | "gateways" | "skills" | "documents"
 type SidebarFooterItemId = "settings" | "templates" | "help"
 
 type NavItem = {
@@ -89,6 +90,7 @@ const navItems: NavItem[] = [
   { id: "approvals", label: "Approvals" },
   { id: "gateways", label: "Gateways" },
   { id: "skills", label: "Skills" },
+  { id: "documents", label: "Documents" },
   { id: "chat", label: "AI Chat" },
 ]
 
@@ -146,6 +148,7 @@ const preloadHandlers: Record<NavItemId, () => void> = {
   approvals: () => {},
   gateways: () => {},
   skills: () => {},
+  documents: () => {},
   chat: () => {
     if (typeof window !== "undefined") {
       void import("@/components/ai/chat-page-content")
@@ -180,6 +183,7 @@ const navItemIcons: Record<NavItemId, React.ComponentType<{ className?: string }
   approvals: ClipboardText,
   gateways: PlugsConnected,
   skills: Sparkle,
+  documents: FileText,
   chat: Sparkle,
 }
 
@@ -333,6 +337,7 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
     if (id === "approvals") return "/approvals"
     if (id === "gateways") return "/gateways"
     if (id === "skills") return "/skills/marketplace"
+    if (id === "documents") return "/documents"
     if (id === "chat") return "/chat"
     return "#"
   }
@@ -382,6 +387,9 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
     }
     if (id === "skills") {
       return pathname.startsWith("/skills")
+    }
+    if (id === "documents") {
+      return pathname.startsWith("/documents")
     }
     if (id === "chat") {
       return pathname.startsWith("/chat")

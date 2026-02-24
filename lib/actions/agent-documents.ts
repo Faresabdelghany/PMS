@@ -22,6 +22,16 @@ export interface AgentDocument {
     id: string
     name: string
   } | null
+  task?: {
+    id: string
+    name: string
+  } | null
+}
+
+export interface TaskSelectorOption {
+  id: string
+  title: string
+  projectName: string | null
 }
 
 // ── Queries ──────────────────────────────────────────────────────────
@@ -68,6 +78,73 @@ export async function getDocument(
   return { data: data as unknown as AgentDocument }
 }
 
+// ── Org-wide Queries ─────────────────────────────────────────────────
+
+/**
+ * Fetch all documents for an organization (across all tasks/agents).
+ * Includes agent and task joins for display.
+ */
+export async function getOrgDocuments(
+  orgId: string
+): Promise<ActionResult<AgentDocument[]>> {
+  const { supabase } = await requireAuth()
+
+  const { data, error } = await (supabase as any)
+    .from("agent_documents")
+    .select(`
+      *,
+      agent:agents(id, name),
+      task:tasks(id, name)
+    `)
+    .eq("organization_id", orgId)
+    .order("created_at", { ascending: false })
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  return { data: (data ?? []) as unknown as AgentDocument[] }
+}
+
+/**
+ * Fetch tasks for the "New Document" form task selector.
+ * Returns a lightweight list of tasks with their project names.
+ */
+export async function getTasksForSelector(
+  orgId: string
+): Promise<ActionResult<TaskSelectorOption[]>> {
+  const { supabase } = await requireAuth()
+
+  const { data, error } = await supabase
+    .from("tasks")
+    .select(`
+      id,
+      name,
+      project:projects!inner(id, name, organization_id)
+    `)
+    .eq("project.organization_id", orgId)
+    .order("name", { ascending: true })
+    .limit(500)
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  const tasks = (data ?? []) as unknown as Array<{
+    id: string
+    name: string
+    project: { id: string; name: string; organization_id: string } | null
+  }>
+
+  return {
+    data: tasks.map((t) => ({
+      id: t.id,
+      title: t.name,
+      projectName: t.project?.name ?? null,
+    })),
+  }
+}
+
 // ── Mutations ────────────────────────────────────────────────────────
 
 export async function createDocument(
@@ -94,7 +171,8 @@ export async function createDocument(
     })
     .select(`
       *,
-      agent:agents(id, name)
+      agent:agents(id, name),
+      task:tasks(id, name)
     `)
     .single()
 

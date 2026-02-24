@@ -71,6 +71,41 @@ export async function getAgentEvents(
 }
 
 /**
+ * Check gateway status by looking at the last heartbeat event.
+ * Returns online if a heartbeat was received within the last 30 minutes.
+ */
+export async function getGatewayStatus(orgId: string): Promise<{
+  status: "online" | "offline"
+  lastHeartbeat: string | null
+}> {
+  try {
+    const supabase = createAdminClient()
+
+    const { data } = await supabase
+      .from("agent_events")
+      .select("created_at")
+      .eq("organization_id", orgId)
+      .eq("event_type", "heartbeat")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (!data) return { status: "offline", lastHeartbeat: null }
+
+    const lastMs = new Date(data.created_at).getTime()
+    const agoMs = Date.now() - lastMs
+    const isOnline = agoMs < 30 * 60 * 1000 // 30 minutes
+
+    return {
+      status: isOnline ? "online" : "offline",
+      lastHeartbeat: data.created_at,
+    }
+  } catch {
+    return { status: "offline", lastHeartbeat: null }
+  }
+}
+
+/**
  * Create an agent event (used by service-role clients / API routes)
  * This uses the service client to bypass RLS — only call from trusted server code.
  */

@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { requireAuth } from "./auth-helpers"
 import { createAgentCommand } from "./agent-commands"
+import { subscribeAgentToTask } from "./task-messages"
 import { revalidatePath } from "next/cache"
 import type { ActionResult } from "./types"
 import type { TaskStatus } from "@/lib/supabase/types"
@@ -205,6 +206,9 @@ export async function dispatchTaskToAgent(
     return { error: commandResult.error }
   }
 
+  // Auto-subscribe the assigned agent to the task thread
+  await subscribeAgentToTask(orgId, taskId, agentId)
+
   revalidatePath("/tasks")
 
   return { data: { commandId: commandResult.data!.id } }
@@ -219,6 +223,13 @@ export async function assignAgentToTask(
 ): Promise<ActionResult<void>> {
   const { supabase } = await requireAuth()
 
+  // Fetch orgId for subscription (via project join)
+  const { data: taskRow } = await supabase
+    .from("tasks")
+    .select("project:projects(organization_id)")
+    .eq("id", taskId)
+    .single()
+
   const { error } = await supabase
     .from("tasks")
     .update({
@@ -229,6 +240,14 @@ export async function assignAgentToTask(
 
   if (error) {
     return { error: error.message }
+  }
+
+  // Auto-subscribe the assigned agent to the task thread
+  if (agentId) {
+    const orgId = (taskRow?.project as { organization_id?: string } | null)?.organization_id
+    if (orgId) {
+      await subscribeAgentToTask(orgId, taskId, agentId)
+    }
   }
 
   revalidatePath("/tasks")

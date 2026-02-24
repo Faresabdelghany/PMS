@@ -13,6 +13,7 @@ import { TaskDetailFields } from "./TaskDetailFields"
 import { TaskDetailDescription } from "./TaskDetailDescription"
 import { TaskTimeline } from "./TaskTimeline"
 import { TaskCommentEditor } from "./TaskCommentEditor"
+import { TaskMessagesPanel } from "./TaskMessagesPanel"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getTask, updateTask, type TaskWithRelations } from "@/lib/actions/tasks"
 import { getTaskTimeline } from "@/lib/actions/task-activities"
@@ -278,6 +279,15 @@ export function TaskDetailPanel({
                 onSave={(desc) => handleUpdateTask("description", desc)}
                 taskName={task.name}
                 projectName={task.project?.name}
+              />
+
+              <div className="h-px w-full bg-border/80" />
+
+              {/* Agent Messages */}
+              <TaskMessagesPanel
+                taskId={taskId!}
+                orgId={organizationId}
+                userId={organizationMembers.find((m) => m.profile)?.profile?.id ?? ""}
               />
 
               <div className="h-px w-full bg-border/80" />

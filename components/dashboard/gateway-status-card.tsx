@@ -1,51 +1,27 @@
-"use client"
-
-import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PlugsConnected } from "@phosphor-icons/react/dist/ssr/PlugsConnected"
+import { getGatewayStatus } from "@/lib/actions/agent-events"
 
-type GatewayStatus = "checking" | "online" | "offline"
+interface GatewayStatusCardProps {
+  orgId: string
+}
 
-export function GatewayStatusCard() {
-  const [status, setStatus] = useState<GatewayStatus>("checking")
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function check() {
-      try {
-        const res = await fetch("/api/gateway?path=/", {
-          cache: "no-store",
-          signal: AbortSignal.timeout(4000),
-        })
-        if (!cancelled) {
-          setStatus(res.ok ? "online" : "offline")
-        }
-      } catch {
-        if (!cancelled) setStatus("offline")
-      }
-    }
-
-    void check()
-    return () => { cancelled = true }
-  }, [])
+export async function GatewayStatusCard({ orgId }: GatewayStatusCardProps) {
+  const { status, lastHeartbeat } = await getGatewayStatus(orgId)
 
   const statusConfig = {
-    checking: {
-      dot: "bg-amber-400 animate-pulse",
-      label: "Checking...",
-      desc: "Pinging local gateway",
-    },
     online: {
       dot: "bg-emerald-500",
       label: "Online",
-      desc: "Gateway is reachable at localhost:18789",
+      desc: lastHeartbeat
+        ? `Last heartbeat: ${new Date(lastHeartbeat).toLocaleTimeString()}`
+        : "Gateway is active",
     },
     offline: {
       dot: "bg-red-500",
       label: "Offline",
-      desc: "Gateway not reachable — start OpenClaw",
+      desc: "No recent heartbeat — start OpenClaw",
     },
   }
 
