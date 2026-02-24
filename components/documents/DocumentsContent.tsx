@@ -1,17 +1,14 @@
 "use client"
 
-import { useState } from "react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
+import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
 import { formatDistanceToNow } from "date-fns"
-import { Plus, FileText, X } from "@phosphor-icons/react"
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
+import { FileText } from "@phosphor-icons/react/dist/ssr/FileText"
+import { X } from "@phosphor-icons/react/dist/ssr/X"
 import { PageHeader } from "@/components/ui/page-header"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Sheet,
@@ -20,37 +17,20 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { QuickCreateModalLayout } from "@/components/QuickCreateModalLayout"
+import { ProjectDescriptionEditorLazy as ProjectDescriptionEditor } from "@/components/project-wizard/ProjectDescriptionEditorLazy"
 import {
   createDocument,
   type AgentDocument,
   type DocType,
   type TaskSelectorOption,
 } from "@/lib/actions/agent-documents"
-
-// ── Schema ────────────────────────────────────────────────────────────
-
-const newDocSchema = z.object({
-  title: z.string().min(1, "Title is required").max(255, "Title is too long"),
-  doc_type: z.enum(["deliverable", "research", "protocol", "draft", "report"] as const),
-  task_id: z.string().optional(),
-  content: z.string().min(1, "Content is required"),
-})
-
-type NewDocFormValues = z.infer<typeof newDocSchema>
 
 // ── Badge styles by type ───────────────────────────────────────────────
 
@@ -90,16 +70,13 @@ export function DocumentsContent({
   const [detailOpen, setDetailOpen] = useState(false)
   const [newDocOpen, setNewDocOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
 
-  const form = useForm<NewDocFormValues>({
-    resolver: zodResolver(newDocSchema),
-    defaultValues: {
-      title: "",
-      doc_type: "deliverable",
-      task_id: undefined,
-      content: "",
-    },
-  })
+  // ── New document form state (matches AddFileModal pattern) ──────────
+  const [title, setTitle] = useState("")
+  const [description, setDescription] = useState<string | undefined>(undefined)
+  const [docType, setDocType] = useState<DocType>("deliverable")
+  const [taskId, setTaskId] = useState<string>("__none__")
 
   function handleRowClick(doc: AgentDocument) {
     setSelectedDoc(doc)
@@ -107,18 +84,24 @@ export function DocumentsContent({
   }
 
   function handleNewDocOpen() {
-    form.reset()
+    setTitle("")
+    setDescription(undefined)
+    setDocType("deliverable")
+    setTaskId("__none__")
+    setIsExpanded(false)
     setNewDocOpen(true)
   }
 
-  async function onSubmit(values: NewDocFormValues) {
+  const handleCreateDocument = useCallback(async () => {
+    if (!title.trim() || isSubmitting) return
+
     setIsSubmitting(true)
     try {
       const result = await createDocument(organizationId, {
-        title: values.title,
-        docType: values.doc_type as DocType,
-        taskId: values.task_id && values.task_id !== "__none__" ? values.task_id : null,
-        content: values.content,
+        title: title.trim(),
+        docType,
+        taskId: taskId !== "__none__" ? taskId : null,
+        content: description || "",
       })
 
       if (result.error) {
@@ -127,8 +110,7 @@ export function DocumentsContent({
       }
 
       if (result.data) {
-        // Find task info for optimistic update
-        const linkedTask = tasks.find((t) => t.id === values.task_id)
+        const linkedTask = tasks.find((t) => t.id === taskId)
         const newDoc: AgentDocument = {
           ...result.data,
           task: linkedTask
@@ -136,14 +118,13 @@ export function DocumentsContent({
             : null,
         }
         setDocuments((prev) => [newDoc, ...prev])
-        toast.success("Document created successfully")
+        toast.success("Document created")
         setNewDocOpen(false)
-        form.reset()
       }
     } finally {
       setIsSubmitting(false)
     }
-  }
+  }, [title, description, docType, taskId, organizationId, tasks, isSubmitting])
 
   return (
     <div className="flex flex-1 flex-col bg-background mx-2 my-2 border border-border rounded-lg min-w-0">
@@ -277,124 +258,84 @@ export function DocumentsContent({
         </SheetContent>
       </Sheet>
 
-      {/* ── New Document Sheet ────────────────────────────────────────── */}
-      <Sheet open={newDocOpen} onOpenChange={setNewDocOpen}>
-        <SheetContent side="right" className="w-full max-w-xl flex flex-col gap-0 p-0">
-          <SheetHeader className="px-6 py-4 border-b border-border">
-            <SheetTitle>New Document</SheetTitle>
-          </SheetHeader>
-
-          <ScrollArea className="flex-1">
-            <div className="px-6 py-4">
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-                  {/* Title */}
-                  <FormField
-                    control={form.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Title</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Document title…" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Type */}
-                  <FormField
-                    control={form.control}
-                    name="doc_type"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="deliverable">Deliverable</SelectItem>
-                            <SelectItem value="research">Research</SelectItem>
-                            <SelectItem value="protocol">Protocol</SelectItem>
-                            <SelectItem value="draft">Draft</SelectItem>
-                            <SelectItem value="report">Report</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Task selector */}
-                  <FormField
-                    control={form.control}
-                    name="task_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Linked Task (optional)</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value ?? "__none__"}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a task…" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="__none__">No task</SelectItem>
-                            {tasks.map((task) => (
-                              <SelectItem key={task.id} value={task.id}>
-                                {task.title}
-                                {task.projectName ? ` — ${task.projectName}` : ""}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Content */}
-                  <FormField
-                    control={form.control}
-                    name="content"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Content</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Write document content (markdown supported)…"
-                            className="min-h-[200px] font-mono text-sm"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Submit */}
-                  <div className="flex gap-3 pt-2">
-                    <Button type="submit" disabled={isSubmitting} className="flex-1">
-                      {isSubmitting ? "Creating…" : "Create Document"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setNewDocOpen(false)}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </form>
-              </Form>
+      {/* ── New Document Modal (same style as AddFileModal) ──────────── */}
+      <QuickCreateModalLayout
+        open={newDocOpen}
+        onClose={() => setNewDocOpen(false)}
+        isDescriptionExpanded={isExpanded}
+        onSubmitShortcut={handleCreateDocument}
+      >
+        {/* Title + close button */}
+        <div className="flex items-center justify-between gap-2 w-full shrink-0 mt-1">
+          <div className="flex flex-col gap-2 flex-1">
+            <div className="flex gap-1 h-10 items-center w-full">
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Document title"
+                className="w-full font-normal leading-7 text-foreground placeholder:text-muted-foreground text-xl outline-none bg-transparent border-none p-0"
+                autoComplete="off"
+              />
             </div>
-          </ScrollArea>
-        </SheetContent>
-      </Sheet>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="h-8 w-8 rounded-full opacity-70 hover:opacity-100"
+            onClick={() => setNewDocOpen(false)}
+          >
+            <X className="h-4 w-4 text-muted-foreground" />
+          </Button>
+        </div>
+
+        {/* Rich text editor for content */}
+        <ProjectDescriptionEditor
+          value={description}
+          onChange={setDescription}
+          onExpandChange={setIsExpanded}
+          placeholder="Write document content..."
+          showTemplates={false}
+        />
+
+        {/* Bottom bar: type + task selectors + create button */}
+        <div className="flex items-center justify-between mt-auto w-full pt-4 shrink-0">
+          <div className="flex items-center gap-2">
+            <Select value={docType} onValueChange={(v) => setDocType(v as DocType)}>
+              <SelectTrigger className="h-8 w-[130px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="deliverable">Deliverable</SelectItem>
+                <SelectItem value="research">Research</SelectItem>
+                <SelectItem value="protocol">Protocol</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="report">Report</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={taskId} onValueChange={setTaskId}>
+              <SelectTrigger className="h-8 w-[180px] text-xs">
+                <SelectValue placeholder="Link to task…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">No task</SelectItem>
+                {tasks.map((task) => (
+                  <SelectItem key={task.id} value={task.id}>
+                    {task.title}
+                    {task.projectName ? ` — ${task.projectName}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button size="sm" onClick={handleCreateDocument} disabled={!title.trim() || isSubmitting}>
+            {isSubmitting ? "Creating..." : "Create document"}
+          </Button>
+        </div>
+      </QuickCreateModalLayout>
     </div>
   )
 }
