@@ -1,16 +1,17 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Spinner } from "@phosphor-icons/react/dist/ssr/Spinner"
 import { Eye } from "@phosphor-icons/react/dist/ssr/Eye"
 import { EyeClosed } from "@phosphor-icons/react/dist/ssr/EyeClosed"
-import { CheckCircle } from "@phosphor-icons/react/dist/ssr/CheckCircle"
-import { XCircle } from "@phosphor-icons/react/dist/ssr/XCircle"
-import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
+import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
+import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
 import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
+import { Star } from "@phosphor-icons/react/dist/ssr/Star"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge"
 import {
   Select,
   SelectContent,
@@ -18,155 +19,145 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { SettingsPaneHeader, SettingSection, SettingRow } from "../setting-primitives"
+import { SettingsPaneHeader } from "../setting-primitives"
+import { AI_MODELS, AI_PROVIDERS } from "@/lib/constants/ai"
 import {
-  getAISettings,
-  saveAISettings,
-  saveAIApiKey,
-  deleteAIApiKey,
-  getMaskedApiKey,
-} from "@/lib/actions/user-settings"
-import { AI_MODELS, AI_PROVIDERS, type AIProvider } from "@/lib/constants/ai"
-import { testAIConnection } from "@/lib/actions/ai"
-import { UI_TOAST_TIMEOUT } from "@/lib/constants"
+  getUserModels,
+  createUserModel,
+  updateUserModel,
+  deleteUserModel,
+  setDefaultModel,
+  type UserModel,
+} from "@/lib/actions/user-models"
+import { useOrganization } from "@/hooks/use-organization"
+
+function maskApiKey(key: string | null): string {
+  if (!key) return "—"
+  if (key.length <= 8) return "••••••••"
+  return "••••••••" + key.slice(-4)
+}
+
+interface ModelFormData {
+  display_name: string
+  provider: string
+  model_id: string
+  api_key: string
+  is_default: boolean
+}
+
+const emptyForm: ModelFormData = {
+  display_name: "",
+  provider: "",
+  model_id: "",
+  api_key: "",
+  is_default: false,
+}
 
 export function AgentsPane() {
+  const { organization } = useOrganization()
+  const orgId = organization?.id ?? ""
+  const [models, setModels] = useState<UserModel[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-  const [isTesting, setIsTesting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
 
   // Form state
-  const [provider, setProvider] = useState<AIProvider>(null)
-  const [model, setModel] = useState<string>("")
-  const [apiKey, setApiKey] = useState("")
-  const [maskedKey, setMaskedKey] = useState<string | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [form, setForm] = useState<ModelFormData>(emptyForm)
   const [showApiKey, setShowApiKey] = useState(false)
 
-  // Test result
-  const [testResult, setTestResult] = useState<{
-    success: boolean
-    model?: string
-    error?: string
-  } | null>(null)
+  const loadModels = useCallback(async () => {
+    if (!orgId) return
+    setIsLoading(true)
+    const result = await getUserModels(orgId)
+    if (result.data) setModels(result.data)
+    if (result.error) setError(result.error)
+    setIsLoading(false)
+  }, [orgId])
 
-  // Load settings on mount
   useEffect(() => {
-    async function loadSettings() {
-      setIsLoading(true)
-      try {
-        const [settingsResult, maskedResult] = await Promise.all([
-          getAISettings(),
-          getMaskedApiKey(),
-        ])
+    loadModels()
+  }, [loadModels])
 
-        if (settingsResult.data) {
-          setProvider(settingsResult.data.ai_provider)
-          setModel(settingsResult.data.ai_model_preference || "")
-        }
-
-        if (maskedResult.data) {
-          setMaskedKey(maskedResult.data)
-        }
-      } catch {
-        setError("Failed to load settings")
-      }
-      setIsLoading(false)
-    }
-
-    loadSettings()
-  }, [])
-
-  // Update model when provider changes
-  const prevProviderRef = useRef(provider)
-  useEffect(() => {
-    if (prevProviderRef.current !== provider) {
-      prevProviderRef.current = provider
-      if (provider && AI_MODELS[provider]) {
-        setModel(AI_MODELS[provider][0].value)
-      } else {
-        setModel("")
-      }
-    }
-  }, [provider])
-
-  async function handleSaveSettings(e: React.FormEvent) {
-    e.preventDefault()
-    setIsSaving(true)
-    setError(null)
-    setSuccess(null)
-    setTestResult(null)
-
-    try {
-      const settingsResult = await saveAISettings({
-        ai_provider: provider,
-        ai_model_preference: model,
-      })
-
-      if (settingsResult.error) {
-        setError(settingsResult.error)
-        setIsSaving(false)
-        return
-      }
-
-      if (apiKey.trim()) {
-        const keyResult = await saveAIApiKey(apiKey.trim())
-        if (keyResult.error) {
-          setError(keyResult.error)
-          setIsSaving(false)
-          return
-        }
-        setApiKey("")
-        const maskedResult = await getMaskedApiKey()
-        if (maskedResult.data) {
-          setMaskedKey(maskedResult.data)
-        }
-      }
-
-      setSuccess("Settings saved successfully")
-      setTimeout(() => setSuccess(null), UI_TOAST_TIMEOUT)
-    } catch {
-      setError("Failed to save settings")
-    }
-
-    setIsSaving(false)
+  const handleAdd = () => {
+    setEditingId(null)
+    setForm(emptyForm)
+    setShowForm(true)
+    setShowApiKey(false)
   }
 
-  async function handleDeleteApiKey() {
-    if (!confirm("Are you sure you want to delete your API key?")) return
+  const handleEdit = (model: UserModel) => {
+    setEditingId(model.id)
+    setForm({
+      display_name: model.display_name,
+      provider: model.provider,
+      model_id: model.model_id,
+      api_key: "",
+      is_default: model.is_default,
+    })
+    setShowForm(true)
+    setShowApiKey(false)
+  }
 
+  const handleCancel = () => {
+    setShowForm(false)
+    setEditingId(null)
+    setForm(emptyForm)
+    setError(null)
+  }
+
+  const handleSave = async () => {
+    if (!form.display_name.trim() || !form.provider || !form.model_id) {
+      setError("Display name, provider, and model are required.")
+      return
+    }
     setIsSaving(true)
     setError(null)
 
-    const result = await deleteAIApiKey()
+    const payload = {
+      organization_id: orgId,
+      display_name: form.display_name.trim(),
+      provider: form.provider,
+      model_id: form.model_id,
+      api_key_encrypted: form.api_key.trim() || undefined,
+      is_default: form.is_default,
+    }
+
+    let result
+    if (editingId) {
+      result = await updateUserModel(editingId, payload)
+    } else {
+      result = await createUserModel(payload)
+    }
 
     if (result.error) {
       setError(result.error)
     } else {
-      setMaskedKey(null)
-      setSuccess("API key deleted")
-      setTimeout(() => setSuccess(null), UI_TOAST_TIMEOUT)
+      handleCancel()
+      await loadModels()
     }
-
     setIsSaving(false)
   }
 
-  async function handleTestConnection() {
-    setIsTesting(true)
-    setError(null)
-    setTestResult(null)
-
-    const result = await testAIConnection()
-
-    if (result.error) {
-      setTestResult({ success: false, error: result.error })
-    } else if (result.data) {
-      setTestResult({ success: result.data.success, model: result.data.model })
-    }
-
-    setIsTesting(false)
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this model configuration?")) return
+    setIsSaving(true)
+    const result = await deleteUserModel(id)
+    if (result.error) setError(result.error)
+    else await loadModels()
+    setIsSaving(false)
   }
+
+  const handleSetDefault = async (id: string) => {
+    setIsSaving(true)
+    const result = await setDefaultModel(id, orgId)
+    if (result.error) setError(result.error)
+    else await loadModels()
+    setIsSaving(false)
+  }
+
+  const providerModels = form.provider ? AI_MODELS[form.provider] || [] : []
 
   if (isLoading) {
     return (
@@ -176,65 +167,166 @@ export function AgentsPane() {
     )
   }
 
-  const models = provider ? AI_MODELS[provider] || [] : []
-
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <SettingsPaneHeader
-        title="Agents"
-        description="Configure your AI provider and API key. Your key is stored securely and never shared."
+        title="Models"
+        description="Manage AI models available to your agents."
       />
 
       {error && (
-        <div className="rounded-lg bg-destructive/10 p-4 text-destructive text-sm">{error}</div>
+        <div className="rounded-lg bg-destructive/10 p-3 text-destructive text-sm">{error}</div>
       )}
 
-      {success && (
-        <div className="rounded-lg bg-green-500/10 p-4 text-green-600 text-sm">{success}</div>
-      )}
+      {/* Model list */}
+      <div className="space-y-3">
+        {models.map((model) => (
+          <div
+            key={model.id}
+            className={`flex items-center justify-between rounded-lg border p-4 ${
+              model.is_default ? "border-primary/50 bg-primary/5" : "border-border"
+            }`}
+          >
+            <div className="flex flex-col gap-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-sm truncate">{model.display_name}</span>
+                {model.is_default && (
+                  <Badge variant="secondary" className="text-xs">Default</Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Badge variant="outline" className="text-xs font-normal">
+                  {AI_PROVIDERS[model.provider]?.name ?? model.provider}
+                </Badge>
+                <span>{model.model_id}</span>
+                <span className="text-muted-foreground/60">
+                  {maskApiKey(model.api_key_encrypted)}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              {!model.is_default && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => handleSetDefault(model.id)}
+                  disabled={isSaving}
+                  title="Set as default"
+                >
+                  <Star className="h-4 w-4" />
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => handleEdit(model)}
+                disabled={isSaving}
+              >
+                <PencilSimple className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-destructive hover:text-destructive"
+                onClick={() => handleDelete(model.id)}
+                disabled={isSaving}
+              >
+                <Trash className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        ))}
 
-      <form onSubmit={handleSaveSettings} className="space-y-6">
-        <SettingSection title="Provider Configuration">
-          <SettingRow label="AI Provider" description="Choose your AI provider.">
-            <Select value={provider || ""} onValueChange={(v) => setProvider(v as AIProvider)}>
-              <SelectTrigger className="h-9 text-sm">
-                <SelectValue placeholder="Select a provider" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(AI_PROVIDERS).map(([key, { name }]) => (
-                  <SelectItem key={key} value={key}>
-                    {name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </SettingRow>
+        {models.length === 0 && !showForm && (
+          <div className="text-center py-8 text-muted-foreground text-sm">
+            No models configured yet. Add one to get started.
+          </div>
+        )}
+      </div>
 
-          {provider && (
-            <SettingRow label="Model" description="Select the model to use.">
-              <Select value={model} onValueChange={setModel}>
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder="Select a model" />
-                </SelectTrigger>
-                <SelectContent>
-                  {models.map((m) => (
-                    <SelectItem key={m.value} value={m.value}>
-                      {m.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </SettingRow>
-          )}
+      {/* Add/Edit form */}
+      {showForm && (
+        <div className="rounded-lg border border-border p-4 space-y-4 bg-muted/30">
+          <h3 className="text-sm font-semibold">
+            {editingId ? "Edit Model" : "Add Model"}
+          </h3>
 
-          <SettingRow label="API Key" description={maskedKey ? `Current: ${maskedKey}` : "Enter your API key"}>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
+          <div className="grid gap-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                Display Name
+              </label>
+              <Input
+                value={form.display_name}
+                onChange={(e) => setForm({ ...form, display_name: e.target.value })}
+                placeholder='e.g. "Fast Claude", "GPT for Tasks"'
+                className="h-9 text-sm"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                  Provider
+                </label>
+                <Select
+                  value={form.provider}
+                  onValueChange={(v) =>
+                    setForm({
+                      ...form,
+                      provider: v,
+                      model_id: AI_MODELS[v]?.[0]?.value ?? "",
+                    })
+                  }
+                >
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder="Select provider" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(AI_PROVIDERS).map(([key, { name }]) => (
+                      <SelectItem key={key} value={key}>
+                        {name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                  Model
+                </label>
+                <Select
+                  value={form.model_id}
+                  onValueChange={(v) => setForm({ ...form, model_id: v })}
+                  disabled={!form.provider}
+                >
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder="Select model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {providerModels.map((m) => (
+                      <SelectItem key={m.value} value={m.value}>
+                        {m.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                API Key {editingId && "(leave blank to keep current)"}
+              </label>
+              <div className="relative">
                 <Input
                   type={showApiKey ? "text" : "password"}
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder={maskedKey || "Enter your API key"}
+                  value={form.api_key}
+                  onChange={(e) => setForm({ ...form, api_key: e.target.value })}
+                  placeholder="Enter API key"
                   className="pr-10 h-9 text-sm"
                 />
                 <Button
@@ -244,127 +336,49 @@ export function AgentsPane() {
                   className="absolute right-0 top-0 h-full px-3"
                   onClick={() => setShowApiKey(!showApiKey)}
                 >
-                  {showApiKey ? <EyeClosed className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showApiKey ? (
+                    <EyeClosed className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
-              {maskedKey && (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleDeleteApiKey}
-                  disabled={isSaving}
-                >
-                  <Trash className="h-4 w-4" />
-                </Button>
-              )}
             </div>
-          </SettingRow>
-        </SettingSection>
 
-        <Button type="submit" disabled={isSaving || !provider}>
-          {isSaving && <Spinner className="mr-2 h-4 w-4 animate-spin" />}
-          Save Settings
-        </Button>
-      </form>
-
-      <Separator />
-
-      <SettingSection title="Test Connection" description="Verify your AI configuration is working correctly.">
-        <div className="space-y-4">
-          <Button
-            onClick={handleTestConnection}
-            disabled={isTesting || !provider || !maskedKey}
-            variant="outline"
-          >
-            {isTesting && <Spinner className="mr-2 h-4 w-4 animate-spin" />}
-            Test AI Connection
-          </Button>
-
-          {testResult && (
-            <div
-              className={`rounded-lg p-4 flex items-center gap-3 ${
-                testResult.success
-                  ? "bg-green-500/10 text-green-600"
-                  : "bg-destructive/10 text-destructive"
-              }`}
-            >
-              {testResult.success ? (
-                <>
-                  <CheckCircle className="h-5 w-5" weight="fill" />
-                  <div>
-                    <p className="font-medium">Connection successful!</p>
-                    <p className="text-sm opacity-80">Model: {testResult.model}</p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <XCircle className="h-5 w-5" weight="fill" />
-                  <div>
-                    <p className="font-medium">Connection failed</p>
-                    <p className="text-sm opacity-80">{testResult.error}</p>
-                  </div>
-                </>
-              )}
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="is_default"
+                checked={form.is_default}
+                onCheckedChange={(checked) =>
+                  setForm({ ...form, is_default: checked === true })
+                }
+              />
+              <label htmlFor="is_default" className="text-sm">
+                Set as default model
+              </label>
             </div>
-          )}
+          </div>
 
-          {!provider && (
-            <p className="text-sm text-muted-foreground">
-              Select a provider and save your settings to test the connection.
-            </p>
-          )}
-          {provider && !maskedKey && (
-            <p className="text-sm text-muted-foreground">
-              Enter your API key and save settings to test the connection.
-            </p>
-          )}
+          <div className="flex gap-2">
+            <Button onClick={handleSave} disabled={isSaving} size="sm">
+              {isSaving && <Spinner className="mr-2 h-4 w-4 animate-spin" />}
+              {editingId ? "Update" : "Save"}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleCancel} disabled={isSaving}>
+              Cancel
+            </Button>
+          </div>
         </div>
-      </SettingSection>
+      )}
 
-      <Separator />
+      {!showForm && (
+        <Button onClick={handleAdd} variant="outline" size="sm">
+          <Plus className="h-4 w-4 mr-2" />
+          Add Model
+        </Button>
+      )}
 
-      <SettingSection title="AI-Powered Features" description="Once configured, you'll have access to these AI features:">
-        <ul className="space-y-3">
-          <li className="flex items-start gap-3">
-            <Sparkle className="h-5 w-5 text-primary mt-0.5" weight="fill" />
-            <div>
-              <p className="font-medium">Generate Project Descriptions</p>
-              <p className="text-sm text-muted-foreground">
-                Create professional project descriptions from basic information.
-              </p>
-            </div>
-          </li>
-          <li className="flex items-start gap-3">
-            <Sparkle className="h-5 w-5 text-primary mt-0.5" weight="fill" />
-            <div>
-              <p className="font-medium">Smart Task Generation</p>
-              <p className="text-sm text-muted-foreground">
-                Automatically generate relevant tasks for your projects.
-              </p>
-            </div>
-          </li>
-          <li className="flex items-start gap-3">
-            <Sparkle className="h-5 w-5 text-primary mt-0.5" weight="fill" />
-            <div>
-              <p className="font-medium">Note Summarization</p>
-              <p className="text-sm text-muted-foreground">
-                Get AI summaries of your meeting notes and project updates.
-              </p>
-            </div>
-          </li>
-          <li className="flex items-start gap-3">
-            <Sparkle className="h-5 w-5 text-primary mt-0.5" weight="fill" />
-            <div>
-              <p className="font-medium">Voice Transcription Enhancement</p>
-              <p className="text-sm text-muted-foreground">
-                Clean up and format voice transcriptions into structured notes.
-              </p>
-            </div>
-          </li>
-        </ul>
-      </SettingSection>
-
+      {/* Help text */}
       <div className="rounded-lg bg-muted p-4 text-sm space-y-2">
         <p className="font-medium">Where to get API keys:</p>
         <ul className="list-disc list-inside space-y-1 text-muted-foreground">

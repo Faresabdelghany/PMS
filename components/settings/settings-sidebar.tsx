@@ -8,7 +8,7 @@ import { ShieldCheck } from "@phosphor-icons/react/dist/ssr/ShieldCheck"
 import { SquaresFour } from "@phosphor-icons/react/dist/ssr/SquaresFour"
 import { CreditCard } from "@phosphor-icons/react/dist/ssr/CreditCard"
 import { UploadSimple } from "@phosphor-icons/react/dist/ssr/UploadSimple"
-import { Robot } from "@phosphor-icons/react/dist/ssr/Robot"
+import { Brain } from "@phosphor-icons/react/dist/ssr/Brain"
 import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 import { Tag } from "@phosphor-icons/react/dist/ssr/Tag"
 import { Bookmark } from "@phosphor-icons/react/dist/ssr/Bookmark"
@@ -55,7 +55,7 @@ const settingsSections = [
     id: "ai",
     label: "AI",
     items: [
-      { id: "agents" as const, label: "Agents" },
+      { id: "agents" as const, label: "Models" },
       { id: "skills" as const, label: "Skills" },
     ],
   },
@@ -72,7 +72,7 @@ const settingsItemIcons: Record<SettingsItemId, React.ComponentType<{ className?
   labels: Bookmark,
   billing: CreditCard,
   import: UploadSimple,
-  agents: Robot,
+  agents: Brain,
   skills: Sparkle,
 }
 
