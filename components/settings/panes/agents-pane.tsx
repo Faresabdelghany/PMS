@@ -30,6 +30,12 @@ import {
   type UserModel,
 } from "@/lib/actions/user-models"
 import { useOrganization } from "@/hooks/use-organization"
+import { Separator } from "@/components/ui/separator"
+import {
+  getModelAssignments,
+  upsertModelAssignment,
+  type ModelAssignment,
+} from "@/lib/actions/model-assignments"
 
 function maskApiKey(key: string | null): string {
   if (!key) return "—"
@@ -53,6 +59,16 @@ const emptyForm: ModelFormData = {
   is_default: false,
 }
 
+const USE_CASES = [
+  { key: "heartbeat_crons", label: "Heartbeat Crons", description: "Model for agent heartbeat checks (every 15 min). Recommend: free/cheap model." },
+  { key: "daily_standup", label: "Daily Standup", description: "Model for generating the daily standup summary (runs at 10 PM)." },
+  { key: "sub_agent_default", label: "Sub-Agent Default", description: "Default model when spawning sub-agents for tasks." },
+  { key: "ai_chat", label: "AI Chat", description: "Model for the in-app AI chat assistant." },
+  { key: "task_generation", label: "Task Generation", description: "Model for smart task generation from project descriptions." },
+  { key: "note_summarization", label: "Note Summarization", description: "Model for summarizing meeting notes and updates." },
+  { key: "project_description", label: "Project Descriptions", description: "Model for generating project descriptions." },
+] as const
+
 export function AgentsPane() {
   const { organization } = useOrganization()
   const orgId = organization?.id ?? ""
@@ -61,11 +77,31 @@ export function AgentsPane() {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Model assignments state
+  const [assignments, setAssignments] = useState<ModelAssignment[]>([])
+
   // Form state
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<ModelFormData>(emptyForm)
   const [showApiKey, setShowApiKey] = useState(false)
+
+  const loadAssignments = useCallback(async () => {
+    if (!orgId) return
+    const result = await getModelAssignments(orgId)
+    if (result.data) setAssignments(result.data)
+  }, [orgId])
+
+  const handleAssignmentChange = async (useCase: string, userModelId: string) => {
+    if (!orgId) return
+    const modelId = userModelId === "__none__" ? null : userModelId
+    const result = await upsertModelAssignment(orgId, useCase, modelId)
+    if (result.error) {
+      setError(result.error)
+    } else {
+      await loadAssignments()
+    }
+  }
 
   const loadModels = useCallback(async () => {
     if (!orgId) return
@@ -78,7 +114,8 @@ export function AgentsPane() {
 
   useEffect(() => {
     loadModels()
-  }, [loadModels])
+    loadAssignments()
+  }, [loadModels, loadAssignments])
 
   const handleAdd = () => {
     setEditingId(null)
@@ -377,6 +414,44 @@ export function AgentsPane() {
           Add Model
         </Button>
       )}
+
+      {/* Model Assignments */}
+      <Separator />
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold">Model Assignments</h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            Assign which model to use for each system function.
+          </p>
+        </div>
+        {USE_CASES.map((uc) => {
+          const current = assignments.find((a) => a.use_case === uc.key)
+          return (
+            <div key={uc.key} className="flex items-start justify-between gap-4">
+              <div className="flex flex-col gap-0.5 min-w-0">
+                <span className="text-sm font-medium">{uc.label}</span>
+                <span className="text-xs text-muted-foreground">{uc.description}</span>
+              </div>
+              <Select
+                value={current?.user_model_id ?? "__none__"}
+                onValueChange={(v) => handleAssignmentChange(uc.key, v)}
+              >
+                <SelectTrigger className="h-9 w-[220px] shrink-0 text-sm">
+                  <SelectValue placeholder="Not set" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Not set</SelectItem>
+                  {models.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.display_name} ({m.provider}/{m.model_id})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )
+        })}
+      </div>
 
       {/* Help text */}
       <div className="rounded-lg bg-muted p-4 text-sm space-y-2">

@@ -24,6 +24,7 @@ const BillingPane = lazy(() => import(/* webpackChunkName: "settings-billing" */
 const ImportPane = lazy(() => import(/* webpackChunkName: "settings-import" */ "./panes/import-pane").then(m => ({ default: m.ImportPane })))
 const AgentsPane = lazy(() => import(/* webpackChunkName: "settings-agents" */ "./panes/agents-pane").then(m => ({ default: m.AgentsPane })))
 const SkillsPane = lazy(() => import(/* webpackChunkName: "settings-skills" */ "./panes/skills-pane").then(m => ({ default: m.SkillsPane })))
+const ModelAssignmentsPane = lazy(() => import(/* webpackChunkName: "settings-model-assignments" */ "./panes/model-assignments-pane").then(m => ({ default: m.ModelAssignmentsPane })))
 const LabelsSettings = lazy(() => import(/* webpackChunkName: "settings-labels" */ "./labels-settings").then(m => ({ default: m.LabelsSettings })))
 
 // Loading skeleton for settings panes
@@ -83,6 +84,8 @@ export function SettingsDialog({ open, onOpenChange, initialSection = "account" 
         return <ImportPane />
       case "agents":
         return <AgentsPane />
+      case "model-assignments":
+        return <ModelAssignmentsPane />
       case "skills":
         return <SkillsPane />
       default:

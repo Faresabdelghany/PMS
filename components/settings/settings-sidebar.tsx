@@ -10,6 +10,7 @@ import { CreditCard } from "@phosphor-icons/react/dist/ssr/CreditCard"
 import { UploadSimple } from "@phosphor-icons/react/dist/ssr/UploadSimple"
 import { Brain } from "@phosphor-icons/react/dist/ssr/Brain"
 import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
+import { Sliders } from "@phosphor-icons/react/dist/ssr/Sliders"
 import { Tag } from "@phosphor-icons/react/dist/ssr/Tag"
 import { Bookmark } from "@phosphor-icons/react/dist/ssr/Bookmark"
 import { cn } from "@/lib/utils"
@@ -26,6 +27,7 @@ export type SettingsItemId =
   | "billing"
   | "import"
   | "agents"
+  | "model-assignments"
   | "skills"
 
 const settingsSections = [
@@ -56,6 +58,7 @@ const settingsSections = [
     label: "AI",
     items: [
       { id: "agents" as const, label: "Models" },
+      { id: "model-assignments" as const, label: "Model Assignments" },
       { id: "skills" as const, label: "Skills" },
     ],
   },
@@ -73,6 +76,7 @@ const settingsItemIcons: Record<SettingsItemId, React.ComponentType<{ className?
   billing: CreditCard,
   import: UploadSimple,
   agents: Brain,
+  "model-assignments": Sliders,
   skills: Sparkle,
 }
 
