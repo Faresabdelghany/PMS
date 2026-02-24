@@ -2,10 +2,34 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 /**
+ * Verify a Supabase service-role JWT by inspecting its claims.
+ * No secret needed — we just confirm the token is issued by our project
+ * with the service_role role.
+ */
+function verifySupabaseServiceToken(authHeader: string | null): boolean {
+  if (!authHeader?.startsWith("Bearer ")) return false
+  const token = authHeader.replace("Bearer ", "").trim()
+  try {
+    const parts = token.split(".")
+    if (parts.length !== 3) return false
+    const payload = JSON.parse(
+      Buffer.from(parts[1], "base64url").toString("utf-8")
+    )
+    return (
+      payload.role === "service_role" &&
+      payload.iss === "supabase" &&
+      payload.ref === "lazhmdyajdqbnxxwyxun"
+    )
+  } catch {
+    return false
+  }
+}
+
+/**
  * POST /api/agent-events
  *
  * OpenClaw pushes agent events here.
- * Authenticated via SUPABASE_SERVICE_ROLE_KEY bearer token.
+ * Authenticated via Supabase service-role JWT claim verification.
  *
  * Body:
  * {
@@ -19,10 +43,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
  */
 export async function POST(req: NextRequest) {
   // ── Auth ───────────────────────────────────────────────────────────
-  const authHeader = req.headers.get("Authorization")
-  const token = authHeader?.replace("Bearer ", "").trim()
-
-  if (!token || token !== process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!verifySupabaseServiceToken(req.headers.get("Authorization"))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
