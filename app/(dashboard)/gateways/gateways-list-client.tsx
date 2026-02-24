@@ -63,41 +63,34 @@ export function GatewaysListClient({ gateways: initialGateways }: GatewaysListCl
   const [gateways, setGateways] = useState<GatewayWithChecked[]>(initialGateways)
   const [deleteTarget, setDeleteTarget] = useState<Gateway | null>(null)
 
-  const checkGatewayHealth = useCallback(async (gateway: GatewayWithChecked) => {
+  // Poll gateway status from DB every 30 seconds (not URL ping — that fails for local gateways on Vercel)
+  const refreshFromDb = useCallback(async () => {
+    if (gateways.length === 0) return
+    const orgId = gateways[0].org_id
     try {
-      const encodedUrl = encodeURIComponent(gateway.url)
-      const res = await fetch(`/api/gateway?url=${encodedUrl}&path=/`, { signal: AbortSignal.timeout(8000) })
-      const newStatus: Gateway["status"] = res.ok ? "online" : "offline"
-      setGateways((prev) =>
-        prev.map((g) =>
-          g.id === gateway.id
-            ? { ...g, status: newStatus, _lastChecked: new Date() }
-            : g
+      const { createClient } = await import("@/lib/supabase/client")
+      const supabase = createClient()
+      const { data } = await supabase
+        .from("gateways" as any)
+        .select("id, status, last_seen_at")
+        .eq("org_id", orgId)
+      if (data) {
+        const statusMap = new Map((data as any[]).map((r) => [r.id, r]))
+        setGateways((prev) =>
+          prev.map((g) => {
+            const fresh = statusMap.get(g.id)
+            return fresh
+              ? { ...g, status: fresh.status, last_seen_at: fresh.last_seen_at, _lastChecked: new Date() }
+              : g
+          })
         )
-      )
-    } catch {
-      setGateways((prev) =>
-        prev.map((g) =>
-          g.id === gateway.id
-            ? { ...g, status: "offline" as const, _lastChecked: new Date() }
-            : g
-        )
-      )
-    }
-  }, [])
+      }
+    } catch { /* ignore */ }
+  }, [gateways])
 
-  // Poll all gateways every 30 seconds
   useEffect(() => {
-    // Initial check
-    gateways.forEach(checkGatewayHealth)
-
-    const interval = setInterval(() => {
-      setGateways((prev) => {
-        prev.forEach(checkGatewayHealth)
-        return prev
-      })
-    }, 30_000)
-
+    refreshFromDb()
+    const interval = setInterval(refreshFromDb, 30_000)
     return () => clearInterval(interval)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

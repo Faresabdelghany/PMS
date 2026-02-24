@@ -133,6 +133,18 @@ export async function POST(req: NextRequest) {
       .eq("org_id", org_id)
   }
 
+  // ── Mirror to agent_activities so /activity page shows data ────────
+  if (agent_id && event_type !== "heartbeat") {
+    await supabase.from("agent_activities" as any).insert({
+      agent_id,
+      organization_id: org_id,
+      activity_type: event_type,
+      title: message,
+      description: task_id ? `Task: ${task_id}` : null,
+      metadata: payload ?? {},
+    })
+  }
+
   // ── If task completed, update task status ──────────────────────────
   if (task_id && event_type === "task_completed") {
     await supabase

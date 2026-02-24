@@ -4,8 +4,6 @@ import { useState } from "react"
 import { toast } from "sonner"
 import { WifiHigh } from "@phosphor-icons/react/dist/ssr/WifiHigh"
 import { Button } from "@/components/ui/button"
-import { updateGateway } from "@/lib/actions/gateways"
-
 interface GatewayTestButtonProps {
   gatewayId: string
   gatewayUrl: string
@@ -17,26 +15,27 @@ export function GatewayTestButton({ gatewayId, gatewayUrl }: GatewayTestButtonPr
   async function testConnection() {
     setTesting(true)
     try {
-      const encodedUrl = encodeURIComponent(gatewayUrl)
-      const res = await fetch(`/api/gateway?url=${encodedUrl}&path=/`)
-      if (res.ok) {
-        toast.success("Gateway is reachable ✓")
-        // Update gateway status in DB
-        await updateGateway(gatewayId, {
-          status: "online",
-          last_seen_at: new Date().toISOString(),
-        })
+      // Read the gateway's DB status (kept fresh by heartbeat events from OpenClaw)
+      const { createClient } = await import("@/lib/supabase/client")
+      const supabase = createClient()
+      const { data } = await supabase
+        .from("gateways" as any)
+        .select("status, last_seen_at")
+        .eq("id", gatewayId)
+        .single()
+
+      const gw = data as { status: string; last_seen_at: string | null } | null
+      const isOnline = gw?.status === "online"
+      const lastSeen = gw?.last_seen_at ? new Date(gw.last_seen_at) : null
+      const staleMs = lastSeen ? Date.now() - lastSeen.getTime() : Infinity
+      // Consider online if heartbeat within the last 2 minutes
+      if (isOnline && staleMs < 120_000) {
+        toast.success("Gateway is reachable (last heartbeat " + Math.round(staleMs / 1000) + "s ago)")
       } else {
-        toast.error(`Gateway returned status ${res.status}`)
-        await updateGateway(gatewayId, {
-          status: "offline",
-        })
+        toast.error("Gateway appears offline — no recent heartbeat")
       }
     } catch {
-      toast.error("Connection failed — gateway may be offline")
-      await updateGateway(gatewayId, {
-        status: "offline",
-      })
+      toast.error("Could not check gateway status")
     } finally {
       setTesting(false)
     }
