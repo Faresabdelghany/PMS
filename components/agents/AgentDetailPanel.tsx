@@ -24,6 +24,7 @@ import { Copy } from "@phosphor-icons/react/dist/ssr/Copy"
 import { Terminal } from "@phosphor-icons/react/dist/ssr/Terminal"
 import { cn } from "@/lib/utils"
 import { getAgent, createAgent, updateAgent } from "@/lib/actions/agents"
+import { getUserModels, type UserModel } from "@/lib/actions/user-models"
 import type { AgentWithSupervisor } from "@/lib/supabase/types"
 import type { Skill } from "@/lib/actions/skills"
 
@@ -76,8 +77,24 @@ const PROVIDER_OPTIONS: PickerOption[] = [
   { id: "anthropic", label: "Anthropic" },
   { id: "google", label: "Google" },
   { id: "openai", label: "OpenAI" },
+  { id: "groq", label: "Groq" },
+  { id: "mistral", label: "Mistral" },
+  { id: "xai", label: "xAI" },
+  { id: "deepseek", label: "DeepSeek" },
+  { id: "openrouter", label: "OpenRouter" },
   { id: "other", label: "Other" },
 ]
+
+const AI_PROVIDERS_LABEL: Record<string, string> = {
+  anthropic: "Anthropic",
+  google: "Google",
+  openai: "OpenAI",
+  groq: "Groq",
+  mistral: "Mistral",
+  xai: "xAI",
+  deepseek: "DeepSeek",
+  openrouter: "OpenRouter",
+}
 
 // ── Form schema ─────────────────────────────────────────────────────
 
@@ -129,6 +146,7 @@ export function AgentDetailPanel({ agents, orgId, skills = [] }: AgentDetailPane
 
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [userModels, setUserModels] = useState<UserModel[]>([])
 
   const form = useForm<AgentFormValues>({
     resolver: zodResolver(agentFormSchema),
@@ -137,6 +155,13 @@ export function AgentDetailPanel({ agents, orgId, skills = [] }: AgentDetailPane
 
   const provider = form.watch("ai_provider") ?? "anthropic"
   const selectedSkills = form.watch("skills")
+
+  // Fetch user-configured models
+  useEffect(() => {
+    getUserModels(orgId).then((result) => {
+      if (result.data) setUserModels(result.data)
+    })
+  }, [orgId])
 
   // Track open transitions to only reset on fresh open
   const prevOpenRef = useRef(false)
@@ -228,11 +253,23 @@ export function AgentDetailPanel({ agents, orgId, skills = [] }: AgentDetailPane
     [form]
   )
 
-  // Build model options for current provider
-  const modelOptions = (MODEL_MAP[provider] ?? MODEL_MAP.anthropic).map((m) => ({
-    id: m.id,
-    label: m.label,
-  }))
+  // Build provider options: user models first, then fallback to hardcoded
+  const dynamicProviderOptions: PickerOption[] = userModels.length > 0
+    ? [...new Set(userModels.map((m) => m.provider))].map((p) => ({
+        id: p,
+        label: AI_PROVIDERS_LABEL[p] ?? p,
+      }))
+    : PROVIDER_OPTIONS
+
+  // Build model options for current provider: user models first, then fallback
+  const modelOptions: PickerOption[] = userModels.length > 0
+    ? userModels
+        .filter((m) => m.provider === provider)
+        .map((m) => ({ id: m.model_id, label: m.display_name }))
+    : (MODEL_MAP[provider] ?? MODEL_MAP.anthropic).map((m) => ({
+        id: m.id,
+        label: m.label,
+      }))
 
   // Build "reports to" options
   const reportsToOptions: PickerOption[] = [
@@ -425,12 +462,19 @@ export function AgentDetailPanel({ agents, orgId, skills = [] }: AgentDetailPane
                 name="ai_provider"
                 render={({ field }) => (
                   <GenericPicker
-                    items={PROVIDER_OPTIONS}
+                    items={dynamicProviderOptions}
                     selectedId={field.value ?? "anthropic"}
                     onSelect={(item) => {
                       field.onChange(item.id)
-                      const models = MODEL_MAP[item.id] ?? MODEL_MAP.anthropic
-                      form.setValue("ai_model", models[0].id)
+                      const models = userModels.length > 0
+                        ? userModels.filter((m) => m.provider === item.id)
+                        : MODEL_MAP[item.id] ?? MODEL_MAP.anthropic
+                      if (userModels.length > 0) {
+                        const um = userModels.filter((m) => m.provider === item.id)
+                        form.setValue("ai_model", um[0]?.model_id ?? "")
+                      } else {
+                        form.setValue("ai_model", models[0]?.id ?? "")
+                      }
                     }}
                     placeholder="Provider..."
                     renderItem={(item) => <span>{item.label}</span>}
@@ -441,7 +485,7 @@ export function AgentDetailPanel({ agents, orgId, skills = [] }: AgentDetailPane
                       >
                         <Plugs className="size-4 text-muted-foreground" />
                         <span className="font-medium text-foreground text-sm leading-5">
-                          {PROVIDER_OPTIONS.find((o) => o.id === (field.value ?? "anthropic"))
+                          {dynamicProviderOptions.find((o) => o.id === (field.value ?? "anthropic"))
                             ?.label ?? "Provider"}
                         </span>
                       </button>
