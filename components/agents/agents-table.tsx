@@ -128,9 +128,16 @@ const AgentTableRow = memo(function AgentTableRow({
           </div>
           <div className="flex flex-col min-w-0">
             <span className="truncate">{agent.name}</span>
-            <span className="mt-0.5 text-[11px] text-muted-foreground truncate">
-              {agent.supervisor?.name ? `→ ${agent.supervisor.name}` : "—"}
-            </span>
+            {(agent as any).current_task_id ? (
+              <span className="mt-0.5 text-[11px] text-emerald-600 dark:text-emerald-400 truncate flex items-center gap-1">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Working on task
+              </span>
+            ) : (
+              <span className="mt-0.5 text-[11px] text-muted-foreground truncate">
+                {agent.supervisor?.name ? `→ ${agent.supervisor.name}` : "—"}
+              </span>
+            )}
           </div>
         </div>
       </TableCell>
@@ -161,6 +168,9 @@ const AgentTableRow = memo(function AgentTableRow({
       </TableCell>
       <TableCell className="align-middle text-xs text-muted-foreground font-mono truncate">
         {agent.ai_model || "—"}
+      </TableCell>
+      <TableCell className="align-middle text-xs text-muted-foreground font-mono truncate">
+        {(agent as any).session_key || "—"}
       </TableCell>
       <TableCell className="align-middle text-right">
         <DropdownMenu>
@@ -355,8 +365,11 @@ export function AgentsTable({
                   <TableHead className="w-[12%] text-xs font-medium text-muted-foreground">
                     <SortButton field="status" label="Status" />
                   </TableHead>
-                  <TableHead className="w-[12%] text-xs font-medium text-muted-foreground">
+                  <TableHead className="w-[10%] text-xs font-medium text-muted-foreground">
                     Model
+                  </TableHead>
+                  <TableHead className="w-[12%] text-xs font-medium text-muted-foreground">
+                    Session
                   </TableHead>
                   <TableHead className="w-[40px]" />
                 </TableRow>

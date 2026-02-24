@@ -20,6 +20,8 @@ import { Cpu } from "@phosphor-icons/react/dist/ssr/Cpu"
 import { TreeStructure } from "@phosphor-icons/react/dist/ssr/TreeStructure"
 import { Plugs } from "@phosphor-icons/react/dist/ssr/Plugs"
 import { Check } from "@phosphor-icons/react/dist/ssr/Check"
+import { Copy } from "@phosphor-icons/react/dist/ssr/Copy"
+import { Terminal } from "@phosphor-icons/react/dist/ssr/Terminal"
 import { cn } from "@/lib/utils"
 import { getAgent, createAgent, updateAgent } from "@/lib/actions/agents"
 import type { AgentWithSupervisor } from "@/lib/supabase/types"
@@ -518,6 +520,34 @@ export function AgentDetailPanel({ agents, orgId, skills = [] }: AgentDetailPane
                 )}
               />
             </div>
+
+            {/* Session Key (read-only, edit mode only) */}
+            {!isNew && !loading && (() => {
+              const currentAgent = agents.find((a) => a.id === agentParam)
+              const sessionKey = (currentAgent as any)?.session_key as string | null | undefined
+              if (!sessionKey) return null
+              return (
+                <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-2">
+                  <Terminal className="size-4 text-muted-foreground shrink-0" />
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="text-[10px] font-medium text-muted-foreground leading-none mb-1">OpenClaw Session</span>
+                    <span className="font-mono text-sm text-muted-foreground truncate">{sessionKey}</span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 shrink-0"
+                    onClick={() => {
+                      navigator.clipboard.writeText(sessionKey)
+                      toast.success("Copied to clipboard")
+                    }}
+                  >
+                    <Copy className="size-3.5 text-muted-foreground" />
+                  </Button>
+                </div>
+              )
+            })()}
 
             {/* Skills section */}
             {installedSkills.length > 0 && (
