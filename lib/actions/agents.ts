@@ -171,7 +171,7 @@ export async function updateAgent(
 
   const { data: existing } = await supabase
     .from("agents")
-    .select("organization_id, ai_model, ai_provider, session_key, name")
+    .select("organization_id, ai_model, ai_provider, name")
     .eq("id", id)
     .single()
 
@@ -212,7 +212,6 @@ export async function updateAgent(
       payload: {
         model: fullModel,
         agentName: existing.name,
-        sessionKey: existing.session_key,
       },
       status: "pending",
     })
