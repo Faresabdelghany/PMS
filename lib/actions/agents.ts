@@ -171,7 +171,7 @@ export async function updateAgent(
 
   const { data: existing } = await supabase
     .from("agents")
-    .select("organization_id")
+    .select("organization_id, ai_model, ai_provider, session_key, name")
     .eq("id", id)
     .single()
 
@@ -194,6 +194,29 @@ export async function updateAgent(
     .single()
 
   if (error) return { error: error.message }
+
+  // If model changed → dispatch a model_update command so OpenClaw applies it live
+  const modelChanged =
+    (validation.data.ai_model && validation.data.ai_model !== existing.ai_model) ||
+    (validation.data.ai_provider && validation.data.ai_provider !== existing.ai_provider)
+
+  if (modelChanged) {
+    const newProvider = validation.data.ai_provider ?? existing.ai_provider ?? "anthropic"
+    const newModel = validation.data.ai_model ?? existing.ai_model ?? ""
+    const fullModel = `${newProvider}/${newModel}`
+
+    await supabase.from("agent_commands").insert({
+      organization_id: existing.organization_id,
+      agent_id: id,
+      command_type: "model_update",
+      payload: {
+        model: fullModel,
+        agentName: existing.name,
+        sessionKey: existing.session_key,
+      },
+      status: "pending",
+    })
+  }
 
   after(() => {
     revalidatePath("/agents")
