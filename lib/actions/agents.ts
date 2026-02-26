@@ -208,7 +208,7 @@ export async function updateAgent(
     await supabase.from("agent_commands").insert({
       organization_id: existing.organization_id,
       agent_id: id,
-      command_type: "model_update",
+      command_type: "model_update" as "run_task",
       payload: {
         model: fullModel,
         agentName: existing.name,
