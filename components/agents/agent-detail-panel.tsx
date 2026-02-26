@@ -144,6 +144,15 @@ const MODEL_MAP: Record<string, { id: string; label: string }[]> = {
     { id: "o1", label: "o1" },
     { id: "o3-mini", label: "o3-mini" },
   ],
+  "openai-codex": [
+    { id: "gpt-5.1", label: "GPT-5.1 (Codex)" },
+    { id: "gpt-5.1-codex-max", label: "GPT-5.1 Codex Max" },
+    { id: "gpt-5.1-codex-mini", label: "GPT-5.1 Codex Mini" },
+    { id: "gpt-5.2", label: "GPT-5.2 (Codex)" },
+    { id: "gpt-5.2-codex", label: "GPT-5.2 Codex" },
+    { id: "gpt-5.3-codex", label: "GPT-5.3 Codex" },
+    { id: "gpt-5.3-codex-spark", label: "GPT-5.3 Codex Spark" },
+  ],
   other: [{ id: "custom", label: "Custom / Other" }],
 }
 
@@ -520,6 +529,7 @@ export function AgentQuickView({ agents = [], skills = [] }: AgentQuickViewProps
                         { value: "anthropic", label: "Anthropic" },
                         { value: "google", label: "Google" },
                         { value: "openai", label: "OpenAI" },
+                        { value: "openai-codex", label: "OpenAI Codex" },
                         { value: "other", label: "Other" },
                       ]}
                       onChange={(val) => {
