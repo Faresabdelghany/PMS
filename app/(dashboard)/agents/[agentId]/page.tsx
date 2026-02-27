@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { PageSkeleton } from "@/components/ui/page-skeleton"
 import { PageHeader } from "@/components/ui/page-header"
+import { AgentActivityFeed } from "@/components/agents/agent-activity-feed"
 
 export const metadata: Metadata = {
   title: "Agent Detail - PMS",
@@ -170,27 +171,7 @@ async function AgentDetail({ agentId, orgId }: { agentId: string; orgId: string 
             <CardTitle className="text-base">Recent Activity</CardTitle>
           </CardHeader>
           <CardContent>
-            {activities.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">No activity recorded yet</p>
-            ) : (
-              <div className="space-y-3">
-                {activities.map((a: any) => (
-                  <div key={a.id} className="flex items-start gap-3 text-sm">
-                    <div className="mt-1 h-2 w-2 rounded-full bg-primary shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs">{a.activity_type}</Badge>
-                      </div>
-                      <p className="mt-0.5">{a.title}</p>
-                      {a.description && <p className="text-muted-foreground text-xs mt-0.5">{a.description}</p>}
-                      <p className="text-xs text-muted-foreground/60 mt-1">
-                        {new Date(a.created_at).toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <AgentActivityFeed activities={activities} />
           </CardContent>
         </Card>
       </div>

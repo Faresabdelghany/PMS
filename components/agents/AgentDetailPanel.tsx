@@ -23,9 +23,10 @@ import { Check } from "@phosphor-icons/react/dist/ssr/Check"
 import { Copy } from "@phosphor-icons/react/dist/ssr/Copy"
 import { Terminal } from "@phosphor-icons/react/dist/ssr/Terminal"
 import { cn } from "@/lib/utils"
-import { getAgent, createAgent, updateAgent } from "@/lib/actions/agents"
+import { getAgent, getAgentActivities, createAgent, updateAgent } from "@/lib/actions/agents"
 import { getUserModels, type UserModel } from "@/lib/actions/user-models"
-import type { AgentWithSupervisor } from "@/lib/supabase/types"
+import { AgentActivityFeed } from "./agent-activity-feed"
+import type { AgentWithSupervisor, AgentActivityRow } from "@/lib/supabase/types"
 import type { Skill } from "@/lib/actions/skills"
 
 // ── Model map ───────────────────────────────────────────────────────
@@ -146,6 +147,7 @@ export function AgentDetailPanel({ agents, orgId, skills = [] }: AgentDetailPane
 
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [activities, setActivities] = useState<AgentActivityRow[]>([])
   const [userModels, setUserModels] = useState<UserModel[]>([])
 
   const form = useForm<AgentFormValues>({
@@ -173,13 +175,14 @@ export function AgentDetailPanel({ agents, orgId, skills = [] }: AgentDetailPane
 
     if (isNew) {
       form.reset(DEFAULTS)
+      setActivities([])
       return
     }
 
     setLoading(true)
-    getAgent(agentParam!).then((result) => {
-      if (result.data) {
-        const a = result.data
+    Promise.all([getAgent(agentParam!), getAgentActivities(agentParam!)]).then(([agentResult, activitiesResult]) => {
+      if (agentResult.data) {
+        const a = agentResult.data
         const existingSkills = Array.isArray(a.skills)
           ? (a.skills as { id: string; name: string }[])
           : []
@@ -197,6 +200,7 @@ export function AgentDetailPanel({ agents, orgId, skills = [] }: AgentDetailPane
           skills: existingSkills,
         })
       }
+      setActivities(activitiesResult.data ?? [])
       setLoading(false)
     })
   }, [isOpen, isNew, agentParam]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -618,6 +622,13 @@ export function AgentDetailPanel({ agents, orgId, skills = [] }: AgentDetailPane
                     )
                   })}
                 </div>
+              </div>
+            )}
+
+            {!isNew && activities.length > 0 && (
+              <div className="space-y-2 pt-1">
+                <p className="text-xs font-medium text-muted-foreground">Recent Activity</p>
+                <AgentActivityFeed activities={activities} />
               </div>
             )}
 
