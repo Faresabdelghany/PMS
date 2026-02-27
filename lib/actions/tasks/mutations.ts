@@ -34,12 +34,22 @@ export async function createTask(
   // Use requireAuth to ensure user is authenticated (throws if not)
   const { user, supabase } = await requireAuth()
 
-  // Build sort_order query based on workstream
-  const sortOrderQuery = validatedData.workstream_id
+  // Build sort_order query (scope by sibling set)
+  const sortOrderQuery = validatedData.parent_task_id
+    ? supabase
+        .from("tasks")
+        .select("sort_order")
+        .eq("project_id", projectId)
+        .eq("parent_task_id", validatedData.parent_task_id)
+        .order("sort_order", { ascending: false })
+        .limit(1)
+        .single()
+    : validatedData.workstream_id
     ? supabase
         .from("tasks")
         .select("sort_order")
         .eq("workstream_id", validatedData.workstream_id)
+        .is("parent_task_id", null)
         .order("sort_order", { ascending: false })
         .limit(1)
         .single()
@@ -48,6 +58,7 @@ export async function createTask(
         .select("sort_order")
         .eq("project_id", projectId)
         .is("workstream_id", null)
+        .is("parent_task_id", null)
         .order("sort_order", { ascending: false })
         .limit(1)
         .single()

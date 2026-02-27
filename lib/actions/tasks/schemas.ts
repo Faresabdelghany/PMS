@@ -21,6 +21,8 @@ export const createTaskSchema = z.object({
   end_date: z.string().optional().nullable(),
   tag: z.string().max(50).optional().nullable(),
   source_report_id: z.string().uuid().optional().nullable(),
+  parent_task_id: z.string().uuid().optional().nullable(),
+  source: z.enum(["manual", "agent", "speckit", "system"]).optional(),
 })
 
 export const updateTaskSchema = createTaskSchema.partial()

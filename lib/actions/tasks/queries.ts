@@ -6,17 +6,40 @@ import { requireAuth } from "../auth-helpers"
 import { sanitizeSearchInput } from "@/lib/search-utils"
 import { DEFAULT_PAGE_SIZE } from "@/lib/constants"
 import { encodeCursor, decodeCursor } from "../cursor"
-import {
-  createTaskStatusCounts,
-  createTaskPriorityCounts,
-} from "@/lib/constants/status"
+import { createTaskStatusCounts, createTaskPriorityCounts } from "@/lib/constants/status"
 import type { TaskStatus, TaskPriority } from "@/lib/supabase/types"
 import type { ActionResult, PaginatedResult } from "../types"
 import type { TaskFilters, TaskWithRelations } from "./types"
 
-// Get tasks for a project with filters.
-// When no cursor is provided, returns ALL tasks (needed for board/drag-drop views).
-// When a cursor is provided, returns paginated results.
+async function attachSubtaskCounts(
+  supabase: Awaited<ReturnType<typeof requireAuth>>["supabase"],
+  tasks: TaskWithRelations[]
+): Promise<TaskWithRelations[]> {
+  if (!tasks.length) return tasks
+
+  const parentIds = tasks.map((task) => task.id)
+  const { data: subtasks } = await supabase
+    .from("tasks")
+    .select("id, parent_task_id, status")
+    .in("parent_task_id", parentIds)
+
+  const counts = new Map<string, { total: number; done: number }>()
+  for (const subtask of subtasks || []) {
+    const parentId = subtask.parent_task_id
+    if (!parentId) continue
+    const bucket = counts.get(parentId) ?? { total: 0, done: 0 }
+    bucket.total += 1
+    if (subtask.status === "done") bucket.done += 1
+    counts.set(parentId, bucket)
+  }
+
+  return tasks.map((task) => ({
+    ...task,
+    subtask_count: counts.get(task.id)?.total ?? 0,
+    done_subtask_count: counts.get(task.id)?.done ?? 0,
+  }))
+}
+
 export async function getTasks(
   projectId: string,
   filters?: TaskFilters,
@@ -33,22 +56,12 @@ export async function getTasks(
       workstream:workstreams(id, name)
     `)
     .eq("project_id", projectId)
+    .is("parent_task_id", null)
 
-  if (filters?.status) {
-    query = query.eq("status", filters.status)
-  }
-
-  if (filters?.priority) {
-    query = query.eq("priority", filters.priority)
-  }
-
-  if (filters?.assigneeId) {
-    query = query.eq("assignee_id", filters.assigneeId)
-  }
-
-  if (filters?.workstreamId) {
-    query = query.eq("workstream_id", filters.workstreamId)
-  }
+  if (filters?.status) query = query.eq("status", filters.status)
+  if (filters?.priority) query = query.eq("priority", filters.priority)
+  if (filters?.assigneeId) query = query.eq("assignee_id", filters.assigneeId)
+  if (filters?.workstreamId) query = query.eq("workstream_id", filters.workstreamId)
 
   if (filters?.search) {
     const sanitized = sanitizeSearchInput(filters.search)
@@ -57,30 +70,18 @@ export async function getTasks(
     }
   }
 
-  // When cursor is provided, paginate. Otherwise return all tasks.
   if (cursor) {
     try {
       const { value, id } = decodeCursor(cursor)
       const cursorSort = Number(value)
-      if (Number.isNaN(cursorSort)) {
-        return { error: "Invalid cursor value" }
-      }
-      // Compound cursor: (sort_order > cursor) OR (sort_order = cursor AND id > cursorId)
-      query = query.or(
-        `sort_order.gt.${cursorSort},and(sort_order.eq.${cursorSort},id.gt.${id})`
-      )
+      if (Number.isNaN(cursorSort)) return { error: "Invalid cursor value" }
+      query = query.or(`sort_order.gt.${cursorSort},and(sort_order.eq.${cursorSort},id.gt.${id})`)
     } catch {
       return { error: "Invalid cursor" }
     }
 
-    const { data, error } = await query
-      .order("sort_order")
-      .order("id")
-      .limit(limit + 1)
-
-    if (error) {
-      return { error: error.message }
-    }
+    const { data, error } = await query.order("sort_order").order("id").limit(limit + 1)
+    if (error) return { error: error.message }
 
     const hasMore = (data?.length || 0) > limit
     const items = hasMore ? data!.slice(0, limit) : (data || [])
@@ -88,35 +89,29 @@ export async function getTasks(
       ? encodeCursor(items[items.length - 1].sort_order, items[items.length - 1].id)
       : null
 
-    return { data: items as TaskWithRelations[], nextCursor, hasMore }
+    return {
+      data: await attachSubtaskCounts(supabase, items as TaskWithRelations[]),
+      nextCursor,
+      hasMore,
+    }
   }
 
-  // No cursor: return all tasks (board view, drag-drop, timeline need full set)
-  // Safety limit prevents unbounded queries on projects with extreme task counts
   const { data, error } = await query.order("sort_order", { ascending: true }).order("id", { ascending: true }).limit(1000)
+  if (error) return { error: error.message }
 
-  if (error) {
-    return { error: error.message }
-  }
-
-  return { data: (data || []) as TaskWithRelations[], nextCursor: null, hasMore: false }
+  const tasks = await attachSubtaskCounts(supabase, (data || []) as TaskWithRelations[])
+  return { data: tasks, nextCursor: null, hasMore: false }
 }
 
-// Get tasks for current user across all projects in an organization
 export async function getMyTasks(
   orgId: string,
   filters?: Omit<TaskFilters, "assigneeId">,
   cursor?: string,
   limit: number = DEFAULT_PAGE_SIZE
 ): Promise<PaginatedResult<TaskWithRelations>> {
-  // Use cached auth - deduplicates with other calls in the same request
   const { user, error: authError, supabase } = await cachedGetUser()
+  if (authError || !user) return { error: "Not authenticated" }
 
-  if (authError || !user) {
-    return { error: "Not authenticated" }
-  }
-
-  // Only cache unfiltered, first-page queries
   const hasFilters = filters && Object.values(filters).some((v) => v !== undefined)
 
   if (!hasFilters && !cursor) {
@@ -134,12 +129,13 @@ export async function getMyTasks(
             `)
             .eq("assignee_id", user.id)
             .eq("project.organization_id", orgId)
+            .is("parent_task_id", null)
             .order("updated_at", { ascending: false })
             .order("id", { ascending: false })
             .limit(limit + 1)
 
           if (error) throw error
-          const raw = data as TaskWithRelations[]
+          const raw = await attachSubtaskCounts(supabase as never, data as TaskWithRelations[])
           const hasMore = raw.length > limit
           const items = hasMore ? raw.slice(0, limit) : raw
           const nextCursor = hasMore
@@ -149,14 +145,12 @@ export async function getMyTasks(
         },
         CacheTTL.TASKS
       )
-
       return cached
     } catch (error) {
       return { error: error instanceof Error ? error.message : "Failed to fetch tasks" }
     }
   }
 
-  // Filtered or cursor query - don't cache
   let query = supabase
     .from("tasks")
     .select(`
@@ -167,14 +161,10 @@ export async function getMyTasks(
     `)
     .eq("assignee_id", user.id)
     .eq("project.organization_id", orgId)
+    .is("parent_task_id", null)
 
-  if (filters?.status) {
-    query = query.eq("status", filters.status)
-  }
-
-  if (filters?.priority) {
-    query = query.eq("priority", filters.priority)
-  }
+  if (filters?.status) query = query.eq("status", filters.status)
+  if (filters?.priority) query = query.eq("priority", filters.priority)
 
   if (filters?.search) {
     const sanitized = sanitizeSearchInput(filters.search)
@@ -183,41 +173,28 @@ export async function getMyTasks(
     }
   }
 
-  // Compound cursor: (updated_at, id) DESC
   if (cursor) {
     try {
       const { value, id } = decodeCursor(cursor)
-      query = query.or(
-        `updated_at.lt.${value},and(updated_at.eq.${value},id.lt.${id})`
-      )
+      query = query.or(`updated_at.lt.${value},and(updated_at.eq.${value},id.lt.${id})`)
     } catch {
       return { error: "Invalid cursor" }
     }
   }
 
-  const { data, error } = await query
-    .order("updated_at", { ascending: false })
-    .order("id", { ascending: false })
-    .limit(limit + 1)
+  const { data, error } = await query.order("updated_at", { ascending: false }).order("id", { ascending: false }).limit(limit + 1)
+  if (error) return { error: error.message }
 
-  if (error) {
-    return { error: error.message }
-  }
-
-  const hasMore = (data?.length || 0) > limit
-  const items = hasMore ? data!.slice(0, limit) : (data || [])
+  const withCounts = await attachSubtaskCounts(supabase as never, (data || []) as TaskWithRelations[])
+  const hasMore = withCounts.length > limit
+  const items = hasMore ? withCounts.slice(0, limit) : withCounts
   const nextCursor = hasMore
     ? encodeCursor(items[items.length - 1].updated_at, items[items.length - 1].id)
     : null
 
-  return {
-    data: items as TaskWithRelations[],
-    nextCursor,
-    hasMore,
-  }
+  return { data: items, nextCursor, hasMore }
 }
 
-// Get single task
 export async function getTask(id: string): Promise<ActionResult<TaskWithRelations>> {
   const { supabase } = await requireAuth()
 
@@ -232,39 +209,35 @@ export async function getTask(id: string): Promise<ActionResult<TaskWithRelation
     .eq("id", id)
     .single()
 
-  if (error) {
-    return { error: error.message }
-  }
-
+  if (error) return { error: error.message }
   return { data: data as TaskWithRelations }
 }
 
-// Get task stats for project (uses SQL aggregation RPC — single row instead of N rows)
+export async function getSubtasks(parentTaskId: string): Promise<ActionResult<TaskWithRelations[]>> {
+  const { supabase } = await requireAuth()
+  const { data, error } = await supabase
+    .from("tasks")
+    .select(`
+      *,
+      assignee:profiles(id, full_name, email, avatar_url),
+      workstream:workstreams(id, name),
+      project:projects(id, name)
+    `)
+    .eq("parent_task_id", parentTaskId)
+    .order("sort_order", { ascending: true })
+
+  if (error) return { error: error.message }
+  return { data: (data || []) as TaskWithRelations[] }
+}
+
 export async function getTaskStats(projectId: string): Promise<
-  ActionResult<{
-    total: number
-    byStatus: Record<TaskStatus, number>
-    byPriority: Record<TaskPriority, number>
-  }>
+  ActionResult<{ total: number; byStatus: Record<TaskStatus, number>; byPriority: Record<TaskPriority, number> }>
 > {
   const { supabase } = await requireAuth()
+  const { data, error } = await supabase.rpc("get_task_stats", { p_project_id: projectId })
+  if (error) return { error: error.message }
 
-  const { data, error } = await supabase.rpc("get_task_stats", {
-    p_project_id: projectId,
-  })
-
-  if (error) {
-    return { error: error.message }
-  }
-
-  // RPC returns JSON with the exact shape we need
-  const stats = data as {
-    total: number
-    byStatus: Record<string, number>
-    byPriority: Record<string, number>
-  }
-
-  // Merge with defaults to ensure all keys exist
+  const stats = data as { total: number; byStatus: Record<string, number>; byPriority: Record<string, number> }
   const byStatus = { ...createTaskStatusCounts(), ...stats.byStatus }
   const byPriority = { ...createTaskPriorityCounts(), ...stats.byPriority }
 

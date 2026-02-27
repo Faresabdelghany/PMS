@@ -40,6 +40,8 @@ export type TaskLike = {
   workstreamId?: string | null
   workstreamName?: string | null
   description?: string | null
+  subtaskCount?: number
+  doneSubtaskCount?: number
 }
 
 // Generic project type for grouping

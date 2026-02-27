@@ -490,6 +490,8 @@ export interface Database {
           end_date: string | null
           sort_order: number
           source_report_id: string | null
+          parent_task_id?: string | null
+          source?: "manual" | "agent" | "speckit" | "system"
           created_at: string
           updated_at: string
           // Sprint 3 columns (added via migration 20260223000004)
@@ -511,6 +513,8 @@ export interface Database {
           end_date?: string | null
           sort_order?: number
           source_report_id?: string | null
+          parent_task_id?: string | null
+          source?: "manual" | "agent" | "speckit" | "system"
           created_at?: string
           updated_at?: string
           // Sprint 3 columns (added via migration 20260223000004)
@@ -532,6 +536,8 @@ export interface Database {
           end_date?: string | null
           sort_order?: number
           source_report_id?: string | null
+          parent_task_id?: string | null
+          source?: "manual" | "agent" | "speckit" | "system"
           created_at?: string
           updated_at?: string
           // Sprint 3 columns (added via migration 20260223000004)
@@ -559,6 +565,13 @@ export interface Database {
             columns: ["assignee_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           }
         ]
@@ -1947,7 +1960,7 @@ export interface Database {
           organization_id: string
           agent_id: string | null
           task_id: string | null
-          event_type: "task_started" | "task_progress" | "task_completed" | "task_failed" | "agent_message" | "approval_request" | "status_change" | "heartbeat"
+          event_type: "task_started" | "task_progress" | "task_completed" | "task_failed" | "agent_message" | "approval_request" | "status_change" | "heartbeat" | "task_create" | "subtask_create"
           message: string
           payload: Record<string, unknown>
           created_at: string
@@ -1957,7 +1970,7 @@ export interface Database {
           organization_id: string
           agent_id?: string | null
           task_id?: string | null
-          event_type: "task_started" | "task_progress" | "task_completed" | "task_failed" | "agent_message" | "approval_request" | "status_change" | "heartbeat"
+          event_type: "task_started" | "task_progress" | "task_completed" | "task_failed" | "agent_message" | "approval_request" | "status_change" | "heartbeat" | "task_create" | "subtask_create"
           message: string
           payload?: Record<string, unknown>
           created_at?: string
@@ -1967,7 +1980,7 @@ export interface Database {
           organization_id?: string
           agent_id?: string | null
           task_id?: string | null
-          event_type?: "task_started" | "task_progress" | "task_completed" | "task_failed" | "agent_message" | "approval_request" | "status_change" | "heartbeat"
+          event_type?: "task_started" | "task_progress" | "task_completed" | "task_failed" | "agent_message" | "approval_request" | "status_change" | "heartbeat" | "task_create" | "subtask_create"
           message?: string
           payload?: Record<string, unknown>
           created_at?: string
@@ -2259,10 +2272,17 @@ export type TaskActivityWithRelations = TaskActivity & {
   actor: ProfileMinimal | null
 }
 
-// Timeline item - union of comments and activities
+export type AgentEvent = Database['public']['Tables']['agent_events']['Row']
+
+export type AgentEventWithRelations = AgentEvent & {
+  agent: Pick<Agent, 'id' | 'name' | 'avatar_url'> | null
+}
+
+// Timeline item - union of comments, activities, and agent events
 export type TaskTimelineItem =
   | { type: 'comment'; data: TaskCommentWithRelations }
   | { type: 'activity'; data: TaskActivityWithRelations }
+  | { type: 'agent_event'; data: AgentEventWithRelations }
 
 // Report types
 export type Report = Database['public']['Tables']['reports']['Row']

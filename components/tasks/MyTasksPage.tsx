@@ -157,6 +157,8 @@ function toUITask(task: TaskWithRelations): TaskLike {
     workstreamId: task.workstream?.id || null,
     workstreamName: task.workstream?.name || null,
     description: task.description || null,
+    subtaskCount: task.subtask_count ?? 0,
+    doneSubtaskCount: task.done_subtask_count ?? 0,
   }
 }
 
@@ -453,6 +455,8 @@ export function MyTasksPage({
           email: "",
           avatar_url: task.assignee.avatarUrl || null
         } : null,
+        subtask_count: task.subtaskCount ?? 0,
+        done_subtask_count: task.doneSubtaskCount ?? 0,
       }
       // Realtime onInsert may have already added this task — merge with our richer data
       if (prev.some((t) => t.id === newTask.id)) {

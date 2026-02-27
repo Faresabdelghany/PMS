@@ -15,7 +15,7 @@ import { TaskTimeline } from "./TaskTimeline"
 import { TaskCommentEditor } from "./TaskCommentEditor"
 import { TaskMessagesPanel } from "./TaskMessagesPanel"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getTask, updateTask, type TaskWithRelations } from "@/lib/actions/tasks"
+import { getTask, getSubtasks, createTask, updateTask, type TaskWithRelations } from "@/lib/actions/tasks"
 import { getTaskTimeline } from "@/lib/actions/task-activities"
 import { createTaskComment } from "@/lib/actions/task-comments"
 import type {
@@ -84,6 +84,8 @@ export function TaskDetailPanel({
   const [timeline, setTimeline] = useState<TaskTimelineItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [subtasks, setSubtasks] = useState<TaskWithRelations[]>([])
+  const [newSubtaskName, setNewSubtaskName] = useState("")
 
   const isOpen = !!taskId
 
@@ -100,9 +102,10 @@ export function TaskDetailPanel({
     async function fetchTaskData() {
       setIsLoading(true)
       try {
-        const [taskResult, timelineResult] = await Promise.all([
+        const [taskResult, timelineResult, subtasksResult] = await Promise.all([
           getTask(currentTaskId),
           getTaskTimeline(currentTaskId),
+          getSubtasks(currentTaskId),
         ])
 
         if (taskResult.error) {
@@ -116,6 +119,10 @@ export function TaskDetailPanel({
 
         if (timelineResult.data) {
           setTimeline(timelineResult.data)
+        }
+
+        if (subtasksResult.data) {
+          setSubtasks(subtasksResult.data)
         }
       } catch {
         toast.error("Failed to load task details")
@@ -166,6 +173,14 @@ export function TaskDetailPanel({
           return prev
         }
         return [...prev, { type: "activity", data: activity }]
+      })
+    },
+    onAgentEventInsert: (agentEvent) => {
+      setTimeline((prev) => {
+        if (prev.some((item) => item.type === "agent_event" && item.data.id === agentEvent.id)) {
+          return prev
+        }
+        return [...prev, { type: "agent_event", data: agentEvent }]
       })
     },
     onReactionInsert: (commentId, reaction) => {
@@ -237,6 +252,26 @@ export function TaskDetailPanel({
     [taskId]
   )
 
+  const handleCreateSubtask = useCallback(async () => {
+    if (!task || !newSubtaskName.trim()) return
+    const result = await createTask(task.project_id, {
+      name: newSubtaskName.trim(),
+      parent_task_id: task.id,
+      source: "manual",
+      status: "todo",
+      priority: "medium",
+    })
+
+    if (result.error) {
+      toast.error(result.error)
+      return
+    }
+
+    setNewSubtaskName("")
+    const subtasksResult = await getSubtasks(task.id)
+    if (subtasksResult.data) setSubtasks(subtasksResult.data)
+  }, [task, newSubtaskName])
+
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <SheetContent
@@ -289,6 +324,41 @@ export function TaskDetailPanel({
                 orgId={organizationId}
                 userId={organizationMembers.find((m) => m.profile)?.profile?.id ?? ""}
               />
+
+              <div className="h-px w-full bg-border/80" />
+
+              {/* Subtasks */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-medium text-foreground">Subtasks</h3>
+                <div className="space-y-2">
+                  {subtasks.map((subtask) => (
+                    <button
+                      key={subtask.id}
+                      type="button"
+                      onClick={() => router.push(`${window.location.pathname}?task=${subtask.id}`, { scroll: false })}
+                      className="w-full rounded-md border border-border p-2 text-left text-sm hover:bg-muted/50"
+                    >
+                      <div className="font-medium">{subtask.name}</div>
+                      <div className="text-xs text-muted-foreground">{subtask.status}</div>
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    value={newSubtaskName}
+                    onChange={(e) => setNewSubtaskName(e.target.value)}
+                    placeholder="Add subtask"
+                    className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCreateSubtask}
+                    className="h-9 rounded-md border border-border px-3 text-sm hover:bg-muted"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
 
               <div className="h-px w-full bg-border/80" />
 

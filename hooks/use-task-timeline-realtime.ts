@@ -8,6 +8,7 @@ import type {
   TaskCommentWithRelations,
   TaskActivityWithRelations,
   TaskCommentReaction,
+  AgentEventWithRelations,
 } from "@/lib/supabase/types"
 
 /** Debounce delay (ms) before rebuilding the reactions channel after commentIds change */
@@ -18,6 +19,7 @@ interface UseTaskTimelineRealtimeCallbacks {
   onCommentUpdate?: (comment: TaskCommentWithRelations) => void
   onCommentDelete?: (commentId: string) => void
   onActivityInsert?: (activity: TaskActivityWithRelations) => void
+  onAgentEventInsert?: (agentEvent: AgentEventWithRelations) => void
   onReactionInsert?: (commentId: string, reaction: TaskCommentReaction) => void
   onReactionDelete?: (commentId: string, reactionId: string) => void
 }
@@ -147,6 +149,43 @@ export function useTaskTimelineRealtime(
           }
 
           callbacksRef.current.onActivityInsert?.(activity)
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "agent_events",
+          filter: `task_id=eq.${taskId}`,
+        },
+        async (payload) => {
+          const newRecord = payload.new as Record<string, unknown> | undefined
+          if (!newRecord?.id) return
+
+          const supabaseInner = createClient()
+          const agentId = (newRecord.agent_id as string | null) ?? null
+          let agent = null
+          if (agentId) {
+            const { data } = await supabaseInner
+              .from("agents")
+              .select("id, name, avatar_url")
+              .eq("id", agentId)
+              .single()
+            agent = data
+          }
+
+          callbacksRef.current.onAgentEventInsert?.({
+            id: newRecord.id as string,
+            organization_id: newRecord.organization_id as string,
+            task_id: (newRecord.task_id as string | null) ?? null,
+            agent_id: agentId,
+            event_type: newRecord.event_type as AgentEventWithRelations["event_type"],
+            message: newRecord.message as string,
+            payload: (newRecord.payload as Record<string, unknown>) ?? {},
+            created_at: newRecord.created_at as string,
+            agent,
+          })
         }
       )
 

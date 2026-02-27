@@ -154,16 +154,27 @@ export function ProjectTasksSection({ group, onToggleTask, onTitleClick, onAddTa
 
 export type TaskBadgesProps = {
   workstreamName?: string | null
+  subtaskCount?: number
+  doneSubtaskCount?: number
   className?: string
 }
 
-export function TaskBadges({ workstreamName, className }: TaskBadgesProps) {
-  if (!workstreamName) return null
+export function TaskBadges({ workstreamName, subtaskCount = 0, doneSubtaskCount = 0, className }: TaskBadgesProps) {
+  if (!workstreamName && subtaskCount <= 0) return null
 
   return (
-    <Badge variant="muted" className={cn("whitespace-nowrap text-[11px]", className)}>
-      {workstreamName}
-    </Badge>
+    <div className={cn("flex items-center gap-1", className)}>
+      {workstreamName && (
+        <Badge variant="muted" className="whitespace-nowrap text-[11px]">
+          {workstreamName}
+        </Badge>
+      )}
+      {subtaskCount > 0 && (
+        <Badge variant="outline" className="whitespace-nowrap text-[11px]">
+          {doneSubtaskCount}/{subtaskCount}
+        </Badge>
+      )}
+    </div>
   )
 }
 
@@ -230,7 +241,7 @@ export function TaskRowDnD({ task, onToggle, onTitleClick, onEdit, onDelete }: T
         onCheckedChange={onToggle}
         onTitleClick={onTitleClick ? () => onTitleClick(task.id) : undefined}
         titleAriaLabel={task.name}
-        titleSuffix={<TaskBadges workstreamName={task.workstreamName} className="hidden sm:inline" />}
+        titleSuffix={<TaskBadges workstreamName={task.workstreamName} subtaskCount={task.subtaskCount} doneSubtaskCount={task.doneSubtaskCount} className="hidden sm:inline" />}
         subtitle={<div className="hidden sm:inline">{getTaskDescriptionSnippet(task)}</div>}
         meta={
           <>
