@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, type ComponentType } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
@@ -16,13 +16,10 @@ import { PaintBrush } from "@phosphor-icons/react/dist/ssr/PaintBrush"
 import { Lightning } from "@phosphor-icons/react/dist/ssr/Lightning"
 import { ArrowLeft } from "@phosphor-icons/react/dist/ssr/ArrowLeft"
 import Link from "next/link"
-import { updateSkill } from "@/lib/actions/skills"
+import { updateSkill, upsertSkill } from "@/lib/actions/skills"
 import type { Skill } from "@/lib/actions/skills"
 
-const CATEGORIES = ["All", "research", "development", "filesystem", "automation", "communication", "data"] as const
-type CategoryFilter = (typeof CATEGORIES)[number]
-
-const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+const CATEGORY_ICONS: Record<string, ComponentType<{ className?: string }>> = {
   development: Code,
   communication: Megaphone,
   filesystem: PaintBrush,
@@ -36,30 +33,32 @@ const CATEGORY_COLORS: Record<string, string> = {
   automation: "text-amber-500",
   communication: "text-green-500",
   data: "text-cyan-500",
+  nodes: "text-orange-500",
+  media: "text-violet-500",
 }
 
 interface SkillsMarketplaceClientProps {
   initialSkills: Skill[]
   initialCategory?: string
+  degraded?: boolean
 }
 
 export function SkillsMarketplaceClient({
   initialSkills,
   initialCategory,
+  degraded,
 }: SkillsMarketplaceClientProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [skills, setSkills] = useState<Skill[]>(initialSkills)
   const [search, setSearch] = useState("")
-  const [category, setCategory] = useState<CategoryFilter>(
-    (initialCategory as CategoryFilter) ?? "All"
-  )
+  const [category, setCategory] = useState<string>(initialCategory ?? "All")
   const [togglingId, setTogglingId] = useState<string | null>(null)
 
   // Derive unique categories from the skills list
   const availableCategories = Array.from(
     new Set(["All", ...skills.map((s) => s.category).filter(Boolean)])
-  ) as CategoryFilter[]
+  ) as string[]
 
   const filtered = skills.filter((s) => {
     const matchesCategory = category === "All" || s.category === category
@@ -73,16 +72,41 @@ export function SkillsMarketplaceClient({
   const toggleInstall = (skill: Skill) => {
     setTogglingId(skill.id)
     startTransition(async () => {
-      const result = await updateSkill(skill.id, { installed: !skill.installed })
+      const installing = !skill.installed
+
+      const result = skill.id.startsWith("catalog-")
+        ? await upsertSkill(skill.org_id, {
+            name: skill.name,
+            description: skill.description,
+            category: skill.category,
+            version: skill.version,
+            author: skill.author,
+            installed: installing,
+            enabled: skill.enabled,
+            config: skill.config,
+          })
+        : await updateSkill(skill.id, { installed: installing })
+
       if (result.error) {
         toast.error(result.error)
         setTogglingId(null)
         return
       }
+
       toast.success(skill.installed ? `Uninstalled ${skill.name}` : `Installed ${skill.name}`)
+
       setSkills((prev) =>
-        prev.map((s) => (s.id === skill.id ? { ...s, installed: !s.installed } : s))
+        prev.map((s) =>
+          s.id === skill.id
+            ? {
+                ...s,
+                id: result.data?.id ?? s.id,
+                installed: installing,
+              }
+            : s
+        )
       )
+
       setTogglingId(null)
       router.refresh()
     })
@@ -131,6 +155,11 @@ export function SkillsMarketplaceClient({
             {installedCount} of {skills.length} installed
           </span>
         </div>
+        {degraded && (
+          <p className="text-xs text-amber-600 mt-2">
+            Showing fallback catalog because gateway skill sync is currently unavailable.
+          </p>
+        )}
       </PageHeader>
 
       <div className="p-6">

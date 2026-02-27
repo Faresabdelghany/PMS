@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { getPageOrganization } from "@/lib/page-auth"
-import { getSkills, seedDefaultSkills } from "@/lib/actions/skills"
+import { getMarketplaceSkills } from "@/lib/actions/skills"
 import { SkillsMarketplaceClient } from "./marketplace-client"
 
 export const metadata: Metadata = {
@@ -15,18 +15,13 @@ export default async function SkillsMarketplacePage({
   const { orgId } = await getPageOrganization()
   const { category } = await searchParams
 
-  // Fetch skills from DB; seed defaults if this org has none yet
-  let skillsResult = await getSkills(orgId)
-  if (!skillsResult.error && (skillsResult.data?.length ?? 0) === 0) {
-    await seedDefaultSkills(orgId)
-    skillsResult = await getSkills(orgId)
-  }
-
-  const skills = skillsResult.data ?? []
+  const marketplaceResult = await getMarketplaceSkills(orgId)
+  const skills = marketplaceResult.data?.skills ?? []
+  const degraded = marketplaceResult.data?.degraded ?? false
 
   return (
     <div className="flex flex-1 flex-col bg-background mx-2 my-2 border border-border rounded-lg min-w-0">
-      <SkillsMarketplaceClient initialSkills={skills} initialCategory={category} />
+      <SkillsMarketplaceClient initialSkills={skills} initialCategory={category} degraded={degraded} />
     </div>
   )
 }
