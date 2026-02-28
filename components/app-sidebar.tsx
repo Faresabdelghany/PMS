@@ -63,7 +63,7 @@ import { cn } from "@/lib/utils"
 import { PROGRESS_THRESHOLDS, BADGE_CAP, SIDEBAR_PROJECT_LIMIT } from "@/lib/constants"
 
 // Navigation items defined inline (no mock data dependency)
-type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "agent-network" | "chat" | "activity" | "boards" | "board-groups" | "custom-fields" | "approvals" | "gateways" | "skills" | "documents" | "models" | "sessions" | "memory"
+type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "agent-network" | "chat" | "activity" | "mission-control" | "boards" | "board-groups" | "custom-fields" | "approvals" | "gateways" | "skills" | "documents" | "models" | "sessions" | "memory"
 type SidebarFooterItemId = "settings" | "templates" | "help"
 
 type NavItem = {
@@ -86,6 +86,7 @@ const navItems: NavItem[] = [
   { id: "agents", label: "Agents" },
   { id: "agent-network", label: "Agent Network" },
   { id: "activity", label: "Activity" },
+  { id: "mission-control", label: "Mission Control" },
   { id: "boards", label: "Boards" },
   { id: "board-groups", label: "Board Groups" },
   { id: "custom-fields", label: "Custom Fields" },
@@ -146,6 +147,7 @@ const preloadHandlers: Record<NavItemId, () => void> = {
     }
   },
   activity: () => {},
+  "mission-control": () => {},
   boards: () => {},
   "board-groups": () => {},
   "custom-fields": () => {},
@@ -184,6 +186,7 @@ const navItemIcons: Record<NavItemId, React.ComponentType<{ className?: string }
   agents: Robot,
   "agent-network": GitFork,
   activity: Pulse,
+  "mission-control": Pulse,
   boards: Kanban,
   "board-groups": Rows,
   "custom-fields": TextT,
@@ -341,6 +344,7 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
     if (id === "agents") return "/agents"
     if (id === "agent-network") return "/agents/communication"
     if (id === "activity") return "/activity"
+    if (id === "mission-control") return "/mission-control"
     if (id === "boards") return "/boards"
     if (id === "board-groups") return "/board-groups"
     if (id === "custom-fields") return "/custom-fields"
@@ -381,6 +385,9 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
     }
     if (id === "activity") {
       return pathname.startsWith("/activity")
+    }
+    if (id === "mission-control") {
+      return pathname.startsWith("/mission-control")
     }
     if (id === "boards") {
       return pathname.startsWith("/boards")

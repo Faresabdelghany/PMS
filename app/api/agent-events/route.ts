@@ -3,6 +3,8 @@ import { revalidatePath } from "next/cache"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { invalidateCache } from "@/lib/cache"
 import type { TaskPriority, TaskStatus } from "@/lib/supabase/types"
+import { upsertMissionControlHeartbeat } from "@/lib/services/mission-control-heartbeat"
+import { handleTaskFailureWithRetry } from "@/lib/services/retry-service"
 
 type AgentEventType =
   | "task_started"
@@ -303,6 +305,22 @@ export async function POST(req: NextRequest) {
   }
 
   const effectiveTaskId = task_id ?? createdTaskId
+  const heartbeatEligibleEvent =
+    event_type === "task_started" ||
+    event_type === "task_progress" ||
+    event_type === "task_completed" ||
+    event_type === "task_failed" ||
+    event_type === "heartbeat"
+
+  if (agent_id && heartbeatEligibleEvent) {
+    await upsertMissionControlHeartbeat({
+      orgId: org_id,
+      agentId: agent_id,
+      taskId: effectiveTaskId,
+      message,
+      eventType: event_type,
+    })
+  }
 
   if (effectiveTaskId && event_type === "task_completed") {
     await supabase
@@ -334,6 +352,13 @@ export async function POST(req: NextRequest) {
       .from("tasks")
       .update({ dispatch_status: "failed" })
       .eq("id", effectiveTaskId)
+
+    await handleTaskFailureWithRetry({
+      orgId: org_id,
+      taskId: effectiveTaskId,
+      errorMessage: message,
+      taskType: getPayloadString(payload, "task_type"),
+    })
   }
 
   return NextResponse.json(createdTaskId ? { ok: true, task_id: createdTaskId } : { ok: true })

@@ -11,6 +11,7 @@ import type { Task, TaskInsert, TaskUpdate, TaskStatus } from "@/lib/supabase/ty
 import type { ActionResult } from "../types"
 import { notify } from "../notifications"
 import { createTaskActivity } from "../task-activities"
+import { evaluateDoDWarningsForTask } from "../dod-policies"
 
 // Create task
 export async function createTask(
@@ -168,7 +169,23 @@ export async function updateTask(
   // This avoids an extra sequential query after the update
   const orgId = (oldTask?.project as { organization_id?: string } | null)?.organization_id ?? ""
 
+  const shouldEvaluateDoDWarnMode =
+    validatedData.status === "done" &&
+    oldTask?.status !== "done" &&
+    !!oldTask?.project_id &&
+    !!orgId
+
   after(async () => {
+    if (shouldEvaluateDoDWarnMode && oldTask) {
+      await evaluateDoDWarningsForTask({
+        ...(oldTask as Record<string, unknown>),
+        ...(validatedData as Record<string, unknown>),
+        id: task.id,
+        project_id: task.project_id,
+        organization_id: orgId,
+      })
+    }
+
     // Track activities for changed fields (deferred — not needed for response)
     if (oldTask) {
       const activityPromises: Promise<unknown>[] = []

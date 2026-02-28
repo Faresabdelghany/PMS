@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { getTask, getSubtasks, createTask, updateTask, type TaskWithRelations } from "@/lib/actions/tasks"
 import { getTaskTimeline } from "@/lib/actions/task-activities"
 import { createTaskComment } from "@/lib/actions/task-comments"
+import { getTaskDoDWarnings, type TaskDoDWarning } from "@/lib/actions/dod-policies"
 import type {
   TaskTimelineItem,
   TaskCommentWithRelations,
@@ -86,6 +87,7 @@ export function TaskDetailPanel({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [subtasks, setSubtasks] = useState<TaskWithRelations[]>([])
   const [newSubtaskName, setNewSubtaskName] = useState("")
+  const [dodWarnings, setDodWarnings] = useState<TaskDoDWarning[]>([])
 
   const isOpen = !!taskId
 
@@ -94,6 +96,7 @@ export function TaskDetailPanel({
     if (!taskId) {
       setTask(null)
       setTimeline([])
+      setDodWarnings([])
       return
     }
 
@@ -123,6 +126,11 @@ export function TaskDetailPanel({
 
         if (subtasksResult.data) {
           setSubtasks(subtasksResult.data)
+        }
+
+        const warningResult = await getTaskDoDWarnings(currentTaskId)
+        if (warningResult.data) {
+          setDodWarnings(warningResult.data)
         }
       } catch {
         toast.error("Failed to load task details")
@@ -217,6 +225,12 @@ export function TaskDetailPanel({
 
       if (result.data) {
         setTask((prev) => (prev ? { ...prev, ...result.data } : prev))
+        if (field === "status" && value === "done") {
+          const warningResult = await getTaskDoDWarnings(taskId)
+          if (warningResult.data) {
+            setDodWarnings(warningResult.data)
+          }
+        }
         toast.success("Task updated")
       }
     },
@@ -315,6 +329,21 @@ export function TaskDetailPanel({
                 taskName={task.name}
                 projectName={task.project?.name}
               />
+
+              {dodWarnings.length > 0 && (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+                  <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                    Definition-of-Done warnings
+                  </p>
+                  <ul className="mt-2 space-y-1">
+                    {dodWarnings.map((warning) => (
+                      <li key={warning.id} className="text-xs text-amber-900 dark:text-amber-200">
+                        {warning.message}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               <div className="h-px w-full bg-border/80" />
 
