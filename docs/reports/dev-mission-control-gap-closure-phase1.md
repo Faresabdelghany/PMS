@@ -98,6 +98,7 @@ E2E smoke tests:
 3. `.next-docs` local docs folder referenced by AGENTS instructions is missing. Attempt to run:
    - `npx @next/codemod agents-md --output AGENTS.md`
    failed due npm/network/permission restrictions.
+4. `git push origin main` failed due network/connectivity to GitHub (`Could not connect to server`), so remote push could not be completed from this environment.
 
 ## Notes on Scope Control
 
