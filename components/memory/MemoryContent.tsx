@@ -12,8 +12,7 @@ import {
 } from "@/components/ui/sheet"
 import { PageHeader } from "@/components/ui/page-header"
 import { AgentEventTimeline } from "@/components/shared/AgentEventTimeline"
-import { getAgentEventHistory, type AgentEventHistoryItem } from "@/lib/actions/sessions"
-import type { AgentMemoryCard } from "@/lib/actions/memory"
+import { getAgentEventHistory, type AgentEventHistoryItem, type AgentMemoryCard } from "@/lib/actions/memory"
 import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr/MagnifyingGlass"
 
 function formatRelativeTime(dateStr: string): string {

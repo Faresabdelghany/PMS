@@ -71,3 +71,30 @@ export async function getAgentMemoryCards(orgId: string): Promise<ActionResult<A
 
   return { data: cards }
 }
+
+export interface AgentEventHistoryItem {
+  id: string
+  event_type: string
+  message: string
+  payload: Record<string, unknown>
+  created_at: string
+}
+
+export async function getAgentEventHistory(
+  agentId: string,
+  orgId: string,
+  limit = 20
+): Promise<ActionResult<AgentEventHistoryItem[]>> {
+  const { supabase } = await requireAuth()
+
+  const { data, error } = await supabase
+    .from("agent_events")
+    .select("id, event_type, message, payload, created_at")
+    .eq("organization_id", orgId)
+    .eq("agent_id", agentId)
+    .order("created_at", { ascending: false })
+    .limit(limit)
+
+  if (error) return { error: error.message }
+  return { data: (data ?? []) as AgentEventHistoryItem[] }
+}

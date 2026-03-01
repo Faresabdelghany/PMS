@@ -36,7 +36,6 @@ import { Pulse } from "@phosphor-icons/react/dist/ssr/Pulse"
 import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText"
 import { PlugsConnected } from "@phosphor-icons/react/dist/ssr/PlugsConnected"
 import { FileText } from "@phosphor-icons/react/dist/ssr/FileText"
-import { Terminal } from "@phosphor-icons/react/dist/ssr/Terminal"
 import { Notebook } from "@phosphor-icons/react/dist/ssr/Notebook"
 import {
   DropdownMenu,
@@ -57,7 +56,7 @@ import { cn } from "@/lib/utils"
 import { PROGRESS_THRESHOLDS, BADGE_CAP, SIDEBAR_PROJECT_LIMIT } from "@/lib/constants"
 
 // Navigation items defined inline (no mock data dependency)
-type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "chat" | "activity" | "approvals" | "gateways" | "skills" | "documents" | "sessions" | "memory"
+type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "chat" | "activity" | "approvals" | "gateways" | "skills" | "documents" | "memory"
 type SidebarFooterItemId = "settings"
 
 type NavItem = {
@@ -83,7 +82,6 @@ const navItems: NavItem[] = [
   { id: "gateways", label: "Gateways" },
   { id: "skills", label: "Skills" },
   { id: "documents", label: "Documents" },
-  { id: "sessions", label: "Sessions" },
   { id: "memory", label: "Memory" },
   { id: "chat", label: "AI Chat" },
 ]
@@ -133,7 +131,6 @@ const preloadHandlers: Record<NavItemId, () => void> = {
   gateways: () => {},
   skills: () => {},
   documents: () => {},
-  sessions: () => {},
   memory: () => {},
   chat: () => {
     if (typeof window !== "undefined") {
@@ -166,7 +163,6 @@ const navItemIcons: Record<NavItemId, React.ComponentType<{ className?: string }
   gateways: PlugsConnected,
   skills: Sparkle,
   documents: FileText,
-  sessions: Terminal,
   memory: Notebook,
   chat: Sparkle,
 }
@@ -316,7 +312,6 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
     if (id === "gateways") return "/gateways"
     if (id === "skills") return "/skills/marketplace"
     if (id === "documents") return "/documents"
-    if (id === "sessions") return "/sessions"
     if (id === "memory") return "/memory"
     if (id === "chat") return "/chat"
     return "#"
@@ -355,9 +350,6 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
     }
     if (id === "documents") {
       return pathname.startsWith("/documents")
-    }
-    if (id === "sessions") {
-      return pathname.startsWith("/sessions")
     }
     if (id === "memory") {
       return pathname.startsWith("/memory")
