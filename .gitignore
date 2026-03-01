@@ -69,6 +69,19 @@ nul
 .cursor/
 .opencode/
 
+# OpenClaw agent framework
+.openclaw/
+BOOTSTRAP.md
+IDENTITY.md
+SOUL.md
+TOOLS.md
+USER.md
+run-omar.bat
+
+# SpecKit artifacts
+.specify/
+specs/
+
 # Duplicate lock files (we use pnpm)
 package-lock.json
 
