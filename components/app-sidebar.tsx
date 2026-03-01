@@ -33,7 +33,6 @@ import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 import { SquaresFour } from "@phosphor-icons/react/dist/ssr/SquaresFour"
 import { User } from "@phosphor-icons/react/dist/ssr/User"
 import { Pulse } from "@phosphor-icons/react/dist/ssr/Pulse"
-import { GitFork } from "@phosphor-icons/react/dist/ssr/GitFork"
 import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText"
 import { PlugsConnected } from "@phosphor-icons/react/dist/ssr/PlugsConnected"
 import { FileText } from "@phosphor-icons/react/dist/ssr/FileText"
@@ -58,7 +57,7 @@ import { cn } from "@/lib/utils"
 import { PROGRESS_THRESHOLDS, BADGE_CAP, SIDEBAR_PROJECT_LIMIT } from "@/lib/constants"
 
 // Navigation items defined inline (no mock data dependency)
-type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "agent-network" | "chat" | "activity" | "approvals" | "gateways" | "skills" | "documents" | "sessions" | "memory"
+type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "chat" | "activity" | "approvals" | "gateways" | "skills" | "documents" | "sessions" | "memory"
 type SidebarFooterItemId = "settings"
 
 type NavItem = {
@@ -79,7 +78,6 @@ const navItems: NavItem[] = [
   { id: "projects", label: "Projects" },
   { id: "clients", label: "Clients" },
   { id: "agents", label: "Agents" },
-  { id: "agent-network", label: "Agent Network" },
   { id: "activity", label: "Activity" },
   { id: "approvals", label: "Approvals" },
   { id: "gateways", label: "Gateways" },
@@ -130,11 +128,6 @@ const preloadHandlers: Record<NavItemId, () => void> = {
       void import("@/components/agents/agents-table")
     }
   },
-  "agent-network": () => {
-    if (typeof window !== "undefined") {
-      void import("@/components/agents/AgentNetworkClient")
-    }
-  },
   activity: () => {},
   approvals: () => {},
   gateways: () => {},
@@ -168,7 +161,6 @@ const navItemIcons: Record<NavItemId, React.ComponentType<{ className?: string }
   projects: Folder,
   clients: Users,
   agents: Robot,
-  "agent-network": GitFork,
   activity: Pulse,
   approvals: ClipboardText,
   gateways: PlugsConnected,
@@ -319,7 +311,6 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
     if (id === "inbox") return "/inbox"
     if (id === "clients") return "/clients"
     if (id === "agents") return "/agents"
-    if (id === "agent-network") return "/agents/communication"
     if (id === "activity") return "/activity"
     if (id === "approvals") return "/approvals"
     if (id === "gateways") return "/gateways"
@@ -348,13 +339,7 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
       return pathname.startsWith("/clients")
     }
     if (id === "agents") {
-      return (
-        pathname === "/agents" ||
-        (pathname.startsWith("/agents/") && !pathname.startsWith("/agents/communication"))
-      )
-    }
-    if (id === "agent-network") {
-      return pathname.startsWith("/agents/communication")
+      return pathname === "/agents" || pathname.startsWith("/agents/")
     }
     if (id === "activity") {
       return pathname.startsWith("/activity")

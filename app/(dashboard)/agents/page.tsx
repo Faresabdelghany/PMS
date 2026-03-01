@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { Suspense } from "react"
-import { AgentsTable } from "@/components/agents/agents-table"
+import { AgentsPageClient } from "@/components/agents/AgentsPageClient"
 import { AgentDetailPanel } from "@/components/agents/AgentDetailPanel"
 import { AgentQuickView } from "@/components/agents/agent-detail-panel"
 import { PageSkeleton } from "@/components/ui/page-skeleton"
@@ -79,7 +79,7 @@ async function AgentsStreamed(props: {
 
   return (
     <>
-      <AgentsTable agents={agents} organizationId={orgId} />
+      <AgentsPageClient agents={agents} orgId={orgId} skills={skills} />
       <Suspense fallback={null}>
         <AgentQuickView agents={agents} skills={skills} />
       </Suspense>
