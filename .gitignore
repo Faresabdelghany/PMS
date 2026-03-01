@@ -37,7 +37,7 @@ next-env.d.ts
 /playwright-report/
 /blob-report/
 /playwright/.cache/.playwright-mcp/
-# next-agents-md
+# next-agents-md (legacy codemod output path; optional in this repo)
 .next-docs/
 .playwright-mcp/
 .playwright-cli/
