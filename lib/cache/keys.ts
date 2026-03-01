@@ -42,6 +42,7 @@ export const CacheKeys = {
   // Tasks (TTL: 30 sec)
   userTasks: (userId: string, orgId: string) =>
     `pms:tasks:user:${userId}:${orgId}`,
+  orgTasks: (orgId: string) => `pms:tasks:org:${orgId}`,
   projectTasks: (projectId: string) => `pms:tasks:project:${projectId}`,
 
   // Workstreams (TTL: 1 min)

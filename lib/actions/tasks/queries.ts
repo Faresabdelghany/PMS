@@ -195,6 +195,98 @@ export async function getMyTasks(
   return { data: items, nextCursor, hasMore }
 }
 
+export async function getAllTasks(
+  orgId: string,
+  filters?: TaskFilters,
+  cursor?: string,
+  limit: number = DEFAULT_PAGE_SIZE
+): Promise<PaginatedResult<TaskWithRelations>> {
+  const { user, error: authError, supabase } = await cachedGetUser()
+  if (authError || !user) return { error: "Not authenticated" }
+
+  const hasFilters = filters && Object.values(filters).some((v) => v !== undefined)
+
+  if (!hasFilters && !cursor) {
+    try {
+      const cached = await cacheGet(
+        CacheKeys.orgTasks(orgId),
+        async () => {
+          const { data, error } = await supabase
+            .from("tasks")
+            .select(`
+              *,
+              assignee:profiles(id, full_name, email, avatar_url),
+              workstream:workstreams(id, name),
+              project:projects!inner(id, name, organization_id)
+            `)
+            .eq("project.organization_id", orgId)
+            .is("parent_task_id", null)
+            .order("updated_at", { ascending: false })
+            .order("id", { ascending: false })
+            .limit(limit + 1)
+
+          if (error) throw error
+          const raw = await attachSubtaskCounts(supabase as never, data as TaskWithRelations[])
+          const hasMore = raw.length > limit
+          const items = hasMore ? raw.slice(0, limit) : raw
+          const nextCursor = hasMore
+            ? encodeCursor(items[items.length - 1].updated_at, items[items.length - 1].id)
+            : null
+          return { data: items, nextCursor, hasMore }
+        },
+        CacheTTL.TASKS
+      )
+      return cached
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : "Failed to fetch tasks" }
+    }
+  }
+
+  let query = supabase
+    .from("tasks")
+    .select(`
+      *,
+      assignee:profiles(id, full_name, email, avatar_url),
+      workstream:workstreams(id, name),
+      project:projects!inner(id, name, organization_id)
+    `)
+    .eq("project.organization_id", orgId)
+    .is("parent_task_id", null)
+
+  if (filters?.status) query = query.eq("status", filters.status)
+  if (filters?.priority) query = query.eq("priority", filters.priority)
+  if (filters?.assigneeId) query = query.eq("assignee_id", filters.assigneeId)
+  if (filters?.workstreamId) query = query.eq("workstream_id", filters.workstreamId)
+
+  if (filters?.search) {
+    const sanitized = sanitizeSearchInput(filters.search)
+    if (sanitized.length >= 2) {
+      query = query.or(`name.ilike.%${sanitized}%,description.ilike.%${sanitized}%`)
+    }
+  }
+
+  if (cursor) {
+    try {
+      const { value, id } = decodeCursor(cursor)
+      query = query.or(`updated_at.lt.${value},and(updated_at.eq.${value},id.lt.${id})`)
+    } catch {
+      return { error: "Invalid cursor" }
+    }
+  }
+
+  const { data, error } = await query.order("updated_at", { ascending: false }).order("id", { ascending: false }).limit(limit + 1)
+  if (error) return { error: error.message }
+
+  const withCounts = await attachSubtaskCounts(supabase as never, (data || []) as TaskWithRelations[])
+  const hasMore = withCounts.length > limit
+  const items = hasMore ? withCounts.slice(0, limit) : withCounts
+  const nextCursor = hasMore
+    ? encodeCursor(items[items.length - 1].updated_at, items[items.length - 1].id)
+    : null
+
+  return { data: items, nextCursor, hasMore }
+}
+
 export async function getTask(id: string): Promise<ActionResult<TaskWithRelations>> {
   const { supabase } = await requireAuth()
 

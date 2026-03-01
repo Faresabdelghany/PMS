@@ -59,12 +59,18 @@ export async function bulkUpdateTaskStatus(
         await invalidate.key(CacheKeys.projectTasks(projectId))
       }
 
-      // Invalidate user task caches
+      // Invalidate user task caches and org-wide task caches
       for (const assigneeId of assigneeIds) {
         for (const [projectId, orgId] of projectOrgMap) {
           if (orgId) {
             await invalidate.key(CacheKeys.userTasks(assigneeId, orgId))
           }
+        }
+      }
+
+      for (const [, orgId] of projectOrgMap) {
+        if (orgId) {
+          await invalidate.key(CacheKeys.orgTasks(orgId))
         }
       }
     }

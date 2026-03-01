@@ -7,7 +7,7 @@ import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 
 import { LoadMoreButton } from "@/components/ui/load-more-button"
 import { useLoadMore } from "@/hooks/use-load-more"
-import { getMyTasks } from "@/lib/actions/tasks"
+import { getAllTasks, getMyTasks } from "@/lib/actions/tasks"
 import type { TaskWithRelations } from "@/lib/actions/tasks"
 import type { TaskPriority } from "@/lib/supabase/types"
 import type { ProjectTask } from "@/lib/data/project-details"
@@ -183,10 +183,13 @@ type AgentLean = {
   avatar_url: string | null
 }
 
+type TasksView = "my" | "all"
+
 interface MyTasksPageProps {
   initialTasks?: TaskWithRelations[]
   initialHasMore?: boolean
   initialCursor?: string | null
+  initialView?: TasksView
   projects?: ProjectLean[]
   organizationId?: string
   userId?: string
@@ -200,6 +203,7 @@ export function MyTasksPage({
   initialHasMore = false,
   initialCursor = null,
   projects = [],
+  initialView = "my",
   organizationId,
   userId,
   organizationMembers = [],
@@ -209,12 +213,27 @@ export function MyTasksPage({
   const router = useRouter()
   const searchParams = useSearchParams()
 
+  const currentView: TasksView = searchParams.get("view") === "all" ? "all" : initialView
+
+  const setView = useCallback((nextView: TasksView) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (nextView === "my") {
+      params.delete("view")
+    } else {
+      params.set("view", nextView)
+    }
+    router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false })
+  }, [router, searchParams])
+
   const fetchMoreTasks = useCallback(
     (cursor: string) => {
       if (!organizationId) return Promise.resolve({ data: [], hasMore: false, nextCursor: null })
+      if (currentView === "all") {
+        return getAllTasks(organizationId, undefined, cursor)
+      }
       return getMyTasks(organizationId, undefined, cursor)
     },
-    [organizationId]
+    [organizationId, currentView]
   )
 
   const {
@@ -247,8 +266,7 @@ export function MyTasksPage({
 
   // Helper to build TaskWithRelations from raw task data
   const buildTaskWithRelations = useCallback((task: TaskRow): TaskWithRelations | null => {
-    // Only include tasks assigned to current user
-    if (task.assignee_id !== userId) return null
+    if (currentView === "my" && task.assignee_id !== userId) return null
 
     const project = projectsRef.current.find(p => p.id === task.project_id)
     if (!project) return null // Task must belong to a known project
@@ -267,13 +285,13 @@ export function MyTasksPage({
         avatar_url: assignee.profile.avatar_url,
       } : null,
     }
-  }, [userId])
+  }, [currentView, userId])
 
   // Real-time subscription for tasks assigned to current user
   usePooledRealtime({
     table: "tasks",
-    filter: userId ? `assignee_id=eq.${userId}` : undefined,
-    enabled: !!organizationId && !!userId,
+    filter: currentView === "my" && userId ? `assignee_id=eq.${userId}` : undefined,
+    enabled: !!organizationId && (currentView === "all" || !!userId),
     onInsert: (task: TaskRow) => {
       const fullTask = buildTaskWithRelations(task)
       if (fullTask) {
@@ -610,27 +628,37 @@ export function MyTasksPage({
   if (!groups.length) {
     return (
       <div className="flex flex-1 flex-col min-h-0 bg-background mx-2 my-2 border border-border rounded-lg min-w-0">
-        <header className="flex items-center justify-between px-4 py-3 border-b border-border/70">
-          <div className="flex items-center gap-3">
-            <SidebarTrigger className="h-8 w-8 rounded-lg hover:bg-accent text-muted-foreground" />
-            <p className="text-base font-medium text-foreground">Tasks</p>
+        <header className="flex flex-col border-b border-border/40">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border/70">
+            <div className="flex items-center gap-3">
+              <SidebarTrigger className="h-8 w-8 rounded-lg hover:bg-accent text-muted-foreground" />
+              <p className="text-base font-medium text-foreground">Tasks</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => openCreateTask()}
+              >
+                <Plus className="mr-1.5 h-4 w-4" />
+                New Task
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => openCreateTask()}
-            >
-              <Plus className="mr-1.5 h-4 w-4" />
-              New Task
-            </Button>
+          <div className="px-4 py-3">
+            <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-1">
+              <Button size="sm" variant={currentView === "my" ? "secondary" : "ghost"} className="h-7 px-3" onClick={() => setView("my")}>My Tasks</Button>
+              <Button size="sm" variant={currentView === "all" ? "secondary" : "ghost"} className="h-7 px-3" onClick={() => setView("all")}>All Tasks</Button>
+            </div>
           </div>
         </header>
         <div className="flex-1 flex flex-col items-center justify-center p-8">
           <div className="text-center space-y-3">
-            <p className="text-sm font-medium text-foreground">No tasks assigned to you</p>
+            <p className="text-sm font-medium text-foreground">
+              {currentView === "all" ? "No tasks found" : "No tasks assigned to you"}
+            </p>
             <p className="text-xs text-muted-foreground">
-              Tasks assigned to you will appear here.
+              {currentView === "all" ? "Tasks in your organization will appear here." : "Tasks assigned to you will appear here."}
             </p>
           </div>
         </div>
@@ -677,7 +705,11 @@ export function MyTasksPage({
         </div>
 
         <div className="flex items-center justify-between px-4 pb-3 pt-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-1">
+              <Button size="sm" variant={currentView === "my" ? "secondary" : "ghost"} className="h-7 px-3" onClick={() => setView("my")}>My Tasks</Button>
+              <Button size="sm" variant={currentView === "all" ? "secondary" : "ghost"} className="h-7 px-3" onClick={() => setView("all")}>All Tasks</Button>
+            </div>
             <FilterPopover
               initialChips={filters}
               onApply={setFilters}
