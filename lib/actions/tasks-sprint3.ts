@@ -5,6 +5,7 @@ import { requireAuth } from "./auth-helpers"
 import { createAgentCommand } from "./agent-commands"
 import { subscribeAgentToTask } from "./task-messages"
 import { revalidatePath } from "next/cache"
+import { invalidateCache } from "@/lib/cache"
 import type { ActionResult } from "./types"
 import type { TaskStatus } from "@/lib/supabase/types"
 
@@ -223,20 +224,14 @@ export async function assignAgentToTask(
 ): Promise<ActionResult<void>> {
   const { supabase } = await requireAuth()
 
-  // Fetch orgId for subscription (via project join)
+  // Fetch orgId + current agent in a single query
   const { data: taskRow } = await supabase
     .from("tasks")
-    .select("project:projects(organization_id)")
+    .select("assigned_agent_id, project_id, project:projects(organization_id)")
     .eq("id", taskId)
     .single()
 
-  const { data: existingTask } = await supabase
-    .from("tasks")
-    .select("assigned_agent_id")
-    .eq("id", taskId)
-    .single()
-
-  const hasAgentChanged = (existingTask?.assigned_agent_id ?? null) !== agentId
+  const hasAgentChanged = (taskRow?.assigned_agent_id ?? null) !== agentId
 
   const { error } = await supabase
     .from("tasks")
@@ -244,7 +239,7 @@ export async function assignAgentToTask(
       assigned_agent_id: agentId,
       assignee_id: null,
       task_type: (agentId ? "agent" : "user") as "agent" | "user",
-      dispatch_status: hasAgentChanged ? "pending" : undefined,
+      ...(hasAgentChanged && { dispatch_status: "pending" as const }),
     })
     .eq("id", taskId)
 
@@ -252,14 +247,17 @@ export async function assignAgentToTask(
     return { error: error.message }
   }
 
+  const orgId = (taskRow?.project as { organization_id?: string } | null)?.organization_id
+  const projectId = taskRow?.project_id
+
   // Auto-subscribe the assigned agent to the task thread
-  if (agentId) {
-    const orgId = (taskRow?.project as { organization_id?: string } | null)?.organization_id
-    if (orgId) {
-      await subscribeAgentToTask(orgId, taskId, agentId)
-    }
+  if (agentId && orgId) {
+    await subscribeAgentToTask(orgId, taskId, agentId)
   }
 
   revalidatePath("/tasks")
+  if (projectId && orgId) {
+    await invalidateCache.task({ taskId, projectId, orgId })
+  }
   return { data: undefined }
 }

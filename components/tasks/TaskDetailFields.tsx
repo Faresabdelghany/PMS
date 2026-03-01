@@ -44,6 +44,17 @@ interface AgentOption {
   is_active: boolean
 }
 
+interface FieldConfig {
+  id: string
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+  value: string
+  popoverOpen: boolean
+  setPopoverOpen: (open: boolean) => void
+  renderIcon?: () => React.ReactNode
+  renderPopoverContent: () => React.ReactNode
+}
+
 interface TaskDetailFieldsProps {
   task: TaskWithRelations
   onUpdate: (field: string, value: unknown) => void
@@ -84,7 +95,7 @@ export function TaskDetailFields({
   const [startDateOpen, setStartDateOpen] = useState(false)
   const [endDateOpen, setEndDateOpen] = useState(false)
 
-  const activeAgents = useMemo(() => agents.filter((a) => a.is_active), [agents])
+  const activeAgents = useMemo(() => agents.filter((a) => a.is_active !== false), [agents])
   const assignedAgent = useMemo(() => {
     const relationAgent = Array.isArray(task.assigned_agent) ? task.assigned_agent[0] : task.assigned_agent
     if (!relationAgent) return null
@@ -101,7 +112,7 @@ export function TaskDetailFields({
   const currentPriority = PRIORITY_OPTIONS.find(p => p.value === task.priority)
   const currentStatus = STATUS_OPTIONS.find(s => s.value === task.status)
 
-  const fields: Array<any> = [
+  const fields: FieldConfig[] = [
     {
       id: "assignee",
       label: "Assignee",
@@ -140,7 +151,6 @@ export function TaskDetailFields({
                 <CommandItem
                   key={member.user_id}
                   onSelect={() => {
-                    onUpdate("assigned_agent_id", null)
                     onUpdate("assignee_id", member.user_id)
                     setAssigneeOpen(false)
                   }}
@@ -196,7 +206,6 @@ export function TaskDetailFields({
                 <CommandItem
                   key={agent.id}
                   onSelect={() => {
-                    onUpdate("assignee_id", null)
                     onUpdate("assigned_agent_id", agent.id)
                     setAgentOpen(false)
                   }}
