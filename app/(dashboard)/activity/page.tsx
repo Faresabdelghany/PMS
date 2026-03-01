@@ -1,25 +1,28 @@
 import type { Metadata } from "next"
 import { Suspense } from "react"
+import Link from "next/link"
 import { getPageOrganization } from "@/lib/page-auth"
 import { getActivityFeed } from "@/lib/actions/activity"
 import { getAgents } from "@/lib/actions/agents"
 import { PageSkeleton } from "@/components/ui/page-skeleton"
 import { PageHeader } from "@/components/ui/page-header"
-import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
-import { Pulse } from "@phosphor-icons/react/dist/ssr/Pulse"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ActivityTimeline, ActivityTodayCount } from "@/components/activity/activity-timeline"
 
 export const metadata: Metadata = {
-  title: "Activity - PMS",
+  title: "Activity — PMS",
 }
 
 export default async function ActivityPage({
   searchParams,
 }: {
-  searchParams: Promise<{ agentId?: string; date?: string }>
+  searchParams: Promise<{ agentId?: string | string[]; date?: string | string[] }>
 }) {
   const { orgId } = await getPageOrganization()
-  const { agentId, date } = await searchParams
+  const params = await searchParams
+  const agentId = Array.isArray(params.agentId) ? params.agentId[0] : params.agentId
+  const date = Array.isArray(params.date) ? params.date[0] : params.date
 
   const activityPromise = getActivityFeed(orgId, {
     agentId: agentId || undefined,
@@ -62,91 +65,49 @@ async function ActivityContent({
   const agents = agentsResult.data || []
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <span className="text-sm text-muted-foreground">Filter by agent:</span>
-        <Link href="/activity">
-          <Badge variant={!currentAgentId ? "default" : "outline"} className="cursor-pointer">
-            All Agents
-          </Badge>
-        </Link>
-        {agents.map((agent) => (
-          <Link key={agent.id} href={`/activity?agentId=${agent.id}`}>
-            <Badge
-              variant={currentAgentId === agent.id ? "default" : "outline"}
-              className="cursor-pointer"
-            >
-              {agent.name}
-            </Badge>
-          </Link>
-        ))}
-      </div>
-
-      {/* Timeline */}
-      {activities.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <Pulse className="h-12 w-12 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No activity yet. Agents will appear here once they start working.</p>
-        </div>
-      ) : (
-        <div className="relative space-y-0">
-          {/* Timeline line */}
-          <div className="absolute left-6 top-0 bottom-0 w-px bg-border" />
-
-          <div className="space-y-1">
-            {activities.map((activity, idx) => {
-              const isFirst = idx === 0
-              const prevActivity = idx > 0 ? activities[idx - 1] : null
-              const currDate = new Date(activity.created_at).toLocaleDateString()
-              const prevDate = prevActivity ? new Date(prevActivity.created_at).toLocaleDateString() : null
-              const showDateSeparator = isFirst || currDate !== prevDate
-
-              return (
-                <div key={activity.id}>
-                  {showDateSeparator && (
-                    <div className="flex items-center gap-3 py-3">
-                      <div className="relative z-10 ml-[1.125rem] flex h-3 w-3 items-center justify-center" />
-                      <span className="text-xs font-medium text-muted-foreground bg-background px-2">
-                        {new Date(activity.created_at).toLocaleDateString("en-US", {
-                          weekday: "long",
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })}
-                      </span>
-                      <div className="flex-1 h-px bg-border" />
-                    </div>
-                  )}
-                  <div className="flex items-start gap-4 py-3 pl-4 pr-2 rounded-lg hover:bg-muted/40 transition-colors">
-                    {/* Timeline dot */}
-                    <div className="relative z-10 mt-1 flex h-3 w-3 shrink-0 items-center justify-center rounded-full border-2 border-primary bg-background" />
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium">{activity.agent?.name || "Unknown Agent"}</span>
-                        <Badge variant="secondary" className="text-xs shrink-0">
-                          {activity.activity_type}
-                        </Badge>
-                      </div>
-                      <p className="text-sm mt-0.5">{activity.title}</p>
-                      {activity.description && (
-                        <p className="text-xs text-muted-foreground mt-0.5">{activity.description}</p>
-                      )}
-                      <p className="text-xs text-muted-foreground/60 mt-1">
-                        {new Date(activity.created_at).toLocaleTimeString("en-US", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
+    <div className="flex flex-col gap-6">
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Filter by agent</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap gap-2 items-center">
+            <Link href={buildActivityHref(undefined, currentDate)}>
+              <Badge variant={!currentAgentId ? "default" : "outline"} className="cursor-pointer px-3 py-1.5">
+                All Agents
+              </Badge>
+            </Link>
+            {agents.map((agent) => (
+              <Link key={agent.id} href={buildActivityHref(agent.id, currentDate)}>
+                <Badge
+                  variant={currentAgentId === agent.id ? "default" : "outline"}
+                  className="cursor-pointer px-3 py-1.5"
+                >
+                  {agent.name}
+                </Badge>
+              </Link>
+            ))}
           </div>
-        </div>
-      )}
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span className="rounded-md border bg-muted/40 px-2 py-1">{activities.length} events</span>
+            <ActivityTodayCount activities={activities} />
+            {currentAgentId && <span className="rounded-md border bg-muted/40 px-2 py-1">Filtered view</span>}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Timeline — rendered client-side for correct user timezone */}
+      <ActivityTimeline activities={activities} />
     </div>
   )
+}
+
+function buildActivityHref(agentId?: string, date?: string) {
+  const params = new URLSearchParams()
+
+  if (agentId) params.set("agentId", agentId)
+  if (date) params.set("date", date)
+
+  const query = params.toString()
+  return query ? `/activity?${query}` : "/activity"
 }
