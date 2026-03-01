@@ -48,6 +48,7 @@ export type WorkstreamTask = {
   dueLabel?: string
   dueTone?: "danger" | "warning" | "muted"
   assignee?: User
+  assignedAgent?: User
   /** Optional start date for the task (used in task views). */
   startDate?: Date
   /** Optional end date for the task (used in task views). */

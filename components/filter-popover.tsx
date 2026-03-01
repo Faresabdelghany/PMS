@@ -12,6 +12,7 @@ import { Spinner } from "@phosphor-icons/react/dist/ssr/Spinner"
 import { Tag } from "@phosphor-icons/react/dist/ssr/Tag"
 import { User } from "@phosphor-icons/react/dist/ssr/User"
 import { ChartBar } from "@phosphor-icons/react/dist/ssr/ChartBar"
+import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 
 export type FilterChip = { key: string; value: string }
 
@@ -20,6 +21,7 @@ type FilterTemp = {
   priority: Set<string>
   tags: Set<string>
   members: Set<string>
+  agents: Set<string>
 }
 
 interface FilterCounts {
@@ -27,6 +29,7 @@ interface FilterCounts {
   priority?: Record<string, number>
   tags?: Record<string, number>
   members?: Record<string, number>
+  agents?: Record<string, number>
 }
 
 export type MemberOption = {
@@ -46,11 +49,13 @@ interface FilterPopoverProps {
   onClear: () => void
   counts?: FilterCounts
   members?: MemberOption[]
+  agents?: MemberOption[]
   tags?: TagOption[]
 }
 
 // Stable empty arrays to prevent infinite re-renders from default prop references
 const EMPTY_MEMBERS: MemberOption[] = []
+const EMPTY_AGENTS: MemberOption[] = []
 const EMPTY_TAGS: TagOption[] = []
 
 // Static filter categories - defined outside component to maintain stable reference
@@ -58,7 +63,8 @@ const FILTER_CATEGORIES = [
   { id: "status", label: "Status", icon: Spinner },
   { id: "priority", label: "Priority", icon: ChartBar },
   { id: "tags", label: "Tags", icon: Tag },
-  { id: "members", label: "Members", icon: User },
+  { id: "members", label: "Assigned to", icon: User },
+  { id: "agents", label: "Agent tasks", icon: Sparkle },
 ] as const
 
 const STATUS_OPTIONS = [
@@ -74,14 +80,15 @@ const PRIORITY_OPTIONS = [
   { id: "low", label: "Low" },
 ] as const
 
-export function FilterPopover({ initialChips, onApply, onClear, counts, members, tags }: FilterPopoverProps) {
+export function FilterPopover({ initialChips, onApply, onClear, counts, members, agents, tags }: FilterPopoverProps) {
   // Use stable references for default values
   const stableMembers = members ?? EMPTY_MEMBERS
+  const stableAgents = agents ?? EMPTY_AGENTS
   const stableTags = tags ?? EMPTY_TAGS
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [active, setActive] = useState<
-    "status" | "priority" | "tags" | "members"
+    "status" | "priority" | "tags" | "members" | "agents"
   >("status")
 
   const [temp, setTemp] = useState<FilterTemp>(() => ({
@@ -89,6 +96,7 @@ export function FilterPopover({ initialChips, onApply, onClear, counts, members,
     priority: new Set<string>(),
     tags: new Set<string>(),
     members: new Set<string>(),
+    agents: new Set<string>(),
   }))
 
   const [tagSearch, setTagSearch] = useState("")
@@ -116,6 +124,20 @@ export function FilterPopover({ initialChips, onApply, onClear, counts, members,
     }))
   }, [stableTags])
 
+  const agentOptions = useMemo(() => {
+    const options: Array<{ id: string; label: string; avatar?: string | null }> = [
+      { id: "all", label: "Any agent", avatar: undefined },
+    ]
+    for (const agent of stableAgents) {
+      options.push({
+        id: agent.id,
+        label: agent.label,
+        avatar: agent.avatar,
+      })
+    }
+    return options
+  }, [stableAgents])
+
   // Preselect from chips when opening
   useEffect(() => {
     if (!open) return
@@ -124,6 +146,7 @@ export function FilterPopover({ initialChips, onApply, onClear, counts, members,
       priority: new Set<string>(),
       tags: new Set<string>(),
       members: new Set<string>(),
+      agents: new Set<string>(),
     }
     for (const c of initialChips || []) {
       const k = c.key.toLowerCase()
@@ -135,9 +158,17 @@ export function FilterPopover({ initialChips, onApply, onClear, counts, members,
         if (member) next.members.add(member.id)
       }
       if (k === "tag" || k === "tags") next.tags.add(c.value.toLowerCase())
+      if (k === "agent") {
+        if (c.value.toLowerCase() === "all") {
+          next.agents.add("all")
+        } else {
+          const agent = agentOptions.find((a) => a.label === c.value)
+          if (agent) next.agents.add(agent.id)
+        }
+      }
     }
     setTemp(next)
-  }, [open, initialChips, memberOptions])
+  }, [open, initialChips, memberOptions, agentOptions])
 
   const filteredCategories = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -161,6 +192,14 @@ export function FilterPopover({ initialChips, onApply, onClear, counts, members,
       const member = memberOptions.find((m) => m.id === memberId)
       chips.push({ key: "Member", value: member?.label || memberId })
     })
+    temp.agents.forEach((agentId) => {
+      if (agentId === "all") {
+        chips.push({ key: "Agent", value: "all" })
+        return
+      }
+      const agent = agentOptions.find((a) => a.id === agentId)
+      chips.push({ key: "Agent", value: agent?.label || agentId })
+    })
     temp.tags.forEach((v) => chips.push({ key: "Tag", value: v }))
     onApply(chips)
     setOpen(false)
@@ -172,6 +211,7 @@ export function FilterPopover({ initialChips, onApply, onClear, counts, members,
       priority: new Set<string>(),
       tags: new Set<string>(),
       members: new Set<string>(),
+      agents: new Set<string>(),
     })
     onClear()
   }
@@ -274,8 +314,39 @@ export function FilterPopover({ initialChips, onApply, onClear, counts, members,
                         </Avatar>
                       ) : null}
                       <span className="text-sm flex-1">{m.label}</span>
-                      {counts?.members?.[m.id] != null && (
-                        <span className="text-xs text-muted-foreground">{counts.members[m.id]}</span>
+                      {(counts?.members?.[m.id] != null || counts?.members?.[m.label.toLowerCase()] != null) && (
+                        <span className="text-xs text-muted-foreground">
+                          {counts?.members?.[m.id] ?? counts?.members?.[m.label.toLowerCase()]}
+                        </span>
+                      )}
+                    </label>
+                  ))
+                )}
+              </div>
+            )}
+
+            {active === "agents" && (
+              <div className="space-y-2">
+                {agentOptions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">No agents available</p>
+                ) : (
+                  agentOptions.map((agent) => (
+                    <label key={agent.id} className="flex items-center gap-2 rounded-lg border p-2 hover:bg-accent cursor-pointer">
+                      <Checkbox
+                        checked={temp.agents.has(agent.id)}
+                        onCheckedChange={() => setTemp((t) => ({ ...t, agents: toggleSet(t.agents, agent.id) }))}
+                      />
+                      {agent.avatar ? (
+                        <Avatar className="h-6 w-6">
+                          <AvatarImage src={agent.avatar} alt={agent.label} />
+                          <AvatarFallback>{agent.label.charAt(0).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                      ) : null}
+                      <span className="text-sm flex-1">{agent.label}</span>
+                      {(counts?.agents?.[agent.id] != null || counts?.agents?.[agent.label.toLowerCase()] != null) && (
+                        <span className="text-xs text-muted-foreground">
+                          {counts?.agents?.[agent.id] ?? counts?.agents?.[agent.label.toLowerCase()]}
+                        </span>
                       )}
                     </label>
                   ))

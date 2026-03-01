@@ -29,6 +29,12 @@ export type TaskLike = {
   priority?: string | null
   tag?: string | null
   assignee?: {
+    id?: string
+    name: string
+    avatarUrl?: string | null
+  } | null
+  assignedAgent?: {
+    id: string
     name: string
     avatarUrl?: string | null
   } | null
@@ -91,6 +97,12 @@ export function filterTasksByChips(tasks: TaskLike[], chips: FilterChipType[]): 
     .filter((chip) => chip.key.toLowerCase().startsWith("member") || chip.key.toLowerCase() === "pic")
     .map((chip) => chip.value.toLowerCase())
 
+  const agentValues = new Set(
+    chips
+      .filter((chip) => chip.key.toLowerCase() === "agent")
+      .map((chip) => chip.value.toLowerCase())
+  )
+
   return tasks.filter((task) => {
     // Status filter
     if (statusValues.size > 0) {
@@ -112,14 +124,31 @@ export function filterTasksByChips(tasks: TaskLike[], chips: FilterChipType[]): 
 
     // Member filter (kept as array for includes() substring matching)
     if (memberValues.length > 0) {
-      const name = task.assignee?.name.toLowerCase() ?? ""
+      const humanName = task.assignee?.name.toLowerCase() ?? ""
+      const agentName = task.assignedAgent?.name.toLowerCase() ?? ""
 
       const matches = memberValues.some((value) => {
-        if ((value === "unassigned" || value === "no member") && !task.assignee) return true
-        if (value && name.includes(value)) return true
+        if ((value === "unassigned" || value === "no member") && !task.assignee && !task.assignedAgent) return true
+        if (value && humanName.includes(value)) return true
+        if (value && agentName.includes(value)) return true
         return false
       })
       if (!matches) return false
+    }
+
+    // Agent filter
+    if (agentValues.size > 0) {
+      const hasAgent = !!task.assignedAgent
+      const agentName = task.assignedAgent?.name.toLowerCase() ?? ""
+      const matchesSpecificAgent = Array.from(agentValues)
+        .filter((value) => value !== "all")
+        .some((value) => agentName.includes(value))
+
+      if (agentValues.has("all")) {
+        if (!hasAgent) return false
+      } else if (!matchesSpecificAgent) {
+        return false
+      }
     }
 
     return true
@@ -143,6 +172,7 @@ export function computeTaskFilterCounts(tasks: TaskLike[]): FilterCounts {
     members: {
       unassigned: 0,
     },
+    agents: {},
   }
 
   for (const task of tasks) {
@@ -160,11 +190,18 @@ export function computeTaskFilterCounts(tasks: TaskLike[]): FilterCounts {
       counts.tags![tag] = (counts.tags![tag] || 0) + 1
     }
 
-    if (!task.assignee) {
+    if (!task.assignee && !task.assignedAgent) {
       counts.members!.unassigned = (counts.members!.unassigned || 0) + 1
     } else {
-      const name = task.assignee.name.toLowerCase()
-      counts.members![name] = (counts.members![name] || 0) + 1
+      const name = (task.assignee?.name || task.assignedAgent?.name || "").toLowerCase()
+      if (name) {
+        counts.members![name] = (counts.members![name] || 0) + 1
+      }
+    }
+
+    if (task.assignedAgent) {
+      const agentName = task.assignedAgent.name.toLowerCase()
+      counts.agents![agentName] = (counts.agents![agentName] || 0) + 1
     }
   }
 

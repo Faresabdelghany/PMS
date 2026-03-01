@@ -18,7 +18,8 @@ function escapeRealtimeFilterValue(value: string): string {
 
 export function buildTaskProjectRealtimeFilters(
   projectIds: string[],
-  maxPerFilter = DEFAULT_MAX_PROJECT_IDS_PER_FILTER
+  maxPerFilter = DEFAULT_MAX_PROJECT_IDS_PER_FILTER,
+  userId?: string
 ): string[] {
   const uniqueProjectIds = Array.from(
     new Set(projectIds.map((id) => id.trim()).filter(Boolean))
@@ -26,10 +27,18 @@ export function buildTaskProjectRealtimeFilters(
 
   if (uniqueProjectIds.length === 0) return []
 
-  return chunk(uniqueProjectIds, maxPerFilter).map((group) => {
+  const projectScopedFilters = chunk(uniqueProjectIds, maxPerFilter).map((group) => {
     const serialized = group.map(escapeRealtimeFilterValue).join(",")
     return `project_id=in.(${serialized})`
   })
+
+  if (!userId) return projectScopedFilters
+
+  const safeUserId = escapeRealtimeFilterValue(userId)
+  return projectScopedFilters.flatMap((projectFilter) => [
+    `and(${projectFilter},assignee_id.eq.${safeUserId})`,
+    `and(${projectFilter},created_by.eq.${safeUserId})`,
+  ])
 }
 
 export function countTasksVisibleToProjects(

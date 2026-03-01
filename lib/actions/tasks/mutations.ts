@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import { CacheTags, revalidateTag } from "@/lib/cache-tags"
-import { invalidateCache } from "@/lib/cache"
+import { CacheKeys, invalidate, invalidateCache } from "@/lib/cache"
 import { uuidSchema, validate } from "@/lib/validations"
 import { requireAuth } from "../auth-helpers"
 import { createTaskSchema, updateTaskSchema } from "./schemas"
@@ -31,6 +31,7 @@ export async function createTask(
   }
 
   const validatedData = validation.data
+  const assignedAgentId = (validatedData as { assigned_agent_id?: string | null }).assigned_agent_id ?? null
 
   // Use requireAuth to ensure user is authenticated (throws if not)
   const { user, supabase } = await requireAuth()
@@ -103,6 +104,9 @@ export async function createTask(
       assigneeId: validatedData.assignee_id ?? null,
       orgId: project?.organization_id ?? "",
     })
+    if (assignedAgentId && project?.organization_id) {
+      await invalidate.key(CacheKeys.userTasks(user.id, project.organization_id))
+    }
 
     // Notify assignee when task is created with assignment
     if (user && validatedData.assignee_id && project?.organization_id) {
@@ -138,6 +142,7 @@ export async function updateTask(
     return { error: validation.error }
   }
   const validatedData = validation.data
+  const assignedAgentId = (validatedData as { assigned_agent_id?: string | null }).assigned_agent_id
 
   // Guard against empty updates (e.g., all fields stripped by schema)
   if (Object.keys(validatedData).length === 0) {
@@ -168,6 +173,7 @@ export async function updateTask(
   // Get orgId from the already-fetched oldTask (includes project with organization_id)
   // This avoids an extra sequential query after the update
   const orgId = (oldTask?.project as { organization_id?: string } | null)?.organization_id ?? ""
+  const creatorId = (oldTask as { created_by?: string } | null)?.created_by ?? null
 
   const shouldEvaluateDoDWarnMode =
     validatedData.status === "done" &&
@@ -306,6 +312,15 @@ export async function updateTask(
         assigneeId: task.assignee_id,
         orgId,
       })
+    }
+
+    if (
+      orgId &&
+      creatorId &&
+      assignedAgentId !== undefined &&
+      assignedAgentId !== (oldTask as { assigned_agent_id?: string | null } | null)?.assigned_agent_id
+    ) {
+      await invalidate.key(CacheKeys.userTasks(creatorId, orgId))
     }
 
     // Send notifications for significant changes

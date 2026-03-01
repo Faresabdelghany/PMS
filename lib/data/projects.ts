@@ -32,6 +32,7 @@ export type FilterCounts = {
   priority?: Record<string, number>
   tags?: Record<string, number>
   members?: Record<string, number>
+  agents?: Record<string, number>
 }
 
 export function computeFilterCounts(list: Project[]): FilterCounts {

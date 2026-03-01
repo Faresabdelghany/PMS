@@ -8,6 +8,7 @@ import { DotsSixVertical } from "@phosphor-icons/react/dist/ssr/DotsSixVertical"
 import { FolderSimple } from "@phosphor-icons/react/dist/ssr/FolderSimple"
 import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
 import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
+import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
 import {
   SortableContext,
@@ -31,6 +32,7 @@ import { TaskRowBase } from "@/components/tasks/TaskRowBase"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { ProgressCircle } from "@/components/progress-circle"
 import {
   DropdownMenu,
@@ -221,6 +223,37 @@ export type TaskRowDnDProps = {
   onDelete?: (taskId: string) => void
 }
 
+function TaskAssigneeMeta({ task }: { task: TaskLike }) {
+  const showHuman = !!task.assignee
+  const showAgent = !!task.assignedAgent
+  if (!showHuman && !showAgent) return null
+
+  const displayName = showHuman ? task.assignee!.name : task.assignedAgent!.name
+  const displayAvatar = showHuman ? task.assignee?.avatarUrl : task.assignedAgent?.avatarUrl
+
+  return (
+    <div className="relative">
+      <Avatar className="size-6">
+        {displayAvatar ? (
+          <AvatarImage src={displayAvatar} alt={displayName} />
+        ) : (
+          <AvatarFallback>{displayName.charAt(0).toUpperCase()}</AvatarFallback>
+        )}
+      </Avatar>
+      {showAgent && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="absolute -right-1 -bottom-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-background bg-primary text-primary-foreground">
+              <Sparkle className="h-2.5 w-2.5" weight="fill" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Handled by {task.assignedAgent?.name}</TooltipContent>
+        </Tooltip>
+      )}
+    </div>
+  )
+}
+
 export function TaskRowDnD({ task, onToggle, onTitleClick, onEdit, onDelete }: TaskRowDnDProps) {
   const isDone = task.status === "done"
 
@@ -241,6 +274,16 @@ export function TaskRowDnD({ task, onToggle, onTitleClick, onEdit, onDelete }: T
         onCheckedChange={onToggle}
         onTitleClick={onTitleClick ? () => onTitleClick(task.id) : undefined}
         titleAriaLabel={task.name}
+        titleBadge={task.assignedAgent ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground">
+                <Sparkle className="h-3 w-3" weight="fill" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Handled by {task.assignedAgent.name}</TooltipContent>
+          </Tooltip>
+        ) : undefined}
         titleSuffix={<TaskBadges workstreamName={task.workstreamName} subtaskCount={task.subtaskCount} doneSubtaskCount={task.doneSubtaskCount} className="hidden sm:inline" />}
         subtitle={<div className="hidden sm:inline">{getTaskDescriptionSnippet(task)}</div>}
         meta={
@@ -260,14 +303,7 @@ export function TaskRowDnD({ task, onToggle, onTitleClick, onEdit, onDelete }: T
                 {task.tag}
               </Badge>
             )}
-            {task.assignee && (
-              <Avatar className="size-6">
-                {task.assignee.avatarUrl && (
-                  <AvatarImage src={task.assignee.avatarUrl} alt={task.assignee.name} />
-                )}
-                <AvatarFallback>{task.assignee.name.charAt(0).toUpperCase()}</AvatarFallback>
-              </Avatar>
-            )}
+            <TaskAssigneeMeta task={task} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button

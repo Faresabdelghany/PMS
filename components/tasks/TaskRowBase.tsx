@@ -11,6 +11,7 @@ export type TaskRowBaseProps = {
   onCheckedChange?: () => void
   onTitleClick?: () => void
   titleAriaLabel?: string
+  titleBadge?: ReactNode
   titleSuffix?: ReactNode
   meta?: ReactNode
   className?: string
@@ -23,6 +24,7 @@ export const TaskRowBase = memo(function TaskRowBase({
   onCheckedChange,
   onTitleClick,
   titleAriaLabel,
+  titleBadge,
   titleSuffix,
   meta,
   className,
@@ -54,6 +56,7 @@ export const TaskRowBase = memo(function TaskRowBase({
           >
             {title}
           </button>
+          {titleBadge}
           {titleSuffix}
         </div>
         {subtitle && (

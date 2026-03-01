@@ -38,7 +38,7 @@ function toTaskData(task: TaskLike): TaskData {
     status: task.status,
     priority,
     tag: task.tag ?? undefined,
-    assignee: task.assignee ? { id: "", name: task.assignee.name, avatarUrl: task.assignee.avatarUrl ?? null } : undefined,
+    assignee: task.assignee ? { id: task.assignee.id ?? "", name: task.assignee.name, avatarUrl: task.assignee.avatarUrl ?? null } : undefined,
     startDate: task.startDate ?? undefined,
     endDate: task.endDate ?? undefined,
     dueLabel: task.dueLabel ?? undefined,
@@ -60,7 +60,10 @@ function toProjectTask(task: TaskLike): ProjectTask {
       ? (task.priority as TaskPriority)
       : undefined,
     tag: task.tag ?? undefined,
-    assignee: task.assignee ? { id: "", name: task.assignee.name, avatarUrl: task.assignee.avatarUrl ?? undefined } : undefined,
+    assignee: task.assignee ? { id: task.assignee.id ?? "", name: task.assignee.name, avatarUrl: task.assignee.avatarUrl ?? undefined } : undefined,
+    assignedAgent: task.assignedAgent
+      ? { id: task.assignedAgent.id, name: task.assignedAgent.name, avatarUrl: task.assignedAgent.avatarUrl ?? undefined }
+      : undefined,
     startDate: task.startDate ?? undefined,
     endDate: task.endDate ?? undefined,
     dueLabel: task.dueLabel ?? undefined,
@@ -129,7 +132,7 @@ import { TaskQuickCreateModalLazy as TaskQuickCreateModal, type CreateTaskContex
 import type { OrganizationTagLean as OrganizationTag, Workstream } from "@/lib/supabase/types"
 import { formatDueLabel } from "@/lib/date-utils"
 import { toast } from "sonner"
-import { usePooledRealtime, usePooledRealtimeMulti } from "@/hooks/realtime-context"
+import { usePooledRealtimeMulti } from "@/hooks/realtime-context"
 import { buildTaskProjectRealtimeFilters } from "@/lib/realtime/task-org-filter"
 import type { Database } from "@/lib/supabase/types"
 
@@ -140,6 +143,10 @@ export type UITask = TaskLike
 
 // Convert Supabase task to UI format
 function toUITask(task: TaskWithRelations): TaskLike {
+  const assignedAgent = Array.isArray(task.assigned_agent)
+    ? task.assigned_agent[0] ?? null
+    : task.assigned_agent ?? null
+
   return {
     id: task.id,
     name: task.name,
@@ -147,8 +154,14 @@ function toUITask(task: TaskWithRelations): TaskLike {
     priority: task.priority,
     tag: task.tag || null,
     assignee: task.assignee ? {
+      id: task.assignee.id,
       name: task.assignee.full_name || task.assignee.email,
       avatarUrl: task.assignee.avatar_url || null,
+    } : null,
+    assignedAgent: assignedAgent ? {
+      id: assignedAgent.id,
+      name: assignedAgent.name,
+      avatarUrl: assignedAgent.avatar_url || null,
     } : null,
     startDate: task.start_date ? new Date(task.start_date) : null,
     endDate: task.end_date ? new Date(task.end_date) : null,
@@ -264,21 +277,33 @@ export function MyTasksPage({
   projectsRef.current = projects
   const membersRef = useRef(organizationMembers)
   membersRef.current = organizationMembers
+  const agentsRef = useRef(agents)
+  agentsRef.current = agents
 
   const allModeProjectRealtimeFilters = useMemo(() => {
     if (currentView !== "all") return []
     return buildTaskProjectRealtimeFilters(projects.map((project) => project.id))
   }, [currentView, projects])
 
+  const myModeProjectRealtimeFilters = useMemo(() => {
+    if (currentView !== "my" || !userId) return []
+    return buildTaskProjectRealtimeFilters(projects.map((project) => project.id), undefined, userId)
+  }, [currentView, projects, userId])
+
   // Helper to build TaskWithRelations from raw task data
   const buildTaskWithRelations = useCallback((task: TaskRow): TaskWithRelations | null => {
-    if (currentView === "my" && task.assignee_id !== userId) return null
+    if (currentView === "my") {
+      const isHumanAssigned = task.assignee_id === userId
+      const isScopedAgentTask = !!task.assigned_agent_id
+      if (!isHumanAssigned && !isScopedAgentTask) return null
+    }
 
     const project = projectsRef.current.find(p => p.id === task.project_id)
     if (!project) return null // Client-side org-scoped fallback guard
 
     const workstream = project.workstreams?.find(w => w.id === task.workstream_id)
     const assignee = membersRef.current.find(m => m.user_id === task.assignee_id)
+    const agent = agentsRef.current.find((a) => a.id === task.assigned_agent_id)
 
     return {
       ...task,
@@ -289,6 +314,11 @@ export function MyTasksPage({
         full_name: assignee.profile.full_name,
         email: assignee.profile.email,
         avatar_url: assignee.profile.avatar_url,
+      } : null,
+      assigned_agent: agent ? {
+        id: agent.id,
+        name: agent.name,
+        avatar_url: agent.avatar_url,
       } : null,
     }
   }, [currentView, userId])
@@ -324,11 +354,11 @@ export function MyTasksPage({
     setTasks(prev => prev.filter(t => t.id !== task.id))
   }, [setTasks])
 
-  // "My" mode: single assignee filter (existing behavior)
-  usePooledRealtime({
+  // "My" mode: assignee scope + creator scope for agent-owned tasks
+  usePooledRealtimeMulti({
     table: "tasks",
-    filter: currentView === "my" && userId ? `assignee_id=eq.${userId}` : undefined,
-    enabled: !!organizationId && currentView === "my" && !!userId,
+    filters: myModeProjectRealtimeFilters,
+    enabled: !!organizationId && currentView === "my" && myModeProjectRealtimeFilters.length > 0,
     onInsert: handleRealtimeInsert,
     onUpdate: handleRealtimeUpdate,
     onDelete: handleRealtimeDelete,
@@ -378,12 +408,27 @@ export function MyTasksPage({
 
   // Build member options for filter from organization members
   const filterMembers = useMemo<MemberOption[]>(() => {
-    return organizationMembers.map((member) => ({
-      id: member.user_id,
-      label: member.profile.full_name || member.profile.email,
-      avatar: member.profile.avatar_url,
+    return [
+      ...organizationMembers.map((member) => ({
+        id: member.user_id,
+        label: member.profile.full_name || member.profile.email,
+        avatar: member.profile.avatar_url,
+      })),
+      ...agents.map((agent) => ({
+        id: agent.id,
+        label: agent.name,
+        avatar: agent.avatar_url,
+      })),
+    ]
+  }, [organizationMembers, agents])
+
+  const filterAgents = useMemo<MemberOption[]>(() => {
+    return agents.map((agent) => ({
+      id: agent.id,
+      label: agent.name,
+      avatar: agent.avatar_url,
     }))
-  }, [organizationMembers])
+  }, [agents])
 
   // Extract unique tag strings from tasks (stable when tags don't change)
   const uniqueTagStrings = useMemo(() => {
@@ -482,7 +527,8 @@ export function MyTasksPage({
         end_date: task.endDate?.toISOString().split('T')[0] || null,
         project_id: projectId,
         workstream_id: task.workstreamId || null,
-        assignee_id: null,
+        assignee_id: task.assignee?.id || null,
+        assigned_agent_id: task.assignedAgent?.id || null,
         sort_order: 0,
         source_report_id: null,
         created_at: new Date().toISOString(),
@@ -490,10 +536,15 @@ export function MyTasksPage({
         project: { id: projectId, name: projectName },
         workstream: task.workstreamId ? { id: task.workstreamId, name: task.workstreamName || "" } : null,
         assignee: task.assignee ? {
-          id: "",
+          id: task.assignee.id || "",
           full_name: task.assignee.name,
           email: "",
           avatar_url: task.assignee.avatarUrl || null
+        } : null,
+        assigned_agent: task.assignedAgent ? {
+          id: task.assignedAgent.id,
+          name: task.assignedAgent.name,
+          avatar_url: task.assignedAgent.avatarUrl || null,
         } : null,
         subtask_count: task.subtaskCount ?? 0,
         done_subtask_count: task.doneSubtaskCount ?? 0,
@@ -677,10 +728,10 @@ export function MyTasksPage({
         <div className="flex-1 flex flex-col items-center justify-center p-8">
           <div className="text-center space-y-3">
             <p className="text-sm font-medium text-foreground">
-              {currentView === "all" ? "No tasks found" : "No tasks assigned to you"}
+              {currentView === "all" ? "No tasks found" : "No tasks for you yet"}
             </p>
             <p className="text-xs text-muted-foreground">
-              {currentView === "all" ? "Tasks in your organization will appear here." : "Tasks assigned to you will appear here."}
+              {currentView === "all" ? "Tasks in your organization will appear here." : "Tasks assigned to you or handled by your agents will appear here."}
             </p>
           </div>
         </div>
@@ -738,6 +789,7 @@ export function MyTasksPage({
               onClear={() => setFilters([])}
               counts={counts}
               members={filterMembers}
+              agents={filterAgents}
               tags={filterTags}
             />
             <ChipOverflow

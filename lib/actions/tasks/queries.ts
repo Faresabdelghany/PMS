@@ -53,6 +53,7 @@ export async function getTasks(
     .select(`
       *,
       assignee:profiles(id, full_name, email, avatar_url),
+      assigned_agent:agents(id, name, avatar_url),
       workstream:workstreams(id, name)
     `)
     .eq("project_id", projectId)
@@ -124,10 +125,11 @@ export async function getMyTasks(
             .select(`
               *,
               assignee:profiles(id, full_name, email, avatar_url),
+              assigned_agent:agents(id, name, avatar_url),
               workstream:workstreams(id, name),
               project:projects!inner(id, name, organization_id)
             `)
-            .eq("assignee_id", user.id)
+            .or(`assignee_id.eq.${user.id},and(assigned_agent_id.not.is.null,created_by.eq.${user.id})`)
             .eq("project.organization_id", orgId)
             .is("parent_task_id", null)
             .order("updated_at", { ascending: false })
@@ -156,10 +158,11 @@ export async function getMyTasks(
     .select(`
       *,
       assignee:profiles(id, full_name, email, avatar_url),
+      assigned_agent:agents(id, name, avatar_url),
       workstream:workstreams(id, name),
       project:projects!inner(id, name, organization_id)
     `)
-    .eq("assignee_id", user.id)
+    .or(`assignee_id.eq.${user.id},and(assigned_agent_id.not.is.null,created_by.eq.${user.id})`)
     .eq("project.organization_id", orgId)
     .is("parent_task_id", null)
 
@@ -216,6 +219,7 @@ export async function getAllTasks(
             .select(`
               *,
               assignee:profiles(id, full_name, email, avatar_url),
+              assigned_agent:agents(id, name, avatar_url),
               workstream:workstreams(id, name),
               project:projects!inner(id, name, organization_id)
             `)
@@ -247,6 +251,7 @@ export async function getAllTasks(
     .select(`
       *,
       assignee:profiles(id, full_name, email, avatar_url),
+      assigned_agent:agents(id, name, avatar_url),
       workstream:workstreams(id, name),
       project:projects!inner(id, name, organization_id)
     `)
@@ -256,6 +261,7 @@ export async function getAllTasks(
   if (filters?.status) query = query.eq("status", filters.status)
   if (filters?.priority) query = query.eq("priority", filters.priority)
   if (filters?.assigneeId) query = query.eq("assignee_id", filters.assigneeId)
+  if (filters?.agentId) query = query.eq("assigned_agent_id", filters.agentId)
   if (filters?.workstreamId) query = query.eq("workstream_id", filters.workstreamId)
 
   if (filters?.search) {
@@ -295,6 +301,7 @@ export async function getTask(id: string): Promise<ActionResult<TaskWithRelation
     .select(`
       *,
       assignee:profiles(id, full_name, email, avatar_url),
+      assigned_agent:agents(id, name, avatar_url),
       workstream:workstreams(id, name),
       project:projects(id, name)
     `)
@@ -312,6 +319,7 @@ export async function getSubtasks(parentTaskId: string): Promise<ActionResult<Ta
     .select(`
       *,
       assignee:profiles(id, full_name, email, avatar_url),
+      assigned_agent:agents(id, name, avatar_url),
       workstream:workstreams(id, name),
       project:projects(id, name)
     `)

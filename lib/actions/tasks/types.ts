@@ -6,6 +6,7 @@ export type TaskFilters = {
   status?: TaskStatus
   priority?: TaskPriority
   assigneeId?: string
+  agentId?: string
   workstreamId?: string
   search?: string
 }
@@ -30,6 +31,15 @@ export type TaskWithRelations = Task & {
     email: string
     avatar_url: string | null
   } | null
+  assigned_agent?: {
+    id: string
+    name: string
+    avatar_url: string | null
+  } | {
+    id: string
+    name: string
+    avatar_url: string | null
+  }[] | null
   workstream?: {
     id: string
     name: string

@@ -5,6 +5,7 @@ import { format } from "date-fns"
 import { CaretDown } from "@phosphor-icons/react/dist/ssr/CaretDown"
 import { FolderSimple } from "@phosphor-icons/react/dist/ssr/FolderSimple"
 import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank"
+import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 import { Tag as TagIcon } from "@phosphor-icons/react/dist/ssr/Tag"
 
 import { Badge } from "@/components/ui/badge"
@@ -13,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import type { ProjectTask } from "@/lib/data/project-details"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import type { OrganizationTagLean as OrganizationTag } from "@/lib/supabase/types"
 
 type TaskBoardCardVariant = "default" | "completed" | "empty"
@@ -51,6 +53,7 @@ export const TaskBoardCard = memo(function TaskBoardCard({ task, variant = "defa
   const projectName = task.projectName
   const dateText = task.startDate ? format(task.startDate, "MMM d") : "No date"
   const typeText = task.tag || "Task"
+  const displayAssignee = task.assignee ?? task.assignedAgent ?? null
 
   return (
     <div
@@ -77,15 +80,27 @@ export const TaskBoardCard = memo(function TaskBoardCard({ task, variant = "defa
         >
           {badgeText}
         </Badge>
+        <div className="relative">
         <Avatar className="size-6 border border-border">
-          {task.assignee?.avatarUrl ? (
-            <AvatarImage src={task.assignee.avatarUrl} alt={task.assignee.name} />
+          {displayAssignee?.avatarUrl ? (
+            <AvatarImage src={displayAssignee.avatarUrl} alt={displayAssignee.name} />
           ) : (
             <AvatarFallback className="text-xs">
-              {task.assignee ? task.assignee.name.charAt(0).toUpperCase() : <FolderSimple className="h-4 w-4 text-muted-foreground" />}
+              {displayAssignee ? displayAssignee.name.charAt(0).toUpperCase() : <FolderSimple className="h-4 w-4 text-muted-foreground" />}
             </AvatarFallback>
           )}
         </Avatar>
+          {task.assignedAgent && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="absolute -right-1 -bottom-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-background bg-primary text-primary-foreground">
+                  <Sparkle className="h-2.5 w-2.5" weight="fill" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Handled by {task.assignedAgent.name}</TooltipContent>
+            </Tooltip>
+          )}
+        </div>
       </div>
 
       {/* Middle row: checkbox + title */}
