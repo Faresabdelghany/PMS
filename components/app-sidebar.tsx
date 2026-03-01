@@ -26,8 +26,6 @@ import { CheckSquare } from "@phosphor-icons/react/dist/ssr/CheckSquare"
 import { Folder } from "@phosphor-icons/react/dist/ssr/Folder"
 import { Users } from "@phosphor-icons/react/dist/ssr/Users"
 import { Gear } from "@phosphor-icons/react/dist/ssr/Gear"
-import { Layout } from "@phosphor-icons/react/dist/ssr/Layout"
-import { Question } from "@phosphor-icons/react/dist/ssr/Question"
 import { CaretUpDown } from "@phosphor-icons/react/dist/ssr/CaretUpDown"
 import { SignOut } from "@phosphor-icons/react/dist/ssr/SignOut"
 import { Robot } from "@phosphor-icons/react/dist/ssr/Robot"
@@ -61,7 +59,7 @@ import { PROGRESS_THRESHOLDS, BADGE_CAP, SIDEBAR_PROJECT_LIMIT } from "@/lib/con
 
 // Navigation items defined inline (no mock data dependency)
 type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "agent-network" | "chat" | "activity" | "mission-control" | "approvals" | "gateways" | "skills" | "documents" | "models" | "sessions" | "memory"
-type SidebarFooterItemId = "settings" | "templates" | "help"
+type SidebarFooterItemId = "settings"
 
 type NavItem = {
   id: NavItemId
@@ -93,11 +91,7 @@ const navItems: NavItem[] = [
   { id: "chat", label: "AI Chat" },
 ]
 
-const footerItems: FooterItem[] = [
-  { id: "settings", label: "Settings" },
-  { id: "templates", label: "Templates" },
-  { id: "help", label: "Help" },
-]
+const footerItems: FooterItem[] = [\n  { id: "settings", label: "Settings" },\n]
 
 // Color palette for projects based on progress
 const getProjectColor = (progress: number): string => {
@@ -190,8 +184,6 @@ const navItemIcons: Record<NavItemId, React.ComponentType<{ className?: string }
 
 const footerItemIcons: Record<SidebarFooterItemId, React.ComponentType<{ className?: string }>> = {
   settings: Gear,
-  templates: Layout,
-  help: Question,
 }
 
 // Memoized nav item icon component to avoid IIFE in render
@@ -597,3 +589,5 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
     </Sidebar>
   )
 }
+
+
