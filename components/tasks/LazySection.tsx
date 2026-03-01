@@ -38,13 +38,22 @@ export function LazySection({
     return () => observer.disconnect()
   }, [])
 
-  if (visible) return <>{children}</>
+  if (visible)
+    return (
+      <div style={{ contentVisibility: "auto", containIntrinsicSize: `auto ${estimatedHeight}px` }}>
+        {children}
+      </div>
+    )
 
   return (
     <div
       ref={ref}
       className="max-w-6xl mx-auto rounded-3xl border border-border bg-muted/50 p-3"
-      style={{ height: estimatedHeight }}
+      style={{
+        height: estimatedHeight,
+        contentVisibility: "auto",
+        containIntrinsicSize: `auto ${estimatedHeight}px`,
+      }}
       aria-hidden
     />
   )

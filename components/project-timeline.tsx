@@ -57,11 +57,13 @@ export function ProjectTimeline({ initialProjects = [] }: ProjectTimelineProps) 
   const [projects, setProjects] = useState<TimelineProject[]>(initialProjects)
   const [expandedProjects, setExpandedProjects] = useState<string[]>(initialProjects.map((p) => p.id))
 
-  // Update projects when initialProjects changes
-  useEffect(() => {
+  // Sync state when initialProjects changes (render-time pattern, no useEffect needed)
+  const [prevInitialProjects, setPrevInitialProjects] = useState(initialProjects)
+  if (prevInitialProjects !== initialProjects) {
+    setPrevInitialProjects(initialProjects)
     setProjects(initialProjects)
     setExpandedProjects(initialProjects.map((p) => p.id))
-  }, [initialProjects])
+  }
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [viewMode, setViewMode] = useState<"Day" | "Week" | "Month" | "Quarter">("Week")

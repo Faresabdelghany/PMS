@@ -101,6 +101,8 @@ export function TaskDetail({ task, agents, orgId, onClose, onTaskUpdated }: Task
     task.dispatch_status !== "running" &&
     task.dispatch_status !== "dispatched"
 
+  // Conditional render safety: all guarded values below are string | null | object —
+  // none can be 0, so {value && <JSX />} patterns are safe from accidental "0" rendering.
   return (
     <Sheet open={!!task} onOpenChange={(open) => !open && onClose()}>
       <SheetContent
