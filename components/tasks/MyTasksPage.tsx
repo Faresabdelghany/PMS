@@ -739,9 +739,21 @@ export function MyTasksPage({
             </div>
           </div>
           <div className="px-4 py-3">
-            <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-1">
-              <Button size="sm" variant={currentView === "my" ? "secondary" : "ghost"} className="h-7 px-3" onClick={() => setView("my")}>My Tasks</Button>
-              <Button size="sm" variant={currentView === "all" ? "secondary" : "ghost"} className="h-7 px-3" onClick={() => setView("all")}>All Tasks</Button>
+            <div className="inline-flex bg-muted rounded-full px-1 py-0.5 text-xs border border-border/50 h-8 items-center">
+              <button
+                type="button"
+                onClick={() => setView("my")}
+                className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${currentView === "my" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                My Tasks
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("all")}
+                className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${currentView === "all" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                All Tasks
+              </button>
             </div>
           </div>
         </header>
@@ -799,9 +811,21 @@ export function MyTasksPage({
 
         <div className="flex items-center justify-between px-4 pb-3 pt-3">
           <div className="flex items-center gap-3">
-            <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-1">
-              <Button size="sm" variant={currentView === "my" ? "secondary" : "ghost"} className="h-7 px-3" onClick={() => setView("my")}>My Tasks</Button>
-              <Button size="sm" variant={currentView === "all" ? "secondary" : "ghost"} className="h-7 px-3" onClick={() => setView("all")}>All Tasks</Button>
+            <div className="inline-flex bg-muted rounded-full px-1 py-0.5 text-xs border border-border/50 h-8 items-center">
+              <button
+                type="button"
+                onClick={() => setView("my")}
+                className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${currentView === "my" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                My Tasks
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("all")}
+                className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${currentView === "all" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                All Tasks
+              </button>
             </div>
             <Button
               size="sm"
