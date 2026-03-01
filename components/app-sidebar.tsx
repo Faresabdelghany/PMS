@@ -33,6 +33,7 @@ import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 import { SquaresFour } from "@phosphor-icons/react/dist/ssr/SquaresFour"
 import { User } from "@phosphor-icons/react/dist/ssr/User"
 import { Pulse } from "@phosphor-icons/react/dist/ssr/Pulse"
+import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank"
 import { GitFork } from "@phosphor-icons/react/dist/ssr/GitFork"
 import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText"
 import { PlugsConnected } from "@phosphor-icons/react/dist/ssr/PlugsConnected"
@@ -59,7 +60,7 @@ import { cn } from "@/lib/utils"
 import { PROGRESS_THRESHOLDS, BADGE_CAP, SIDEBAR_PROJECT_LIMIT } from "@/lib/constants"
 
 // Navigation items defined inline (no mock data dependency)
-type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "agent-network" | "chat" | "activity" | "mission-control" | "approvals" | "gateways" | "skills" | "models" | "documents" | "sessions" | "memory"
+type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "agent-network" | "chat" | "activity" | "live-ops" | "agent-calendar" | "approvals" | "gateways" | "skills" | "models" | "documents" | "sessions" | "memory"
 type SidebarFooterItemId = "settings"
 
 type NavItem = {
@@ -82,7 +83,8 @@ const navItems: NavItem[] = [
   { id: "agents", label: "Agents" },
   { id: "agent-network", label: "Agent Network" },
   { id: "activity", label: "Activity" },
-  { id: "mission-control", label: "Mission Control" },
+  { id: "live-ops", label: "Live Ops" },
+  { id: "agent-calendar", label: "Agent Calendar" },
   { id: "approvals", label: "Approvals" },
   { id: "gateways", label: "Gateways" },
   { id: "skills", label: "Skills" },
@@ -139,7 +141,8 @@ const preloadHandlers: Record<NavItemId, () => void> = {
     }
   },
   activity: () => {},
-  "mission-control": () => {},
+  "live-ops": () => {},
+  "agent-calendar": () => {},
   approvals: () => {},
   gateways: () => {},
   skills: () => {},
@@ -179,7 +182,8 @@ const navItemIcons: Record<NavItemId, React.ComponentType<{ className?: string }
   agents: Robot,
   "agent-network": GitFork,
   activity: Pulse,
-  "mission-control": Pulse,
+  "live-ops": Pulse,
+  "agent-calendar": CalendarBlank,
   approvals: ClipboardText,
   gateways: PlugsConnected,
   skills: Sparkle,
@@ -332,7 +336,8 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
     if (id === "agents") return "/agents"
     if (id === "agent-network") return "/agents/communication"
     if (id === "activity") return "/activity"
-    if (id === "mission-control") return "/mission-control"
+    if (id === "live-ops") return "/live-ops"
+    if (id === "agent-calendar") return "/agent-calendar"
     if (id === "approvals") return "/approvals"
     if (id === "gateways") return "/gateways"
     if (id === "skills") return "/skills/marketplace"
@@ -372,8 +377,11 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
     if (id === "activity") {
       return pathname.startsWith("/activity")
     }
-    if (id === "mission-control") {
-      return pathname.startsWith("/mission-control")
+    if (id === "live-ops") {
+      return pathname.startsWith("/live-ops")
+    }
+    if (id === "agent-calendar") {
+      return pathname.startsWith("/agent-calendar")
     }
     if (id === "approvals") {
       return pathname.startsWith("/approvals")

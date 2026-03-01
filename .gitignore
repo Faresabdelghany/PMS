@@ -85,3 +85,4 @@ specs/
 # Duplicate lock files (we use pnpm)
 package-lock.json
 
+tmp_phase4_t1_check.js
