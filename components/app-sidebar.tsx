@@ -35,12 +35,9 @@ import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 import { SquaresFour } from "@phosphor-icons/react/dist/ssr/SquaresFour"
 import { User } from "@phosphor-icons/react/dist/ssr/User"
 import { Pulse } from "@phosphor-icons/react/dist/ssr/Pulse"
-import { Kanban } from "@phosphor-icons/react/dist/ssr/Kanban"
 import { GitFork } from "@phosphor-icons/react/dist/ssr/GitFork"
 import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText"
 import { PlugsConnected } from "@phosphor-icons/react/dist/ssr/PlugsConnected"
-import { Rows } from "@phosphor-icons/react/dist/ssr/Rows"
-import { TextT } from "@phosphor-icons/react/dist/ssr/TextT"
 import { FileText } from "@phosphor-icons/react/dist/ssr/FileText"
 import { Terminal } from "@phosphor-icons/react/dist/ssr/Terminal"
 import { Notebook } from "@phosphor-icons/react/dist/ssr/Notebook"
@@ -63,7 +60,7 @@ import { cn } from "@/lib/utils"
 import { PROGRESS_THRESHOLDS, BADGE_CAP, SIDEBAR_PROJECT_LIMIT } from "@/lib/constants"
 
 // Navigation items defined inline (no mock data dependency)
-type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "agent-network" | "chat" | "activity" | "mission-control" | "boards" | "board-groups" | "custom-fields" | "approvals" | "gateways" | "skills" | "documents" | "models" | "sessions" | "memory"
+type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "agent-network" | "chat" | "activity" | "mission-control" | "approvals" | "gateways" | "skills" | "documents" | "models" | "sessions" | "memory"
 type SidebarFooterItemId = "settings" | "templates" | "help"
 
 type NavItem = {
@@ -87,9 +84,6 @@ const navItems: NavItem[] = [
   { id: "agent-network", label: "Agent Network" },
   { id: "activity", label: "Activity" },
   { id: "mission-control", label: "Mission Control" },
-  { id: "boards", label: "Boards" },
-  { id: "board-groups", label: "Board Groups" },
-  { id: "custom-fields", label: "Custom Fields" },
   { id: "approvals", label: "Approvals" },
   { id: "gateways", label: "Gateways" },
   { id: "skills", label: "Skills" },
@@ -148,9 +142,6 @@ const preloadHandlers: Record<NavItemId, () => void> = {
   },
   activity: () => {},
   "mission-control": () => {},
-  boards: () => {},
-  "board-groups": () => {},
-  "custom-fields": () => {},
   approvals: () => {},
   gateways: () => {},
   skills: () => {},
@@ -187,9 +178,6 @@ const navItemIcons: Record<NavItemId, React.ComponentType<{ className?: string }
   "agent-network": GitFork,
   activity: Pulse,
   "mission-control": Pulse,
-  boards: Kanban,
-  "board-groups": Rows,
-  "custom-fields": TextT,
   approvals: ClipboardText,
   gateways: PlugsConnected,
   skills: Sparkle,
@@ -345,9 +333,6 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
     if (id === "agent-network") return "/agents/communication"
     if (id === "activity") return "/activity"
     if (id === "mission-control") return "/mission-control"
-    if (id === "boards") return "/boards"
-    if (id === "board-groups") return "/board-groups"
-    if (id === "custom-fields") return "/custom-fields"
     if (id === "approvals") return "/approvals"
     if (id === "gateways") return "/gateways"
     if (id === "skills") return "/skills/marketplace"
@@ -388,15 +373,6 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
     }
     if (id === "mission-control") {
       return pathname.startsWith("/mission-control")
-    }
-    if (id === "boards") {
-      return pathname.startsWith("/boards")
-    }
-    if (id === "board-groups") {
-      return pathname.startsWith("/board-groups")
-    }
-    if (id === "custom-fields") {
-      return pathname.startsWith("/custom-fields")
     }
     if (id === "approvals") {
       return pathname.startsWith("/approvals")
