@@ -58,7 +58,7 @@ import { cn } from "@/lib/utils"
 import { PROGRESS_THRESHOLDS, BADGE_CAP, SIDEBAR_PROJECT_LIMIT } from "@/lib/constants"
 
 // Navigation items defined inline (no mock data dependency)
-type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "agent-network" | "chat" | "activity" | "mission-control" | "approvals" | "gateways" | "skills" | "documents" | "models" | "sessions" | "memory"
+type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "agent-network" | "chat" | "activity" | "mission-control" | "approvals" | "gateways" | "skills" | "documents" | "sessions" | "memory"
 type SidebarFooterItemId = "settings"
 
 type NavItem = {
@@ -91,7 +91,9 @@ const navItems: NavItem[] = [
   { id: "chat", label: "AI Chat" },
 ]
 
-const footerItems: FooterItem[] = [\n  { id: "settings", label: "Settings" },\n]
+const footerItems: FooterItem[] = [
+  { id: "settings", label: "Settings" },
+]
 
 // Color palette for projects based on progress
 const getProjectColor = (progress: number): string => {
@@ -140,7 +142,6 @@ const preloadHandlers: Record<NavItemId, () => void> = {
   gateways: () => {},
   skills: () => {},
   documents: () => {},
-  models: () => {},
   sessions: () => {},
   memory: () => {},
   chat: () => {
@@ -176,7 +177,6 @@ const navItemIcons: Record<NavItemId, React.ComponentType<{ className?: string }
   gateways: PlugsConnected,
   skills: Sparkle,
   documents: FileText,
-  models: Sparkle,
   sessions: Terminal,
   memory: Notebook,
   chat: Sparkle,
