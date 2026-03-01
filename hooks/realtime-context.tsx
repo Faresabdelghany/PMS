@@ -354,6 +354,58 @@ export function usePooledRealtime<T extends TableName>({
 }
 
 /**
+ * Subscribe to the same table using multiple filters.
+ * Useful for working around realtime filter clause limits by chunking filters.
+ */
+export function usePooledRealtimeMulti<T extends TableName>({
+  table,
+  filters,
+  onInsert,
+  onUpdate,
+  onDelete,
+  enabled = true,
+}: {
+  table: T
+  filters: string[]
+  onInsert?: (record: TableRow<T>) => void
+  onUpdate?: (record: TableRow<T>, oldRecord: TableRow<T>) => void
+  onDelete?: (oldRecord: TableRow<T>) => void
+  enabled?: boolean
+}) {
+  const { subscribe } = useRealtimeSubscribe()
+
+  const onInsertRef = useRef(onInsert)
+  const onUpdateRef = useRef(onUpdate)
+  const onDeleteRef = useRef(onDelete)
+
+  useEffect(() => {
+    onInsertRef.current = onInsert
+    onUpdateRef.current = onUpdate
+    onDeleteRef.current = onDelete
+  })
+
+  useEffect(() => {
+    if (!enabled || filters.length === 0) return
+
+    const unsubscribes = filters.map((filter, index) =>
+      subscribe(table, filter, {
+        id: `${table}-${index}-${filter}`,
+        onInsert: (record) => onInsertRef.current?.(record as TableRow<T>),
+        onUpdate: (record, oldRecord) =>
+          onUpdateRef.current?.(record as TableRow<T>, oldRecord as TableRow<T>),
+        onDelete: (record) => onDeleteRef.current?.(record as TableRow<T>),
+      })
+    )
+
+    return () => {
+      for (const unsubscribe of unsubscribes) {
+        unsubscribe()
+      }
+    }
+  }, [table, enabled, subscribe, filters])
+}
+
+/**
  * Pre-built hooks for common entities using pooled subscriptions
  */
 export function usePooledTasksRealtime(

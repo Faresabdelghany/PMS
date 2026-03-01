@@ -129,7 +129,8 @@ import { TaskQuickCreateModalLazy as TaskQuickCreateModal, type CreateTaskContex
 import type { OrganizationTagLean as OrganizationTag, Workstream } from "@/lib/supabase/types"
 import { formatDueLabel } from "@/lib/date-utils"
 import { toast } from "sonner"
-import { usePooledRealtime } from "@/hooks/realtime-context"
+import { usePooledRealtime, usePooledRealtimeMulti } from "@/hooks/realtime-context"
+import { buildTaskProjectRealtimeFilters } from "@/lib/realtime/task-org-filter"
 import type { Database } from "@/lib/supabase/types"
 
 type TaskRow = Database["public"]["Tables"]["tasks"]["Row"]
@@ -264,12 +265,17 @@ export function MyTasksPage({
   const membersRef = useRef(organizationMembers)
   membersRef.current = organizationMembers
 
+  const allModeProjectRealtimeFilters = useMemo(() => {
+    if (currentView !== "all") return []
+    return buildTaskProjectRealtimeFilters(projects.map((project) => project.id))
+  }, [currentView, projects])
+
   // Helper to build TaskWithRelations from raw task data
   const buildTaskWithRelations = useCallback((task: TaskRow): TaskWithRelations | null => {
     if (currentView === "my" && task.assignee_id !== userId) return null
 
     const project = projectsRef.current.find(p => p.id === task.project_id)
-    if (!project) return null // Task must belong to a known project
+    if (!project) return null // Client-side org-scoped fallback guard
 
     const workstream = project.workstreams?.find(w => w.id === task.workstream_id)
     const assignee = membersRef.current.find(m => m.user_id === task.assignee_id)
@@ -287,39 +293,55 @@ export function MyTasksPage({
     }
   }, [currentView, userId])
 
-  // Real-time subscription for tasks assigned to current user
+  const handleRealtimeInsert = useCallback((task: TaskRow) => {
+    const fullTask = buildTaskWithRelations(task)
+    if (fullTask) {
+      setTasks(prev => {
+        // Avoid duplicates when multiple filters/channels match the same event
+        if (prev.some(t => t.id === fullTask.id)) return prev
+        return [fullTask, ...prev]
+      })
+    }
+  }, [buildTaskWithRelations, setTasks])
+
+  const handleRealtimeUpdate = useCallback((task: TaskRow) => {
+    setTasks(prev => {
+      const fullTask = buildTaskWithRelations(task)
+      if (!fullTask) return prev
+
+      const existingIndex = prev.findIndex(t => t.id === task.id)
+      if (existingIndex >= 0) {
+        // Update existing task
+        return prev.map(t => t.id === task.id ? fullTask : t)
+      }
+
+      // Task was newly assigned/visible, add it
+      return [fullTask, ...prev]
+    })
+  }, [buildTaskWithRelations, setTasks])
+
+  const handleRealtimeDelete = useCallback((task: TaskRow) => {
+    setTasks(prev => prev.filter(t => t.id !== task.id))
+  }, [setTasks])
+
+  // "My" mode: single assignee filter (existing behavior)
   usePooledRealtime({
     table: "tasks",
     filter: currentView === "my" && userId ? `assignee_id=eq.${userId}` : undefined,
-    enabled: !!organizationId && (currentView === "all" || !!userId),
-    onInsert: (task: TaskRow) => {
-      const fullTask = buildTaskWithRelations(task)
-      if (fullTask) {
-        setTasks(prev => {
-          // Avoid duplicates
-          if (prev.some(t => t.id === fullTask.id)) return prev
-          return [fullTask, ...prev]
-        })
-      }
-    },
-    onUpdate: (task: TaskRow) => {
-      setTasks(prev => {
-        const fullTask = buildTaskWithRelations(task)
-        if (!fullTask) return prev
+    enabled: !!organizationId && currentView === "my" && !!userId,
+    onInsert: handleRealtimeInsert,
+    onUpdate: handleRealtimeUpdate,
+    onDelete: handleRealtimeDelete,
+  })
 
-        const existingIndex = prev.findIndex(t => t.id === task.id)
-        if (existingIndex >= 0) {
-          // Update existing task
-          return prev.map(t => t.id === task.id ? fullTask : t)
-        } else {
-          // Task was newly assigned to user, add it
-          return [fullTask, ...prev]
-        }
-      })
-    },
-    onDelete: (task: TaskRow) => {
-      setTasks(prev => prev.filter(t => t.id !== task.id))
-    },
+  // "All" mode: server-side project_id filters chunked to avoid Supabase `in` clause limits
+  usePooledRealtimeMulti({
+    table: "tasks",
+    filters: allModeProjectRealtimeFilters,
+    enabled: !!organizationId && currentView === "all" && allModeProjectRealtimeFilters.length > 0,
+    onInsert: handleRealtimeInsert,
+    onUpdate: handleRealtimeUpdate,
+    onDelete: handleRealtimeDelete,
   })
 
   // Group tasks by project
