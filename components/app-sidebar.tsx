@@ -33,14 +33,12 @@ import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 import { SquaresFour } from "@phosphor-icons/react/dist/ssr/SquaresFour"
 import { User } from "@phosphor-icons/react/dist/ssr/User"
 import { Pulse } from "@phosphor-icons/react/dist/ssr/Pulse"
-import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank"
 import { GitFork } from "@phosphor-icons/react/dist/ssr/GitFork"
 import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText"
 import { PlugsConnected } from "@phosphor-icons/react/dist/ssr/PlugsConnected"
 import { FileText } from "@phosphor-icons/react/dist/ssr/FileText"
 import { Terminal } from "@phosphor-icons/react/dist/ssr/Terminal"
 import { Notebook } from "@phosphor-icons/react/dist/ssr/Notebook"
-import { Brain } from "@phosphor-icons/react/dist/ssr/Brain"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,7 +58,7 @@ import { cn } from "@/lib/utils"
 import { PROGRESS_THRESHOLDS, BADGE_CAP, SIDEBAR_PROJECT_LIMIT } from "@/lib/constants"
 
 // Navigation items defined inline (no mock data dependency)
-type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "agent-network" | "chat" | "activity" | "live-ops" | "agent-calendar" | "approvals" | "gateways" | "skills" | "models" | "documents" | "sessions" | "memory"
+type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "agent-network" | "chat" | "activity" | "approvals" | "gateways" | "skills" | "documents" | "sessions" | "memory"
 type SidebarFooterItemId = "settings"
 
 type NavItem = {
@@ -83,12 +81,9 @@ const navItems: NavItem[] = [
   { id: "agents", label: "Agents" },
   { id: "agent-network", label: "Agent Network" },
   { id: "activity", label: "Activity" },
-  { id: "live-ops", label: "Live Ops" },
-  { id: "agent-calendar", label: "Agent Calendar" },
   { id: "approvals", label: "Approvals" },
   { id: "gateways", label: "Gateways" },
   { id: "skills", label: "Skills" },
-  { id: "models", label: "Models" },
   { id: "documents", label: "Documents" },
   { id: "sessions", label: "Sessions" },
   { id: "memory", label: "Memory" },
@@ -141,16 +136,9 @@ const preloadHandlers: Record<NavItemId, () => void> = {
     }
   },
   activity: () => {},
-  "live-ops": () => {},
-  "agent-calendar": () => {},
   approvals: () => {},
   gateways: () => {},
   skills: () => {},
-  models: () => {
-    if (typeof window !== "undefined") {
-      void import("@/components/models/models-content")
-    }
-  },
   documents: () => {},
   sessions: () => {},
   memory: () => {},
@@ -182,12 +170,9 @@ const navItemIcons: Record<NavItemId, React.ComponentType<{ className?: string }
   agents: Robot,
   "agent-network": GitFork,
   activity: Pulse,
-  "live-ops": Pulse,
-  "agent-calendar": CalendarBlank,
   approvals: ClipboardText,
   gateways: PlugsConnected,
   skills: Sparkle,
-  models: Brain,
   documents: FileText,
   sessions: Terminal,
   memory: Notebook,
@@ -336,12 +321,9 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
     if (id === "agents") return "/agents"
     if (id === "agent-network") return "/agents/communication"
     if (id === "activity") return "/activity"
-    if (id === "live-ops") return "/live-ops"
-    if (id === "agent-calendar") return "/agent-calendar"
     if (id === "approvals") return "/approvals"
     if (id === "gateways") return "/gateways"
     if (id === "skills") return "/skills/marketplace"
-    if (id === "models") return "/models"
     if (id === "documents") return "/documents"
     if (id === "sessions") return "/sessions"
     if (id === "memory") return "/memory"
@@ -377,12 +359,6 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
     if (id === "activity") {
       return pathname.startsWith("/activity")
     }
-    if (id === "live-ops") {
-      return pathname.startsWith("/live-ops")
-    }
-    if (id === "agent-calendar") {
-      return pathname.startsWith("/agent-calendar")
-    }
     if (id === "approvals") {
       return pathname.startsWith("/approvals")
     }
@@ -391,9 +367,6 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
     }
     if (id === "skills") {
       return pathname.startsWith("/skills")
-    }
-    if (id === "models") {
-      return pathname.startsWith("/models")
     }
     if (id === "documents") {
       return pathname.startsWith("/documents")
