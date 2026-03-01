@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   title: "Tasks — PMS",
 }
 
-export const revalidate = 30
+export const revalidate = 300
 
 type TasksView = "my" | "all"
 

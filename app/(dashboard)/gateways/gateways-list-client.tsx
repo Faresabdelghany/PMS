@@ -90,7 +90,7 @@ export function GatewaysListClient({ gateways: initialGateways }: GatewaysListCl
 
   useEffect(() => {
     refreshFromDb()
-    const interval = setInterval(refreshFromDb, 30_000)
+    const interval = setInterval(refreshFromDb, 120_000)
     return () => clearInterval(interval)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

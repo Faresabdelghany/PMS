@@ -31,5 +31,5 @@ export async function GET() {
   )
 }
 
-// Prevent caching
-export const dynamic = "force-dynamic"
+// Cache for 5 minutes to reduce CPU usage on free tier
+export const revalidate = 300
