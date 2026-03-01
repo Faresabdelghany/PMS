@@ -23,7 +23,7 @@ export function LiveOpsPanel({ snapshot }: { snapshot: LiveOpsSnapshot | null })
   }
 
   return (
-    <div className="grid gap-4 xl:grid-cols-3" data-testid="mc-live-ops">
+    <div className="grid gap-4 md:grid-cols-1 xl:grid-cols-3" data-testid="mc-live-ops">
       <Card className="xl:col-span-2">
         <CardHeader>
           <CardTitle>Now Playing</CardTitle>
@@ -49,7 +49,7 @@ export function LiveOpsPanel({ snapshot }: { snapshot: LiveOpsSnapshot | null })
                 {session.taskId && (
                   <Link
                     href={`/tasks?task=${session.taskId}`}
-                    className="text-primary hover:underline"
+                    className="text-primary hover:underline inline-flex items-center min-h-[44px] sm:min-h-0"
                   >
                     Open task
                   </Link>
@@ -77,7 +77,7 @@ export function LiveOpsPanel({ snapshot }: { snapshot: LiveOpsSnapshot | null })
                 </div>
                 <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
                   <span>{item.dependencies.length} dependencies</span>
-                  <Link href={`/tasks?task=${item.taskId}`} className="text-primary hover:underline">
+                  <Link href={`/tasks?task=${item.taskId}`} className="text-primary hover:underline inline-flex items-center min-h-[44px] sm:min-h-0">
                     Open
                   </Link>
                 </div>
@@ -99,7 +99,7 @@ export function LiveOpsPanel({ snapshot }: { snapshot: LiveOpsSnapshot | null })
                 <p className="font-medium text-red-700 dark:text-red-400">{blocker.agentName}</p>
                 <p className="text-xs text-muted-foreground">{blocker.reason}</p>
                 {blocker.taskId && (
-                  <Link href={`/tasks?task=${blocker.taskId}`} className="text-xs text-primary hover:underline">
+                  <Link href={`/tasks?task=${blocker.taskId}`} className="text-xs text-primary hover:underline inline-flex items-center min-h-[44px] sm:min-h-0">
                     Open task
                   </Link>
                 )}

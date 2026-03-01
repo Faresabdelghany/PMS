@@ -19,7 +19,18 @@ import { getTask, getSubtasks, createTask, updateTask, type TaskWithRelations } 
 import { assignAgentToTask } from "@/lib/actions/tasks-sprint3"
 import { getTaskTimeline } from "@/lib/actions/task-activities"
 import { createTaskComment } from "@/lib/actions/task-comments"
-import { getTaskDoDWarnings, type TaskDoDWarning } from "@/lib/actions/dod-policies"
+import { getTaskDoDWarnings, overrideDoDBlocker, type TaskDoDWarning } from "@/lib/actions/dod-policies"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import type {
   TaskTimelineItem,
   TaskCommentWithRelations,
@@ -100,6 +111,9 @@ export function TaskDetailPanel({
   const [subtasks, setSubtasks] = useState<TaskWithRelations[]>([])
   const [newSubtaskName, setNewSubtaskName] = useState("")
   const [dodWarnings, setDodWarnings] = useState<TaskDoDWarning[]>([])
+  const [dodBlockers, setDodBlockers] = useState<{ checkName: string; message: string }[]>([])
+  const [overrideTarget, setOverrideTarget] = useState<string | null>(null)
+  const [overrideReason, setOverrideReason] = useState("")
 
   const isOpen = !!taskId
 
@@ -109,6 +123,7 @@ export function TaskDetailPanel({
       setTask(null)
       setTimeline([])
       setDodWarnings([])
+      setDodBlockers([])
       return
     }
 
@@ -257,12 +272,29 @@ export function TaskDetailPanel({
 
       const result = await updateTask(taskId, { [field]: value })
       if (result.error) {
+        // If blocked by DoD, parse and show blockers
+        if (field === "status" && value === "done" && result.error.startsWith("Blocked by DoD policy:")) {
+          const blockerText = result.error.replace("Blocked by DoD policy: ", "")
+          const blockerList = blockerText.split("; ").map((msg) => {
+            const checkName = msg.includes("required fields") ? "required_fields"
+              : msg.includes("approval") ? "reviewer_approved"
+              : msg.includes("Tests") ? "tests_passing"
+              : msg.includes("PR") ? "pr_merged"
+              : msg.includes("Documentation") ? "documentation_updated"
+              : "unknown"
+            return { checkName, message: msg }
+          })
+          setDodBlockers(blockerList)
+          toast.error("Cannot mark as done — DoD blockers found")
+          return
+        }
         toast.error(result.error)
         return
       }
 
       if (result.data) {
         setTask((prev) => (prev ? { ...prev, ...result.data } : prev))
+        setDodBlockers([])
         if (field === "status" && value === "done") {
           const warningResult = await getTaskDoDWarnings(taskId)
           if (warningResult.data) {
@@ -303,6 +335,19 @@ export function TaskDetailPanel({
     },
     [taskId]
   )
+
+  const handleOverrideBlocker = useCallback(async () => {
+    if (!taskId || !overrideTarget || !overrideReason.trim()) return
+    const result = await overrideDoDBlocker(taskId, overrideTarget, overrideReason.trim())
+    if (result.error) {
+      toast.error(result.error)
+      return
+    }
+    setDodBlockers((prev) => prev.filter((b) => b.checkName !== overrideTarget))
+    setOverrideTarget(null)
+    setOverrideReason("")
+    toast.success("Blocker overridden")
+  }, [taskId, overrideTarget, overrideReason])
 
   const handleCreateSubtask = useCallback(async () => {
     if (!task || !newSubtaskName.trim()) return
@@ -375,6 +420,29 @@ export function TaskDetailPanel({
                 taskName={task.name}
                 projectName={task.project?.name}
               />
+
+              {dodBlockers.length > 0 && (
+                <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
+                  <p className="text-sm font-medium text-red-700 dark:text-red-400">
+                    Definition-of-Done blockers
+                  </p>
+                  <ul className="mt-2 space-y-2">
+                    {dodBlockers.map((blocker) => (
+                      <li key={blocker.checkName} className="flex items-center justify-between text-xs text-red-900 dark:text-red-200">
+                        <span>{blocker.message}</span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="ml-2 h-6 text-xs border-red-500/30 text-red-700 dark:text-red-300 hover:bg-red-500/10"
+                          onClick={() => setOverrideTarget(blocker.checkName)}
+                        >
+                          Override
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {dodWarnings.length > 0 && (
                 <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
@@ -466,6 +534,41 @@ export function TaskDetailPanel({
           </>
         )}
       </SheetContent>
+
+      {/* Override Blocker Dialog */}
+      <Dialog open={overrideTarget !== null} onOpenChange={(open) => { if (!open) { setOverrideTarget(null); setOverrideReason("") } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Override DoD Blocker</DialogTitle>
+            <DialogDescription>
+              Provide a reason for overriding this blocker. This will be recorded for audit purposes.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label>Reason</Label>
+              <Textarea
+                value={overrideReason}
+                onChange={(e) => setOverrideReason(e.target.value)}
+                placeholder="Explain why this blocker is being overridden..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setOverrideTarget(null); setOverrideReason("") }}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleOverrideBlocker}
+              disabled={!overrideReason.trim()}
+            >
+              Override Blocker
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Sheet>
   )
 }

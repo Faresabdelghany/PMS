@@ -3,6 +3,7 @@
 import { useMemo, useState, useCallback, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Plus } from "@phosphor-icons/react/dist/ssr/Plus"
+import { Robot } from "@phosphor-icons/react/dist/ssr/Robot"
 import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 
 import { LoadMoreButton } from "@/components/ui/load-more-button"
@@ -447,6 +448,25 @@ export function MyTasksPage({
     }))
   }, [uniqueTagStrings])
 
+  // Count of agent-assigned tasks (for the quick-filter chip badge)
+  const agentTaskCount = useMemo(() => {
+    const allTasks = groups.flatMap((g) => g.tasks)
+    return allTasks.filter((t) => !!t.assignedAgent).length
+  }, [groups])
+
+  // Whether the "Agent Tasks" quick-filter chip is currently active
+  const isAgentFilterActive = useMemo(() => {
+    return filters.some((f) => f.key === "Agent" && f.value === "all")
+  }, [filters])
+
+  const toggleAgentFilter = useCallback(() => {
+    if (isAgentFilterActive) {
+      setFilters((prev) => prev.filter((chip) => !(chip.key === "Agent" && chip.value === "all")))
+    } else {
+      setFilters((prev) => [...prev, { key: "Agent", value: "all" }])
+    }
+  }, [isAgentFilterActive])
+
   const visibleGroups = useMemo<ProjectTaskGroup[]>(() => {
     if (!filters.length) return groups
 
@@ -783,6 +803,18 @@ export function MyTasksPage({
               <Button size="sm" variant={currentView === "my" ? "secondary" : "ghost"} className="h-7 px-3" onClick={() => setView("my")}>My Tasks</Button>
               <Button size="sm" variant={currentView === "all" ? "secondary" : "ghost"} className="h-7 px-3" onClick={() => setView("all")}>All Tasks</Button>
             </div>
+            <Button
+              size="sm"
+              variant={isAgentFilterActive ? "secondary" : "outline"}
+              className={`h-8 gap-1.5 rounded-lg border-border/60 px-3 ${isAgentFilterActive ? "" : "bg-transparent"}`}
+              onClick={toggleAgentFilter}
+            >
+              <Robot className="h-4 w-4" />
+              Agent Tasks
+              {agentTaskCount > 0 && (
+                <span className="ml-0.5 text-xs text-muted-foreground">{agentTaskCount}</span>
+              )}
+            </Button>
             <FilterPopover
               initialChips={filters}
               onApply={setFilters}

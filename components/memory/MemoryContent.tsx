@@ -78,7 +78,7 @@ export function MemoryContent({ initialCards, orgId }: MemoryContentProps) {
                 key={card.agent.id}
                 type="button"
                 onClick={() => handleCardClick(card)}
-                className="text-left rounded-lg border border-border p-4 hover:bg-accent/50 transition-colors"
+                className="text-left rounded-lg border border-border p-4 hover:bg-accent/50 transition-colors min-h-[44px]"
               >
                 <div className="flex items-center gap-3 mb-2">
                   <Avatar className="h-8 w-8">

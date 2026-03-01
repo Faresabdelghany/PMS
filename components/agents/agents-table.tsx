@@ -178,7 +178,7 @@ const AgentTableRow = memo(function AgentTableRow({
             <Button
               variant="ghost"
               size="icon-sm"
-              className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
+              className="h-7 w-7 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 rounded-full text-muted-foreground hover:text-foreground"
               aria-label={`Actions for ${agent.name}`}
             >
               <DotsThreeVertical className="h-4 w-4" weight="regular" />
@@ -286,8 +286,8 @@ export function AgentsTable({
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Filters */}
-      <div className="flex items-center justify-between px-4 pb-3 pt-3 gap-3 flex-wrap border-b border-border/40">
-        <div className="flex-1 min-w-[260px]">
+      <div className="flex flex-col gap-3 px-4 pb-3 pt-3 border-b border-border/40 md:flex-row md:items-center md:justify-between md:flex-wrap">
+        <div className="overflow-x-auto min-w-0">
           <Tabs value={statusFilter} onValueChange={setStatusFilter}>
             <TabsList className="inline-flex bg-muted rounded-full px-1 py-0.5 text-xs border border-border/50 h-8">
               {[
@@ -310,9 +310,9 @@ export function AgentsTable({
           </Tabs>
         </div>
 
-        <div className="flex items-center gap-3 flex-1 justify-end">
+        <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
           <Select value={squadFilter} onValueChange={setSquadFilter}>
-            <SelectTrigger className="w-[130px] h-9 text-xs rounded-lg border-border">
+            <SelectTrigger className="w-[130px] h-9 text-xs rounded-lg border-border min-h-[44px] sm:min-h-0">
               <SelectValue placeholder="Squad" />
             </SelectTrigger>
             <SelectContent>
@@ -322,13 +322,13 @@ export function AgentsTable({
             </SelectContent>
           </Select>
 
-          <div className="flex-1 max-w-xs relative">
+          <div className="flex-1 min-w-[160px] max-w-xs relative">
             <MagnifyingGlass className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search agents..."
-              className="h-9 rounded-lg bg-muted/50 text-sm placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary/20 border-border border shadow-none pl-9"
+              className="h-9 min-h-[44px] sm:min-h-0 rounded-lg bg-muted/50 text-sm placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary/20 border-border border shadow-none pl-9"
             />
           </div>
 
@@ -346,8 +346,8 @@ export function AgentsTable({
             <p className="mt-1 text-xs text-muted-foreground">Try adjusting your search or filters.</p>
           </div>
         ) : (
-          <div className="rounded-lg border border-border overflow-hidden">
-            <Table>
+          <div className="rounded-lg border border-border overflow-x-auto">
+            <Table className="min-w-[800px]">
               <TableHeader className="bg-muted">
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-[28%] text-xs font-medium text-muted-foreground">

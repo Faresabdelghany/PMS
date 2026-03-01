@@ -7,4 +7,10 @@ export {
   DueTodayCard,
 } from "./task-stats-card"
 export { CachedProjectsList } from "./cached-projects-list"
-export { CompletionsBarChart, StatusAreaChart } from "./dashboard-charts"
+export {
+  CompletionsBarChart,
+  StatusAreaChart,
+  PriorityPieChart,
+  AgentWorkloadChart,
+  AgentActivityChart,
+} from "./dashboard-charts"

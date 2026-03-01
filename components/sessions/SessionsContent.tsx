@@ -75,14 +75,14 @@ export function SessionsContent({ initialSessions, orgId }: SessionsContentProps
   return (
     <div className="flex flex-1 flex-col bg-background mx-2 my-2 border border-border rounded-lg min-w-0">
       <PageHeader title="Sessions">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 overflow-x-auto">
           {(["all", "active", "idle", "offline"] as const).map((f) => (
             <Button
               key={f}
               variant={filter === f ? "default" : "outline"}
               size="sm"
               onClick={() => setFilter(f)}
-              className="text-xs"
+              className="text-xs shrink-0 min-h-[44px] sm:min-h-0"
             >
               {f === "all" ? "All" : statusConfig[f].label} ({counts[f]})
             </Button>
@@ -104,7 +104,7 @@ export function SessionsContent({ initialSessions, orgId }: SessionsContentProps
                   key={session.agent.id}
                   type="button"
                   onClick={() => handleCardClick(session)}
-                  className="text-left rounded-lg border border-border p-4 hover:bg-accent/50 transition-colors"
+                  className="text-left rounded-lg border border-border p-4 hover:bg-accent/50 transition-colors min-h-[44px]"
                 >
                   <div className="flex items-center gap-3 mb-2">
                     <Avatar className="h-8 w-8">

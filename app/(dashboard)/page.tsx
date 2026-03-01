@@ -1,17 +1,29 @@
 import type { Metadata } from "next"
 import { Suspense } from "react"
 import { getPageOrganization } from "@/lib/page-auth"
-import { getDashboardKPIs, getDailyCompletions, getTaskStatusDistribution } from "@/lib/actions/dashboard"
+import {
+  getDashboardKPIs,
+  getDailyCompletions,
+  getTaskStatusDistribution,
+  getTaskPriorityBreakdown,
+  getAgentWorkload,
+  getAgentActivityTimeline,
+} from "@/lib/actions/dashboard"
 import { getPendingApprovalsCount } from "@/lib/actions/approvals"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { CompletionsBarChart, StatusAreaChart } from "@/components/dashboard"
+import {
+  CompletionsBarChart,
+  StatusAreaChart,
+  PriorityPieChart,
+  AgentWorkloadChart,
+  AgentActivityChart,
+} from "@/components/dashboard"
 import { StatCardSkeleton } from "@/components/skeletons"
 import { Folders } from "@phosphor-icons/react/dist/ssr/Folders"
 import { ListChecks } from "@phosphor-icons/react/dist/ssr/ListChecks"
 import { Robot } from "@phosphor-icons/react/dist/ssr/Robot"
 import { CheckCircle } from "@phosphor-icons/react/dist/ssr/CheckCircle"
 import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText"
-import { PlugsConnected } from "@phosphor-icons/react/dist/ssr/PlugsConnected"
 import { GatewayStatusCard } from "@/components/dashboard/gateway-status-card"
 import Link from "next/link"
 
@@ -25,6 +37,9 @@ export default async function Page() {
   const kpisPromise = getDashboardKPIs(orgId)
   const completionsPromise = getDailyCompletions(orgId)
   const distributionPromise = getTaskStatusDistribution(orgId)
+  const priorityPromise = getTaskPriorityBreakdown(orgId)
+  const agentWorkloadPromise = getAgentWorkload(orgId)
+  const agentActivityPromise = getAgentActivityTimeline(orgId)
   const pendingApprovalsPromise = getPendingApprovalsCount(orgId).catch(() => ({ data: 0 }))
 
   return (
@@ -62,7 +77,7 @@ export default async function Page() {
         <MissionControlCards pendingApprovalsPromise={pendingApprovalsPromise} orgId={orgId} />
       </Suspense>
 
-      {/* Charts */}
+      {/* Charts Row 1: Completions + Status Distribution */}
       <Suspense
         fallback={
           <div className="grid gap-4 lg:grid-cols-2">
@@ -74,6 +89,22 @@ export default async function Page() {
         <Charts
           completionsPromise={completionsPromise}
           distributionPromise={distributionPromise}
+        />
+      </Suspense>
+
+      {/* Charts Row 2: Priority + Agent Workload */}
+      <Suspense
+        fallback={
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card><CardContent className="h-[340px]" /></Card>
+            <Card><CardContent className="h-[340px]" /></Card>
+          </div>
+        }
+      >
+        <AnalyticsCharts
+          priorityPromise={priorityPromise}
+          agentWorkloadPromise={agentWorkloadPromise}
+          agentActivityPromise={agentActivityPromise}
         />
       </Suspense>
     </div>
@@ -153,6 +184,34 @@ async function Charts({
       <CompletionsBarChart data={completions} />
       <StatusAreaChart data={distribution} />
     </div>
+  )
+}
+
+async function AnalyticsCharts({
+  priorityPromise,
+  agentWorkloadPromise,
+  agentActivityPromise,
+}: {
+  priorityPromise: ReturnType<typeof getTaskPriorityBreakdown>
+  agentWorkloadPromise: ReturnType<typeof getAgentWorkload>
+  agentActivityPromise: ReturnType<typeof getAgentActivityTimeline>
+}) {
+  const [priority, agentWorkload, agentActivity] = await Promise.all([
+    priorityPromise,
+    agentWorkloadPromise,
+    agentActivityPromise,
+  ])
+
+  return (
+    <>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <PriorityPieChart data={priority} />
+        <AgentWorkloadChart data={agentWorkload} />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-1">
+        <AgentActivityChart data={agentActivity} />
+      </div>
+    </>
   )
 }
 

@@ -96,6 +96,104 @@ export async function getDailyCompletions(orgId: string): Promise<DailyCompletio
   return results
 }
 
+export type TaskPriorityBreakdown = {
+  priority: string
+  count: number
+}
+
+export type AgentWorkloadItem = {
+  agentName: string
+  taskCount: number
+}
+
+export type AgentActivityDay = {
+  date: string
+  events: number
+}
+
+export async function getTaskPriorityBreakdown(orgId: string): Promise<TaskPriorityBreakdown[]> {
+  const supabase = await createClient()
+
+  const priorities = ["high", "medium", "low"] as const
+
+  const queries = priorities.map((p) =>
+    supabase
+      .from("tasks")
+      .select("id, project:projects!inner(organization_id)", { count: "exact", head: true })
+      .eq("project.organization_id", orgId)
+      .eq("priority", p)
+  )
+
+  const results = await Promise.all(queries)
+
+  return priorities.map((p, i) => ({
+    priority: p.charAt(0).toUpperCase() + p.slice(1),
+    count: results[i].count ?? 0,
+  }))
+}
+
+export async function getAgentWorkload(orgId: string): Promise<AgentWorkloadItem[]> {
+  const supabase = await createClient()
+
+  const { data: agents } = await supabase
+    .from("agents")
+    .select("id, name")
+    .eq("organization_id", orgId)
+    .order("name")
+
+  if (!agents?.length) return []
+
+  const queries = agents.map((agent) =>
+    supabase
+      .from("tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("assigned_agent_id", agent.id)
+      .neq("status", "done")
+  )
+
+  const results = await Promise.all(queries)
+
+  return agents
+    .map((agent, i) => ({
+      agentName: agent.name,
+      taskCount: results[i].count ?? 0,
+    }))
+    .filter((item) => item.taskCount > 0)
+    .sort((a, b) => b.taskCount - a.taskCount)
+    .slice(0, 10)
+}
+
+export async function getAgentActivityTimeline(orgId: string): Promise<AgentActivityDay[]> {
+  const supabase = await createClient()
+  const now = new Date()
+
+  const queries = Array.from({ length: 7 }, (_, i) => {
+    const dayStart = new Date(now)
+    dayStart.setDate(now.getDate() - (6 - i))
+    dayStart.setHours(0, 0, 0, 0)
+
+    const dayEnd = new Date(dayStart)
+    dayEnd.setDate(dayStart.getDate() + 1)
+
+    return {
+      label: dayStart.toLocaleDateString("en-US", { weekday: "short" }),
+      promise: supabase
+        .from("agent_events" as any)
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", orgId)
+        .gte("created_at", dayStart.toISOString())
+        .lt("created_at", dayEnd.toISOString()),
+    }
+  })
+
+  const counts = await Promise.all(queries.map((q) => q.promise))
+
+  return queries.map((q, i) => ({
+    date: q.label,
+    events: (counts[i] as any).count ?? 0,
+  }))
+}
+
 export async function getTaskStatusDistribution(orgId: string): Promise<TaskStatusDistribution[]> {
   const supabase = await createClient()
   const now = new Date()

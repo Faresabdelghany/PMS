@@ -1,6 +1,6 @@
 "use server"
 
-import { startOfWeek, addDays, endOfDay } from "date-fns"
+import { startOfWeek, startOfMonth, addDays, endOfDay, endOfMonth } from "date-fns"
 import { requireOrgMember } from "./auth-helpers"
 import type { ActionResult } from "./types"
 import { HEARTBEAT_PROTOCOL, isHeartbeatStale } from "@/lib/mission-control/heartbeat-protocol"
@@ -58,6 +58,7 @@ export interface CalendarEntry {
   lastRunAt: string | null
   nextRunAt: string
   runLogUrl: string | null
+  isPaused: boolean
 }
 
 export interface AgentCalendarWeek {
@@ -173,12 +174,12 @@ export async function getAgentCalendarWeek(
         last_run_at,
         next_run_at,
         run_log_url,
+        paused,
         agent:agents(name)
       `)
       .eq("organization_id", orgId)
       .gte("next_run_at", weekStartDate.toISOString())
       .lte("next_run_at", weekEndDate.toISOString())
-      .eq("paused", false)
       .order("next_run_at", { ascending: true })
 
     if (error) return { error: error.message }
@@ -198,9 +199,147 @@ export async function getAgentCalendarWeek(
           lastRunAt: row.last_run_at ?? null,
           nextRunAt: row.next_run_at,
           runLogUrl: row.run_log_url ?? null,
+          isPaused: row.paused ?? false,
         })),
       },
     }
+  } catch {
+    return { error: "Not authorized" }
+  }
+}
+
+// ── Calendar month view ─────────────────────────────────────────────
+
+export interface AgentCalendarMonth {
+  monthStart: string
+  monthEnd: string
+  entries: CalendarEntry[]
+}
+
+export async function getAgentCalendarMonth(
+  orgId: string,
+  referenceDate?: string
+): Promise<ActionResult<AgentCalendarMonth>> {
+  try {
+    const { supabase } = await requireOrgMember(orgId)
+    const baseDate = referenceDate ? new Date(referenceDate) : new Date()
+    const monthStartDate = startOfMonth(baseDate)
+    const monthEndDate = endOfDay(endOfMonth(baseDate))
+
+    const { data, error } = await supabase
+      .from("scheduled_runs" as any)
+      .select(`
+        id,
+        agent_id,
+        task_id,
+        task_type,
+        schedule_expr,
+        last_status,
+        last_run_at,
+        next_run_at,
+        run_log_url,
+        paused,
+        agent:agents(name)
+      `)
+      .eq("organization_id", orgId)
+      .gte("next_run_at", monthStartDate.toISOString())
+      .lte("next_run_at", monthEndDate.toISOString())
+      .order("next_run_at", { ascending: true })
+
+    if (error) return { error: error.message }
+
+    return {
+      data: {
+        monthStart: monthStartDate.toISOString(),
+        monthEnd: monthEndDate.toISOString(),
+        entries: ((data ?? []) as any[]).map((row) => ({
+          id: row.id,
+          agentId: row.agent_id ?? null,
+          agentName: row.agent?.name ?? "Unassigned",
+          taskId: row.task_id ?? null,
+          taskType: row.task_type,
+          scheduleExpr: row.schedule_expr,
+          status: row.last_status,
+          lastRunAt: row.last_run_at ?? null,
+          nextRunAt: row.next_run_at,
+          runLogUrl: row.run_log_url ?? null,
+          isPaused: row.paused ?? false,
+        })),
+      },
+    }
+  } catch {
+    return { error: "Not authorized" }
+  }
+}
+
+// ── Pause/resume scheduled run ──────────────────────────────────────
+
+export async function toggleScheduledRunPause(
+  orgId: string,
+  runId: string,
+  isPaused: boolean
+): Promise<ActionResult<{ id: string; paused: boolean }>> {
+  try {
+    const { supabase } = await requireOrgMember(orgId)
+
+    const { data, error } = await supabase
+      .from("scheduled_runs" as any)
+      .update({ paused: isPaused })
+      .eq("id", runId)
+      .eq("organization_id", orgId)
+      .select("id, paused")
+      .single()
+
+    if (error) return { error: error.message }
+
+    return { data: data as unknown as { id: string; paused: boolean } }
+  } catch {
+    return { error: "Not authorized" }
+  }
+}
+
+// ── Manual trigger for scheduled run ────────────────────────────────
+
+export async function triggerScheduledRun(
+  orgId: string,
+  runId: string
+): Promise<ActionResult<{ commandId: string }>> {
+  try {
+    const { supabase } = await requireOrgMember(orgId)
+
+    // Fetch the scheduled run to get agent_id and task_id
+    const { data: run, error: runError } = await supabase
+      .from("scheduled_runs" as any)
+      .select("id, agent_id, task_id, task_type")
+      .eq("id", runId)
+      .eq("organization_id", orgId)
+      .single()
+
+    if (runError || !run) return { error: runError?.message ?? "Scheduled run not found" }
+
+    const typedRun = run as unknown as { id: string; agent_id: string | null; task_id: string | null; task_type: string }
+    if (!typedRun.agent_id) return { error: "No agent assigned to this scheduled run" }
+
+    // Create an agent_commands entry to trigger the run
+    const { data: command, error: commandError } = await supabase
+      .from("agent_commands")
+      .insert({
+        organization_id: orgId,
+        agent_id: typedRun.agent_id,
+        task_id: typedRun.task_id,
+        command_type: "run_task",
+        payload: {
+          source: "manual_trigger",
+          scheduled_run_id: runId,
+          task_type: typedRun.task_type,
+        },
+      })
+      .select("id")
+      .single()
+
+    if (commandError) return { error: commandError.message }
+
+    return { data: { commandId: (command as { id: string }).id } }
   } catch {
     return { error: "Not authorized" }
   }

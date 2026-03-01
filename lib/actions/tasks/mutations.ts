@@ -11,7 +11,7 @@ import type { Task, TaskInsert, TaskUpdate, TaskStatus } from "@/lib/supabase/ty
 import type { ActionResult } from "../types"
 import { notify } from "../notifications"
 import { createTaskActivity } from "../task-activities"
-import { evaluateDoDWarningsForTask } from "../dod-policies"
+import { evaluateDoDWarningsForTask, evaluateDoDForTask } from "../dod-policies"
 
 // Create task
 export async function createTask(
@@ -177,6 +177,29 @@ export async function updateTask(
     .eq("id", id)
     .single()
 
+  // DoD block enforcement: prevent status→done when block-mode policies fail
+  const oldOrgId = (oldTask?.project as { organization_id?: string } | null)?.organization_id ?? ""
+  const isTransitionToDone =
+    normalizedData.status === "done" &&
+    oldTask?.status !== "done" &&
+    !!oldTask?.project_id &&
+    !!oldOrgId
+
+  if (isTransitionToDone && oldTask) {
+    const dodResult = await evaluateDoDForTask({
+      ...(oldTask as Record<string, unknown>),
+      ...(normalizedData as Record<string, unknown>),
+      id,
+      project_id: oldTask.project_id,
+      organization_id: oldOrgId,
+    })
+
+    if (dodResult.data && dodResult.data.blockers.length > 0) {
+      const blockerMessages = dodResult.data.blockers.map((b) => b.message).join("; ")
+      return { error: `Blocked by DoD policy: ${blockerMessages}` }
+    }
+  }
+
   const { data: task, error } = await supabase
     .from("tasks")
     .update(normalizedData)
@@ -188,16 +211,11 @@ export async function updateTask(
     return { error: error.message }
   }
 
-  // Get orgId from the already-fetched oldTask (includes project with organization_id)
-  // This avoids an extra sequential query after the update
-  const orgId = (oldTask?.project as { organization_id?: string } | null)?.organization_id ?? ""
+  // orgId was already derived above as oldOrgId
+  const orgId = oldOrgId
   const creatorId = (oldTask as { created_by?: string } | null)?.created_by ?? null
 
-  const shouldEvaluateDoDWarnMode =
-    normalizedData.status === "done" &&
-    oldTask?.status !== "done" &&
-    !!oldTask?.project_id &&
-    !!orgId
+  const shouldEvaluateDoDWarnMode = isTransitionToDone
 
   after(async () => {
     if (shouldEvaluateDoDWarnMode && oldTask) {

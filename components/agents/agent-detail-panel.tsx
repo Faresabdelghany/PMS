@@ -477,7 +477,7 @@ export function AgentQuickView({ agents = [], skills = [] }: AgentQuickViewProps
               {isEditing ? (
                 <div className="rounded-2xl border border-border bg-card/80 px-5 py-4 space-y-4">
                   <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Properties</h3>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Type */}
                     <EditSelectField
                       label="Type"
