@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { format } from "date-fns"
 import { User as UserIcon } from "@phosphor-icons/react/dist/ssr/User"
 import { Flag } from "@phosphor-icons/react/dist/ssr/Flag"
 import { Calendar } from "@phosphor-icons/react/dist/ssr/Calendar"
 import { Tag as TagIcon } from "@phosphor-icons/react/dist/ssr/Tag"
 import { Rows } from "@phosphor-icons/react/dist/ssr/Rows"
+import { Robot } from "@phosphor-icons/react/dist/ssr/Robot"
 import { Button } from "@/components/ui/button"
 import {
   Popover,
@@ -34,12 +35,22 @@ import type {
 } from "@/lib/supabase/types"
 import type { TaskPanelMember } from "./TaskDetailPanel"
 
+interface AgentOption {
+  id: string
+  name: string
+  role: string
+  squad: string
+  avatar_url: string | null
+  is_active: boolean
+}
+
 interface TaskDetailFieldsProps {
   task: TaskWithRelations
   onUpdate: (field: string, value: unknown) => void
   organizationMembers?: TaskPanelMember[]
   workstreams?: Workstream[]
   tags?: OrganizationTagLean[]
+  agents?: AgentOption[]
 }
 
 const PRIORITY_OPTIONS: { value: TaskPriority; label: string; color: string }[] = [
@@ -62,8 +73,10 @@ export function TaskDetailFields({
   organizationMembers = [],
   workstreams = [],
   tags = [],
+  agents = [],
 }: TaskDetailFieldsProps) {
   const [assigneeOpen, setAssigneeOpen] = useState(false)
+  const [agentOpen, setAgentOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
   const [priorityOpen, setPriorityOpen] = useState(false)
   const [workstreamOpen, setWorkstreamOpen] = useState(false)
@@ -71,10 +84,24 @@ export function TaskDetailFields({
   const [startDateOpen, setStartDateOpen] = useState(false)
   const [endDateOpen, setEndDateOpen] = useState(false)
 
+  const activeAgents = useMemo(() => agents.filter((a) => a.is_active), [agents])
+  const assignedAgent = useMemo(() => {
+    const relationAgent = Array.isArray(task.assigned_agent) ? task.assigned_agent[0] : task.assigned_agent
+    if (!relationAgent) return null
+    return agents.find((a) => a.id === relationAgent.id) ?? {
+      id: relationAgent.id,
+      name: relationAgent.name,
+      role: "",
+      squad: "",
+      avatar_url: relationAgent.avatar_url,
+      is_active: false,
+    }
+  }, [task.assigned_agent, agents])
+
   const currentPriority = PRIORITY_OPTIONS.find(p => p.value === task.priority)
   const currentStatus = STATUS_OPTIONS.find(s => s.value === task.status)
 
-  const fields = [
+  const fields: Array<any> = [
     {
       id: "assignee",
       label: "Assignee",
@@ -113,6 +140,7 @@ export function TaskDetailFields({
                 <CommandItem
                   key={member.user_id}
                   onSelect={() => {
+                    onUpdate("assigned_agent_id", null)
                     onUpdate("assignee_id", member.user_id)
                     setAssigneeOpen(false)
                   }}
@@ -133,6 +161,59 @@ export function TaskDetailFields({
         </Command>
       ),
     },
+  ]
+
+  if (agents.length > 0) {
+    fields.push({
+      id: "assigned_agent",
+      label: "Agent",
+      icon: Robot,
+      value: assignedAgent
+        ? `${assignedAgent.name}${assignedAgent.is_active ? "" : " (inactive)"}${assignedAgent.role ? ` • ${assignedAgent.role}` : ""}`
+        : "No agent",
+      popoverOpen: agentOpen,
+      setPopoverOpen: setAgentOpen,
+      renderIcon: () => (
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+          <Robot className="h-4 w-4 text-muted-foreground" />
+        </div>
+      ),
+      renderPopoverContent: () => (
+        <Command>
+          <CommandInput placeholder="Search agents..." />
+          <CommandList>
+            <CommandEmpty>No active agents found.</CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                onSelect={() => {
+                  onUpdate("assigned_agent_id", null)
+                  setAgentOpen(false)
+                }}
+              >
+                <span className="text-muted-foreground">No agent</span>
+              </CommandItem>
+              {activeAgents.map((agent) => (
+                <CommandItem
+                  key={agent.id}
+                  onSelect={() => {
+                    onUpdate("assignee_id", null)
+                    onUpdate("assigned_agent_id", agent.id)
+                    setAgentOpen(false)
+                  }}
+                >
+                  <div className="mr-2 h-2.5 w-2.5 rounded-full bg-primary/70" />
+                  <span className="truncate">{agent.name}</span>
+                  <span className="ml-2 text-xs text-muted-foreground">{agent.role}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      ),
+    })
+  }
+
+  fields.push(
     {
       id: "status",
       label: "Status",
@@ -271,10 +352,9 @@ export function TaskDetailFields({
           )}
         </>
       ),
-    },
-  ]
+    }
+  )
 
-  // Add workstream field if workstreams exist
   if (workstreams.length > 0) {
     fields.push({
       id: "workstream",
@@ -315,7 +395,6 @@ export function TaskDetailFields({
     })
   }
 
-  // Add tag field
   const taskTag = tags.find(tag => tag.name === task.tag)
   fields.push({
     id: "tag",
@@ -380,7 +459,7 @@ export function TaskDetailFields({
                   type="button"
                   className="flex flex-col items-start gap-2 min-w-0 text-left hover:opacity-80 transition-opacity cursor-pointer"
                 >
-                  {'renderIcon' in field && field.renderIcon ? (
+                  {"renderIcon" in field && field.renderIcon ? (
                     field.renderIcon()
                   ) : (
                     <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
@@ -393,7 +472,7 @@ export function TaskDetailFields({
                   </div>
                 </button>
               </PopoverTrigger>
-              <PopoverContent className={cn("p-0", field.id.includes("date") ? "w-auto" : "w-[200px]")} align="start">
+              <PopoverContent className={cn("p-0", field.id.includes("date") ? "w-auto" : "w-[220px]")} align="start">
                 {field.renderPopoverContent()}
               </PopoverContent>
             </Popover>

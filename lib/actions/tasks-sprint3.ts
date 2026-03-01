@@ -230,11 +230,21 @@ export async function assignAgentToTask(
     .eq("id", taskId)
     .single()
 
+  const { data: existingTask } = await supabase
+    .from("tasks")
+    .select("assigned_agent_id")
+    .eq("id", taskId)
+    .single()
+
+  const hasAgentChanged = (existingTask?.assigned_agent_id ?? null) !== agentId
+
   const { error } = await supabase
     .from("tasks")
     .update({
       assigned_agent_id: agentId,
+      assignee_id: null,
       task_type: (agentId ? "agent" : "user") as "agent" | "user",
+      dispatch_status: hasAgentChanged ? "pending" : undefined,
     })
     .eq("id", taskId)
 

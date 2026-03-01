@@ -890,6 +890,7 @@ export function MyTasksPage({
           }))}
           workstreams={activeWorkstreams}
           tags={organizationTags}
+          agents={agents}
         />
       )}
     </div>

@@ -16,6 +16,7 @@ import { TaskCommentEditor } from "./TaskCommentEditor"
 import { TaskMessagesPanel } from "./TaskMessagesPanel"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getTask, getSubtasks, createTask, updateTask, type TaskWithRelations } from "@/lib/actions/tasks"
+import { assignAgentToTask } from "@/lib/actions/tasks-sprint3"
 import { getTaskTimeline } from "@/lib/actions/task-activities"
 import { createTaskComment } from "@/lib/actions/task-comments"
 import { getTaskDoDWarnings, type TaskDoDWarning } from "@/lib/actions/dod-policies"
@@ -62,12 +63,22 @@ function removeReactionFromItem(
   return { type: "comment" as const, data: { ...comment, reactions: filtered } }
 }
 
+interface AgentOption {
+  id: string
+  name: string
+  role: string
+  squad: string
+  avatar_url: string | null
+  is_active?: boolean
+}
+
 interface TaskDetailPanelProps {
   projectId: string
   organizationId: string
   organizationMembers?: TaskPanelMember[]
   workstreams?: Workstream[]
   tags?: OrganizationTagLean[]
+  agents?: AgentOption[]
 }
 
 export function TaskDetailPanel({
@@ -76,6 +87,7 @@ export function TaskDetailPanel({
   organizationMembers = [],
   workstreams = [],
   tags = [],
+  agents = [],
 }: TaskDetailPanelProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -217,6 +229,32 @@ export function TaskDetailPanel({
     async (field: string, value: unknown) => {
       if (!taskId || !task) return
 
+      if (field === "assigned_agent_id") {
+        const result = await assignAgentToTask(taskId, (value as string | null) ?? null)
+        if (result.error) {
+          toast.error(result.error)
+          return
+        }
+
+        setTask((prev) => {
+          if (!prev) return prev
+          const selectedAgent = agents.find((a) => a.id === value)
+          return {
+            ...prev,
+            assigned_agent_id: (value as string | null) ?? null,
+            assignee_id: null,
+            task_type: value ? "agent" : "user",
+            dispatch_status: "pending",
+            assignee: value ? null : prev.assignee,
+            assigned_agent: value
+              ? { id: selectedAgent?.id ?? String(value), name: selectedAgent?.name ?? "Agent", avatar_url: selectedAgent?.avatar_url ?? null }
+              : null,
+          }
+        })
+        toast.success("Task updated")
+        return
+      }
+
       const result = await updateTask(taskId, { [field]: value })
       if (result.error) {
         toast.error(result.error)
@@ -234,7 +272,7 @@ export function TaskDetailPanel({
         toast.success("Task updated")
       }
     },
-    [taskId, task]
+    [taskId, task, agents]
   )
 
   // Handle comment submission
@@ -320,6 +358,14 @@ export function TaskDetailPanel({
                 organizationMembers={organizationMembers}
                 workstreams={workstreams}
                 tags={tags}
+                agents={agents.map((a) => ({
+                  id: a.id,
+                  name: a.name,
+                  role: a.role,
+                  squad: a.squad,
+                  avatar_url: a.avatar_url,
+                  is_active: a.is_active ?? true,
+                }))}
               />
 
               {/* Description */}

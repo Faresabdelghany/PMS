@@ -21,7 +21,7 @@ import { ProjectDescriptionEditorLazy as ProjectDescriptionEditor } from '@/comp
 import { QuickCreateModalLayout } from '@/components/QuickCreateModalLayout'
 import { toast } from 'sonner'
 import { createTask, updateTask } from '@/lib/actions/tasks'
-import { dispatchTaskToAgent } from '@/lib/actions/tasks-sprint3'
+import { assignAgentToTask } from '@/lib/actions/tasks-sprint3'
 import { generateTaskDescription } from '@/lib/actions/ai'
 import type { OrganizationTagLean as OrganizationTag, TaskPriority } from "@/lib/supabase/types"
 
@@ -51,6 +51,7 @@ type AgentOption = {
   squad: string
   status: string
   avatar_url: string | null
+  is_active?: boolean
 }
 
 type User = {
@@ -170,24 +171,29 @@ export function TaskQuickCreateModal({
   const [workstreamId, setWorkstreamId] = useState<string | undefined>(undefined)
   const [workstreamName, setWorkstreamName] = useState<string | undefined>(undefined)
 
-  // Convert org members + agents to picker format
-  const assigneeOptions: AssigneeOption[] = useMemo(() => {
-    const memberOptions: AssigneeOption[] = organizationMembers.map((m) => ({
+  const memberOptions: AssigneeOption[] = useMemo(() => {
+    return organizationMembers.map((m) => ({
       id: m.user_id,
       name: m.profile.full_name || m.profile.email,
       avatar: m.profile.avatar_url,
       type: 'member' as const,
     }))
-    const agentOptions: AssigneeOption[] = agents.map((a) => ({
-      id: `agent:${a.id}`,
-      name: a.name,
-      avatar: a.avatar_url,
-      type: 'agent' as const,
-      role: a.role,
-    }))
-    return [...memberOptions, ...agentOptions]
-  }, [organizationMembers, agents])
+  }, [organizationMembers])
 
+  const activeAgentOptions: AssigneeOption[] = useMemo(() => {
+    return agents
+      .filter((a) => a.is_active !== false)
+      .map((a) => ({
+        id: `agent:${a.id}`,
+        name: a.name,
+        avatar: a.avatar_url,
+        type: 'agent' as const,
+        role: a.role,
+      }))
+  }, [agents])
+
+  const [assignType, setAssignType] = useState<'member' | 'agent'>('member')
+  const assigneeOptions = assignType === 'agent' ? activeAgentOptions : memberOptions
   const [assignee, setAssignee] = useState<AssigneeOption | undefined>(undefined)
 
   // Get workstreams for current project from props
@@ -226,10 +232,12 @@ export function TaskQuickCreateModal({
       setIsDescriptionExpanded(false)
 
       if (editingTask.assignee) {
-        const assigneeOption = assigneeOptions.find((a) => a.name === editingTask.assignee?.name)
-        setAssignee(assigneeOption ?? assigneeOptions[0])
+        setAssignType('member')
+        const assigneeOption = memberOptions.find((a) => a.id === editingTask.assignee?.id)
+        setAssignee(assigneeOption)
       } else {
-        setAssignee(assigneeOptions[0])
+        setAssignType('member')
+        setAssignee(undefined)
       }
 
       const statusOption = STATUS_OPTIONS.find((s) => s.id === editingTask.status)
@@ -264,7 +272,8 @@ export function TaskQuickCreateModal({
     setDescription(undefined)
     setCreateMore(false)
     setIsDescriptionExpanded(false)
-    setAssignee(assigneeOptions[0])
+    setAssignType('member')
+    setAssignee(undefined)
     setStatus(STATUS_OPTIONS[0])
     setStartDate(new Date())
     setTargetDate(undefined)
@@ -272,7 +281,7 @@ export function TaskQuickCreateModal({
     // Pre-select tag from defaultTag prop
     const defaultTagOption = defaultTag ? tags.find((t) => t.name === defaultTag) : undefined
     setSelectedTag(defaultTagOption)
-  }, [open, context?.projectId, context?.workstreamId, context?.workstreamName, editingTask, assigneeOptions, getWorkstreamsForProject, tags, defaultTag])
+  }, [open, context?.projectId, context?.workstreamId, context?.workstreamName, editingTask, memberOptions, getWorkstreamsForProject, tags, defaultTag])
 
   const projectOptions = useMemo(
     () => projects.map((p) => ({ id: p.id, label: p.name })),
@@ -348,7 +357,7 @@ export function TaskQuickCreateModal({
         // Call updateTask server action
         // Use null for workstream if "None" is selected or no workstream
         const effectiveWorkstreamId = workstreamId === NONE_WORKSTREAM_ID ? null : (workstreamId || null)
-        const isAgentAssignee = assignee?.type === 'agent'
+        const isAgentAssignee = assignType === 'agent' && assignee?.type === 'agent'
         const result = await updateTask(editingTask.id, {
           name: title.trim(),
           status: status.id,
@@ -361,10 +370,10 @@ export function TaskQuickCreateModal({
           assignee_id: isAgentAssignee ? null : (assignee?.id || null),
         })
 
-        // Dispatch to agent if an agent was selected
-        if (!result.error && isAgentAssignee && orgId) {
+        // Assign selected agent without dispatching
+        if (!result.error && isAgentAssignee && assignee) {
           const agentId = assignee.id.replace('agent:', '')
-          await dispatchTaskToAgent(orgId, editingTask.id, agentId)
+          await assignAgentToTask(editingTask.id, agentId)
         }
 
         if (result.error) {
@@ -409,7 +418,7 @@ export function TaskQuickCreateModal({
       // Call createTask server action
       // Use null for workstream if "None" is selected or no workstream
       const effectiveWorkstreamId = workstreamId === NONE_WORKSTREAM_ID ? null : (workstreamId || null)
-      const isAgentAssignee = assignee?.type === 'agent'
+      const isAgentAssignee = assignType === 'agent' && assignee?.type === 'agent'
       const result = await createTask(effectiveProjectId, {
         name: title.trim(),
         status: status.id,
@@ -428,12 +437,12 @@ export function TaskQuickCreateModal({
         return
       }
 
-      // Dispatch to agent if an agent was selected
-      if (isAgentAssignee && orgId && result.data) {
+      // Assign selected agent without dispatching
+      if (isAgentAssignee && assignee && result.data) {
         const agentId = assignee.id.replace('agent:', '')
-        const dispatchResult = await dispatchTaskToAgent(orgId, result.data.id, agentId)
-        if (dispatchResult.error) {
-          toast.error(`Task created but agent dispatch failed: ${dispatchResult.error}`)
+        const assignResult = await assignAgentToTask(result.data.id, agentId)
+        if (assignResult.error) {
+          toast.error(`Task created but agent assignment failed: ${assignResult.error}`)
         }
       }
 
@@ -462,6 +471,8 @@ export function TaskQuickCreateModal({
         setDescription(undefined)
         setStatus(STATUS_OPTIONS[0])
         setTargetDate(undefined)
+        setAssignType('member')
+        setAssignee(undefined)
         return
       }
 
@@ -579,13 +590,38 @@ export function TaskQuickCreateModal({
 
       {/* Properties */}
       <div className="flex flex-wrap gap-2.5 items-start w-full shrink-0">
+        {activeAgentOptions.length > 0 && (
+          <div className="inline-flex h-9 items-center rounded-lg border border-border bg-background p-1">
+            <button
+              type="button"
+              onClick={() => {
+                setAssignType('member')
+                setAssignee(undefined)
+              }}
+              className={`h-7 rounded-md px-3 text-xs font-medium transition-colors ${assignType === 'member' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              Team Member
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAssignType('agent')
+                setAssignee(undefined)
+              }}
+              className={`h-7 rounded-md px-3 text-xs font-medium transition-colors ${assignType === 'agent' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              AI Agent
+            </button>
+          </div>
+        )}
+
         {/* Assignee */}
         {assigneeOptions.length > 0 && (
           <GenericPicker
             items={assigneeOptions}
             onSelect={setAssignee}
             selectedId={assignee?.id}
-            placeholder="Assign owner..."
+            placeholder={assignType === 'agent' ? 'Assign agent...' : 'Assign owner...'}
             renderItem={(item) => (
               <div className="flex items-center gap-2 w-full">
                 {item.type === 'agent' ? (
@@ -593,27 +629,19 @@ export function TaskQuickCreateModal({
                     <Robot className="size-3 text-primary" />
                   </div>
                 ) : item.avatar ? (
-                  <Image
-                    src={item.avatar}
-                    alt=""
-                    width={20}
-                    height={20}
-                    className="size-5 rounded-full object-cover"
-                  />
+                  <Image src={item.avatar} alt="" width={20} height={20} className="size-5 rounded-full object-cover" />
                 ) : (
                   <div className="size-5 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
                     {item.name.charAt(0)}
                   </div>
                 )}
                 <span className="flex-1">{item.name}</span>
-                {item.type === 'agent' && (
-                  <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Agent</span>
-                )}
+                {item.type === 'agent' && <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Agent</span>}
               </div>
             )}
             trigger={
               <button className="bg-muted flex gap-2 h-9 items-center px-3 py-2 rounded-lg border border-border hover:border-primary/50 transition-colors">
-                {assignee?.type === 'agent' ? (
+                {assignType === 'agent' ? (
                   <div className="size-4 rounded-full bg-primary/10 flex items-center justify-center">
                     <Robot className="size-2.5 text-primary" />
                   </div>
@@ -623,7 +651,7 @@ export function TaskQuickCreateModal({
                   </div>
                 )}
                 <span className="font-medium text-foreground text-sm leading-5">
-                  {assignee?.name ?? 'Assignee'}
+                  {assignee?.name ?? (assignType === 'agent' ? 'Agent' : 'Assignee')}
                 </span>
               </button>
             }
