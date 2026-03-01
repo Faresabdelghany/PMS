@@ -39,6 +39,7 @@ import { PlugsConnected } from "@phosphor-icons/react/dist/ssr/PlugsConnected"
 import { FileText } from "@phosphor-icons/react/dist/ssr/FileText"
 import { Terminal } from "@phosphor-icons/react/dist/ssr/Terminal"
 import { Notebook } from "@phosphor-icons/react/dist/ssr/Notebook"
+import { Brain } from "@phosphor-icons/react/dist/ssr/Brain"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,7 +59,7 @@ import { cn } from "@/lib/utils"
 import { PROGRESS_THRESHOLDS, BADGE_CAP, SIDEBAR_PROJECT_LIMIT } from "@/lib/constants"
 
 // Navigation items defined inline (no mock data dependency)
-type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "agent-network" | "chat" | "activity" | "mission-control" | "approvals" | "gateways" | "skills" | "documents" | "sessions" | "memory"
+type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "agent-network" | "chat" | "activity" | "mission-control" | "approvals" | "gateways" | "skills" | "models" | "documents" | "sessions" | "memory"
 type SidebarFooterItemId = "settings"
 
 type NavItem = {
@@ -85,6 +86,7 @@ const navItems: NavItem[] = [
   { id: "approvals", label: "Approvals" },
   { id: "gateways", label: "Gateways" },
   { id: "skills", label: "Skills" },
+  { id: "models", label: "Models" },
   { id: "documents", label: "Documents" },
   { id: "sessions", label: "Sessions" },
   { id: "memory", label: "Memory" },
@@ -141,6 +143,11 @@ const preloadHandlers: Record<NavItemId, () => void> = {
   approvals: () => {},
   gateways: () => {},
   skills: () => {},
+  models: () => {
+    if (typeof window !== "undefined") {
+      void import("@/components/models/models-content")
+    }
+  },
   documents: () => {},
   sessions: () => {},
   memory: () => {},
@@ -176,6 +183,7 @@ const navItemIcons: Record<NavItemId, React.ComponentType<{ className?: string }
   approvals: ClipboardText,
   gateways: PlugsConnected,
   skills: Sparkle,
+  models: Brain,
   documents: FileText,
   sessions: Terminal,
   memory: Notebook,
@@ -328,6 +336,7 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
     if (id === "approvals") return "/approvals"
     if (id === "gateways") return "/gateways"
     if (id === "skills") return "/skills/marketplace"
+    if (id === "models") return "/models"
     if (id === "documents") return "/documents"
     if (id === "sessions") return "/sessions"
     if (id === "memory") return "/memory"
@@ -374,6 +383,9 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
     }
     if (id === "skills") {
       return pathname.startsWith("/skills")
+    }
+    if (id === "models") {
+      return pathname.startsWith("/models")
     }
     if (id === "documents") {
       return pathname.startsWith("/documents")

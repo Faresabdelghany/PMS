@@ -26,7 +26,7 @@ export type SettingsItemId =
   | "labels"
   | "billing"
   | "import"
-  | "agents"
+  | "models"
   | "model-assignments"
   | "skills"
 
@@ -57,7 +57,7 @@ const settingsSections = [
     id: "ai",
     label: "AI",
     items: [
-      { id: "agents" as const, label: "Models" },
+      { id: "models" as const, label: "Models" },
       { id: "model-assignments" as const, label: "Model Assignments" },
       { id: "skills" as const, label: "Skills" },
     ],
@@ -75,7 +75,7 @@ const settingsItemIcons: Record<SettingsItemId, React.ComponentType<{ className?
   labels: Bookmark,
   billing: CreditCard,
   import: UploadSimple,
-  agents: Brain,
+  models: Brain,
   "model-assignments": Sliders,
   skills: Sparkle,
 }

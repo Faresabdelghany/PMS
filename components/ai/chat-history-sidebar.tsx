@@ -250,7 +250,7 @@ export function ChatHistorySidebar({
       <div className="border-t border-border/60 p-2">
         <button
           type="button"
-          onClick={() => openSettings("agents")}
+          onClick={() => openSettings("models")}
           className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <Gear className="h-4 w-4" />

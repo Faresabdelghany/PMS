@@ -82,7 +82,7 @@ export function SettingsDialog({ open, onOpenChange, initialSection = "account" 
         return <BillingPane />
       case "import":
         return <ImportPane />
-      case "agents":
+      case "models":
         return <AgentsPane />
       case "model-assignments":
         return <ModelAssignmentsPane />
