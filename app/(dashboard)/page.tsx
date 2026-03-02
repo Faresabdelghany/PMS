@@ -10,6 +10,7 @@ import {
   getAgentActivityTimeline,
 } from "@/lib/actions/dashboard"
 import { getPendingApprovalsCount } from "@/lib/actions/approvals"
+import { getStatusBarCounts } from "@/lib/actions/agents"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   CompletionsBarChart,
@@ -24,6 +25,9 @@ import { ListChecks } from "@phosphor-icons/react/dist/ssr/ListChecks"
 import { Robot } from "@phosphor-icons/react/dist/ssr/Robot"
 import { CheckCircle } from "@phosphor-icons/react/dist/ssr/CheckCircle"
 import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText"
+import { Timer } from "@phosphor-icons/react/dist/ssr/Timer"
+import { PlugsConnected } from "@phosphor-icons/react/dist/ssr/PlugsConnected"
+import { Warning } from "@phosphor-icons/react/dist/ssr/Warning"
 import { GatewayStatusCard } from "@/components/dashboard/gateway-status-card"
 import Link from "next/link"
 
@@ -41,6 +45,7 @@ export default async function Page() {
   const agentWorkloadPromise = getAgentWorkload(orgId)
   const agentActivityPromise = getAgentActivityTimeline(orgId)
   const pendingApprovalsPromise = getPendingApprovalsCount(orgId).catch(() => ({ data: 0 }))
+  const opsCountsPromise = getStatusBarCounts(orgId).catch(() => ({ data: null }))
 
   return (
     <div className="flex-1 space-y-6 p-6">
@@ -65,16 +70,17 @@ export default async function Page() {
         <KPICards kpisPromise={kpisPromise} />
       </Suspense>
 
-      {/* Mission Control Cards */}
+      {/* Operations Status */}
       <Suspense
         fallback={
-          <div className="grid gap-4 sm:grid-cols-2">
-            <StatCardSkeleton />
-            <StatCardSkeleton />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <StatCardSkeleton key={i} />
+            ))}
           </div>
         }
       >
-        <MissionControlCards pendingApprovalsPromise={pendingApprovalsPromise} orgId={orgId} />
+        <OperationsStatusCards opsCountsPromise={opsCountsPromise} pendingApprovalsPromise={pendingApprovalsPromise} orgId={orgId} />
       </Suspense>
 
       {/* Charts Row 1: Completions + Status Distribution */}
@@ -215,38 +221,74 @@ async function AnalyticsCharts({
   )
 }
 
-async function MissionControlCards({
+async function OperationsStatusCards({
+  opsCountsPromise,
   pendingApprovalsPromise,
   orgId,
 }: {
+  opsCountsPromise: Promise<{ data?: { onlineAgents: number; totalAgents: number; activeSessions: number } | null }>
   pendingApprovalsPromise: Promise<{ data?: number }>
   orgId: string
 }) {
-  const pendingResult = await pendingApprovalsPromise
+  const [opsResult, pendingResult] = await Promise.all([opsCountsPromise, pendingApprovalsPromise])
+  const ops = opsResult.data
   const pendingCount = pendingResult.data ?? 0
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      {/* Pending Approvals Card */}
-      <Link href="/approvals?status=pending">
-        <Card className="hover:border-primary/30 transition-colors cursor-pointer">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
-            <ClipboardText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{pendingCount}</div>
-            <p className="text-xs text-muted-foreground">
-              {pendingCount === 0
-                ? "All caught up!"
-                : `${pendingCount} request${pendingCount === 1 ? "" : "s"} awaiting review`}
-            </p>
-          </CardContent>
-        </Card>
-      </Link>
+    <div className="space-y-4">
+      <h2 className="text-sm font-medium text-muted-foreground">Mission Control</h2>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Agents Online */}
+        <Link href="/agents">
+          <Card className="hover:border-primary/30 transition-colors cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Agents Online</CardTitle>
+              <Robot className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {ops ? `${ops.onlineAgents}/${ops.totalAgents}` : "—"}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {ops && ops.onlineAgents === 0 ? "No agents connected" : "Active agents"}
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
 
-      {/* Gateway Status Card — checks last heartbeat in agent_events */}
-      <GatewayStatusCard orgId={orgId} />
+        {/* Active Sessions */}
+        <Link href="/sessions">
+          <Card className="hover:border-primary/30 transition-colors cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Sessions</CardTitle>
+              <Timer className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{ops?.activeSessions ?? 0}</div>
+              <p className="text-xs text-muted-foreground">Running agent sessions</p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        {/* Pending Approvals */}
+        <Link href="/approvals?status=pending">
+          <Card className="hover:border-primary/30 transition-colors cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
+              <ClipboardText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{pendingCount}</div>
+              <p className="text-xs text-muted-foreground">
+                {pendingCount === 0 ? "All caught up!" : `${pendingCount} awaiting review`}
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        {/* Gateway Status */}
+        <GatewayStatusCard orgId={orgId} />
+      </div>
     </div>
   )
 }

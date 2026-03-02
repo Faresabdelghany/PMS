@@ -92,6 +92,27 @@ function warnMalformedFrame(raw: string) {
   }
 }
 
+function isGatewayDebugEnabled(): boolean {
+  if (process.env.NEXT_PUBLIC_GATEWAY_WS_DEBUG === "1") return true
+  if (typeof window === "undefined") return false
+
+  try {
+    const debugFlag = window.localStorage.getItem("pms.gateway.debug")
+    return debugFlag === "1" || debugFlag?.toLowerCase() === "true"
+  } catch {
+    return false
+  }
+}
+
+function logGatewayDebug(enabled: boolean, message: string, data?: unknown) {
+  if (!enabled) return
+  if (typeof data === "undefined") {
+    console.log(`[GatewayWS][debug] ${message}`)
+    return
+  }
+  console.log(`[GatewayWS][debug] ${message}`, data)
+}
+
 function isAuthErrorMessage(message: string | undefined): boolean {
   if (!message) return false
   const normalized = message.toLowerCase()
@@ -140,6 +161,7 @@ export function useGatewayWebSocket({
   const pendingPingsRef = useRef<Map<string, number>>(new Map())
   const manualDisconnectRef = useRef(false)
   const authFailedRef = useRef(false)
+  const debugEnabledRef = useRef(false)
   const connectRef = useRef<() => void>(() => {})
   const configRef = useRef<{ url: string | null; token: string | null; enabled: boolean }>({
     url,
@@ -160,6 +182,14 @@ export function useGatewayWebSocket({
   useEffect(() => {
     onResponseRef.current = onResponse
   }, [onResponse])
+
+  useEffect(() => {
+    debugEnabledRef.current = isGatewayDebugEnabled()
+    logGatewayDebug(
+      debugEnabledRef.current,
+      `Debug logging enabled for gateway websocket (${configRef.current.url ?? "no-url"})`
+    )
+  }, [])
 
   const clearReconnectTimer = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -190,6 +220,7 @@ export function useGatewayWebSocket({
     const delay = GATEWAY_RECONNECT_DELAYS_MS[delayIndex]
     reconnectAttemptRef.current += 1
     setStatus("reconnecting")
+    logGatewayDebug(debugEnabledRef.current, `Scheduling reconnect in ${delay}ms`)
 
     reconnectTimeoutRef.current = setTimeout(() => {
       connectRef.current()
@@ -220,6 +251,7 @@ export function useGatewayWebSocket({
       method: "ping",
     }
 
+    logGatewayDebug(debugEnabledRef.current, "Outbound frame", pingFrame)
     socket.send(JSON.stringify(pingFrame))
   }, [])
 
@@ -243,6 +275,7 @@ export function useGatewayWebSocket({
 
     let socket: WebSocket
     try {
+      logGatewayDebug(debugEnabledRef.current, "Connecting websocket", { url: currentUrl })
       socket = new WebSocket(buildSocketUrl(currentUrl, currentToken))
     } catch {
       setError("Invalid gateway WebSocket URL")
@@ -259,18 +292,23 @@ export function useGatewayWebSocket({
       pendingPingsRef.current.clear()
       setError(null)
       setStatus("connected")
+      logGatewayDebug(debugEnabledRef.current, "WebSocket connected")
 
       sendPing()
       heartbeatIntervalRef.current = setInterval(sendPing, GATEWAY_HEARTBEAT_INTERVAL_MS)
     }
 
     socket.onmessage = (event) => {
+      if (typeof event.data === "string") {
+        logGatewayDebug(debugEnabledRef.current, "Inbound raw frame", event.data)
+      }
       const frame = parseGatewayFrame(event.data)
 
       if (!frame) {
         warnMalformedFrame(event.data)
         return
       }
+      logGatewayDebug(debugEnabledRef.current, "Inbound parsed frame", frame)
 
       if (frame.type === "event") {
         const now = new Date()
@@ -302,12 +340,18 @@ export function useGatewayWebSocket({
 
     socket.onerror = () => {
       setError("Gateway connection error")
+      logGatewayDebug(debugEnabledRef.current, "WebSocket error event")
     }
 
     socket.onclose = (event) => {
       wsRef.current = null
       clearHeartbeat()
       setStatus("disconnected")
+      logGatewayDebug(debugEnabledRef.current, "WebSocket closed", {
+        code: event.code,
+        reason: event.reason || "(none)",
+        wasClean: event.wasClean,
+      })
 
       if (isAuthCloseEvent(event) || authFailedRef.current) {
         authFailedRef.current = true
@@ -325,6 +369,7 @@ export function useGatewayWebSocket({
     manualDisconnectRef.current = true
     clearReconnectTimer()
     clearHeartbeat()
+    logGatewayDebug(debugEnabledRef.current, "Manual disconnect requested")
 
     const socket = wsRef.current
     if (
@@ -344,6 +389,7 @@ export function useGatewayWebSocket({
     setError(null)
     clearReconnectTimer()
     clearHeartbeat()
+    logGatewayDebug(debugEnabledRef.current, "Manual reconnect requested")
 
     const socket = wsRef.current
     if (
@@ -360,9 +406,11 @@ export function useGatewayWebSocket({
     const socket = wsRef.current
     if (!socket || socket.readyState !== WebSocket.OPEN) {
       setError("Gateway is not connected")
+      logGatewayDebug(debugEnabledRef.current, "Send blocked (socket not connected)", frame)
       return
     }
 
+    logGatewayDebug(debugEnabledRef.current, "Outbound frame", frame)
     socket.send(JSON.stringify(frame))
   }, [])
 
@@ -389,6 +437,7 @@ export function useGatewayWebSocket({
       manualDisconnectRef.current = true
       clearReconnectTimer()
       clearHeartbeat()
+      logGatewayDebug(debugEnabledRef.current, "Unmount cleanup: closing websocket")
 
       const socket = wsRef.current
       if (

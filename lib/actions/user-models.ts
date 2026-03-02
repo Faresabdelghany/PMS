@@ -11,6 +11,9 @@ export interface UserModel {
   model_id: string
   api_key_encrypted: string | null
   is_default: boolean
+  context_window: number | null
+  cost_input: number | null
+  cost_output: number | null
   created_at: string
   updated_at: string
 }
@@ -36,6 +39,9 @@ export async function createUserModel(input: {
   model_id: string
   api_key_encrypted?: string
   is_default?: boolean
+  context_window?: number | null
+  cost_input?: number | null
+  cost_output?: number | null
 }): Promise<ActionResult<UserModel>> {
   const { supabase } = await requireAuth()
 
@@ -56,6 +62,9 @@ export async function createUserModel(input: {
       model_id: input.model_id,
       api_key_encrypted: input.api_key_encrypted || null,
       is_default: input.is_default ?? false,
+      context_window: input.context_window ?? null,
+      cost_input: input.cost_input ?? null,
+      cost_output: input.cost_output ?? null,
     })
     .select()
     .single()
@@ -73,6 +82,9 @@ export async function updateUserModel(
     model_id?: string
     api_key_encrypted?: string | null
     is_default?: boolean
+    context_window?: number | null
+    cost_input?: number | null
+    cost_output?: number | null
   }
 ): Promise<ActionResult<UserModel>> {
   const { supabase } = await requireAuth()
@@ -90,6 +102,9 @@ export async function updateUserModel(
   if (input.model_id !== undefined) updates.model_id = input.model_id
   if (input.api_key_encrypted !== undefined) updates.api_key_encrypted = input.api_key_encrypted
   if (input.is_default !== undefined) updates.is_default = input.is_default
+  if (input.context_window !== undefined) updates.context_window = input.context_window
+  if (input.cost_input !== undefined) updates.cost_input = input.cost_input
+  if (input.cost_output !== undefined) updates.cost_output = input.cost_output
 
   const { data, error } = await (supabase as any)
     .from("user_models")

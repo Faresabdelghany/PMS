@@ -37,6 +37,14 @@ import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText"
 import { PlugsConnected } from "@phosphor-icons/react/dist/ssr/PlugsConnected"
 import { FileText } from "@phosphor-icons/react/dist/ssr/FileText"
 import { Notebook } from "@phosphor-icons/react/dist/ssr/Notebook"
+import { Timer } from "@phosphor-icons/react/dist/ssr/Timer"
+import { Terminal } from "@phosphor-icons/react/dist/ssr/Terminal"
+import { CurrencyDollar } from "@phosphor-icons/react/dist/ssr/CurrencyDollar"
+import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank"
+import { Bell } from "@phosphor-icons/react/dist/ssr/Bell"
+import { Brain } from "@phosphor-icons/react/dist/ssr/Brain"
+import { ChatsCircle } from "@phosphor-icons/react/dist/ssr/ChatsCircle"
+import { WebhooksLogo } from "@phosphor-icons/react/dist/ssr/WebhooksLogo"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,7 +65,7 @@ import { cn } from "@/lib/utils"
 import { PROGRESS_THRESHOLDS, BADGE_CAP, SIDEBAR_PROJECT_LIMIT } from "@/lib/constants"
 
 // Navigation items defined inline (no mock data dependency)
-type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "chat" | "activity" | "approvals" | "gateways" | "skills" | "documents" | "memory"
+type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "chat" | "activity" | "approvals" | "gateways" | "skills" | "documents" | "memory" | "sessions" | "logs" | "costs" | "schedules" | "alerts" | "models" | "communications" | "webhooks"
 type SidebarFooterItemId = "settings"
 
 type NavItem = {
@@ -71,20 +79,49 @@ type FooterItem = {
   label: string
 }
 
-const navItems: NavItem[] = [
+// Core navigation (always visible)
+const coreNavItems: NavItem[] = [
   { id: "dashboard", label: "Dashboard" },
   { id: "inbox", label: "Inbox" },
   { id: "my-tasks", label: "Tasks" },
   { id: "projects", label: "Projects" },
   { id: "clients", label: "Clients" },
+]
+
+// Observe section — agent monitoring & observability
+const observeNavItems: NavItem[] = [
   { id: "agents", label: "Agents" },
+  { id: "sessions", label: "Sessions" },
   { id: "activity", label: "Activity" },
+  { id: "logs", label: "Logs" },
+  { id: "costs", label: "Tokens & Costs" },
+  { id: "memory", label: "Memory" },
+]
+
+// Automate section — scheduling, alerts, integrations
+const automateNavItems: NavItem[] = [
+  { id: "schedules", label: "Schedules" },
+  { id: "alerts", label: "Alerts" },
   { id: "approvals", label: "Approvals" },
   { id: "gateways", label: "Gateways" },
   { id: "skills", label: "Skills" },
-  { id: "documents", label: "Documents" },
-  { id: "memory", label: "Memory" },
+  { id: "models", label: "Models" },
+  { id: "webhooks", label: "Webhooks" },
+]
+
+// Communicate section
+const communicateNavItems: NavItem[] = [
+  { id: "communications", label: "Agent Chat" },
   { id: "chat", label: "AI Chat" },
+  { id: "documents", label: "Documents" },
+]
+
+// All nav items combined (for preload handlers, href lookup, etc.)
+const navItems: NavItem[] = [
+  ...coreNavItems,
+  ...observeNavItems,
+  ...automateNavItems,
+  ...communicateNavItems,
 ]
 
 const footerItems: FooterItem[] = [
@@ -133,6 +170,14 @@ const preloadHandlers: Record<NavItemId, () => void> = {
   skills: () => {},
   documents: () => {},
   memory: () => {},
+  sessions: () => {},
+  logs: () => {},
+  costs: () => {},
+  schedules: () => {},
+  alerts: () => {},
+  models: () => {},
+  communications: () => {},
+  webhooks: () => {},
   chat: () => {
     if (typeof window !== "undefined") {
       void import("@/components/ai/chat-page-content")
@@ -165,6 +210,14 @@ const navItemIcons: Record<NavItemId, React.ComponentType<{ className?: string }
   skills: Sparkle,
   documents: FileText,
   memory: Notebook,
+  sessions: Timer,
+  logs: Terminal,
+  costs: CurrencyDollar,
+  schedules: CalendarBlank,
+  alerts: Bell,
+  models: Brain,
+  communications: ChatsCircle,
+  webhooks: WebhooksLogo,
   chat: Sparkle,
 }
 
@@ -314,50 +367,40 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
     if (id === "skills") return "/skills/marketplace"
     if (id === "documents") return "/documents"
     if (id === "memory") return "/memory"
+    if (id === "sessions") return "/sessions"
+    if (id === "logs") return "/logs"
+    if (id === "costs") return "/costs"
+    if (id === "schedules") return "/schedules"
+    if (id === "alerts") return "/alerts"
+    if (id === "models") return "/models"
+    if (id === "communications") return "/communications"
+    if (id === "webhooks") return "/webhooks"
     if (id === "chat") return "/chat"
     return "#"
   }
 
   const isItemActive = (id: NavItemId): boolean => {
-    if (id === "dashboard") {
-      return pathname === "/"
-    }
-    if (id === "projects") {
-      return pathname.startsWith("/projects")
-    }
-    if (id === "my-tasks") {
-      return pathname.startsWith("/tasks")
-    }
-    if (id === "inbox") {
-      return pathname.startsWith("/inbox")
-    }
-    if (id === "clients") {
-      return pathname.startsWith("/clients")
-    }
-    if (id === "agents") {
-      return pathname === "/agents" || pathname.startsWith("/agents/")
-    }
-    if (id === "activity") {
-      return pathname.startsWith("/activity")
-    }
-    if (id === "approvals") {
-      return pathname.startsWith("/approvals")
-    }
-    if (id === "gateways") {
-      return pathname.startsWith("/gateways")
-    }
-    if (id === "skills") {
-      return pathname.startsWith("/skills")
-    }
-    if (id === "documents") {
-      return pathname.startsWith("/documents")
-    }
-    if (id === "memory") {
-      return pathname.startsWith("/memory")
-    }
-    if (id === "chat") {
-      return pathname.startsWith("/chat")
-    }
+    if (id === "dashboard") return pathname === "/"
+    if (id === "my-tasks") return pathname.startsWith("/tasks")
+    if (id === "projects") return pathname.startsWith("/projects")
+    if (id === "inbox") return pathname.startsWith("/inbox")
+    if (id === "clients") return pathname.startsWith("/clients")
+    if (id === "agents") return pathname === "/agents" || pathname.startsWith("/agents/")
+    if (id === "activity") return pathname.startsWith("/activity")
+    if (id === "approvals") return pathname.startsWith("/approvals")
+    if (id === "gateways") return pathname.startsWith("/gateways")
+    if (id === "skills") return pathname.startsWith("/skills")
+    if (id === "documents") return pathname.startsWith("/documents")
+    if (id === "memory") return pathname.startsWith("/memory")
+    if (id === "sessions") return pathname.startsWith("/sessions")
+    if (id === "logs") return pathname.startsWith("/logs")
+    if (id === "costs") return pathname.startsWith("/costs")
+    if (id === "schedules") return pathname.startsWith("/schedules")
+    if (id === "alerts") return pathname.startsWith("/alerts")
+    if (id === "models") return pathname.startsWith("/models")
+    if (id === "communications") return pathname.startsWith("/communications")
+    if (id === "webhooks") return pathname.startsWith("/webhooks")
+    if (id === "chat") return pathname.startsWith("/chat")
     return false
   }
 
@@ -396,15 +439,15 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
           </button>
         </SidebarGroup>
 
+        {/* Core navigation */}
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => {
+              {coreNavItems.map((item) => {
                 const href = getHrefForNavItem(item.id)
                 const active = isItemActive(item.id)
-
                 return (
-                  <SidebarMenuItem key={item.label}>
+                  <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
                       asChild
                       isActive={active}
@@ -412,14 +455,8 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
                     >
                       <Link
                         href={href}
-                        onMouseEnter={() => {
-                          preloadHandlers[item.id]()
-                          handlePrefetch(href)
-                        }}
-                        onFocus={() => {
-                          preloadHandlers[item.id]()
-                          handlePrefetch(href)
-                        }}
+                        onMouseEnter={() => { preloadHandlers[item.id](); handlePrefetch(href) }}
+                        onFocus={() => { preloadHandlers[item.id](); handlePrefetch(href) }}
                       >
                         <NavItemIcon id={item.id} />
                         <span>{item.label}</span>
@@ -438,11 +475,110 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
                         {unreadCount > 0 ? (unreadCount > BADGE_CAP ? `${BADGE_CAP}+` : unreadCount) : "0"}
                       </SidebarMenuBadge>
                     )}
+                  </SidebarMenuItem>
+                )
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Observe section */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="px-3 text-xs font-medium text-muted-foreground">
+            Observe
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {observeNavItems.map((item) => {
+                const href = getHrefForNavItem(item.id)
+                const active = isItemActive(item.id)
+                return (
+                  <SidebarMenuItem key={item.id}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={active}
+                      className="h-9 rounded-lg px-3 font-normal text-muted-foreground data-[active=true]:bg-accent data-[active=true]:text-foreground"
+                    >
+                      <Link
+                        href={href}
+                        onMouseEnter={() => { preloadHandlers[item.id](); handlePrefetch(href) }}
+                        onFocus={() => { preloadHandlers[item.id](); handlePrefetch(href) }}
+                      >
+                        <NavItemIcon id={item.id} />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Automate section */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="px-3 text-xs font-medium text-muted-foreground">
+            Automate
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {automateNavItems.map((item) => {
+                const href = getHrefForNavItem(item.id)
+                const active = isItemActive(item.id)
+                return (
+                  <SidebarMenuItem key={item.id}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={active}
+                      className="h-9 rounded-lg px-3 font-normal text-muted-foreground data-[active=true]:bg-accent data-[active=true]:text-foreground"
+                    >
+                      <Link
+                        href={href}
+                        onMouseEnter={() => { preloadHandlers[item.id](); handlePrefetch(href) }}
+                        onFocus={() => { preloadHandlers[item.id](); handlePrefetch(href) }}
+                      >
+                        <NavItemIcon id={item.id} />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
                     {item.id === "approvals" && pendingApprovalsCount > 0 && (
                       <SidebarMenuBadge className="rounded-full px-2 bg-amber-500/10 text-amber-600">
                         {pendingApprovalsCount > BADGE_CAP ? `${BADGE_CAP}+` : pendingApprovalsCount}
                       </SidebarMenuBadge>
                     )}
+                  </SidebarMenuItem>
+                )
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Communicate section */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="px-3 text-xs font-medium text-muted-foreground">
+            Communicate
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {communicateNavItems.map((item) => {
+                const href = getHrefForNavItem(item.id)
+                const active = isItemActive(item.id)
+                return (
+                  <SidebarMenuItem key={item.id}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={active}
+                      className="h-9 rounded-lg px-3 font-normal text-muted-foreground data-[active=true]:bg-accent data-[active=true]:text-foreground"
+                    >
+                      <Link
+                        href={href}
+                        onMouseEnter={() => { preloadHandlers[item.id](); handlePrefetch(href) }}
+                        onFocus={() => { preloadHandlers[item.id](); handlePrefetch(href) }}
+                      >
+                        <NavItemIcon id={item.id} />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
                   </SidebarMenuItem>
                 )
               })}

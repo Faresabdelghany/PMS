@@ -7,7 +7,7 @@ import type { ActionResult } from "./types"
 
 // ── Types ────────────────────────────────────────────────────────────
 
-export type AgentCommandType = "run_task" | "ping" | "pause" | "resume" | "cancel"
+export type AgentCommandType = "run_task" | "ping" | "pause" | "resume" | "cancel" | "wake" | "message" | "model_update"
 export type AgentCommandStatus = "pending" | "picked_up" | "completed" | "failed"
 
 export interface AgentCommand {
@@ -38,7 +38,7 @@ export interface AgentCommandWithAgent extends AgentCommand {
 
 const createCommandSchema = z.object({
   agent_id: z.string().uuid("Invalid agent ID"),
-  command_type: z.enum(["run_task", "ping", "pause", "resume", "cancel"]),
+  command_type: z.enum(["run_task", "ping", "pause", "resume", "cancel", "wake", "message", "model_update"]),
   payload: z.record(z.unknown()).default({}),
   task_id: z.string().uuid().optional().nullable(),
 })
@@ -69,7 +69,7 @@ export async function createAgentCommand(
   }
 
   const { data, error } = await supabase
-    .from("agent_commands")
+    .from("agent_commands" as any)
     .insert({
       organization_id: orgId,
       agent_id: parsed.data.agent_id,
@@ -84,7 +84,7 @@ export async function createAgentCommand(
     return { error: error.message }
   }
 
-  return { data: data as AgentCommand }
+  return { data: data as unknown as AgentCommand }
 }
 
 /**
@@ -164,5 +164,91 @@ export async function cancelAgentCommand(
     return { error: error.message }
   }
 
-  return { data: data as AgentCommand }
+  return { data: data as unknown as AgentCommand }
+}
+
+/**
+ * Wake an agent with an optional message
+ */
+export async function wakeAgent(
+  orgId: string,
+  agentId: string,
+  message?: string
+): Promise<ActionResult<AgentCommand>> {
+  return createAgentCommand(orgId, agentId, "wake", { message: message ?? "Wake up" })
+}
+
+/**
+ * Send a message to an agent
+ */
+export async function messageAgent(
+  orgId: string,
+  agentId: string,
+  content: string
+): Promise<ActionResult<AgentCommand>> {
+  return createAgentCommand(orgId, agentId, "message", { content })
+}
+
+/**
+ * Update an agent's model
+ */
+export async function updateAgentModel(
+  orgId: string,
+  agentId: string,
+  modelId: string,
+  modelName: string
+): Promise<ActionResult<AgentCommand>> {
+  return createAgentCommand(orgId, agentId, "model_update", { model_id: modelId, model_name: modelName })
+}
+
+/**
+ * Bulk pause all online agents
+ */
+export async function pauseAllAgents(
+  orgId: string
+): Promise<ActionResult<{ dispatched: number }>> {
+  const { supabase } = await requireAuth()
+
+  const { data: agents, error } = await supabase
+    .from("agents")
+    .select("id")
+    .eq("organization_id", orgId)
+    .in("status", ["online", "busy"])
+
+  if (error) return { error: error.message }
+  if (!agents?.length) return { data: { dispatched: 0 } }
+
+  let dispatched = 0
+  for (const agent of agents) {
+    const result = await createAgentCommand(orgId, agent.id, "pause")
+    if (!result.error) dispatched++
+  }
+
+  return { data: { dispatched } }
+}
+
+/**
+ * Bulk resume all paused agents
+ */
+export async function resumeAllAgents(
+  orgId: string
+): Promise<ActionResult<{ dispatched: number }>> {
+  const { supabase } = await requireAuth()
+
+  const { data: agents, error } = await supabase
+    .from("agents")
+    .select("id")
+    .eq("organization_id", orgId)
+    .eq("status", "idle")
+
+  if (error) return { error: error.message }
+  if (!agents?.length) return { data: { dispatched: 0 } }
+
+  let dispatched = 0
+  for (const agent of agents) {
+    const result = await createAgentCommand(orgId, agent.id, "resume")
+    if (!result.error) dispatched++
+  }
+
+  return { data: { dispatched } }
 }
