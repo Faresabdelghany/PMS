@@ -30,12 +30,13 @@ const eventColors: Record<string, string> = {
 }
 
 function formatFullDate(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00")
+  const d = new Date(dateStr + "T12:00:00Z")
   return d.toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: "UTC",
   })
 }
 
@@ -58,6 +59,7 @@ function formatTime(dateStr: string): string {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
+    timeZone: "UTC",
   })
 }
 
@@ -66,6 +68,7 @@ function formatHourKey(dateStr: string): string {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
+    timeZone: "UTC",
   })
 }
 
@@ -117,7 +120,7 @@ function groupByHour(events: MemoryJournalEvent[]): HourGroup[] {
 
   for (const event of events) {
     const d = new Date(event.created_at)
-    const key = `${d.getHours()}:${Math.floor(d.getMinutes() / 10)}`
+    const key = `${d.getUTCHours()}:${Math.floor(d.getUTCMinutes() / 10)}`
     if (!groups.has(key)) {
       groups.set(key, [])
       order.push(key)
@@ -211,27 +214,28 @@ export function MemoryDocumentViewer({
           {/* Stats grid */}
           <div className="grid grid-cols-2 gap-3 mb-6">
             <div className="rounded-lg border border-border p-4">
-              <p className="text-2xl font-semibold">{longTermSummary.totalEvents.toLocaleString()}</p>
+              <p className="text-2xl font-semibold">{longTermSummary.totalEvents.toLocaleString("en-US")}</p>
               <p className="text-xs text-muted-foreground mt-1">Total Events</p>
             </div>
             <div className="rounded-lg border border-border p-4">
-              <p className="text-2xl font-semibold">{longTermSummary.totalWordCount.toLocaleString()}</p>
+              <p className="text-2xl font-semibold">{longTermSummary.totalWordCount.toLocaleString("en-US")}</p>
               <p className="text-xs text-muted-foreground mt-1">Total Words</p>
             </div>
             <div className="rounded-lg border border-border p-4">
-              <p className="text-sm font-medium">
+              <p className="text-sm font-medium" suppressHydrationWarning>
                 {longTermSummary.oldestEventDate
                   ? new Date(longTermSummary.oldestEventDate).toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
                       year: "numeric",
+                      timeZone: "UTC",
                     })
                   : "—"}
               </p>
               <p className="text-xs text-muted-foreground mt-1">Earliest Record</p>
             </div>
             <div className="rounded-lg border border-border p-4">
-              <p className="text-sm font-medium">
+              <p className="text-sm font-medium" suppressHydrationWarning>
                 {formatRelativeDate(longTermSummary.lastUpdated)}
               </p>
               <p className="text-xs text-muted-foreground mt-1">Last Updated</p>
@@ -256,6 +260,7 @@ export function MemoryDocumentViewer({
                         {new Date(event.created_at).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
+                          timeZone: "UTC",
                         })}
                       </span>
                       <span className="text-xs text-muted-foreground">&middot; {event.agent.name}</span>
@@ -305,6 +310,7 @@ export function MemoryDocumentViewer({
                         month: "short",
                         day: "numeric",
                         year: "numeric",
+                        timeZone: "UTC",
                       })}
                     </span>
                     <span className="text-xs text-muted-foreground">&middot; {event.agent.name}</span>
@@ -336,7 +342,7 @@ export function MemoryDocumentViewer({
               <p className="text-sm text-muted-foreground mt-0.5">
                 {formatFullDate(journalDate!)} &middot;{" "}
                 {formatBytes(stats.byteSize)} &middot;{" "}
-                {stats.wordCount.toLocaleString()} words
+                {stats.wordCount.toLocaleString("en-US")} words
               </p>
             </div>
           </div>
