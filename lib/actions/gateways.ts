@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import { requireOrgMember, requireAuth } from "./auth-helpers"
 import type { ActionResult } from "./types"
+import type { GatewayConnectionInfo } from "@/lib/types/gateway"
 
 export type Gateway = {
   id: string
@@ -80,6 +81,59 @@ export async function getGateway(id: string): Promise<ActionResult<Gateway>> {
 
     if (error) return { error: error.message }
     return { data: data as unknown as Gateway }
+  } catch {
+    return { error: "Not authenticated" }
+  }
+}
+
+function normalizeGatewayWebSocketUrl(url: string): string {
+  const trimmed = url.trim()
+
+  if (trimmed.startsWith("http://")) {
+    return `ws://${trimmed.slice("http://".length)}`
+  }
+  if (trimmed.startsWith("https://")) {
+    return `wss://${trimmed.slice("https://".length)}`
+  }
+  if (trimmed.startsWith("ws://") || trimmed.startsWith("wss://")) {
+    return trimmed
+  }
+
+  return `ws://${trimmed}`
+}
+
+export async function getGatewayConnectionInfo(
+  orgId: string
+): Promise<ActionResult<GatewayConnectionInfo | null>> {
+  try {
+    const { supabase } = await requireAuth()
+
+    const { data, error } = await supabase
+      .from("gateways" as any)
+      .select("id, url, auth_token")
+      .eq("org_id", orgId)
+      .neq("status", "offline")
+      .order("last_seen_at", { ascending: false, nullsFirst: false })
+      .limit(1)
+
+    if (error) return { error: error.message }
+
+    const gatewayRows = (data ?? []) as unknown as Array<{
+      id: string
+      url: string
+      auth_token: string | null
+    }>
+    const gateway = gatewayRows[0]
+
+    if (!gateway) return { data: null }
+
+    return {
+      data: {
+        url: normalizeGatewayWebSocketUrl(gateway.url),
+        token: gateway.auth_token ?? "",
+        gatewayId: gateway.id,
+      },
+    }
   } catch {
     return { error: "Not authenticated" }
   }

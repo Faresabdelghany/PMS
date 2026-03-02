@@ -1,4 +1,4 @@
-# CLAUDE.md — PMS Project Bible
+﻿# CLAUDE.md — PMS Project Bible
 
 **READ THIS ENTIRE FILE BEFORE TOUCHING ANY CODE.**
 

@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import { z } from "zod"
-import { requireOrgMember } from "./auth-helpers"
+import { requireAuth, requireOrgMember } from "./auth-helpers"
 import { uuidSchema, validate } from "@/lib/validations"
 import type {
   Agent,
@@ -20,6 +20,7 @@ import type {
   AgentSquad,
 } from "@/lib/supabase/types"
 import type { ActionResult } from "./types"
+import type { StatusBarCounts } from "@/lib/types/gateway"
 
 // ── Validation Schemas ──────────────────────────────────────────────
 
@@ -381,6 +382,50 @@ export async function getDashboardAgentStats(orgId: string): Promise<ActionResul
       errorRate,
       agentsByStatus,
     },
+  }
+}
+
+export async function getStatusBarCounts(orgId: string): Promise<ActionResult<StatusBarCounts>> {
+  const orgValidation = validate(uuidSchema, orgId)
+  if (!orgValidation.success) return { error: "Invalid organization ID" }
+
+  try {
+    const { supabase } = await requireAuth()
+    await requireOrgMember(orgId)
+
+    const [totalAgentsResult, onlineAgentsResult, activeSessionsResult] = await Promise.all([
+      supabase
+        .from("agents")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", orgId),
+      supabase
+        .from("agents")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", orgId)
+        .in("status", ["online", "busy"]),
+      supabase
+        .from("agent_sessions" as any)
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", orgId)
+        .in("status", ["running", "blocked", "waiting"]),
+    ])
+
+    const errors = [totalAgentsResult.error, onlineAgentsResult.error, activeSessionsResult.error].filter(
+      Boolean
+    )
+    if (errors.length > 0) {
+      return { error: errors[0]!.message }
+    }
+
+    return {
+      data: {
+        onlineAgents: onlineAgentsResult.count ?? 0,
+        totalAgents: totalAgentsResult.count ?? 0,
+        activeSessions: activeSessionsResult.count ?? 0,
+      },
+    }
+  } catch {
+    return { error: "Not authorized" }
   }
 }
 

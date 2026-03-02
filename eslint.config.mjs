@@ -26,7 +26,15 @@ const eslintConfig = [
       : config
   ),
   {
-    ignores: ["node_modules/", ".next/", "out/"],
+    ignores: [
+      "node_modules/",
+      ".next/",
+      "out/",
+      "dist/",
+      "build/",
+      "coverage/",
+      "*.min.js",
+    ],
   },
   {
     // Disable React hooks rules for e2e tests (not React code)

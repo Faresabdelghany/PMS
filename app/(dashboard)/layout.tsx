@@ -19,6 +19,7 @@ import type { OrganizationWithRole } from "@/hooks/use-organization"
 import type { Profile, Project } from "@/lib/supabase/types"
 import { Toaster } from "@/components/ui/sonner"
 import { MotionProvider } from "@/components/ui/motion-lazy"
+import { GatewayProvider } from "@/hooks/gateway-context"
 import { SIDEBAR_PROJECT_LIMIT } from "@/lib/constants"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/supabase/database.types"
@@ -178,27 +179,29 @@ export default async function DashboardLayout({
       >
         <OrganizationProvider initialOrganizations={organizations}>
           <RealtimeProvider>
-            <MotionProvider>
-            <SettingsDialogProvider>
-              <CommandPaletteProvider>
-                <ColorThemeSyncer serverTheme={colorTheme} />
-                <NotificationToastProviderLazy userId={user.id} />
-                <SidebarProvider>
-                  <Suspense fallback={<AppSidebar activeProjects={[]} />}>
-                    <SidebarWithData
-                      activeProjectsPromise={activeProjectsPromise}
-                      unreadCountPromise={unreadCountPromise}
-                      pendingApprovalsPromise={pendingApprovalsPromise}
-                    />
-                  </Suspense>
-                  <SidebarInset>
-                    <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
-                  </SidebarInset>
-                </SidebarProvider>
-                <Toaster richColors closeButton />
-              </CommandPaletteProvider>
-            </SettingsDialogProvider>
-            </MotionProvider>
+            <GatewayProvider orgId={organizations[0].id}>
+              <MotionProvider>
+                <SettingsDialogProvider>
+                  <CommandPaletteProvider>
+                    <ColorThemeSyncer serverTheme={colorTheme} />
+                    <NotificationToastProviderLazy userId={user.id} />
+                    <SidebarProvider>
+                      <Suspense fallback={<AppSidebar activeProjects={[]} />}>
+                        <SidebarWithData
+                          activeProjectsPromise={activeProjectsPromise}
+                          unreadCountPromise={unreadCountPromise}
+                          pendingApprovalsPromise={pendingApprovalsPromise}
+                        />
+                      </Suspense>
+                      <SidebarInset>
+                        <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
+                      </SidebarInset>
+                    </SidebarProvider>
+                    <Toaster richColors closeButton />
+                  </CommandPaletteProvider>
+                </SettingsDialogProvider>
+              </MotionProvider>
+            </GatewayProvider>
           </RealtimeProvider>
         </OrganizationProvider>
       </UserProvider>

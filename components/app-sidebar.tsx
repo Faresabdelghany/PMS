@@ -52,6 +52,7 @@ import { useOrganization } from "@/hooks/use-organization"
 import type { Project } from "@/lib/supabase/types"
 import { useCommandPalette } from "@/components/command-palette"
 import { useSettingsDialog } from "@/components/providers/settings-dialog-provider"
+import { GatewayStatusBar } from "@/components/mission-control/status-bar"
 import { cn } from "@/lib/utils"
 import { PROGRESS_THRESHOLDS, BADGE_CAP, SIDEBAR_PROJECT_LIMIT } from "@/lib/constants"
 
@@ -470,6 +471,8 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
       </SidebarContent>
 
       <SidebarFooter className="border-t border-border/40 p-2">
+        <GatewayStatusBar />
+
         <SidebarMenu>
           {footerItems.map((item) => {
             const Icon = footerItemIcons[item.id]
