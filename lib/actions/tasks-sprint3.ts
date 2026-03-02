@@ -5,7 +5,7 @@ import { requireAuth } from "./auth-helpers"
 import { createAgentCommand } from "./agent-commands"
 import { subscribeAgentToTask } from "./task-messages"
 import { revalidatePath } from "next/cache"
-import { invalidateCache } from "@/lib/cache"
+import { CacheKeys, invalidate, invalidateCache } from "@/lib/cache"
 import type { ActionResult } from "./types"
 import type { TaskStatus } from "@/lib/supabase/types"
 
@@ -168,12 +168,12 @@ export async function dispatchTaskToAgent(
   taskId: string,
   agentId: string
 ): Promise<ActionResult<{ commandId: string }>> {
-  const { supabase } = await requireAuth()
+  const { user, supabase } = await requireAuth()
 
   // Get task details for the command payload
   const { data: task, error: taskError } = await supabase
     .from("tasks")
-    .select("id, name, description, priority, status")
+    .select("id, name, description, priority, status, project_id, assignee_id")
     .eq("id", taskId)
     .single()
 
@@ -210,6 +210,13 @@ export async function dispatchTaskToAgent(
   // Auto-subscribe the assigned agent to the task thread
   await subscribeAgentToTask(orgId, taskId, agentId)
 
+  await invalidateCache.task({
+    taskId,
+    projectId: task.project_id,
+    assigneeId: task.assignee_id,
+    orgId,
+  })
+  await invalidate.key(CacheKeys.userTasks(user.id, orgId))
   revalidatePath("/tasks")
 
   return { data: { commandId: commandResult.data!.id } }

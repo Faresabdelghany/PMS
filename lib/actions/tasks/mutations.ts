@@ -97,21 +97,21 @@ export async function createTask(
     return { error: error.message }
   }
 
+  revalidatePath(`/projects/${projectId}`)
+  revalidatePath("/tasks")
+  revalidateTag(CacheTags.projectDetails(projectId))
+  await invalidateCache.task({
+    projectId,
+    assigneeId: normalizedData.assignee_id ?? null,
+    orgId: project?.organization_id ?? "",
+  })
+  if (assignedAgentId && project?.organization_id) {
+    await invalidate.key(CacheKeys.userTasks(user.id, project.organization_id))
+  }
+
   after(async () => {
     // Create "created" activity record (deferred — not needed for response)
     await createTaskActivity(task.id, "created")
-
-    revalidatePath(`/projects/${projectId}`)
-    revalidatePath("/tasks")
-    revalidateTag(CacheTags.projectDetails(projectId))
-    await invalidateCache.task({
-      projectId,
-      assigneeId: normalizedData.assignee_id ?? null,
-      orgId: project?.organization_id ?? "",
-    })
-    if (assignedAgentId && project?.organization_id) {
-      await invalidate.key(CacheKeys.userTasks(user.id, project.organization_id))
-    }
 
     // Notify assignee when task is created with assignment
     if (user && normalizedData.assignee_id && project?.organization_id) {
