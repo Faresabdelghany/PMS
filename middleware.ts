@@ -65,7 +65,7 @@ function buildCspHeader(nonce: string): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com https://avatars.githubusercontent.com",
     "font-src 'self' data:",
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://vitals.vercel-analytics.com https://va.vercel-scripts.com https://*.ingest.de.sentry.io",
+    `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://vitals.vercel-analytics.com https://va.vercel-scripts.com https://*.ingest.de.sentry.io wss://*.ts.net https://*.ts.net${process.env.NEXT_PUBLIC_GATEWAY_WS_URL ? ` ${process.env.NEXT_PUBLIC_GATEWAY_WS_URL.replace('wss://', 'https://')}` : ''}`,
     "worker-src 'self' blob:",
     "frame-ancestors 'none'",
     "base-uri 'self'",
