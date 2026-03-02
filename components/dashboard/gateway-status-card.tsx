@@ -2,6 +2,7 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PlugsConnected } from "@phosphor-icons/react/dist/ssr/PlugsConnected"
 import { getGatewayStatus } from "@/lib/actions/agent-events"
+import { formatDistanceToNow } from "date-fns"
 
 interface GatewayStatusCardProps {
   orgId: string
@@ -15,7 +16,7 @@ export async function GatewayStatusCard({ orgId }: GatewayStatusCardProps) {
       dot: "bg-emerald-500",
       label: "Online",
       desc: lastHeartbeat
-        ? `Last heartbeat: ${new Date(lastHeartbeat).toLocaleTimeString()}`
+        ? `Last heartbeat: ${formatDistanceToNow(new Date(lastHeartbeat), { addSuffix: true })}`
         : "Gateway is active",
     },
     offline: {

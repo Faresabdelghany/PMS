@@ -73,12 +73,15 @@ export function GatewayStatusBar() {
   const { gatewayStatus, rtt, lastEventAt, onlineAgentCount, totalAgentCount, activeSessionCount } =
     useGateway()
   const { state: sidebarState } = useSidebar()
-  const [nowMs, setNowMs] = useState(() => Date.now())
+  const [nowMs, setNowMs] = useState(0)
+  const [hasMounted, setHasMounted] = useState(false)
 
   const statusView = GATEWAY_STATUS_STYLES[gatewayStatus]
   const showLatency = gatewayStatus === "connected" && typeof rtt === "number"
 
   useEffect(() => {
+    setNowMs(Date.now())
+    setHasMounted(true)
     const interval = setInterval(() => {
       setNowMs(Date.now())
     }, 1000)
@@ -94,10 +97,10 @@ export function GatewayStatusBar() {
   }, [lastEventAt, nowMs])
 
   const lastEventText = useMemo(() => {
-    if (!lastEventAt) return "No events yet"
+    if (!hasMounted || !lastEventAt) return "No events yet"
     const elapsedMs = Math.max(0, nowMs - lastEventAt.getTime())
     return `Last event: ${formatRelativeTime(elapsedMs)}`
-  }, [lastEventAt, nowMs])
+  }, [lastEventAt, nowMs, hasMounted])
 
   if (sidebarState === "collapsed") {
     return (

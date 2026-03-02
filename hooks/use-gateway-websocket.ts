@@ -66,6 +66,20 @@ function parseGatewayFrame(raw: string): GatewayFrame | null {
   }
 }
 
+function isLocalhostUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    return (
+      parsed.hostname === "localhost" ||
+      parsed.hostname === "127.0.0.1" ||
+      parsed.hostname === "0.0.0.0" ||
+      parsed.hostname === "::1"
+    )
+  } catch {
+    return url.includes("localhost") || url.includes("127.0.0.1")
+  }
+}
+
 function buildSocketUrl(baseUrl: string, token: string | null): string {
   if (!token) return baseUrl
 
@@ -258,6 +272,13 @@ export function useGatewayWebSocket({
   const connect = useCallback(() => {
     const { url: currentUrl, token: currentToken, enabled: isEnabled } = configRef.current
     if (!currentUrl || !isEnabled || manualDisconnectRef.current) return
+
+    // Skip localhost URLs in production — they trigger CSP violations on Vercel
+    if (process.env.NODE_ENV === "production" && isLocalhostUrl(currentUrl)) {
+      setStatus("disconnected")
+      setError("Gateway is configured for local development only")
+      return
+    }
 
     const existingSocket = wsRef.current
     if (
