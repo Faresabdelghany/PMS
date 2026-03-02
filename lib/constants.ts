@@ -49,6 +49,22 @@ export const PROGRESS_THRESHOLDS = { high: 75, medium: 50, low: 25 } as const
 export const BADGE_CAP = 99
 
 // ============================================
+// GATEWAY
+// ============================================
+/** Heartbeat interval for gateway websocket ping requests (ms). */
+export const GATEWAY_HEARTBEAT_INTERVAL_MS = 30_000
+/** Reconnect delays for gateway websocket retries (ms). */
+export const GATEWAY_RECONNECT_DELAYS_MS = [1000, 2000, 4000, 8000, 30_000] as const
+/** Number of consecutive missed pongs before forcing a reconnect. */
+export const GATEWAY_MISSED_PONG_THRESHOLD = 3
+/** RTT below this threshold is shown as healthy/green. */
+export const LATENCY_GREEN_THRESHOLD_MS = 100
+/** RTT at or above this threshold is shown as degraded/red. */
+export const LATENCY_YELLOW_THRESHOLD_MS = 500
+/** Last-event age threshold for warning state (ms). */
+export const LAST_EVENT_WARNING_THRESHOLD_MS = 300_000
+
+// ============================================
 // TASK URGENCY
 // ============================================
 /** Days until due date to mark as urgent */
