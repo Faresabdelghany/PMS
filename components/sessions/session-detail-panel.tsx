@@ -177,7 +177,7 @@ export function SessionDetailPanel({
                   Linked Task
                 </p>
                 <p className="text-sm text-foreground font-medium">
-                  {session.task.title}
+                  {session.task.name}
                 </p>
               </CardContent>
             </Card>
