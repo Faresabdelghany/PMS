@@ -110,7 +110,7 @@ export async function getGatewayConnectionInfo(
 
     const { data, error } = await supabase
       .from("gateways" as any)
-      .select("id, url, auth_token")
+      .select("id, url, auth_token, auth_mode")
       .eq("org_id", orgId)
       .neq("status", "offline")
       .order("last_seen_at", { ascending: false, nullsFirst: false })
@@ -122,6 +122,7 @@ export async function getGatewayConnectionInfo(
       id: string
       url: string
       auth_token: string | null
+      auth_mode: 'none' | 'token' | 'password' | 'basic'
     }>
     const gateway = gatewayRows[0]
 
@@ -131,6 +132,7 @@ export async function getGatewayConnectionInfo(
       data: {
         url: normalizeGatewayWebSocketUrl(gateway.url),
         token: gateway.auth_token ?? "",
+        authMode: gateway.auth_mode ?? "none",
         gatewayId: gateway.id,
       },
     }

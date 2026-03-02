@@ -51,6 +51,8 @@ export const BADGE_CAP = 99
 // ============================================
 // GATEWAY
 // ============================================
+/** OpenClaw gateway protocol version. Must match the server. */
+export const GATEWAY_PROTOCOL_VERSION = 3
 /** Heartbeat interval for gateway websocket ping requests (ms). */
 export const GATEWAY_HEARTBEAT_INTERVAL_MS = 30_000
 /** Reconnect delays for gateway websocket retries (ms). */

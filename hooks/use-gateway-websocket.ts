@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import type {
+  GatewayConnectParams,
   GatewayEvent,
   GatewayFrame,
   GatewayRequest,
@@ -10,6 +11,7 @@ import type {
 import {
   GATEWAY_HEARTBEAT_INTERVAL_MS,
   GATEWAY_MISSED_PONG_THRESHOLD,
+  GATEWAY_PROTOCOL_VERSION,
   GATEWAY_RECONNECT_DELAYS_MS,
 } from "@/lib/constants"
 
@@ -33,9 +35,12 @@ type GatewayWebSocketActions = {
   disconnect: () => void
 }
 
+type GatewayAuthMode = 'none' | 'token' | 'password' | 'basic'
+
 type UseGatewayWebSocketConfig = {
   url: string | null
   token: string | null
+  authMode?: GatewayAuthMode
   onEvent?: (event: GatewayEvent) => void
   onResponse?: (response: GatewayResponse) => void
   enabled?: boolean
@@ -77,19 +82,6 @@ function isLocalhostUrl(url: string): boolean {
     )
   } catch {
     return url.includes("localhost") || url.includes("127.0.0.1")
-  }
-}
-
-function buildSocketUrl(baseUrl: string, token: string | null): string {
-  if (!token) return baseUrl
-
-  try {
-    const parsed = new URL(baseUrl)
-    parsed.searchParams.set("token", token)
-    return parsed.toString()
-  } catch {
-    const separator = baseUrl.includes("?") ? "&" : "?"
-    return `${baseUrl}${separator}token=${encodeURIComponent(token)}`
   }
 }
 
@@ -153,9 +145,28 @@ function isAuthCloseEvent(event: CloseEvent): boolean {
   )
 }
 
+function buildConnectParams(credential: string | null): GatewayConnectParams {
+  return {
+    minProtocol: GATEWAY_PROTOCOL_VERSION,
+    maxProtocol: GATEWAY_PROTOCOL_VERSION,
+    client: {
+      id: "gateway-client",
+      version: "1.0.0",
+      platform: "web",
+      mode: "ui",
+      displayName: "PMS Dashboard",
+    },
+    role: "operator",
+    // Send credential as both token and password — gateway checks only the
+    // field that matches its configured auth mode.
+    ...(credential ? { auth: { token: credential, password: credential } } : {}),
+  }
+}
+
 export function useGatewayWebSocket({
   url,
   token,
+  authMode = "token",
   onEvent,
   onResponse,
   enabled,
@@ -176,18 +187,21 @@ export function useGatewayWebSocket({
   const manualDisconnectRef = useRef(false)
   const authFailedRef = useRef(false)
   const debugEnabledRef = useRef(false)
+  const handshakeCompleteRef = useRef(false)
+  const connectRequestIdRef = useRef<string | null>(null)
   const connectRef = useRef<() => void>(() => {})
-  const configRef = useRef<{ url: string | null; token: string | null; enabled: boolean }>({
+  const configRef = useRef<{ url: string | null; token: string | null; authMode: GatewayAuthMode; enabled: boolean }>({
     url,
     token,
+    authMode,
     enabled: resolvedEnabled,
   })
   const onEventRef = useRef(onEvent)
   const onResponseRef = useRef(onResponse)
 
   useEffect(() => {
-    configRef.current = { url, token, enabled: resolvedEnabled }
-  }, [url, token, resolvedEnabled])
+    configRef.current = { url, token, authMode, enabled: resolvedEnabled }
+  }, [url, token, authMode, resolvedEnabled])
 
   useEffect(() => {
     onEventRef.current = onEvent
@@ -243,7 +257,7 @@ export function useGatewayWebSocket({
 
   const sendPing = useCallback(() => {
     const socket = wsRef.current
-    if (!socket || socket.readyState !== WebSocket.OPEN) return
+    if (!socket || socket.readyState !== WebSocket.OPEN || !handshakeCompleteRef.current) return
 
     if (pendingPingsRef.current.size > 0) {
       missedPongsRef.current += 1
@@ -291,13 +305,16 @@ export function useGatewayWebSocket({
 
     clearReconnectTimer()
     clearHeartbeat()
+    handshakeCompleteRef.current = false
+    connectRequestIdRef.current = null
 
     setStatus(reconnectAttemptRef.current > 0 ? "reconnecting" : "connecting")
 
     let socket: WebSocket
     try {
       logGatewayDebug(debugEnabledRef.current, "Connecting websocket", { url: currentUrl })
-      socket = new WebSocket(buildSocketUrl(currentUrl, currentToken))
+      // Auth token is sent in the connect frame, NOT as a URL query parameter
+      socket = new WebSocket(currentUrl)
     } catch {
       setError("Invalid gateway WebSocket URL")
       setStatus("disconnected")
@@ -308,15 +325,21 @@ export function useGatewayWebSocket({
     wsRef.current = socket
 
     socket.onopen = () => {
-      reconnectAttemptRef.current = 0
-      missedPongsRef.current = 0
-      pendingPingsRef.current.clear()
-      setError(null)
-      setStatus("connected")
-      logGatewayDebug(debugEnabledRef.current, "WebSocket connected")
+      logGatewayDebug(debugEnabledRef.current, "WebSocket transport connected, sending connect handshake")
 
-      sendPing()
-      heartbeatIntervalRef.current = setInterval(sendPing, GATEWAY_HEARTBEAT_INTERVAL_MS)
+      // First frame MUST be a "connect" request per OpenClaw gateway protocol
+      const connectId = createRequestId()
+      connectRequestIdRef.current = connectId
+
+      const connectFrame: GatewayRequest = {
+        type: "req",
+        id: connectId,
+        method: "connect",
+        params: buildConnectParams(currentToken) as unknown as Record<string, unknown>,
+      }
+
+      logGatewayDebug(debugEnabledRef.current, "Outbound connect frame", connectFrame)
+      socket.send(JSON.stringify(connectFrame))
     }
 
     socket.onmessage = (event) => {
@@ -338,6 +361,48 @@ export function useGatewayWebSocket({
         return
       }
 
+      // Handle the connect handshake response (hello-ok)
+      if (!handshakeCompleteRef.current && frame.id === connectRequestIdRef.current) {
+        if (frame.error || !frame.ok) {
+          logGatewayDebug(debugEnabledRef.current, "Connect handshake failed", frame.error)
+
+          if (isAuthResponseError(frame.error)) {
+            authFailedRef.current = true
+            manualDisconnectRef.current = true
+            clearReconnectTimer()
+            clearHeartbeat()
+            setError("Auth Failed")
+            setStatus("disconnected")
+            socket.close(1008, "Auth failed")
+            return
+          }
+
+          setError(frame.error?.message ?? "Gateway handshake failed")
+          setStatus("disconnected")
+          socket.close(1000, "Handshake failed")
+          scheduleReconnect()
+          return
+        }
+
+        // Handshake succeeded — now we're fully connected
+        handshakeCompleteRef.current = true
+        connectRequestIdRef.current = null
+        reconnectAttemptRef.current = 0
+        missedPongsRef.current = 0
+        pendingPingsRef.current.clear()
+        setError(null)
+        setStatus("connected")
+        logGatewayDebug(debugEnabledRef.current, "Connect handshake OK — gateway connected")
+
+        // Start heartbeat pings now that handshake is done
+        sendPing()
+        heartbeatIntervalRef.current = setInterval(sendPing, GATEWAY_HEARTBEAT_INTERVAL_MS)
+
+        onResponseRef.current?.(frame)
+        return
+      }
+
+      // Handle auth errors on any response
       if (isAuthResponseError(frame.error)) {
         authFailedRef.current = true
         manualDisconnectRef.current = true
@@ -349,6 +414,7 @@ export function useGatewayWebSocket({
         return
       }
 
+      // Handle ping/pong RTT measurement
       const pingSentAt = pendingPingsRef.current.get(frame.id)
       if (typeof pingSentAt === "number") {
         pendingPingsRef.current.delete(frame.id)
@@ -367,6 +433,8 @@ export function useGatewayWebSocket({
     socket.onclose = (event) => {
       wsRef.current = null
       clearHeartbeat()
+      handshakeCompleteRef.current = false
+      connectRequestIdRef.current = null
       setStatus("disconnected")
       logGatewayDebug(debugEnabledRef.current, "WebSocket closed", {
         code: event.code,
@@ -390,6 +458,8 @@ export function useGatewayWebSocket({
     manualDisconnectRef.current = true
     clearReconnectTimer()
     clearHeartbeat()
+    handshakeCompleteRef.current = false
+    connectRequestIdRef.current = null
     logGatewayDebug(debugEnabledRef.current, "Manual disconnect requested")
 
     const socket = wsRef.current
@@ -407,6 +477,8 @@ export function useGatewayWebSocket({
     manualDisconnectRef.current = false
     authFailedRef.current = false
     reconnectAttemptRef.current = 0
+    handshakeCompleteRef.current = false
+    connectRequestIdRef.current = null
     setError(null)
     clearReconnectTimer()
     clearHeartbeat()
@@ -425,9 +497,9 @@ export function useGatewayWebSocket({
 
   const send = useCallback((frame: GatewayRequest) => {
     const socket = wsRef.current
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
+    if (!socket || socket.readyState !== WebSocket.OPEN || !handshakeCompleteRef.current) {
       setError("Gateway is not connected")
-      logGatewayDebug(debugEnabledRef.current, "Send blocked (socket not connected)", frame)
+      logGatewayDebug(debugEnabledRef.current, "Send blocked (socket not connected or handshake incomplete)", frame)
       return
     }
 

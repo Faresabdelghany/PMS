@@ -52,6 +52,7 @@ export function GatewayProvider({
 }) {
   const [gatewayUrl, setGatewayUrl] = useState<string | null>(null)
   const [gatewayToken, setGatewayToken] = useState<string | null>(null)
+  const [gatewayAuthMode, setGatewayAuthMode] = useState<'none' | 'token' | 'password' | 'basic'>('none')
   const [isLoadingConfig, setIsLoadingConfig] = useState(true)
   const [configError, setConfigError] = useState<string | null>(null)
   const [onlineAgentCount, setOnlineAgentCount] = useState(0)
@@ -73,6 +74,7 @@ export function GatewayProvider({
         setConfigError(result.error)
         setGatewayUrl(null)
         setGatewayToken(null)
+        setGatewayAuthMode('none')
         setIsLoadingConfig(false)
         return
       }
@@ -80,12 +82,14 @@ export function GatewayProvider({
       if (!result.data) {
         setGatewayUrl(null)
         setGatewayToken(null)
+        setGatewayAuthMode('none')
         setIsLoadingConfig(false)
         return
       }
 
       setGatewayUrl(result.data.url)
       setGatewayToken(result.data.token)
+      setGatewayAuthMode(result.data.authMode)
       setIsLoadingConfig(false)
     }
 
@@ -168,6 +172,7 @@ export function GatewayProvider({
   const gatewayWebSocket = useGatewayWebSocket({
     url: gatewayUrl,
     token: gatewayToken,
+    authMode: gatewayAuthMode,
     enabled: Boolean(gatewayUrl),
   })
 
