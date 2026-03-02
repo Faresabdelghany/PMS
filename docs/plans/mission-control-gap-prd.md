@@ -66,7 +66,7 @@ These features exist and are mature. Do not rebuild or duplicate.
 - Store integration (Zustand or React context) to distribute events to components
 
 **Protocol details (from MC):**
-```
+```text
 Frame: { type: 'req'|'res'|'event', id?, method?, params?, result?, error? }
 Heartbeat: ping/pong every 30s, 3 missed = reconnect
 Gateway default: ws://127.0.0.1:18789
@@ -553,6 +553,7 @@ These exist in Mission Control but are unnecessary for PMS due to architectural 
 ## 5. Implementation Phases
 
 ### Phase 1 — Live Connection (Weeks 1-2)
+
 | # | Feature | Priority | Effort | Depends On |
 |---|---------|----------|--------|------------|
 | 3.1 | WebSocket Gateway Connection | P0 | Large | — |
@@ -563,6 +564,7 @@ These exist in Mission Control but are unnecessary for PMS due to architectural 
 **Outcome:** PMS can talk to OpenClaw in real-time. Agent status is live. Fares can wake/spawn agents.
 
 ### Phase 2 — Observability (Weeks 3-4)
+
 | # | Feature | Priority | Effort | Depends On |
 |---|---------|----------|--------|------------|
 | 3.2 | Session Viewer & Inspector | P1 | Medium | 3.1 |
@@ -573,6 +575,7 @@ These exist in Mission Control but are unnecessary for PMS due to architectural 
 **Outcome:** Full visibility into what agents are doing, how much they cost, and what they remember.
 
 ### Phase 3 — Management & Automation (Weeks 5-6)
+
 | # | Feature | Priority | Effort | Depends On |
 |---|---------|----------|--------|------------|
 | 3.12 | Models Management Page | P2 | Small | — |
@@ -583,6 +586,7 @@ These exist in Mission Control but are unnecessary for PMS due to architectural 
 **Outcome:** Full control over models, agent communication, automated alerts, and scheduled operations.
 
 ### Phase 4 — Polish (Week 7)
+
 | # | Feature | Priority | Effort | Depends On |
 |---|---------|----------|--------|------------|
 | 3.13 | Webhook Delivery History | P3 | Small | — |

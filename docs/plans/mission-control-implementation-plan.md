@@ -209,11 +209,10 @@ CREATE TABLE webhook_deliveries (
 **For each new table, add:**
 - RLS policies (org-scoped SELECT/INSERT/UPDATE via `organization_members`)
 - Indexes on `(organization_id, created_at DESC)`, `(organization_id, agent_id)` where applicable
-- Realtime publication for `agent_messages` and `token_usage_logs`
+- Realtime publication for `agent_messages`, `token_usage_logs`, and `agent_sessions`
 - `updated_at` triggers where the column exists
 
 **Modifications to existing tables:**
-- Add `agent_sessions` to `supabase_realtime` publication (not currently enabled)
 - Add `input_tokens` + `output_tokens` columns to `agent_sessions` for per-session token tracking
 
 ### 1.2 Environment Variables

@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
@@ -97,7 +98,12 @@ export function GatewayProvider({
 
   const fetchCounts = useCallback(async () => {
     const result = await getStatusBarCounts(orgId)
-    if (result.error || !result.data) return
+    if (result.error || !result.data) {
+      setOnlineAgentCount(0)
+      setTotalAgentCount(0)
+      setActiveSessionCount(0)
+      return
+    }
 
     setOnlineAgentCount(result.data.onlineAgents)
     setTotalAgentCount(result.data.totalAgents)
@@ -116,10 +122,30 @@ export function GatewayProvider({
     })
   }, [])
 
+  const debouncedFetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const debouncedFetchCounts = useCallback(() => {
+    if (debouncedFetchTimerRef.current) {
+      clearTimeout(debouncedFetchTimerRef.current)
+    }
+    debouncedFetchTimerRef.current = setTimeout(() => {
+      debouncedFetchTimerRef.current = null
+      void fetchCounts()
+    }, 500)
+  }, [fetchCounts])
+
+  useEffect(() => {
+    return () => {
+      if (debouncedFetchTimerRef.current) {
+        clearTimeout(debouncedFetchTimerRef.current)
+      }
+    }
+  }, [])
+
   const handleRealtimeChange = useCallback(() => {
     markRealtimeEvent()
-    void fetchCounts()
-  }, [fetchCounts, markRealtimeEvent])
+    debouncedFetchCounts()
+  }, [debouncedFetchCounts, markRealtimeEvent])
 
   usePooledRealtime({
     table: "agents",

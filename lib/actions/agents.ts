@@ -390,8 +390,7 @@ export async function getStatusBarCounts(orgId: string): Promise<ActionResult<St
   if (!orgValidation.success) return { error: "Invalid organization ID" }
 
   try {
-    const { supabase } = await requireAuth()
-    await requireOrgMember(orgId)
+    const { supabase } = await requireOrgMember(orgId)
 
     const [totalAgentsResult, onlineAgentsResult, activeSessionsResult] = await Promise.all([
       supabase

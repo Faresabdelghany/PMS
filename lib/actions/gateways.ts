@@ -106,7 +106,7 @@ export async function getGatewayConnectionInfo(
   orgId: string
 ): Promise<ActionResult<GatewayConnectionInfo | null>> {
   try {
-    const { supabase } = await requireAuth()
+    const { supabase } = await requireOrgMember(orgId)
 
     const { data, error } = await supabase
       .from("gateways" as any)
