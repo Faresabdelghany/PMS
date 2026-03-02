@@ -89,6 +89,16 @@ export const MEMORY_CACHE_WARN_THRESHOLD = 0.8
 export const MEMORY_CACHE_CLEANUP_INTERVAL_MS = 60_000
 
 // ============================================
+// MEMORY
+// ============================================
+/** Max events fetched for memory journal listing */
+export const MEMORY_EVENTS_LIMIT = 5000
+/** Max results returned from memory search */
+export const MEMORY_SEARCH_LIMIT = 200
+/** Debounce delay for memory search input (ms) */
+export const MEMORY_SEARCH_DEBOUNCE_MS = 300
+
+// ============================================
 // AI CONTEXT LIMITS
 // ============================================
 /** Maximum length for user-provided strings interpolated into AI prompts */
