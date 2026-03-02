@@ -30,6 +30,9 @@ import type {
   MessageType,
 } from "@/lib/actions/agent-messages"
 import { getAgents } from "@/lib/actions/agents"
+import { createAgentCommand } from "@/lib/actions/agent-commands"
+import { useGateway } from "@/hooks/gateway-context"
+import { usePooledRealtime } from "@/hooks/realtime-context"
 import { cn } from "@/lib/utils"
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -85,6 +88,66 @@ export function CommunicationsPageClient({
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // ── Gateway integration ─────────────────────────────────────────────
+  const { sendCommand, gatewayStatus } = useGateway()
+
+  // ── Realtime subscription for agent responses ───────────────────────
+  // Listen for new messages inserted into the current conversation so
+  // agent responses appear without polling.
+  usePooledRealtime({
+    table: "agent_messages" as any,
+    filter: selectedConversationId
+      ? `conversation_id=eq.${selectedConversationId}`
+      : undefined,
+    enabled: Boolean(selectedConversationId),
+    onInsert: useCallback(
+      (record: any) => {
+        // Only add messages from agents (avoid duplicating our own user messages)
+        if (!record.from_agent_id) return
+
+        // Find the agent info so we can display name/avatar
+        const agent = agents.find((a) => a.id === record.from_agent_id)
+
+        const newMsg: AgentMessageWithSender = {
+          id: record.id,
+          organization_id: record.organization_id,
+          conversation_id: record.conversation_id,
+          from_agent_id: record.from_agent_id,
+          from_user_id: record.from_user_id ?? null,
+          content: record.content,
+          message_type: record.message_type ?? "text",
+          metadata: record.metadata ?? {},
+          created_at: record.created_at,
+          from_agent: agent
+            ? { id: agent.id, name: agent.name, avatar_url: agent.avatar_url }
+            : null,
+        }
+
+        setMessages((prev) => {
+          // Deduplicate — the message may already be in the list
+          if (prev.some((m) => m.id === record.id)) return prev
+          return [...prev, newMsg]
+        })
+
+        // Update conversation's last_message_at
+        setConversations((prev) =>
+          prev
+            .map((c) =>
+              c.id === record.conversation_id
+                ? { ...c, last_message_at: record.created_at }
+                : c
+            )
+            .sort(
+              (a, b) =>
+                new Date(b.last_message_at ?? 0).getTime() -
+                new Date(a.last_message_at ?? 0).getTime()
+            )
+        )
+      },
+      [agents]
+    ),
+  })
 
   // ── Load conversations ─────────────────────────────────────────────
   const loadConversations = useCallback(async () => {
@@ -193,10 +256,38 @@ export function CommunicationsPageClient({
               new Date(a.last_message_at ?? 0).getTime()
           )
       )
+
+      // Forward message to participant agents via gateway and agent_commands
+      const conversation = conversations.find(
+        (c) => c.id === selectedConversationId
+      )
+      if (conversation) {
+        for (const agentId of conversation.participant_agent_ids) {
+          // Send via gateway WebSocket (real-time path) if connected
+          if (gatewayStatus === "connected") {
+            sendCommand(agentId, "message", {
+              content: trimmed,
+              conversation_id: selectedConversationId,
+              message_id: result.data.id,
+              from_user_id: userId,
+            })
+          }
+
+          // Also create an agent_commands entry (poll-commands fallback)
+          createAgentCommand(orgId, agentId, "message", {
+            content: trimmed,
+            conversation_id: selectedConversationId,
+            message_id: result.data.id,
+            from_user_id: userId,
+          }).catch(() => {
+            // Non-critical: agent_commands is a fallback delivery mechanism
+          })
+        }
+      }
     }
 
     setSending(false)
-  }, [newMessage, selectedConversationId, sending, orgId, userId])
+  }, [newMessage, selectedConversationId, sending, orgId, userId, conversations, gatewayStatus, sendCommand])
 
   // ── Create conversation handler ────────────────────────────────────
   const handleCreateConversation = useCallback(() => {

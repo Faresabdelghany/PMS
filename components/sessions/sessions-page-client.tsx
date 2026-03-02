@@ -202,6 +202,9 @@ export function SessionsPageClient({ orgId }: SessionsPageClientProps) {
         getSessionStats(orgId),
       ])
 
+      if (sessionsResult.error) {
+        console.error("[Sessions] fetch error:", sessionsResult.error)
+      }
       if (sessionsResult.data) {
         setSessions(sessionsResult.data)
       }
@@ -222,7 +225,7 @@ export function SessionsPageClient({ orgId }: SessionsPageClientProps) {
     const term = search.toLowerCase()
     const agentName = session.agent?.name?.toLowerCase() ?? ""
     const agentRole = session.agent?.role?.toLowerCase() ?? ""
-    const taskTitle = session.task?.title?.toLowerCase() ?? ""
+    const taskTitle = session.task?.name?.toLowerCase() ?? ""
     return (
       agentName.includes(term) ||
       agentRole.includes(term) ||
@@ -367,7 +370,7 @@ export function SessionsPageClient({ orgId }: SessionsPageClientProps) {
                           </TableCell>
                           <TableCell>
                             <span className="text-sm text-muted-foreground truncate max-w-[180px] inline-block">
-                              {session.task?.title ?? "No task linked"}
+                              {session.task?.name ?? "No task linked"}
                             </span>
                           </TableCell>
                           <TableCell>

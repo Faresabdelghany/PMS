@@ -36,7 +36,8 @@ export async function getDashboardKPIs(orgId: string): Promise<DashboardKPIs> {
       .from("tasks")
       .select("id, project:projects!inner(organization_id)", { count: "exact", head: true })
       .eq("project.organization_id", orgId)
-      .neq("status", "done"),
+      .neq("status", "done")
+      .is("parent_task_id", null),
     supabase
       .from("agents")
       .select("id", { count: "exact", head: true })

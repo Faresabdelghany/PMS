@@ -167,7 +167,7 @@ function toUITask(task: TaskWithRelations): TaskLike {
     startDate: task.start_date ? new Date(task.start_date) : null,
     endDate: task.end_date ? new Date(task.end_date) : null,
     dueLabel: task.end_date ? formatDueLabel(new Date(task.end_date)) : null,
-    projectId: task.project?.id || "",
+    projectId: task.project_id || task.project?.id || "",
     projectName: task.project?.name || "Unknown Project",
     workstreamId: task.workstream?.id || null,
     workstreamName: task.workstream?.name || null,
@@ -300,15 +300,13 @@ export function MyTasksPage({
     }
 
     const project = projectsRef.current.find(p => p.id === task.project_id)
-    if (!project) return null // Client-side org-scoped fallback guard
-
-    const workstream = project.workstreams?.find(w => w.id === task.workstream_id)
+    const workstream = project?.workstreams?.find(w => w.id === task.workstream_id)
     const assignee = membersRef.current.find(m => m.user_id === task.assignee_id)
     const agent = agentsRef.current.find((a) => a.id === task.assigned_agent_id)
 
     return {
       ...task,
-      project: { id: project.id, name: project.name },
+      project: project ? { id: project.id, name: project.name } : null,
       workstream: workstream ? { id: workstream.id, name: workstream.name } : null,
       assignee: assignee ? {
         id: assignee.user_id,
@@ -375,25 +373,39 @@ export function MyTasksPage({
     onDelete: handleRealtimeDelete,
   })
 
-  // Group tasks by project
+  // Group tasks by project (use project_id directly to avoid relying on joined relation;
+  // tasks without a resolvable project go into an "Unassigned" bucket)
   const groups = useMemo<ProjectTaskGroup[]>(() => {
+    const UNASSIGNED_KEY = "__unassigned__"
     const projectMap = new Map<string, ProjectTaskGroup>()
 
     for (const task of tasks) {
-      const projectId = task.project?.id
-      if (!projectId) continue
+      // Prefer the direct project_id column over the joined project relation
+      const projectId = task.project_id || task.project?.id || UNASSIGNED_KEY
 
       if (!projectMap.has(projectId)) {
-        const project = projects.find(p => p.id === projectId)
-        projectMap.set(projectId, {
-          project: {
-            id: projectId,
-            name: task.project?.name || "Unknown Project",
-            progress: project?.progress || 0,
-            status: project?.status || "active",
-          },
-          tasks: [],
-        })
+        if (projectId === UNASSIGNED_KEY) {
+          projectMap.set(UNASSIGNED_KEY, {
+            project: {
+              id: UNASSIGNED_KEY,
+              name: "Unassigned",
+              progress: 0,
+              status: "active",
+            },
+            tasks: [],
+          })
+        } else {
+          const project = projects.find(p => p.id === projectId)
+          projectMap.set(projectId, {
+            project: {
+              id: projectId,
+              name: task.project?.name || project?.name || "Unknown Project",
+              progress: project?.progress || 0,
+              status: project?.status || "active",
+            },
+            tasks: [],
+          })
+        }
       }
 
       projectMap.get(projectId)!.tasks.push(toUITask(task))

@@ -113,6 +113,23 @@ export async function getMyTasks(
   const { user, error: authError, supabase } = await cachedGetUser()
   if (authError || !user) return { error: "Not authenticated" }
 
+  // Fetch org project IDs upfront so we can scope tasks without relying on !inner join
+  const { data: orgProjects, error: projError } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("organization_id", orgId)
+  if (projError) return { error: projError.message }
+  const orgProjectIds = (orgProjects || []).map((p) => p.id)
+  if (!orgProjectIds.length) return { data: [], nextCursor: null, hasMore: false }
+
+  const taskSelect = `
+    *,
+    assignee:profiles(id, full_name, email, avatar_url),
+    assigned_agent:agents(id, name, avatar_url),
+    workstream:workstreams(id, name),
+    project:projects(id, name)
+  `
+
   const hasFilters = filters && Object.values(filters).some((v) => v !== undefined)
 
   if (!hasFilters && !cursor) {
@@ -122,15 +139,9 @@ export async function getMyTasks(
         async () => {
           const { data, error } = await supabase
             .from("tasks")
-            .select(`
-              *,
-              assignee:profiles(id, full_name, email, avatar_url),
-              assigned_agent:agents(id, name, avatar_url),
-              workstream:workstreams(id, name),
-              project:projects!inner(id, name, organization_id)
-            `)
+            .select(taskSelect)
             .or(`assignee_id.eq.${user.id},and(assigned_agent_id.not.is.null,created_by.eq.${user.id})`)
-            .eq("project.organization_id", orgId)
+            .in("project_id", orgProjectIds)
             .is("parent_task_id", null)
             .order("updated_at", { ascending: false })
             .order("id", { ascending: false })
@@ -155,15 +166,9 @@ export async function getMyTasks(
 
   let query = supabase
     .from("tasks")
-    .select(`
-      *,
-      assignee:profiles(id, full_name, email, avatar_url),
-      assigned_agent:agents(id, name, avatar_url),
-      workstream:workstreams(id, name),
-      project:projects!inner(id, name, organization_id)
-    `)
+    .select(taskSelect)
     .or(`assignee_id.eq.${user.id},and(assigned_agent_id.not.is.null,created_by.eq.${user.id})`)
-    .eq("project.organization_id", orgId)
+    .in("project_id", orgProjectIds)
     .is("parent_task_id", null)
 
   if (filters?.status) query = query.eq("status", filters.status)
@@ -207,7 +212,25 @@ export async function getAllTasks(
   const { user, error: authError, supabase } = await cachedGetUser()
   if (authError || !user) return { error: "Not authenticated" }
 
+  // Fetch org project IDs upfront so we can scope tasks without relying on !inner join
+  // (which silently drops tasks when the embedded project relation isn't resolved)
+  const { data: orgProjects, error: projError } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("organization_id", orgId)
+  if (projError) return { error: projError.message }
+  const orgProjectIds = (orgProjects || []).map((p) => p.id)
+  if (!orgProjectIds.length) return { data: [], nextCursor: null, hasMore: false }
+
   const hasFilters = filters && Object.values(filters).some((v) => v !== undefined)
+
+  const taskSelect = `
+    *,
+    assignee:profiles(id, full_name, email, avatar_url),
+    assigned_agent:agents(id, name, avatar_url),
+    workstream:workstreams(id, name),
+    project:projects(id, name)
+  `
 
   if (!hasFilters && !cursor) {
     try {
@@ -216,14 +239,8 @@ export async function getAllTasks(
         async () => {
           const { data, error } = await supabase
             .from("tasks")
-            .select(`
-              *,
-              assignee:profiles(id, full_name, email, avatar_url),
-              assigned_agent:agents(id, name, avatar_url),
-              workstream:workstreams(id, name),
-              project:projects!inner(id, name, organization_id)
-            `)
-            .eq("project.organization_id", orgId)
+            .select(taskSelect)
+            .in("project_id", orgProjectIds)
             .is("parent_task_id", null)
             .order("updated_at", { ascending: false })
             .order("id", { ascending: false })
@@ -248,14 +265,8 @@ export async function getAllTasks(
 
   let query = supabase
     .from("tasks")
-    .select(`
-      *,
-      assignee:profiles(id, full_name, email, avatar_url),
-      assigned_agent:agents(id, name, avatar_url),
-      workstream:workstreams(id, name),
-      project:projects!inner(id, name, organization_id)
-    `)
-    .eq("project.organization_id", orgId)
+    .select(taskSelect)
+    .in("project_id", orgProjectIds)
     .is("parent_task_id", null)
 
   if (filters?.status) query = query.eq("status", filters.status)

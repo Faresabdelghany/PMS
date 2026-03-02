@@ -122,7 +122,7 @@ export function MemoryContent({ initialJournals, longTermSummary, orgId }: Memor
   )
 
   return (
-    <div className="mx-2 my-2 flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-800/90 bg-[#070a11] text-slate-100">
+    <div className="mx-2 my-2 flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-background text-foreground">
       <PageHeader
         title="Memory"
         actions={
@@ -139,20 +139,20 @@ export function MemoryContent({ initialJournals, longTermSummary, orgId }: Memor
 
       <div className="flex flex-1 min-h-0">
         {/* Desktop sidebar */}
-        <div className="hidden w-[280px] shrink-0 border-r border-slate-800/90 bg-[#0b0f18] md:flex">
+        <div className="hidden w-[280px] shrink-0 border-r border-border bg-card md:flex">
           {sidebar}
         </div>
 
         {/* Mobile sidebar (Sheet) */}
         <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
-          <SheetContent side="left" className="w-72 border-r border-slate-800/90 bg-[#0b0f18] p-0">
+          <SheetContent side="left" className="w-72 border-r border-border bg-card p-0">
             <SheetTitle className="sr-only">Memory Navigation</SheetTitle>
             {sidebar}
           </SheetContent>
         </Sheet>
 
         {/* Content */}
-        <div className="flex min-w-0 flex-1 bg-[#0b0f18]">
+        <div className="flex min-w-0 flex-1 bg-card">
           <MemoryDocumentViewer
             mode={viewerMode}
             journalDate={selectedDate ?? undefined}

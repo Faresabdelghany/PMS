@@ -151,14 +151,14 @@ export function MemoryDocumentList({
   return (
     <div className="flex h-full flex-col">
       {/* Search */}
-      <div className="border-b border-slate-800/90 p-3">
+      <div className="border-b border-border p-3">
         <div className="relative">
-          <MagnifyingGlass className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+          <MagnifyingGlass className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search memory..."
-            className="h-9 rounded-md border-slate-700/80 bg-[#131a28] pl-9 text-sm text-slate-100 placeholder:text-slate-500 focus-visible:ring-blue-500/30"
+            className="h-9 rounded-md border-border bg-muted pl-9 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-ring"
           />
         </div>
       </div>
@@ -172,19 +172,19 @@ export function MemoryDocumentList({
           className={cn(
             "mb-4 w-full rounded-lg border p-3 text-left transition-colors",
             isLongTermSelected
-              ? "border-indigo-500/40 bg-indigo-500/15"
-              : "border-slate-700/80 bg-[#11182a] hover:bg-[#172038]"
+              ? "border-primary/40 bg-primary/15"
+              : "border-border bg-muted hover:bg-accent"
           )}
         >
           <div className="flex items-center gap-2.5 mb-1">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-500/20">
-              <Brain className="h-4 w-4 text-indigo-300" weight="duotone" />
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/20">
+              <Brain className="h-4 w-4 text-primary" weight="duotone" />
             </div>
-            <span className="text-sm font-medium text-slate-100">Long-Term Memory</span>
+            <span className="text-sm font-medium text-foreground">Long-Term Memory</span>
             <span className="text-xs">&#x2728;</span>
           </div>
           <p
-            className="pl-[38px] text-xs text-slate-400"
+            className="pl-[38px] text-xs text-muted-foreground"
             suppressHydrationWarning
           >
             {longTermSummary.totalWordCount.toLocaleString("en-US")} words &middot; Updated{" "}
@@ -194,18 +194,18 @@ export function MemoryDocumentList({
 
         {/* Daily Journal header */}
         <div className="flex items-center gap-2 mb-2">
-          <FileText className="h-3.5 w-3.5 text-slate-500" />
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+          <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             Daily Journal
           </span>
-          <Badge className="border-0 bg-slate-700/70 px-1.5 py-0 text-[10px] font-medium text-slate-300 hover:bg-slate-700/70">
+          <Badge className="border-0 bg-accent px-1.5 py-0 text-[10px] font-medium text-accent-foreground hover:bg-accent">
             {journals.length} entries
           </Badge>
         </div>
 
         {/* Time-grouped entries with collapsible sections */}
         {timeGroups.length === 0 ? (
-          <div className="py-8 text-center text-xs text-slate-500">
+          <div className="py-8 text-center text-xs text-muted-foreground">
             No journal entries yet.
           </div>
         ) : (
@@ -223,14 +223,14 @@ export function MemoryDocumentList({
                   >
                     <ChevronRight
                       className={cn(
-                        "h-3.5 w-3.5 text-slate-600 transition-transform duration-200",
+                        "h-3.5 w-3.5 text-muted-foreground/60 transition-transform duration-200",
                         isExpanded && "rotate-90"
                       )}
                     />
-                    <span className="text-xs font-medium text-slate-400">
+                    <span className="text-xs font-medium text-muted-foreground">
                       {group.label}
                     </span>
-                    <span className="text-[10px] text-slate-600">
+                    <span className="text-[10px] text-muted-foreground/60">
                       ({group.entries.length})
                     </span>
                   </button>
@@ -246,18 +246,18 @@ export function MemoryDocumentList({
                           className={cn(
                             "w-full rounded-md border border-transparent px-3 py-2 text-left transition-colors",
                             selectedDate === journal.date && !isLongTermSelected
-                              ? "border-slate-600 bg-slate-700/50"
-                              : "hover:bg-slate-800/80"
+                              ? "border-border bg-accent"
+                              : "hover:bg-accent"
                           )}
                         >
                           <p
-                            className="truncate text-sm text-slate-100"
+                            className="truncate text-sm text-foreground"
                             suppressHydrationWarning
                           >
                             {formatDate(journal.date)}
                           </p>
                           <p
-                            className="mt-0.5 text-xs text-slate-500"
+                            className="mt-0.5 text-xs text-muted-foreground"
                             suppressHydrationWarning
                           >
                             {formatBytes(journal.byteSize)} &middot;{" "}

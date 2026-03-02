@@ -17,7 +17,7 @@ export interface AgentSession {
   task_id: string | null
   status: SessionStatus
   started_at: string
-  ended_at: string | null
+  ended_at: string | null  // not in DB; kept for UI compat — maps to updated_at for completed sessions
   input_tokens: number
   output_tokens: number
   error_msg: string | null
@@ -29,7 +29,7 @@ export interface AgentSession {
 
 export interface AgentSessionWithAgent extends AgentSession {
   agent?: { id: string; name: string; role: string; avatar_url: string | null } | null
-  task?: { id: string; title: string } | null
+  task?: { id: string; name: string } | null
 }
 
 // ── Validation ───────────────────────────────────────────────────────
@@ -49,6 +49,8 @@ const updateStatusSchema = z.object({
 
 /**
  * List sessions with optional filters, ordered by created_at DESC.
+ * Fetches sessions first, then resolves agent/task relations separately
+ * to avoid PostgREST join issues with tables not in the generated types.
  */
 export async function getSessions(
   orgId: string,
@@ -62,11 +64,7 @@ export async function getSessions(
 
   let query = supabase
     .from("agent_sessions" as any)
-    .select(`
-      *,
-      agent:agents(id, name, role, avatar_url),
-      task:tasks(id, title)
-    `)
+    .select("*")
     .eq("organization_id", orgId)
     .order("created_at", { ascending: false })
 
@@ -83,17 +81,55 @@ export async function getSessions(
 
   if (error) return { error: error.message }
 
-  const sessions = ((data ?? []) as any[]).map((row) => ({
+  const rows = (data ?? []) as any[]
+
+  if (rows.length === 0) return { data: [] }
+
+  // Collect unique agent and task IDs for batch lookup
+  const agentIds = [...new Set(rows.map((r) => r.agent_id).filter(Boolean))]
+  const taskIds = [...new Set(rows.map((r) => r.task_id).filter(Boolean))]
+
+  // Fetch related agents and tasks in parallel
+  const [agentsResult, tasksResult] = await Promise.all([
+    agentIds.length > 0
+      ? supabase
+          .from("agents")
+          .select("id, name, role, avatar_url")
+          .in("id", agentIds)
+      : Promise.resolve({ data: [] as any[], error: null }),
+    taskIds.length > 0
+      ? supabase
+          .from("tasks")
+          .select("id, name")
+          .in("id", taskIds)
+      : Promise.resolve({ data: [] as any[], error: null }),
+  ])
+
+  // Build lookup maps
+  const agentMap = new Map<string, { id: string; name: string; role: string; avatar_url: string | null }>()
+  for (const a of (agentsResult.data ?? []) as any[]) {
+    agentMap.set(a.id, a)
+  }
+
+  const taskMap = new Map<string, { id: string; name: string }>()
+  for (const t of (tasksResult.data ?? []) as any[]) {
+    taskMap.set(t.id, t)
+  }
+
+  // Merge relations into session rows; synthesize ended_at from updated_at for completed sessions
+  const sessions = rows.map((row) => ({
     ...row,
-    agent: Array.isArray(row.agent) ? row.agent[0] ?? null : row.agent,
-    task: Array.isArray(row.task) ? row.task[0] ?? null : row.task,
+    ended_at: row.status === "completed" ? (row.updated_at ?? null) : null,
+    agent: row.agent_id ? agentMap.get(row.agent_id) ?? null : null,
+    task: row.task_id ? taskMap.get(row.task_id) ?? null : null,
   })) as AgentSessionWithAgent[]
 
   return { data: sessions }
 }
 
 /**
- * Get a single session by ID with agent and task joins.
+ * Get a single session by ID with agent and task data.
+ * Resolves relations separately to avoid PostgREST join issues.
  */
 export async function getSession(
   orgId: string,
@@ -103,25 +139,38 @@ export async function getSession(
 
   const { data, error } = await supabase
     .from("agent_sessions" as any)
-    .select(`
-      *,
-      agent:agents(id, name, role, avatar_url),
-      task:tasks(id, title)
-    `)
+    .select("*")
     .eq("organization_id", orgId)
     .eq("id", sessionId)
     .single()
 
   if (error) return { error: error.message }
 
+  const row = data as any
+
+  // Fetch related agent and task in parallel
+  const [agentResult, taskResult] = await Promise.all([
+    row.agent_id
+      ? supabase
+          .from("agents")
+          .select("id, name, role, avatar_url")
+          .eq("id", row.agent_id)
+          .single()
+      : Promise.resolve({ data: null, error: null }),
+    row.task_id
+      ? supabase
+          .from("tasks")
+          .select("id, name")
+          .eq("id", row.task_id)
+          .single()
+      : Promise.resolve({ data: null, error: null }),
+  ])
+
   const session = {
-    ...(data as any),
-    agent: Array.isArray((data as any).agent)
-      ? (data as any).agent[0] ?? null
-      : (data as any).agent,
-    task: Array.isArray((data as any).task)
-      ? (data as any).task[0] ?? null
-      : (data as any).task,
+    ...row,
+    ended_at: row.status === "completed" ? (row.updated_at ?? null) : null,
+    agent: agentResult.data ?? null,
+    task: taskResult.data ?? null,
   } as AgentSessionWithAgent
 
   return { data: session }
@@ -208,9 +257,7 @@ export async function updateSessionStatus(
     updatePayload.metadata = parsed.data.metadata
   }
 
-  if (parsed.data.status === "completed") {
-    updatePayload.ended_at = new Date().toISOString()
-  }
+  // updated_at is set automatically by the DB trigger
 
   const { data, error } = await supabase
     .from("agent_sessions" as any)
@@ -226,7 +273,7 @@ export async function updateSessionStatus(
 }
 
 /**
- * Terminate a session — sets status to completed and ended_at to now.
+ * Terminate a session — sets status to completed. updated_at is set by DB trigger.
  */
 export async function terminateSession(
   orgId: string,
@@ -238,7 +285,6 @@ export async function terminateSession(
     .from("agent_sessions" as any)
     .update({
       status: "completed",
-      ended_at: new Date().toISOString(),
     })
     .eq("id", sessionId)
     .eq("organization_id", orgId)
