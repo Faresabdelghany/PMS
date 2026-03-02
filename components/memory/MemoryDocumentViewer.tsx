@@ -105,10 +105,10 @@ function renderFormattedBody(text: string): ReactNode {
         if (listMatch) {
           return (
             <div key={i} className="flex gap-2 pl-5">
-              <span className="text-muted-foreground/60 shrink-0 w-4 text-right text-sm">
+              <span className="w-4 shrink-0 text-right text-sm text-slate-500">
                 {listMatch[1]}.
               </span>
-              <span className="text-sm text-foreground/80 leading-relaxed">
+              <span className="text-sm leading-relaxed text-slate-300">
                 {renderInlineLabels(listMatch[2])}
               </span>
             </div>
@@ -126,15 +126,15 @@ function renderFormattedBody(text: string): ReactNode {
             if (!rest) {
               // Label-only line (introduces a list or subsection)
               return (
-                <p key={i} className="text-sm font-semibold text-foreground mt-2">
+                <p key={i} className="mt-2 text-sm font-semibold text-slate-100">
                   {label}
                 </p>
               )
             }
             return (
               <p key={i} className="text-sm leading-relaxed">
-                <span className="font-semibold text-foreground">{label}</span>{" "}
-                <span className="text-foreground/80">{rest}</span>
+                <span className="font-semibold text-slate-100">{label}</span>{" "}
+                <span className="text-slate-300">{rest}</span>
               </p>
             )
           }
@@ -152,7 +152,7 @@ function renderFormattedBody(text: string): ReactNode {
           const words = trimmed.split(/\s+/)
           if (words.length >= 2 && words.length <= 8) {
             return (
-              <p key={i} className="text-sm font-bold text-foreground mt-3 mb-0.5">
+              <p key={i} className="mb-0.5 mt-3 text-sm font-bold text-slate-100">
                 {trimmed}
               </p>
             )
@@ -161,7 +161,7 @@ function renderFormattedBody(text: string): ReactNode {
 
         // Regular text
         return (
-          <p key={i} className="text-sm text-foreground/80 leading-relaxed">
+          <p key={i} className="text-sm leading-relaxed text-slate-300">
             {renderInlineLabels(trimmed)}
           </p>
         )
@@ -177,7 +177,7 @@ function renderInlineLabels(text: string): ReactNode {
   if (match) {
     return (
       <>
-        <span className="font-semibold text-foreground">{match[1]}</span>{" "}
+        <span className="font-semibold text-slate-100">{match[1]}</span>{" "}
         {text.slice(match[0].length)}
       </>
     )
@@ -226,8 +226,8 @@ export function MemoryDocumentViewer({
     return (
       <div className="flex flex-1 items-center justify-center">
         <div className="text-center">
-          <FileText className="h-12 w-12 text-muted-foreground/20 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground/60">Select a journal to view</p>
+          <FileText className="mx-auto mb-3 h-12 w-12 text-slate-700" />
+          <p className="text-sm text-slate-500">Select a journal to view</p>
         </div>
       </div>
     )
@@ -246,34 +246,34 @@ export function MemoryDocumentViewer({
   if (mode === "long-term" && longTermSummary) {
     return (
       <div className="flex-1 overflow-auto">
-        <div className="max-w-3xl mx-auto px-8 py-8">
+        <div className="mx-auto max-w-4xl px-8 py-8">
           <div className="flex items-start gap-3 mb-8">
-            <div className="h-9 w-9 rounded-full bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
-              <Brain className="h-5 w-5 text-primary" weight="duotone" />
+            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-500/20">
+              <Brain className="h-5 w-5 text-indigo-300" weight="duotone" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold">Long-Term Memory</h2>
-              <p className="text-sm text-muted-foreground mt-1">
+              <h2 className="text-xl font-semibold text-slate-100">Long-Term Memory</h2>
+              <p className="mt-1 text-sm text-slate-400">
                 Aggregate overview of all recorded agent events
               </p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-8">
-            <div className="rounded-lg border border-border/60 p-4">
-              <p className="text-2xl font-semibold tabular-nums">
+            <div className="rounded-lg border border-slate-800/90 bg-[#0f1420] p-4">
+              <p className="text-2xl font-semibold tabular-nums text-slate-100">
                 {longTermSummary.totalEvents.toLocaleString("en-US")}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">Total Events</p>
+              <p className="mt-1 text-xs text-slate-500">Total Events</p>
             </div>
-            <div className="rounded-lg border border-border/60 p-4">
-              <p className="text-2xl font-semibold tabular-nums">
+            <div className="rounded-lg border border-slate-800/90 bg-[#0f1420] p-4">
+              <p className="text-2xl font-semibold tabular-nums text-slate-100">
                 {longTermSummary.totalWordCount.toLocaleString("en-US")}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">Total Words</p>
+              <p className="mt-1 text-xs text-slate-500">Total Words</p>
             </div>
-            <div className="rounded-lg border border-border/60 p-4">
-              <p className="text-sm font-medium" suppressHydrationWarning>
+            <div className="rounded-lg border border-slate-800/90 bg-[#0f1420] p-4">
+              <p className="text-sm font-medium text-slate-100" suppressHydrationWarning>
                 {longTermSummary.oldestEventDate
                   ? new Date(longTermSummary.oldestEventDate).toLocaleDateString("en-US", {
                       month: "short",
@@ -283,39 +283,39 @@ export function MemoryDocumentViewer({
                     })
                   : "\u2014"}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">Earliest Record</p>
+              <p className="mt-1 text-xs text-slate-500">Earliest Record</p>
             </div>
-            <div className="rounded-lg border border-border/60 p-4">
-              <p className="text-sm font-medium" suppressHydrationWarning>
+            <div className="rounded-lg border border-slate-800/90 bg-[#0f1420] p-4">
+              <p className="text-sm font-medium text-slate-100" suppressHydrationWarning>
                 {formatRelativeModified(longTermSummary.lastUpdated).replace("Modified ", "")}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">Last Updated</p>
+              <p className="mt-1 text-xs text-slate-500">Last Updated</p>
             </div>
           </div>
 
           {events.length > 0 && (
             <div>
-              <h3 className="text-sm font-medium text-muted-foreground mb-3">Recent Events</h3>
+              <h3 className="mb-3 text-sm font-medium text-slate-400">Recent Events</h3>
               <div className="space-y-4">
                 {events.slice(0, 10).map((event) => {
                   const { title, body } = extractTitle(event.message)
                   return (
                     <div key={event.id}>
                       <div className="flex items-center gap-2 mb-1">
-                        <Clock className="h-3.5 w-3.5 text-muted-foreground/40" />
-                        <span className="text-xs text-muted-foreground/60">
+                        <Clock className="h-3.5 w-3.5 text-slate-600" />
+                        <span className="text-xs text-slate-500">
                           {new Date(event.created_at).toLocaleDateString("en-US", {
                             month: "short",
                             day: "numeric",
                             timeZone: "UTC",
                           })}
                         </span>
-                        <span className="text-xs text-muted-foreground/40">&middot;</span>
-                        <span className="text-xs text-muted-foreground/60">{event.agent.name}</span>
+                        <span className="text-xs text-slate-600">&middot;</span>
+                        <span className="text-xs text-slate-500">{event.agent.name}</span>
                       </div>
-                      <p className="text-sm font-medium text-amber-400 mb-0.5">{title}</p>
+                      <p className="mb-0.5 text-sm font-medium text-indigo-300">{title}</p>
                       {body && (
-                        <p className="text-sm text-foreground/70 leading-relaxed">{body}</p>
+                        <p className="text-sm leading-relaxed text-slate-300">{body}</p>
                       )}
                     </div>
                   )
@@ -332,16 +332,16 @@ export function MemoryDocumentViewer({
   if (mode === "search") {
     return (
       <div className="flex-1 overflow-auto">
-        <div className="max-w-3xl mx-auto px-8 py-8">
+        <div className="mx-auto max-w-4xl px-8 py-8">
           <div className="mb-6">
-            <h2 className="text-xl font-semibold">Search Results</h2>
-            <p className="text-sm text-muted-foreground mt-1">
+            <h2 className="text-xl font-semibold text-slate-100">Search Results</h2>
+            <p className="mt-1 text-sm text-slate-400">
               {events.length} result{events.length !== 1 ? "s" : ""} for &ldquo;{searchQuery}&rdquo;
             </p>
           </div>
 
           {events.length === 0 ? (
-            <div className="text-center py-16 text-muted-foreground/60 text-sm">
+            <div className="py-16 text-center text-sm text-slate-500">
               No matching events found.
             </div>
           ) : (
@@ -351,12 +351,12 @@ export function MemoryDocumentViewer({
                 return (
                   <div key={event.id}>
                     <div className="flex items-center gap-2 mb-1">
-                      <Clock className="h-3.5 w-3.5 text-muted-foreground/40" />
-                      <span className="text-xs text-muted-foreground/60">
+                      <Clock className="h-3.5 w-3.5 text-slate-600" />
+                      <span className="text-xs text-slate-500">
                         {formatTime(event.created_at)}
                       </span>
-                      <span className="text-xs text-muted-foreground/40">&middot;</span>
-                      <span className="text-xs text-muted-foreground/60">
+                      <span className="text-xs text-slate-600">&middot;</span>
+                      <span className="text-xs text-slate-500">
                         {new Date(event.created_at).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
@@ -364,14 +364,14 @@ export function MemoryDocumentViewer({
                           timeZone: "UTC",
                         })}
                       </span>
-                      <span className="text-xs text-muted-foreground/40">&middot;</span>
-                      <span className="text-xs text-muted-foreground/60">{event.agent.name}</span>
+                      <span className="text-xs text-slate-600">&middot;</span>
+                      <span className="text-xs text-slate-500">{event.agent.name}</span>
                     </div>
-                    <p className="text-sm font-medium text-amber-400 mb-0.5">
+                    <p className="mb-0.5 text-sm font-medium text-indigo-300">
                       {highlightMatch(title, searchQuery ?? "")}
                     </p>
                     {body && (
-                      <p className="text-sm text-foreground/70 leading-relaxed">
+                      <p className="text-sm leading-relaxed text-slate-300">
                         {highlightMatch(body, searchQuery ?? "")}
                       </p>
                     )}
@@ -388,21 +388,21 @@ export function MemoryDocumentViewer({
   // ── Journal view ──
   return (
     <div className="flex-1 overflow-auto">
-      <div className="max-w-3xl mx-auto px-8 py-8">
+      <div className="mx-auto max-w-4xl px-8 py-8">
         {/* Header */}
-        <div className="flex items-start justify-between mb-8">
+        <div className="mb-8 flex items-start justify-between rounded-xl border border-slate-800/90 bg-[#0f1420] p-5">
           <div className="flex items-start gap-3">
-            <FileText className="h-5 w-5 text-muted-foreground/50 mt-1 shrink-0" />
+            <FileText className="mt-1 h-5 w-5 shrink-0 text-slate-500" />
             <div>
-              <h2 className="text-xl font-semibold">Journal: {journalDate}</h2>
-              <p className="text-sm text-muted-foreground mt-1">
+              <h2 className="text-xl font-semibold text-slate-100">Journal: {journalDate}</h2>
+              <p className="mt-1 text-sm text-slate-400">
                 {formatFullDate(journalDate!)} &middot; {formatBytes(stats.byteSize)} &middot;{" "}
                 {stats.wordCount.toLocaleString("en-US")} words
               </p>
             </div>
           </div>
           <p
-            className="text-xs text-muted-foreground/50 shrink-0 mt-1.5"
+            className="mt-1.5 shrink-0 text-xs text-slate-500"
             suppressHydrationWarning
           >
             {formatRelativeModified(lastModifiedAt)}
@@ -411,11 +411,11 @@ export function MemoryDocumentViewer({
 
         {/* Events as document flow */}
         {events.length === 0 ? (
-          <div className="text-center py-16 text-muted-foreground/60 text-sm">
+          <div className="py-16 text-center text-sm text-slate-500">
             No events for this date.
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-6 rounded-xl border border-slate-800/90 bg-[#0f1420] p-5">
             {events.map((event) => {
               const { title, body } = extractTitle(event.message)
 
@@ -423,23 +423,23 @@ export function MemoryDocumentViewer({
                 <div key={event.id}>
                   {/* Time + Title line */}
                   <div className="flex items-baseline gap-2 mb-1.5">
-                    <Clock className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0 relative top-[3px]" />
-                    <span className="text-sm text-muted-foreground/50 shrink-0">
+                    <Clock className="relative top-[3px] h-3.5 w-3.5 shrink-0 text-slate-600" />
+                    <span className="shrink-0 text-sm text-slate-400">
                       {formatTime(event.created_at)}
                     </span>
-                    <span className="text-sm text-muted-foreground/30">&mdash;</span>
-                    <h3 className="text-sm font-semibold text-amber-400">
+                    <span className="text-sm text-slate-600">&mdash;</span>
+                    <h3 className="text-sm font-semibold text-indigo-300">
                       {title}
                     </h3>
                     {uniqueAgents > 1 && (
-                      <span className="text-xs text-muted-foreground/40 ml-auto shrink-0">
+                      <span className="ml-auto shrink-0 text-xs text-slate-500">
                         {event.agent.name}
                       </span>
                     )}
                   </div>
 
                   {/* Body content */}
-                  {body && <div className="pl-[26px]">{renderFormattedBody(body)}</div>}
+                  {body && <div className="pl-[26px] text-slate-300">{renderFormattedBody(body)}</div>}
                 </div>
               )
             })}
