@@ -82,6 +82,14 @@ export type ProjectDetailLean = Pick<
   | "members" | "organization_id" | "currency" | "deliverables"
 >
 
+type AgentLean = {
+  id: string
+  name: string
+  role: string
+  squad: string
+  avatar_url: string | null
+}
+
 type ProjectDetailsPageProps = {
   projectId: string
   project: ProjectDetails
@@ -92,6 +100,7 @@ type ProjectDetailsPageProps = {
   organizationMembers?: OrganizationMember[]
   organizationTags?: OrganizationTagLean[]
   reports?: ProjectReportListItem[]
+  agents?: AgentLean[]
 }
 
 export function ProjectDetailsPage({
@@ -104,6 +113,7 @@ export function ProjectDetailsPage({
   organizationMembers = [],
   organizationTags = [],
   reports = [],
+  agents = [],
 }: ProjectDetailsPageProps) {
   const router = useRouter()
   const { user, profile } = useUser()
@@ -313,6 +323,7 @@ export function ProjectDetailsPage({
                         workstreams={workstreams.map(ws => ({ id: ws.id, name: ws.name }))}
                         organizationMembers={organizationMembers}
                         organizationTags={organizationTags}
+                        agents={agents}
                       />
                     </Suspense>
                   </TabsContent>

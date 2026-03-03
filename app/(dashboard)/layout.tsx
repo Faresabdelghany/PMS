@@ -67,7 +67,7 @@ async function getActiveProjects(
         .from("projects")
         .select("*")
         .eq("organization_id", organizationId)
-        .eq("status", "active")
+        .in("status", ["active", "planned", "backlog"])
         .order("updated_at", { ascending: false })
         .limit(SIDEBAR_PROJECT_LIMIT)
 

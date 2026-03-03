@@ -361,5 +361,128 @@ export async function POST(req: NextRequest) {
     })
   }
 
+  // ── Inbox Notifications ────────────────────────────────────────────
+  // Notify org members for agent events (skip heartbeat & task_progress — too noisy)
+  const silentEvents: string[] = ["heartbeat", "task_progress"]
+  if (!silentEvents.includes(event_type)) {
+    try {
+      // Get agent name for the notification title
+      let agentName = "Agent"
+      if (agent_id) {
+        const { data: agent } = await supabase
+          .from("agents")
+          .select("name")
+          .eq("id", agent_id)
+          .single()
+        if (agent?.name) agentName = agent.name
+      }
+
+      // Get task name if we have a task_id
+      let taskName: string | null = null
+      if (effectiveTaskId) {
+        const { data: task } = await supabase
+          .from("tasks")
+          .select("name")
+          .eq("id", effectiveTaskId)
+          .single()
+        taskName = task?.name ?? null
+      }
+
+      // Get all org members to notify
+      const { data: members } = await supabase
+        .from("organization_members")
+        .select("user_id")
+        .eq("organization_id", org_id)
+
+      if (members && members.length > 0) {
+        let itemType: "task_update" | "system" | "project_milestone" = "task_update"
+        let title = message
+        let notifMessage: string | null = null
+
+        switch (event_type) {
+          case "task_completed":
+            title = taskName
+              ? `${agentName} completed "${taskName}"`
+              : `${agentName} completed a run`
+            break
+
+          case "task_started":
+            title = taskName
+              ? `${agentName} started working on "${taskName}"`
+              : `${agentName} started a new run`
+            break
+
+          case "task_failed":
+            title = taskName
+              ? `${agentName} failed on "${taskName}"`
+              : `${agentName} encountered an error`
+            notifMessage = message
+            break
+
+          case "task_create":
+            title = `${agentName} created a new task`
+            notifMessage = getPayloadString(payload, "name") ?? message
+            break
+
+          case "subtask_create":
+            title = `${agentName} created a subtask`
+            notifMessage = getPayloadString(payload, "name") ?? message
+            break
+
+          case "approval_request":
+            itemType = "system"
+            title = `${agentName} is requesting your approval`
+            notifMessage = message
+            break
+
+          case "agent_message":
+            itemType = "system"
+            title = `${agentName} sent a message`
+            notifMessage = message
+            break
+
+          case "status_change":
+            itemType = "system"
+            title = `${agentName} status changed`
+            notifMessage = message
+            break
+
+          default:
+            title = `${agentName}: ${message.slice(0, 120)}`
+            break
+        }
+
+        // Get project_id from the task if we don't have it from task creation
+        let projectId = createdTaskProjectId
+        if (!projectId && effectiveTaskId) {
+          const { data: taskRow } = await supabase
+            .from("tasks")
+            .select("project_id")
+            .eq("id", effectiveTaskId)
+            .single()
+          projectId = taskRow?.project_id ?? null
+        }
+
+        const inboxItems = members.map((m) => ({
+          organization_id: org_id,
+          user_id: m.user_id,
+          actor_id: null,
+          item_type: itemType,
+          title,
+          message: notifMessage,
+          is_read: false,
+          project_id: projectId ?? null,
+          task_id: effectiveTaskId ?? null,
+          client_id: null,
+          metadata: { agent_id: agent_id ?? null, event_type },
+        }))
+
+        await supabase.from("inbox_items").insert(inboxItems)
+      }
+    } catch {
+      // Non-critical — don't fail the whole event if inbox insert fails
+    }
+  }
+
   return NextResponse.json(createdTaskId ? { ok: true, task_id: createdTaskId } : { ok: true })
 }

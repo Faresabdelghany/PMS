@@ -35,16 +35,11 @@ import { User } from "@phosphor-icons/react/dist/ssr/User"
 import { Pulse } from "@phosphor-icons/react/dist/ssr/Pulse"
 import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText"
 import { PlugsConnected } from "@phosphor-icons/react/dist/ssr/PlugsConnected"
-import { FileText } from "@phosphor-icons/react/dist/ssr/FileText"
 import { Notebook } from "@phosphor-icons/react/dist/ssr/Notebook"
 import { Timer } from "@phosphor-icons/react/dist/ssr/Timer"
-import { Terminal } from "@phosphor-icons/react/dist/ssr/Terminal"
-import { CurrencyDollar } from "@phosphor-icons/react/dist/ssr/CurrencyDollar"
 import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank"
 import { Bell } from "@phosphor-icons/react/dist/ssr/Bell"
-import { Brain } from "@phosphor-icons/react/dist/ssr/Brain"
 import { ChatsCircle } from "@phosphor-icons/react/dist/ssr/ChatsCircle"
-import { WebhooksLogo } from "@phosphor-icons/react/dist/ssr/WebhooksLogo"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,7 +60,7 @@ import { cn } from "@/lib/utils"
 import { PROGRESS_THRESHOLDS, BADGE_CAP, SIDEBAR_PROJECT_LIMIT } from "@/lib/constants"
 
 // Navigation items defined inline (no mock data dependency)
-type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "chat" | "activity" | "approvals" | "gateways" | "skills" | "documents" | "memory" | "sessions" | "logs" | "costs" | "schedules" | "alerts" | "models" | "communications" | "webhooks"
+type NavItemId = "dashboard" | "inbox" | "my-tasks" | "projects" | "clients" | "agents" | "chat" | "activity" | "approvals" | "gateways" | "skills" | "memory" | "sessions" | "schedules" | "alerts" | "communications"
 type SidebarFooterItemId = "settings"
 
 type NavItem = {
@@ -93,8 +88,6 @@ const observeNavItems: NavItem[] = [
   { id: "agents", label: "Agents" },
   { id: "sessions", label: "Sessions" },
   { id: "activity", label: "Activity" },
-  { id: "logs", label: "Logs" },
-  { id: "costs", label: "Tokens & Costs" },
   { id: "memory", label: "Memory" },
 ]
 
@@ -105,15 +98,12 @@ const automateNavItems: NavItem[] = [
   { id: "approvals", label: "Approvals" },
   { id: "gateways", label: "Gateways" },
   { id: "skills", label: "Skills" },
-  { id: "models", label: "Models" },
-  { id: "webhooks", label: "Webhooks" },
 ]
 
 // Communicate section
 const communicateNavItems: NavItem[] = [
   { id: "communications", label: "Agent Chat" },
   { id: "chat", label: "AI Chat" },
-  { id: "documents", label: "Documents" },
 ]
 
 // All nav items combined (for preload handlers, href lookup, etc.)
@@ -168,16 +158,11 @@ const preloadHandlers: Record<NavItemId, () => void> = {
   approvals: () => {},
   gateways: () => {},
   skills: () => {},
-  documents: () => {},
   memory: () => {},
   sessions: () => {},
-  logs: () => {},
-  costs: () => {},
   schedules: () => {},
   alerts: () => {},
-  models: () => {},
   communications: () => {},
-  webhooks: () => {},
   chat: () => {
     if (typeof window !== "undefined") {
       void import("@/components/ai/chat-page-content")
@@ -208,16 +193,11 @@ const navItemIcons: Record<NavItemId, React.ComponentType<{ className?: string }
   approvals: ClipboardText,
   gateways: PlugsConnected,
   skills: Sparkle,
-  documents: FileText,
   memory: Notebook,
   sessions: Timer,
-  logs: Terminal,
-  costs: CurrencyDollar,
   schedules: CalendarBlank,
   alerts: Bell,
-  models: Brain,
   communications: ChatsCircle,
-  webhooks: WebhooksLogo,
   chat: Sparkle,
 }
 
@@ -290,7 +270,8 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
   // Real-time updates for sidebar projects
   usePooledProjectsRealtime(organization?.id, {
     onInsert: (project) => {
-      if (project.status === "active") {
+      const sidebarStatuses = ["active", "planned", "backlog"]
+      if (sidebarStatuses.includes(project.status)) {
         setProjects((prev) => {
           // Avoid duplicates
           if (prev.some((p) => p.id === project.id)) return prev
@@ -300,19 +281,20 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
       }
     },
     onUpdate: (project, oldProject) => {
+      const sidebarStatuses = ["active", "planned", "backlog"]
       setProjects((prev) => {
         const exists = prev.some((p) => p.id === project.id)
 
-        if (project.status === "active") {
+        if (sidebarStatuses.includes(project.status)) {
           if (exists) {
             // Update in place
             return prev.map((p) => (p.id === project.id ? (project as Project) : p))
           }
-          // Newly active — add to front, cap at limit
+          // Newly visible — add to front, cap at limit
           return [project as Project, ...prev].slice(0, SIDEBAR_PROJECT_LIMIT)
         }
 
-        // No longer active — remove from list
+        // No longer visible (completed/cancelled) — remove from list
         if (exists) {
           return prev.filter((p) => p.id !== project.id)
         }
@@ -365,16 +347,11 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
     if (id === "approvals") return "/approvals"
     if (id === "gateways") return "/gateways"
     if (id === "skills") return "/skills/marketplace"
-    if (id === "documents") return "/documents"
     if (id === "memory") return "/memory"
     if (id === "sessions") return "/sessions"
-    if (id === "logs") return "/logs"
-    if (id === "costs") return "/costs"
     if (id === "schedules") return "/schedules"
     if (id === "alerts") return "/alerts"
-    if (id === "models") return "/models"
     if (id === "communications") return "/communications"
-    if (id === "webhooks") return "/webhooks"
     if (id === "chat") return "/chat"
     return "#"
   }
@@ -390,16 +367,11 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
     if (id === "approvals") return pathname.startsWith("/approvals")
     if (id === "gateways") return pathname.startsWith("/gateways")
     if (id === "skills") return pathname.startsWith("/skills")
-    if (id === "documents") return pathname.startsWith("/documents")
     if (id === "memory") return pathname.startsWith("/memory")
     if (id === "sessions") return pathname.startsWith("/sessions")
-    if (id === "logs") return pathname.startsWith("/logs")
-    if (id === "costs") return pathname.startsWith("/costs")
     if (id === "schedules") return pathname.startsWith("/schedules")
     if (id === "alerts") return pathname.startsWith("/alerts")
-    if (id === "models") return pathname.startsWith("/models")
     if (id === "communications") return pathname.startsWith("/communications")
-    if (id === "webhooks") return pathname.startsWith("/webhooks")
     if (id === "chat") return pathname.startsWith("/chat")
     return false
   }
@@ -588,7 +560,7 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
 
         <SidebarGroup>
           <SidebarGroupLabel className="px-3 text-xs font-medium text-muted-foreground">
-            Active Projects
+            Projects
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -598,7 +570,7 @@ export function AppSidebar({ activeProjects = [], initialUnreadCount = 0, initia
                 ))
               ) : (
                 <SidebarMenuItem>
-                  <span className="px-3 text-sm text-muted-foreground">No active projects</span>
+                  <span className="px-3 text-sm text-muted-foreground">No projects yet</span>
                 </SidebarMenuItem>
               )}
             </SidebarMenu>

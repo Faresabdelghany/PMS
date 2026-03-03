@@ -20,6 +20,7 @@ export interface MemoryJournalEvent {
   message: string
   created_at: string
   agent: { id: string; name: string; avatar_url: string | null }
+  task?: { id: string; name: string; status: string; priority: string } | null
 }
 
 export interface MemoryLongTermSummary {
@@ -106,7 +107,7 @@ export async function getJournalContent(
 
   const { data, error } = await supabase
     .from("agent_events")
-    .select("id, event_type, message, created_at, agents:agent_id(id, name, avatar_url)")
+    .select("id, event_type, message, created_at, agents:agent_id(id, name, avatar_url), tasks:task_id(id, name, status, priority)")
     .eq("organization_id", orgId)
     .gte("created_at", startOfDay)
     .lte("created_at", endOfDay)
@@ -120,12 +121,14 @@ export async function getJournalContent(
     message: string
     created_at: string
     agents: { id: string; name: string; avatar_url: string | null } | null
+    tasks: { id: string; name: string; status: string; priority: string } | null
   }[]).map((row) => ({
     id: row.id,
     event_type: row.event_type,
     message: row.message,
     created_at: row.created_at,
     agent: row.agents ?? { id: "", name: "Unknown", avatar_url: null },
+    task: row.tasks ?? null,
   }))
 
   return { data: events }
@@ -139,7 +142,7 @@ export async function searchMemories(
 
   const { data, error } = await supabase
     .from("agent_events")
-    .select("id, event_type, message, created_at, agents:agent_id(id, name, avatar_url)")
+    .select("id, event_type, message, created_at, agents:agent_id(id, name, avatar_url), tasks:task_id(id, name, status, priority)")
     .eq("organization_id", orgId)
     .ilike("message", `%${query}%`)
     .order("created_at", { ascending: false })
@@ -153,12 +156,14 @@ export async function searchMemories(
     message: string
     created_at: string
     agents: { id: string; name: string; avatar_url: string | null } | null
+    tasks: { id: string; name: string; status: string; priority: string } | null
   }[]).map((row) => ({
     id: row.id,
     event_type: row.event_type,
     message: row.message,
     created_at: row.created_at,
     agent: row.agents ?? { id: "", name: "Unknown", avatar_url: null },
+    task: row.tasks ?? null,
   }))
 
   return { data: events }

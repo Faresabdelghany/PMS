@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
+import { formatDistanceToNow } from "date-fns"
 import { Trash } from "@phosphor-icons/react/dist/ssr/Trash"
 import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple"
 import { Eye } from "@phosphor-icons/react/dist/ssr/Eye"
@@ -167,14 +168,14 @@ export function GatewaysListClient({ gateways: initialGateways }: GatewaysListCl
                       </Badge>
                       {gateway._lastChecked && (
                         <p className="text-[10px] text-muted-foreground mt-0.5">
-                          Checked {gateway._lastChecked.toLocaleTimeString()}
+                          Checked {formatDistanceToNow(gateway._lastChecked, { addSuffix: true })}
                         </p>
                       )}
                     </div>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {gateway.last_seen_at
-                      ? new Date(gateway.last_seen_at).toLocaleString()
+                      ? formatDistanceToNow(new Date(gateway.last_seen_at), { addSuffix: true })
                       : "Never"}
                   </TableCell>
                   <TableCell>

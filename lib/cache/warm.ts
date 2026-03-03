@@ -69,7 +69,7 @@ export async function warmUserCache(userId: string): Promise<void> {
         .from("projects")
         .select("id, name, status, progress, updated_at")
         .eq("organization_id", primaryOrgId)
-        .eq("status", "active")
+        .in("status", ["active", "planned", "backlog"])
         .order("updated_at", { ascending: false })
         .limit(SIDEBAR_PROJECT_LIMIT)
 

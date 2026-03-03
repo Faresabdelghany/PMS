@@ -8,7 +8,7 @@ import { Sparkle } from "@phosphor-icons/react/dist/ssr/Sparkle"
 
 import { LoadMoreButton } from "@/components/ui/load-more-button"
 import { useLoadMore } from "@/hooks/use-load-more"
-import { getAllTasks, getMyTasks } from "@/lib/actions/tasks"
+import { getAllTasks } from "@/lib/actions/tasks"
 import type { TaskWithRelations } from "@/lib/actions/tasks"
 import type { TaskPriority } from "@/lib/supabase/types"
 import type { ProjectTask } from "@/lib/data/project-details"
@@ -243,12 +243,9 @@ export function MyTasksPage({
   const fetchMoreTasks = useCallback(
     (cursor: string) => {
       if (!organizationId) return Promise.resolve({ data: [], hasMore: false, nextCursor: null })
-      if (currentView === "all") {
-        return getAllTasks(organizationId, undefined, cursor)
-      }
-      return getMyTasks(organizationId, undefined, cursor)
+      return getAllTasks(organizationId, undefined, cursor)
     },
-    [organizationId, currentView]
+    [organizationId]
   )
 
   const {
@@ -750,33 +747,11 @@ export function MyTasksPage({
               </Button>
             </div>
           </div>
-          <div className="px-4 py-3">
-            <div className="inline-flex bg-muted rounded-full px-1 py-0.5 text-xs border border-border/50 h-8 items-center">
-              <button
-                type="button"
-                onClick={() => setView("my")}
-                className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${currentView === "my" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                My Tasks
-              </button>
-              <button
-                type="button"
-                onClick={() => setView("all")}
-                className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${currentView === "all" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                All Tasks
-              </button>
-            </div>
-          </div>
         </header>
         <div className="flex-1 flex flex-col items-center justify-center p-8">
           <div className="text-center space-y-3">
-            <p className="text-sm font-medium text-foreground">
-              {currentView === "all" ? "No tasks found" : "No tasks for you yet"}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {currentView === "all" ? "Tasks in your organization will appear here." : "Tasks assigned to you or handled by your agents will appear here."}
-            </p>
+            <p className="text-sm font-medium text-foreground">No tasks found</p>
+            <p className="text-xs text-muted-foreground">Tasks in your organization will appear here.</p>
           </div>
         </div>
 
@@ -823,22 +798,6 @@ export function MyTasksPage({
 
         <div className="flex items-center justify-between px-4 pb-3 pt-3">
           <div className="flex items-center gap-3">
-            <div className="inline-flex bg-muted rounded-full px-1 py-0.5 text-xs border border-border/50 h-8 items-center">
-              <button
-                type="button"
-                onClick={() => setView("my")}
-                className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${currentView === "my" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                My Tasks
-              </button>
-              <button
-                type="button"
-                onClick={() => setView("all")}
-                className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${currentView === "all" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                All Tasks
-              </button>
-            </div>
             <Button
               size="sm"
               variant={isAgentFilterActive ? "secondary" : "outline"}

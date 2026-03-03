@@ -53,7 +53,7 @@ export async function getTasks(
     .select(`
       *,
       assignee:profiles(id, full_name, email, avatar_url),
-      assigned_agent:agents(id, name, avatar_url),
+      assigned_agent:agents!tasks_assigned_agent_id_fkey(id, name, avatar_url),
       workstream:workstreams(id, name)
     `)
     .eq("project_id", projectId)
@@ -125,7 +125,7 @@ export async function getMyTasks(
   const taskSelect = `
     *,
     assignee:profiles(id, full_name, email, avatar_url),
-    assigned_agent:agents(id, name, avatar_url),
+    assigned_agent:agents!tasks_assigned_agent_id_fkey(id, name, avatar_url),
     workstream:workstreams(id, name),
     project:projects(id, name)
   `
@@ -227,7 +227,7 @@ export async function getAllTasks(
   const taskSelect = `
     *,
     assignee:profiles(id, full_name, email, avatar_url),
-    assigned_agent:agents(id, name, avatar_url),
+    assigned_agent:agents!tasks_assigned_agent_id_fkey(id, name, avatar_url),
     workstream:workstreams(id, name),
     project:projects(id, name)
   `
@@ -312,7 +312,7 @@ export async function getTask(id: string): Promise<ActionResult<TaskWithRelation
     .select(`
       *,
       assignee:profiles(id, full_name, email, avatar_url),
-      assigned_agent:agents(id, name, avatar_url),
+      assigned_agent:agents!tasks_assigned_agent_id_fkey(id, name, avatar_url),
       workstream:workstreams(id, name),
       project:projects(id, name)
     `)
@@ -330,7 +330,7 @@ export async function getSubtasks(parentTaskId: string): Promise<ActionResult<Ta
     .select(`
       *,
       assignee:profiles(id, full_name, email, avatar_url),
-      assigned_agent:agents(id, name, avatar_url),
+      assigned_agent:agents!tasks_assigned_agent_id_fkey(id, name, avatar_url),
       workstream:workstreams(id, name),
       project:projects(id, name)
     `)

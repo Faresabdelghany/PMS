@@ -14,7 +14,7 @@ export interface ScheduledRun {
   organization_id: string
   agent_id: string
   task_type: string
-  cron_expression: string
+  schedule_expr: string
   next_run_at: string | null
   last_run_at: string | null
   last_status: string | null
@@ -33,7 +33,7 @@ export interface ScheduledRunWithAgent extends ScheduledRun {
 const createScheduledRunSchema = z.object({
   agent_id: z.string().uuid(),
   task_type: z.string().trim().min(1).max(200),
-  cron_expression: z.string().trim().min(1).max(100),
+  schedule_expr: z.string().trim().min(1).max(100),
   next_run_at: z.string().optional().nullable(),
   metadata: z.record(z.unknown()).default({}),
 })
@@ -88,11 +88,8 @@ export async function createScheduledRun(
         organization_id: orgId,
         agent_id: parsed.data.agent_id,
         task_type: parsed.data.task_type,
-        cron_expression: parsed.data.cron_expression,
-        next_run_at: parsed.data.next_run_at ?? null,
-        last_run_at: null,
-        last_status: null,
-        paused: false,
+        schedule_expr: parsed.data.schedule_expr,
+        next_run_at: parsed.data.next_run_at ?? new Date().toISOString(),
         metadata: parsed.data.metadata,
       })
       .select()

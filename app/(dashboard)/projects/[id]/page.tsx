@@ -13,6 +13,7 @@ import {
   getCachedTags,
   getCachedProjectReports,
 } from "@/lib/server-cache"
+import { getAgents } from "@/lib/actions/agents"
 import { transformProjectToUI } from "@/lib/transforms/project-details"
 import type { ProjectDetailLean } from "@/components/projects/ProjectDetailsPage"
 
@@ -32,12 +33,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
  * Called in parallel with project data to eliminate the waterfall.
  */
 async function fetchOrgData(orgId: string) {
-  const [clients, members, tags] = await Promise.all([
+  const [clients, members, tags, agentsResult] = await Promise.all([
     getCachedClients(orgId),
     getCachedOrganizationMembers(orgId),
     getCachedTags(orgId),
+    getAgents(orgId),
   ])
-  return { clients, members, tags, orgId }
+  return { clients, members, tags, agents: agentsResult.data ?? [], orgId }
 }
 
 export default async function Page({ params }: PageProps) {
@@ -167,6 +169,7 @@ async function ProjectDetailStreamed({
       organizationMembers={organizationMembers}
       organizationTags={(tagsResult.data || []).map(t => ({ id: t.id, name: t.name, color: t.color }))}
       reports={reportsResult.data || []}
+      agents={orgData.agents}
     />
   )
 }

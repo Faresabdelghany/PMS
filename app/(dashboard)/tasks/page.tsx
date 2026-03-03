@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { Suspense } from "react"
 import { getPageOrganization } from "@/lib/page-auth"
 import { getProjects } from "@/lib/actions/projects"
-import { getAllTasks, getMyTasks } from "@/lib/actions/tasks"
+import { getAllTasks } from "@/lib/actions/tasks"
 import { getAgents } from "@/lib/actions/agents"
 import { getCachedOrganizationMembers, getCachedTags } from "@/lib/server-cache"
 import { MyTasksPage } from "@/components/tasks/MyTasksPage"
@@ -13,32 +13,19 @@ export const metadata: Metadata = {
 
 export const revalidate = 300
 
-type TasksView = "my" | "all"
-
-function parseTasksView(value: string | string[] | undefined): TasksView {
-  if (Array.isArray(value)) return value[0] === "all" ? "all" : "my"
-  return value === "all" ? "all" : "my"
-}
-
-export default async function TasksPage({
-  searchParams,
-}: {
-  searchParams?: Promise<Record<string, string | string[] | undefined>>
-}) {
+export default async function TasksPage() {
   const { orgId, user } = await getPageOrganization()
-  const resolvedParams = searchParams ? await searchParams : undefined
-  const view = parseTasksView(resolvedParams?.view)
 
   return (
     <Suspense fallback={<MyTasksSkeleton />}>
-      <MyTasksData orgId={orgId} userId={user.id} view={view} />
+      <MyTasksData orgId={orgId} userId={user.id} />
     </Suspense>
   )
 }
 
-async function MyTasksData({ orgId, userId, view }: { orgId: string; userId: string; view: TasksView }) {
+async function MyTasksData({ orgId, userId }: { orgId: string; userId: string }) {
   const [tasksResult, projectsResult, membersResult, agentsResult, tagsResult] = await Promise.all([
-    view === "all" ? getAllTasks(orgId) : getMyTasks(orgId),
+    getAllTasks(orgId),
     getProjects(orgId),
     getCachedOrganizationMembers(orgId),
     getAgents(orgId),
@@ -68,11 +55,10 @@ async function MyTasksData({ orgId, userId, view }: { orgId: string; userId: str
 
   return (
     <MyTasksPage
-      key={view}
       initialTasks={tasks}
       initialHasMore={hasMore}
       initialCursor={nextCursor}
-      initialView={view}
+      initialView="all"
       projects={projects}
       organizationId={orgId}
       userId={userId}

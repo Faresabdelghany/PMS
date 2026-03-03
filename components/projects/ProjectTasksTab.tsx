@@ -167,6 +167,14 @@ function toProjectTask(task: TaskLike, projectId: string, projectName: string): 
   }
 }
 
+type AgentLean = {
+  id: string
+  name: string
+  role: string
+  squad: string
+  avatar_url: string | null
+}
+
 type ProjectTasksTabProps = {
   projectId: string
   projectName: string
@@ -175,6 +183,7 @@ type ProjectTasksTabProps = {
   workstreams?: { id: string; name: string }[]
   organizationMembers?: OrganizationMember[]
   organizationTags?: OrganizationTagLean[]
+  agents?: AgentLean[]
 }
 
 export function ProjectTasksTab({
@@ -185,6 +194,7 @@ export function ProjectTasksTab({
   workstreams = [],
   organizationMembers = [],
   organizationTags = [],
+  agents = [],
 }: ProjectTasksTabProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -596,6 +606,7 @@ export function ProjectTasksTab({
           organizationMembers={organizationMembers}
           workstreams={workstreams.map((w) => ({ id: w.id, name: w.name }) as Workstream)}
           tags={organizationTags}
+          agents={agents}
         />
       )}
     </section>

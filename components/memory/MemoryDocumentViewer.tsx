@@ -185,6 +185,32 @@ function renderInlineLabels(text: string): ReactNode {
   return text
 }
 
+function getEventVisual(eventType: string): { dotClass: string; badgeClass: string } {
+  const t = eventType?.toLowerCase() ?? ""
+  if (t.includes("error") || t.includes("fail")) {
+    return {
+      dotClass: "border-red-500/40 text-red-500",
+      badgeClass: "border border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400",
+    }
+  }
+  if (t.includes("complete") || t.includes("done") || t.includes("success")) {
+    return {
+      dotClass: "border-emerald-500/40 text-emerald-500",
+      badgeClass: "border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    }
+  }
+  if (t.includes("start") || t.includes("create")) {
+    return {
+      dotClass: "border-blue-500/40 text-blue-500",
+      badgeClass: "border border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400",
+    }
+  }
+  return {
+    dotClass: "border-primary/40 text-primary",
+    badgeClass: "border border-border bg-muted text-muted-foreground",
+  }
+}
+
 function highlightMatch(text: string, query: string): ReactNode {
   if (!query) return text
   const idx = text.toLowerCase().indexOf(query.toLowerCase())
@@ -390,56 +416,137 @@ export function MemoryDocumentViewer({
     <div className="flex-1 overflow-auto">
       <div className="mx-auto max-w-4xl px-8 py-8">
         {/* Header */}
-        <div className="mb-8 flex items-start justify-between rounded-xl border border-border bg-muted p-5">
-          <div className="flex items-start gap-3">
-            <FileText className="mt-1 h-5 w-5 shrink-0 text-muted-foreground" />
-            <div>
-              <h2 className="text-xl font-semibold text-foreground">Journal: {journalDate}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {formatFullDate(journalDate!)} &middot; {formatBytes(stats.byteSize)} &middot;{" "}
-                {stats.wordCount.toLocaleString("en-US")} words
-              </p>
+        <div className="mb-8 rounded-xl border border-border bg-card p-5 shadow-sm">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                <FileText className="h-4.5 w-4.5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Journal: {journalDate}</h2>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  {formatFullDate(journalDate!)}
+                </p>
+              </div>
+            </div>
+            <p
+              className="mt-1 shrink-0 text-xs text-muted-foreground"
+              suppressHydrationWarning
+            >
+              {formatRelativeModified(lastModifiedAt)}
+            </p>
+          </div>
+          <div className="mt-3 flex items-center gap-4 border-t border-border pt-3">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">{events.length}</span> events
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">{stats.wordCount.toLocaleString("en-US")}</span> words
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">{formatBytes(stats.byteSize)}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">{uniqueAgents}</span> agent{uniqueAgents !== 1 ? "s" : ""}
             </div>
           </div>
-          <p
-            className="mt-1.5 shrink-0 text-xs text-muted-foreground"
-            suppressHydrationWarning
-          >
-            {formatRelativeModified(lastModifiedAt)}
-          </p>
         </div>
 
-        {/* Events as document flow */}
+        {/* Events timeline */}
         {events.length === 0 ? (
           <div className="py-16 text-center text-sm text-muted-foreground">
             No events for this date.
           </div>
         ) : (
-          <div className="space-y-6 rounded-xl border border-border bg-muted p-5">
+          <div className="relative space-y-3 pl-8">
+            {/* Vertical timeline line */}
+            <div className="absolute bottom-2 left-[11px] top-2 w-px bg-border" />
+
             {events.map((event) => {
               const { title, body } = extractTitle(event.message)
+              const visual = getEventVisual(event.event_type)
+              const agentInitial = event.agent.name.charAt(0).toUpperCase()
 
               return (
-                <div key={event.id}>
-                  {/* Time + Title line */}
-                  <div className="flex items-baseline gap-2 mb-1.5">
-                    <Clock className="relative top-[3px] h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
-                    <span className="shrink-0 text-sm text-muted-foreground">
-                      {formatTime(event.created_at)}
-                    </span>
-                    <span className="text-sm text-muted-foreground/60">&mdash;</span>
-                    <h3 className="text-sm font-semibold text-primary">
-                      {title}
-                    </h3>
-                    {uniqueAgents > 1 && (
-                      <span className="ml-auto shrink-0 text-xs text-muted-foreground">
-                        {event.agent.name}
-                      </span>
+                <div
+                  key={event.id}
+                  className="group relative rounded-lg border border-border bg-card px-4 py-3.5 shadow-sm transition-all hover:shadow-md hover:border-border/80"
+                >
+                  {/* Timeline dot */}
+                  <div
+                    className={cn(
+                      "absolute left-[-24px] top-4 z-10 flex h-5 w-5 items-center justify-center rounded-full border-2 bg-background",
+                      visual.dotClass,
                     )}
+                  >
+                    <div className="h-2 w-2 rounded-full bg-current" />
                   </div>
 
-                  {/* Body content */}
-                  {body && <div className="pl-[26px] text-muted-foreground">{renderFormattedBody(body)}</div>}
+                  {/* Event content */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1 space-y-2">
+                      {/* Title row with badge */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-sm font-semibold leading-snug text-foreground">{title}</h3>
+                        {event.event_type && (
+                          <span className={cn(
+                            "inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] leading-4 font-semibold uppercase tracking-wider",
+                            visual.badgeClass,
+                          )}>
+                            {event.event_type.replace(/_/g, " ")}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Linked task info */}
+                      {event.task && (
+                        <div className="flex items-center gap-2 rounded-md bg-muted/50 px-2.5 py-1.5 text-xs">
+                          <span className="font-medium text-foreground">{event.task.name}</span>
+                          <span className={cn(
+                            "inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                            event.task.status === "done" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" :
+                            event.task.status === "in-progress" ? "bg-blue-500/15 text-blue-600 dark:text-blue-400" :
+                            "bg-muted text-muted-foreground"
+                          )}>
+                            {event.task.status}
+                          </span>
+                          {event.task.priority && event.task.priority !== "no-priority" && (
+                            <span className="text-muted-foreground">{event.task.priority}</span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Body text */}
+                      {body && !event.task && (
+                        <div className="text-xs text-muted-foreground leading-relaxed">
+                          {renderFormattedBody(body)}
+                        </div>
+                      )}
+
+                      {/* Agent badge */}
+                      <div className="flex items-center gap-2 pt-0.5">
+                        <div className={cn(
+                          "flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold",
+                          visual.dotClass.includes("emerald") ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" :
+                          visual.dotClass.includes("blue") ? "bg-blue-500/15 text-blue-600 dark:text-blue-400" :
+                          visual.dotClass.includes("red") ? "bg-red-500/15 text-red-600 dark:text-red-400" :
+                          "bg-muted text-muted-foreground"
+                        )}>
+                          {agentInitial}
+                        </div>
+                        <span className="text-xs font-medium text-muted-foreground">
+                          {event.agent.name}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Timestamp */}
+                    <div className="shrink-0 pt-0.5">
+                      <span className="text-[11px] tabular-nums text-muted-foreground/70">
+                        {formatTime(event.created_at)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )
             })}

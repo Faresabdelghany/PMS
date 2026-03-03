@@ -149,12 +149,16 @@ export function AlertsPageClient({ orgId }: AlertsPageClientProps) {
 
   const loadData = useCallback(async () => {
     setLoading(true)
-    const [rulesResult, historyResult] = await Promise.all([
-      getAlertRules(orgId),
-      getAlertHistory(orgId),
-    ])
-    if (rulesResult.data) setRules(rulesResult.data)
-    if (historyResult.data) setHistory(historyResult.data)
+    try {
+      const [rulesResult, historyResult] = await Promise.all([
+        getAlertRules(orgId),
+        getAlertHistory(orgId),
+      ])
+      if (rulesResult.data) setRules(rulesResult.data)
+      if (historyResult.data) setHistory(historyResult.data)
+    } catch {
+      // Tables may not exist yet — gracefully show empty state
+    }
     setLoading(false)
   }, [orgId])
 

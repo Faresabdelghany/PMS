@@ -20,7 +20,7 @@ import { CacheTTL, CacheKeys } from "@/lib/cache/keys"
  * - Per-request nonce for CSP (eliminates 'unsafe-inline' for script-src)
  */
 
-const SESSION_CACHE_TTL = CacheTTL.SESSION // 5 minutes (centralized in lib/cache/keys.ts)
+const SESSION_CACHE_TTL = CacheTTL.SESSION // 15 minutes (centralized in lib/cache/keys.ts)
 
 function isPrefetchRequest(request: NextRequest): boolean {
   return (
@@ -65,7 +65,10 @@ function buildCspHeader(nonce: string): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com https://avatars.githubusercontent.com",
     "font-src 'self' data:",
-    `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://vitals.vercel-analytics.com https://va.vercel-scripts.com https://*.ingest.de.sentry.io wss://*.ts.net https://*.ts.net${process.env.NEXT_PUBLIC_GATEWAY_WS_URL ? ` ${process.env.NEXT_PUBLIC_GATEWAY_WS_URL.replace('wss://', 'https://')}` : ''}`,
+    // Note: wss://*.ts.net covers the gateway WebSocket URL (NEXT_PUBLIC_GATEWAY_WS_URL).
+    // Do NOT use process.env.NEXT_PUBLIC_GATEWAY_WS_URL inline here — Turbopack inlining
+    // of that env var crashes the Vercel Edge Runtime.
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://vitals.vercel-analytics.com https://va.vercel-scripts.com https://*.ingest.de.sentry.io wss://*.ts.net https://*.ts.net",
     "worker-src 'self' blob:",
     "frame-ancestors 'none'",
     "base-uri 'self'",

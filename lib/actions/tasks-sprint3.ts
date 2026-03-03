@@ -83,7 +83,7 @@ export async function getOrgTasks(
     .select(`
       *,
       assignee:profiles(id, full_name, email, avatar_url),
-      agent:agents(id, name, role, squad, avatar_url),
+      agent:agents!tasks_agent_id_fkey(id, name, role, squad, avatar_url),
       project:projects!inner(id, name, organization_id)
     `)
     .eq("project.organization_id", orgId)

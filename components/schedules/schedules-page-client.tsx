@@ -231,7 +231,7 @@ function CreateScheduleDialog({ open, onOpenChange, agents, orgId, onCreated }: 
       const result = await createScheduledRun(orgId, {
         agent_id: selectedAgent,
         task_type: taskType.trim(),
-        cron_expression: cronExpression.trim(),
+        schedule_expr: cronExpression.trim(),
         metadata: {},
       })
 
@@ -517,10 +517,10 @@ export function SchedulesPageClient({ orgId }: SchedulesPageClientProps) {
                     <TableCell>
                       <div className="flex flex-col gap-0.5">
                         <span className="text-sm text-foreground">
-                          {describeCron(schedule.cron_expression)}
+                          {describeCron(schedule.schedule_expr)}
                         </span>
                         <span className="text-xs font-mono text-muted-foreground">
-                          {schedule.cron_expression}
+                          {schedule.schedule_expr}
                         </span>
                       </div>
                       {schedule.paused && (
